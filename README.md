@@ -2,9 +2,9 @@
 
 Experimental Lexus remote-control tooling and mobile app.
 
-The tracked tree contains only code and tests. Local APKs, reverse-engineering
-output, notes, and unpublished research belong in the gitignored `scratchpad/`
-directory.
+The tracked tree contains code, tests, and the API reference under [`docs/`](docs/).
+Local APKs, raw analysis output, and unpublished research stay in the gitignored
+`scratchpad/` directory.
 
 ## Test
 
@@ -32,3 +32,9 @@ The repo root is an Expo SDK 57 app (Expo Router + `expo-widgets`) with a
 pnpm install
 pnpm expo run:ios   # expo-widgets is not supported in Expo Go; use a dev build
 ```
+
+## API reference
+
+[`docs/`](docs/) documents the Lexus OneApp API surface used by this tooling —
+all 285 REST endpoints by domain, the login/token flow, and the vehicle
+status/command model. Start at [`docs/README.md`](docs/README.md).

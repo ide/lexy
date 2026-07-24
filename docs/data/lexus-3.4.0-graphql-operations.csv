@@ -1,0 +1,12 @@
+type,operation,endpoint
+MUTATION,ConfirmSubscriptionStatus,https://oa-api.telematicsct.com/graphql
+MUTATION,PostChargeSettings,https://oa-api.telematicsct.com/graphql
+MUTATION,PostDriveMonitor,https://oa-api.telematicsct.com/graphql
+MUTATION,PostPowerSupplyModeLimit,https://oa-api.telematicsct.com/graphql
+MUTATION,RefreshVehicleStatus,https://oa-api.telematicsct.com/graphql
+MUTATION,SendPreWakeCommand,https://oa-api.telematicsct.com/graphql
+MUTATION,SendRemoteCommand,https://oa-api.telematicsct.com/graphql
+QUERY,GetVehicleStatus,https://oa-api.telematicsct.com/graphql
+SUBSCRIPTION,ReceiveDriveMonitorCallback,https://oa-api.telematicsct.com/graphql
+SUBSCRIPTION,ReceiveRemoteCommandStatus,https://oa-api.telematicsct.com/graphql
+SUBSCRIPTION,ReceiveVehicleStatus,https://oa-api.telematicsct.com/graphql
