@@ -1,33 +1,30 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { Platform, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { Colors } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const scheme = colorScheme === 'dark' ? 'dark' : 'light';
-  const colors = Colors[scheme];
 
   return (
-    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
       <Stack
         screenOptions={{
           headerLargeTitle: true,
-          headerTransparent: Platform.OS === 'ios',
-          headerBlurEffect: 'systemChromeMaterial',
+          headerTransparent: process.env.EXPO_OS === 'ios',
           headerShadowVisible: false,
           headerLargeTitleShadowVisible: false,
-          headerTintColor: '#0A84FF',
-          headerStyle: { backgroundColor: colors.background },
-          headerLargeStyle: { backgroundColor: colors.background },
-          contentStyle: { backgroundColor: colors.background },
-          headerTitleStyle: { color: colors.text },
-          headerLargeTitleStyle: { color: colors.text },
+          headerLargeStyle: { backgroundColor: 'transparent' },
+          headerBackButtonDisplayMode: 'minimal',
+          headerTintColor: colors.systemBlue as string,
+          headerTitleStyle: { color: colors.label as string },
+          headerLargeTitleStyle: { color: colors.label as string },
+          contentStyle: { backgroundColor: colors.groupedBackground },
         }}>
         <Stack.Screen name="index" options={{ title: 'IS 350' }} />
         <Stack.Screen

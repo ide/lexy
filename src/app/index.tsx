@@ -1,23 +1,37 @@
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import * as Linking from 'expo-linking';
 import { Link } from 'expo-router';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Spacing, colors } from '@/constants/theme';
 import { is350, updatedLabel } from '@/data/is350';
 import { useTheme } from '@/hooks/use-theme';
+
+function Icon({ name, size = 22, tint }: { name: SFSymbol; size?: number; tint?: string }) {
+  return (
+    <Image
+      source={`sf:${name}`}
+      tintColor={tint ?? (colors.label as string)}
+      style={{ width: size, height: size }}
+      contentFit="contain"
+    />
+  );
+}
 
 function Card({ children, style }: { children: React.ReactNode; style?: object }) {
   const theme = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement }, style]}>{children}</View>
+    <View style={[styles.card, { backgroundColor: theme.card }, style]}>{children}</View>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+    <ThemedText type="smallBold" themeColor="secondaryLabel" style={styles.sectionTitle}>
       {children}
     </ThemedText>
   );
@@ -30,183 +44,224 @@ function Metric({
   label,
   accent,
 }: {
-  symbol: SymbolViewProps['name'];
+  symbol: SFSymbol;
   value: string;
   unit?: string;
   label: string;
   accent?: string;
 }) {
-  const theme = useTheme();
   return (
     <Card style={styles.metric}>
-      <SymbolView name={symbol} size={22} tintColor={accent ?? theme.text} type="hierarchical" />
+      <Icon name={symbol} tint={accent} />
       <View style={styles.metricValueRow}>
         <ThemedText style={styles.metricValue}>{value}</ThemedText>
         {unit ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.metricUnit}>
+          <ThemedText type="small" themeColor="secondaryLabel" style={styles.metricUnit}>
             {unit}
           </ThemedText>
         ) : null}
       </View>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="secondaryLabel">
         {label}
       </ThemedText>
     </Card>
   );
 }
 
+function openLastParkedInMaps() {
+  if (process.env.EXPO_OS === 'ios') {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+  const { latitude, longitude } = is350.location;
+  const label = encodeURIComponent(is350.nickname);
+  const url =
+    process.env.EXPO_OS === 'android'
+      ? `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`
+      : `https://maps.apple.com/?ll=${latitude},${longitude}&q=${label}`;
+  Linking.openURL(url);
+}
+
+const green = colors.systemGreen as string;
+const blue = colors.systemBlue as string;
+
 export default function CarDashboard() {
   const theme = useTheme();
-  const fuelColor = '#34C759';
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: theme.background }}
+      style={{ backgroundColor: theme.groupedBackground }}
       contentContainerStyle={styles.content}>
       {/* Hero */}
-      <Card style={styles.hero}>
-        <Image
-          source={{ uri: is350.imageUrl }}
-          style={styles.heroImage}
-          contentFit="contain"
-          transition={200}
-        />
-        <ThemedText type="subtitle" style={styles.heroName}>
-          {is350.fullName}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {is350.color} · {is350.model}
-        </ThemedText>
-        <View style={styles.pillRow}>
-          <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
-            <SymbolView name="lock.fill" size={13} tintColor="#34C759" />
-            <ThemedText type="small" style={{ color: '#34C759' }}>
-              Locked
-            </ThemedText>
-          </View>
-          <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
-            <SymbolView name="checkmark.seal.fill" size={13} tintColor="#34C759" />
-            <ThemedText type="small" style={{ color: '#34C759' }}>
-              {is350.cautionCount === 0 ? 'No alerts' : `${is350.cautionCount} alerts`}
-            </ThemedText>
-          </View>
-        </View>
-      </Card>
-
-      {/* Key metrics */}
-      <View style={styles.metricRow}>
-        <Metric symbol="fuelpump.fill" value={`${is350.fuelPercent}`} unit="%" label="Fuel" accent={fuelColor} />
-        <Metric symbol="road.lanes" value={`${is350.rangeMiles}`} unit="mi" label="Range" />
-        <Metric symbol="gauge.with.dots.needle.67percent" value={`${is350.odometerMiles}`} unit="mi" label="Odometer" />
-      </View>
-
-      {/* Fuel bar */}
-      <Card>
-        <View style={styles.betweenRow}>
-          <ThemedText type="smallBold">Fuel level</ThemedText>
-          <ThemedText type="smallBold" style={{ color: fuelColor }}>
-            {is350.fuelPercent}%
+      <Animated.View entering={FadeInDown.duration(350)}>
+        <Card style={styles.hero}>
+          <Image
+            source={{ uri: is350.imageUrl }}
+            style={styles.heroImage}
+            contentFit="contain"
+            transition={200}
+          />
+          <ThemedText type="subtitle" style={styles.heroName}>
+            {is350.fullName}
           </ThemedText>
-        </View>
-        <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
-          <View style={[styles.fill, { width: `${is350.fuelPercent}%`, backgroundColor: fuelColor }]} />
-        </View>
-        <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
-          Est. {is350.rangeMiles} mi of range
-        </ThemedText>
-      </Card>
-
-      {/* Closures */}
-      <SectionTitle>CLOSURES</SectionTitle>
-      <Card style={styles.closureCard}>
-        {is350.closures.map((c, i) => (
-          <View
-            key={c.label}
-            style={[
-              styles.closureRow,
-              i < is350.closures.length - 1 && {
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: theme.backgroundSelected,
-              },
-            ]}>
-            <ThemedText type="small">{c.label}</ThemedText>
-            <View style={styles.closureState}>
-              <ThemedText type="small" themeColor="textSecondary">
-                {c.locked ? 'Closed · Locked' : c.state}
-              </ThemedText>
-              <SymbolView
-                name={c.locked ? 'lock.fill' : 'checkmark.circle.fill'}
-                size={15}
-                tintColor="#34C759"
-              />
-            </View>
-          </View>
-        ))}
-      </Card>
-
-      {/* Climate + Last parked */}
-      <View style={styles.metricRow}>
-        <Card style={styles.halfCard}>
-          <SymbolView name="thermometer.medium" size={22} tintColor="#0A84FF" type="hierarchical" />
-          <ThemedText style={styles.metricValue}>{is350.climate.temperatureF}°F</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Climate setpoint
+          <ThemedText type="small" themeColor="secondaryLabel">
+            {is350.color} · {is350.model}
           </ThemedText>
-        </Card>
-        <Card style={styles.halfCard}>
-          <SymbolView name="parkingsign.circle.fill" size={22} tintColor="#0A84FF" type="hierarchical" />
-          <ThemedText type="smallBold" numberOfLines={1}>
-            {is350.location.latitude.toFixed(3)}, {is350.location.longitude.toFixed(3)}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Last parked
-          </ThemedText>
-        </Card>
-      </View>
-
-      {/* Subscriptions */}
-      <SectionTitle>CONNECTED SERVICES</SectionTitle>
-      <Card style={styles.closureCard}>
-        {is350.subscriptions.map((s, i) => (
-          <View
-            key={s.name}
-            style={[
-              styles.closureRow,
-              i < is350.subscriptions.length - 1 && {
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: theme.backgroundSelected,
-              },
-            ]}>
-            <View>
-              <ThemedText type="small">{s.name}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Expires {s.expires}
+          <View style={styles.pillRow}>
+            <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
+              <Icon name="lock.fill" size={13} tint={green} />
+              <ThemedText type="small" style={{ color: green }}>
+                Locked
               </ThemedText>
             </View>
             <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
-              <ThemedText type="small" style={{ color: '#34C759' }}>
-                {s.status}
+              <Icon name="checkmark.seal.fill" size={13} tint={green} />
+              <ThemedText type="small" style={{ color: green }}>
+                {is350.cautionCount === 0 ? 'No alerts' : `${is350.cautionCount} alerts`}
               </ThemedText>
             </View>
           </View>
-        ))}
-      </Card>
+        </Card>
+      </Animated.View>
+
+      {/* Key metrics */}
+      <Animated.View entering={FadeInDown.duration(350).delay(50)} style={styles.metricRow}>
+        <Metric symbol="fuelpump.fill" value={`${is350.fuelPercent}`} unit="%" label="Fuel" accent={green} />
+        <Metric symbol="road.lanes" value={`${is350.rangeMiles}`} unit="mi" label="Range" />
+        <Metric
+          symbol="gauge.with.dots.needle.67percent"
+          value={is350.odometerMiles.toLocaleString()}
+          unit="mi"
+          label="Odometer"
+        />
+      </Animated.View>
+
+      {/* Fuel bar */}
+      <Animated.View entering={FadeInDown.duration(350).delay(100)}>
+        <Card>
+          <View style={styles.betweenRow}>
+            <ThemedText type="smallBold">Fuel level</ThemedText>
+            <ThemedText type="smallBold" style={{ color: green, fontVariant: ['tabular-nums'] }}>
+              {is350.fuelPercent}%
+            </ThemedText>
+          </View>
+          <View style={[styles.track, { backgroundColor: theme.fill }]}>
+            <View style={[styles.fill, { width: `${is350.fuelPercent}%`, backgroundColor: green }]} />
+          </View>
+          <ThemedText type="small" themeColor="secondaryLabel" style={{ marginTop: Spacing.two }}>
+            Est. {is350.rangeMiles} mi of range
+          </ThemedText>
+        </Card>
+      </Animated.View>
+
+      {/* Closures */}
+      <Animated.View entering={FadeInDown.duration(350).delay(150)}>
+        <SectionTitle>CLOSURES</SectionTitle>
+        <Card style={styles.closureCard}>
+          {is350.closures.map((c, i) => (
+            <View
+              key={c.label}
+              style={[
+                styles.closureRow,
+                i < is350.closures.length - 1 && {
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: theme.separator,
+                },
+              ]}>
+              <ThemedText type="small">{c.label}</ThemedText>
+              <View style={styles.closureState}>
+                <ThemedText type="small" themeColor="secondaryLabel">
+                  {c.locked ? 'Closed · Locked' : c.state}
+                </ThemedText>
+                <Icon name={c.locked ? 'lock.fill' : 'checkmark.circle.fill'} size={15} tint={green} />
+              </View>
+            </View>
+          ))}
+        </Card>
+      </Animated.View>
+
+      {/* Climate + Last parked */}
+      <Animated.View entering={FadeInDown.duration(350).delay(200)} style={styles.metricRow}>
+        <Card style={styles.halfCard}>
+          <Icon name="thermometer.medium" tint={blue} />
+          <ThemedText style={styles.metricValue}>{is350.climate.temperatureF}°F</ThemedText>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            Climate setpoint
+          </ThemedText>
+        </Card>
+        <Pressable onPress={openLastParkedInMaps} style={{ flex: 1 }}>
+          {({ pressed }) => (
+            <Card style={[styles.halfCard, pressed && { opacity: 0.7 }]}>
+              <Icon name="parkingsign.circle.fill" tint={blue} />
+              <ThemedText type="smallBold" numberOfLines={1} style={{ fontVariant: ['tabular-nums'] }}>
+                {is350.location.latitude.toFixed(3)}, {is350.location.longitude.toFixed(3)}
+              </ThemedText>
+              <ThemedText type="small" themeColor="secondaryLabel">
+                Last parked · Open in Maps
+              </ThemedText>
+            </Card>
+          )}
+        </Pressable>
+      </Animated.View>
+
+      {/* Subscriptions */}
+      <Animated.View entering={FadeInDown.duration(350).delay(250)}>
+        <SectionTitle>CONNECTED SERVICES</SectionTitle>
+        <Card style={styles.closureCard}>
+          {is350.subscriptions.map((s, i) => (
+            <View
+              key={s.name}
+              style={[
+                styles.closureRow,
+                i < is350.subscriptions.length - 1 && {
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: theme.separator,
+                },
+              ]}>
+              <View>
+                <ThemedText type="small">{s.name}</ThemedText>
+                <ThemedText type="small" themeColor="secondaryLabel">
+                  Expires {s.expires}
+                </ThemedText>
+              </View>
+              <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
+                <ThemedText type="small" style={{ color: green }}>
+                  {s.status}
+                </ThemedText>
+              </View>
+            </View>
+          ))}
+        </Card>
+      </Animated.View>
 
       {/* Details link */}
-      <Link href="/details" asChild>
-        <Pressable>
-          <Card style={styles.linkRow}>
-            <View style={styles.closureState}>
-              <SymbolView name="info.circle.fill" size={20} tintColor="#0A84FF" type="hierarchical" />
-              <ThemedText type="smallBold">Vehicle details & capabilities</ThemedText>
-            </View>
-            <SymbolView name="chevron.right" size={14} tintColor={theme.textSecondary} />
-          </Card>
-        </Pressable>
-      </Link>
+      <Animated.View entering={FadeInDown.duration(350).delay(300)}>
+        <Link href="/details" asChild>
+          <Link.Trigger>
+            <Pressable>
+              {({ pressed }) => (
+                <Card style={[styles.linkRow, pressed && { opacity: 0.7 }]}>
+                  <View style={styles.closureState}>
+                    <Icon name="info.circle.fill" size={20} tint={blue} />
+                    <ThemedText type="smallBold">Vehicle details & capabilities</ThemedText>
+                  </View>
+                  <Icon name="chevron.right" size={14} tint={colors.secondaryLabel as string} />
+                </Card>
+              )}
+            </Pressable>
+          </Link.Trigger>
+          <Link.Preview />
+          <Link.Menu>
+            <Link.MenuAction
+              title="Open Last Parked in Maps"
+              icon="map"
+              onPress={openLastParkedInMaps}
+            />
+          </Link.Menu>
+        </Link>
+      </Animated.View>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.footer}>
+      <ThemedText type="small" themeColor="secondaryLabel" style={styles.footer}>
         Updated {updatedLabel(is350.updatedAt)} · via Lexus Connected Services
       </ThemedText>
     </ScrollView>
@@ -221,6 +276,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 18,
+    borderCurve: 'continuous',
     padding: Spacing.three,
   },
   hero: {
@@ -270,6 +326,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     lineHeight: 30,
+    fontVariant: ['tabular-nums'],
   },
   metricUnit: {
     marginBottom: 4,
@@ -277,6 +334,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: Spacing.one,
     marginLeft: Spacing.two,
+    marginBottom: Spacing.two,
     letterSpacing: 0.5,
   },
   betweenRow: {

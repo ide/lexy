@@ -1,14 +1,27 @@
-import { SymbolView } from 'expo-symbols';
+import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Spacing, colors } from '@/constants/theme';
 import { is350 } from '@/data/is350';
 import { useTheme } from '@/hooks/use-theme';
 
+function Icon({ name, size = 20, tint }: { name: SFSymbol; size?: number; tint?: string }) {
+  return (
+    <Image
+      source={`sf:${name}`}
+      tintColor={tint ?? (colors.label as string)}
+      style={{ width: size, height: size }}
+      contentFit="contain"
+    />
+  );
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+    <ThemedText type="smallBold" themeColor="secondaryLabel" style={styles.sectionTitle}>
       {children}
     </ThemedText>
   );
@@ -20,12 +33,12 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
     <View
       style={[
         styles.row,
-        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.backgroundSelected },
+        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.separator },
       ]}>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="secondaryLabel">
         {label}
       </ThemedText>
-      <ThemedText type="small" style={styles.rowValue}>
+      <ThemedText selectable type="small" style={styles.rowValue}>
         {value}
       </ThemedText>
     </View>
@@ -52,43 +65,51 @@ export default function CarDetails() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: theme.background }}
+      style={{ backgroundColor: theme.groupedBackground }}
       contentContainerStyle={styles.content}>
-      <SectionTitle>SPECIFICATION</SectionTitle>
-      <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-        {spec.map(([label, value], i) => (
-          <InfoRow key={label} label={label} value={value} last={i === spec.length - 1} />
-        ))}
-      </View>
+      <Animated.View entering={FadeInDown.duration(300)}>
+        <SectionTitle>SPECIFICATION</SectionTitle>
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          {spec.map(([label, value], i) => (
+            <InfoRow key={label} label={label} value={value} last={i === spec.length - 1} />
+          ))}
+        </View>
+      </Animated.View>
 
-      <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
-      <View style={[styles.card, styles.grid, { backgroundColor: theme.backgroundElement }]}>
-        {is350.capabilities.map((c) => (
-          <View key={c.label} style={styles.capability}>
-            <SymbolView name={c.symbol} size={20} tintColor="#0A84FF" type="hierarchical" />
-            <ThemedText type="small" style={styles.capabilityLabel}>
-              {c.label}
-            </ThemedText>
-          </View>
-        ))}
-      </View>
+      <Animated.View entering={FadeInDown.duration(300).delay(50)}>
+        <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
+        <View style={[styles.card, styles.grid, { backgroundColor: theme.card }]}>
+          {is350.capabilities.map((c) => (
+            <View key={c.label} style={styles.capability}>
+              <Icon name={c.symbol} tint={colors.systemBlue as string} />
+              <ThemedText type="small" style={styles.capabilityLabel}>
+                {c.label}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      </Animated.View>
 
-      <SectionTitle>TRIPS</SectionTitle>
-      <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-        <InfoRow label="Trip A" value={`${is350.tripAMiles} mi`} />
-        <InfoRow label="Trip B" value={`${is350.tripBMiles} mi`} last />
-      </View>
+      <Animated.View entering={FadeInDown.duration(300).delay(100)}>
+        <SectionTitle>TRIPS</SectionTitle>
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          <InfoRow label="Trip A" value={`${is350.tripAMiles} mi`} />
+          <InfoRow label="Trip B" value={`${is350.tripBMiles} mi`} last />
+        </View>
+      </Animated.View>
 
-      <SectionTitle>HEALTH</SectionTitle>
-      <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-        <InfoRow label="Odometer" value={`${is350.odometerMiles} mi`} />
-        <InfoRow label="Fuel level" value={`${is350.fuelPercent}%`} />
-        <InfoRow
-          label="Active warnings"
-          value={is350.cautionCount === 0 ? 'None' : `${is350.cautionCount}`}
-          last
-        />
-      </View>
+      <Animated.View entering={FadeInDown.duration(300).delay(150)}>
+        <SectionTitle>HEALTH</SectionTitle>
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          <InfoRow label="Odometer" value={`${is350.odometerMiles.toLocaleString()} mi`} />
+          <InfoRow label="Fuel level" value={`${is350.fuelPercent}%`} />
+          <InfoRow
+            label="Active warnings"
+            value={is350.cautionCount === 0 ? 'None' : `${is350.cautionCount}`}
+            last
+          />
+        </View>
+      </Animated.View>
     </ScrollView>
   );
 }
@@ -96,16 +117,17 @@ export default function CarDetails() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.three,
-    gap: Spacing.two,
+    gap: Spacing.three,
     paddingBottom: Spacing.six,
   },
   sectionTitle: {
-    marginTop: Spacing.three,
     marginLeft: Spacing.two,
+    marginBottom: Spacing.two,
     letterSpacing: 0.5,
   },
   card: {
     borderRadius: 18,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.three,
   },
   row: {
@@ -118,6 +140,7 @@ const styles = StyleSheet.create({
   rowValue: {
     flexShrink: 1,
     textAlign: 'right',
+    fontVariant: ['tabular-nums'],
   },
   grid: {
     flexDirection: 'row',

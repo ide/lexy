@@ -1,14 +1,14 @@
+import { useColorScheme } from 'react-native';
+
+import { colors } from '@/constants/theme';
+
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * Returns the semantic color palette. The colors are PlatformColor-backed and
+ * resolve on-device; subscribing to the color scheme here forces a re-render
+ * on Android when the theme flips (iOS re-resolves automatically).
  */
-
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
 export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
+  useColorScheme();
 
-  return Colors[theme];
+  return colors;
 }

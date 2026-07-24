@@ -8,9 +8,7 @@
  * intentionally omitted; only owner-visible vehicle fields are kept.
  */
 
-import type { SymbolViewProps } from 'expo-symbols';
-
-type SFSymbol = SymbolViewProps['name'];
+import type { SFSymbol } from 'sf-symbols-typescript';
 
 export type Closure = {
   label: string;
