@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "oxlint": "^1.75.0",
+    "oxlint-config-universe": "^0.0.3",
     "sf-symbols-typescript": "^2.2.0",
     "typescript": "~6.0.3"
   },
@@ -41,7 +42,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "oxlint"
+    "lint": "oxlint -c oxlint.config.mjs"
   },
   "private": true
 }

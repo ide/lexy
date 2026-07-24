@@ -12,7 +12,9 @@ export function AnimatedSplashOverlay() {
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
 
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   const splashKeyframe = new Keyframe({
     0: {
