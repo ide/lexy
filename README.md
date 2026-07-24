@@ -1,6 +1,6 @@
 # Lexy
 
-Experimental Lexus remote-control tooling.
+Experimental Lexus remote-control tooling and mobile app.
 
 The tracked tree contains only code and tests. Local APKs, reverse-engineering
 output, notes, and unpublished research belong in the gitignored `scratchpad/`
@@ -25,11 +25,10 @@ stored in the repository.
 
 ## Mobile app
 
-`mobile/` is an Expo SDK 57 app (Expo Router + `expo-widgets`) with a "Lexy
-Status" iOS home screen widget showing the vehicle lock state.
+The repo root is an Expo SDK 57 app (Expo Router + `expo-widgets`) with a
+"Lexy Status" iOS home screen widget showing the vehicle lock state.
 
 ```sh
-cd mobile
-npm install
-npx expo run:ios   # expo-widgets is not supported in Expo Go; use a dev build
+pnpm install
+pnpm expo run:ios   # expo-widgets is not supported in Expo Go; use a dev build
 ```
