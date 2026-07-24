@@ -8,6 +8,12 @@
     "icon": "./assets/images/icon.png",
     "scheme": "lexy",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/50920011-b780-458b-9aaa-e305a424af77"
+    },
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "app.ide.lexy",
