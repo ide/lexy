@@ -2,6 +2,7 @@
   "expo": {
     "name": "Lexy",
     "slug": "lexy",
+    "owner": "ide",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,10 +10,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.lexy.app"
+      "bundleIdentifier": "app.ide.lexy"
     },
     "android": {
-      "package": "com.lexy.app",
+      "package": "app.ide.lexy",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,7 +44,11 @@
               "name": "LexyStatusWidget",
               "displayName": "Lexy Status",
               "description": "Vehicle lock status at a glance",
-              "supportedFamilies": ["systemSmall", "systemMedium", "accessoryRectangular"]
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium",
+                "accessoryRectangular"
+              ]
             }
           ]
         }
@@ -52,6 +57,29 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ExpoWidgetsTarget",
+                  "bundleIdentifier": "app.ide.lexy.ExpoWidgetsTarget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.app.ide.lexy"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "50920011-b780-458b-9aaa-e305a424af77"
+      }
     }
   }
 }
