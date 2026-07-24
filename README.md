@@ -30,8 +30,24 @@ The repo root is an Expo SDK 57 app (Expo Router + `expo-widgets`) with a
 
 ```sh
 pnpm install
+cp .env.example .env.local
+# Set EXPO_PUBLIC_LEXY_API_URL to the authenticated Lexy backend.
 pnpm expo run:ios   # expo-widgets is not supported in Expo Go; use a dev build
 ```
+
+The app fetches `GET {EXPO_PUBLIC_LEXY_API_URL}/vehicle`, which returns the
+normalized vehicle shape defined in [`src/data/vehicle.ts`](src/data/vehicle.ts).
+The backend owns the Lexus OAuth session and must not expose refresh tokens or the
+upstream API key to the client.
+
+Vehicle state is server state, not an app-owned relational data model. TanStack
+Query handles refresh and deduplication, and persists the last successful
+snapshot through `expo-sqlite/kv-store` for fast startup and offline display.
+Network state pauses queries while the device is offline. OAuth credentials
+belong in backend secret storage (or SecureStore if a future build performs
+first-party sign-in on-device), never the SQLite cache. The key-value layout can
+grow into relational tables when the app needs queryable trip history or queued
+commands.
 
 ## API reference
 

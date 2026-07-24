@@ -1,15 +1,17 @@
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Link, Stack } from 'expo-router';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import { ThemedText } from '@/components/themed-text';
+import { VehicleError, VehicleLoading } from '@/components/vehicle-state';
 import { Spacing, colors } from '@/constants/theme';
-import { is350, updatedLabel } from '@/data/is350';
+import { updatedLabel, type Vehicle } from '@/data/vehicle';
 import { useTheme } from '@/hooks/use-theme';
+import { useVehicle } from '@/hooks/use-vehicle';
 
 function Icon({ name, size = 22, tint }: { name: SFSymbol; size?: number; tint?: string }) {
   return (
@@ -68,12 +70,12 @@ function Metric({
   );
 }
 
-function openLastParkedInMaps() {
+function openLastParkedInMaps(vehicle: Vehicle) {
   if (process.env.EXPO_OS === 'ios') {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
-  const { latitude, longitude } = is350.location;
-  const label = encodeURIComponent(is350.nickname);
+  const { latitude, longitude } = vehicle.location;
+  const label = encodeURIComponent(vehicle.nickname);
   const url =
     process.env.EXPO_OS === 'android'
       ? `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`
@@ -86,38 +88,68 @@ const blue = colors.systemBlue as string;
 
 export default function CarDashboard() {
   const theme = useTheme();
+  const { data: vehicle, error, isLoading, isRefetching, refetch } = useVehicle();
+
+  if (isLoading && !vehicle) {
+    return <VehicleLoading />;
+  }
+
+  if (!vehicle) {
+    return (
+      <VehicleError
+        message={error instanceof Error ? error.message : 'The vehicle API did not return data.'}
+        retry={() => refetch()}
+      />
+    );
+  }
+
+  const lockStates = vehicle.closures
+    .map((closure) => closure.locked)
+    .filter((locked): locked is boolean => locked !== undefined);
+  const locked = lockStates.length > 0 && lockStates.every(Boolean);
+  const lockColor = locked ? green : (colors.systemOrange as string);
+  const refreshControl = (
+    <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+  );
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: theme.groupedBackground }}
-      contentContainerStyle={styles.content}>
+    <>
+      <Stack.Screen options={{ title: vehicle.nickname }} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={refreshControl}
+        style={{ backgroundColor: theme.groupedBackground }}
+        contentContainerStyle={styles.content}>
       {/* Hero */}
       <Animated.View entering={FadeInDown.duration(350)}>
         <Card style={styles.hero}>
           <Image
-            source={{ uri: is350.imageUrl }}
+            source={{ uri: vehicle.imageUrl }}
             style={styles.heroImage}
             contentFit="contain"
             transition={200}
           />
           <ThemedText type="subtitle" style={styles.heroName}>
-            {is350.fullName}
+            {vehicle.fullName}
           </ThemedText>
           <ThemedText type="small" themeColor="secondaryLabel">
-            {is350.color} · {is350.model}
+            {vehicle.color} · {vehicle.model}
           </ThemedText>
           <View style={styles.pillRow}>
-            <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
-              <Icon name="lock.fill" size={13} tint={green} />
-              <ThemedText type="small" style={{ color: green }}>
-                Locked
+            <View
+              style={[
+                styles.pill,
+                { backgroundColor: locked ? 'rgba(52,199,89,0.15)' : 'rgba(255,149,0,0.15)' },
+              ]}>
+              <Icon name={locked ? 'lock.fill' : 'lock.open.fill'} size={13} tint={lockColor} />
+              <ThemedText type="small" style={{ color: lockColor }}>
+                {locked ? 'Locked' : 'Unlocked'}
               </ThemedText>
             </View>
             <View style={[styles.pill, { backgroundColor: 'rgba(52,199,89,0.15)' }]}>
               <Icon name="checkmark.seal.fill" size={13} tint={green} />
               <ThemedText type="small" style={{ color: green }}>
-                {is350.cautionCount === 0 ? 'No alerts' : `${is350.cautionCount} alerts`}
+                {vehicle.cautionCount === 0 ? 'No alerts' : `${vehicle.cautionCount} alerts`}
               </ThemedText>
             </View>
           </View>
@@ -126,11 +158,11 @@ export default function CarDashboard() {
 
       {/* Key metrics */}
       <Animated.View entering={FadeInDown.duration(350).delay(50)} style={styles.metricRow}>
-        <Metric symbol="fuelpump.fill" value={`${is350.fuelPercent}`} unit="%" label="Fuel" accent={green} />
-        <Metric symbol="road.lanes" value={`${is350.rangeMiles}`} unit="mi" label="Range" />
+        <Metric symbol="fuelpump.fill" value={`${vehicle.fuelPercent}`} unit="%" label="Fuel" accent={green} />
+        <Metric symbol="road.lanes" value={`${vehicle.rangeMiles}`} unit="mi" label="Range" />
         <Metric
           symbol="gauge.with.dots.needle.67percent"
-          value={is350.odometerMiles.toLocaleString()}
+          value={vehicle.odometerMiles.toLocaleString()}
           unit="mi"
           label="Odometer"
         />
@@ -142,14 +174,14 @@ export default function CarDashboard() {
           <View style={styles.betweenRow}>
             <ThemedText type="smallBold">Fuel level</ThemedText>
             <ThemedText type="smallBold" style={{ color: green, fontVariant: ['tabular-nums'] }}>
-              {is350.fuelPercent}%
+              {vehicle.fuelPercent}%
             </ThemedText>
           </View>
           <View style={[styles.track, { backgroundColor: theme.fill }]}>
-            <View style={[styles.fill, { width: `${is350.fuelPercent}%`, backgroundColor: green }]} />
+            <View style={[styles.fill, { width: `${vehicle.fuelPercent}%`, backgroundColor: green }]} />
           </View>
           <ThemedText type="small" themeColor="secondaryLabel" style={{ marginTop: Spacing.two }}>
-            Est. {is350.rangeMiles} mi of range
+            Est. {vehicle.rangeMiles} mi of range
           </ThemedText>
         </Card>
       </Animated.View>
@@ -158,12 +190,12 @@ export default function CarDashboard() {
       <Animated.View entering={FadeInDown.duration(350).delay(150)}>
         <SectionTitle>CLOSURES</SectionTitle>
         <Card style={styles.closureCard}>
-          {is350.closures.map((c, i) => (
+          {vehicle.closures.map((c, i) => (
             <View
               key={c.label}
               style={[
                 styles.closureRow,
-                i < is350.closures.length - 1 && {
+                i < vehicle.closures.length - 1 && {
                   borderBottomWidth: StyleSheet.hairlineWidth,
                   borderBottomColor: theme.separator,
                 },
@@ -184,17 +216,17 @@ export default function CarDashboard() {
       <Animated.View entering={FadeInDown.duration(350).delay(200)} style={styles.metricRow}>
         <Card style={styles.halfCard}>
           <Icon name="thermometer.medium" tint={blue} />
-          <ThemedText style={styles.metricValue}>{is350.climate.temperatureF}°F</ThemedText>
+          <ThemedText style={styles.metricValue}>{vehicle.climate.temperatureF}°F</ThemedText>
           <ThemedText type="small" themeColor="secondaryLabel">
             Climate setpoint
           </ThemedText>
         </Card>
-        <Pressable onPress={openLastParkedInMaps} style={{ flex: 1 }}>
+        <Pressable onPress={() => openLastParkedInMaps(vehicle)} style={{ flex: 1 }}>
           {({ pressed }) => (
             <Card style={[styles.halfCard, pressed && { opacity: 0.7 }]}>
               <Icon name="parkingsign.circle.fill" tint={blue} />
               <ThemedText type="smallBold" numberOfLines={1} style={{ fontVariant: ['tabular-nums'] }}>
-                {is350.location.latitude.toFixed(3)}, {is350.location.longitude.toFixed(3)}
+                {vehicle.location.latitude.toFixed(3)}, {vehicle.location.longitude.toFixed(3)}
               </ThemedText>
               <ThemedText type="small" themeColor="secondaryLabel">
                 Last parked · Open in Maps
@@ -208,12 +240,12 @@ export default function CarDashboard() {
       <Animated.View entering={FadeInDown.duration(350).delay(250)}>
         <SectionTitle>CONNECTED SERVICES</SectionTitle>
         <Card style={styles.closureCard}>
-          {is350.subscriptions.map((s, i) => (
+          {vehicle.subscriptions.map((s, i) => (
             <View
               key={s.name}
               style={[
                 styles.closureRow,
-                i < is350.subscriptions.length - 1 && {
+                i < vehicle.subscriptions.length - 1 && {
                   borderBottomWidth: StyleSheet.hairlineWidth,
                   borderBottomColor: theme.separator,
                 },
@@ -255,16 +287,17 @@ export default function CarDashboard() {
             <Link.MenuAction
               title="Open Last Parked in Maps"
               icon="map"
-              onPress={openLastParkedInMaps}
+              onPress={() => openLastParkedInMaps(vehicle)}
             />
           </Link.Menu>
         </Link>
       </Animated.View>
 
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.footer}>
-        Updated {updatedLabel(is350.updatedAt)} · via Lexus Connected Services
+        Updated {updatedLabel(vehicle.updatedAt)} · via Lexus Connected Services
       </ThemedText>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
