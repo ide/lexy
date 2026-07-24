@@ -3,7 +3,7 @@
 How the app reads a vehicle's state and sends remote commands. There are **two
 planes**, chosen by telematics generation:
 
-- **REST** (`/v1/remote/route/*`) — used by older generations including **21MM**, which is what the IS 350 in this account uses.
+- **REST** (`/v1/remote/route/*`) — used by older generations including **21MM**.
 - **GraphQL** (`oa-api.telematicsct.com/graphql` + realtime WebSocket) — used by **24MM**.
 
 A client should hide the split behind one interface (`getStatus`, `refreshStatus`,
@@ -101,27 +101,10 @@ Guidance for a production client:
 - Validate preconditions server-side (ignition, gear/park, door/hood, subscription, consent, reachability).
 - Apply safety copy to engine start and climate (no remote start in an enclosed space or with a child inside).
 
-## IS 350 capability matrix
+## Capability gating
 
-From the read-only production check (2026-07-24) of the account's **2026 IS 350**
-(21MM, REST command plane, Remote Connect active):
-
-| Control | Enabled |
-|---|---|
-| Door lock / unlock | ✅ |
-| Engine start / stop | ✅ |
-| Remote climate (full temp control, front/rear defogger) | ✅ |
-| Hazard lights, lights, horn, buzzer | ✅ |
-| Vehicle finder / last parked | ✅ |
-| Moonroof close | ✅ |
-| Trunk lock / unlock | ✅ |
-| Guest Driver | ✅ |
-| Power-window command | ❌ |
-| Digital Key | ❌ |
-| Extended runtime | ❌ (not in returned climate settings) |
-
-Capability is per-VIN and subscription-dependent — always gate UI on the vehicle's
-own capability response, never on `model == IS 350`.
+Capabilities are per-VIN and subscription-dependent. Always gate controls on the
+current vehicle discovery and climate-settings responses, never on a model name.
 
 ## Endpoints in this area
 

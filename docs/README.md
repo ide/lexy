@@ -40,14 +40,14 @@ comes from its discovery record (`X-GENERATION`).
 | Prefix | Generation / role |
 |---|---|
 | `/oneapi/*` | Cross-generation app services (account, subscriptions, service, most reads) |
-| `/v1/remote/route/*` | Remote status + commands, REST command plane (used by 21MM, e.g. the IS 350) |
+| `/v1/remote/route/*` | Remote status + commands, REST command plane used by 21MM vehicles |
 | `/oa21mm/*`, `/oa24mm/*` | Generation-specific services (21MM / 24MM) |
 | `/oactp/*` | Connected-tech platform: Digital Key, drive recorder, tire preferences |
 | `/charging/*` | EV charging |
 | GraphQL | 24MM command + status plane (see the control doc) |
 
-The IS 350 in this account is **21MM** and uses the **REST** command plane
-(`/v1/remote/route/*`), not GraphQL.
+The discovery response determines which command plane to use. Route by the
+vehicle's generation rather than its model name.
 
 ## Request conventions
 

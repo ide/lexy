@@ -52,6 +52,11 @@ export const colors = {
     android: '#34C759',
     default: '#34C759',
   })!,
+  systemOrange: Platform.select({
+    ios: Color.ios.systemOrange,
+    android: '#FF9500',
+    default: '#FF9500',
+  })!,
 } as const;
 
 export type ThemeColor = keyof typeof colors;
