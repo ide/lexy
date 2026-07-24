@@ -39,6 +39,7 @@
       [
         "expo-widgets",
         {
+          "bundleIdentifier": "app.ide.lexy.Widgets",
           "widgets": [
             {
               "name": "LexyStatusWidget",
@@ -67,7 +68,7 @@
               "appExtensions": [
                 {
                   "targetName": "ExpoWidgetsTarget",
-                  "bundleIdentifier": "app.ide.lexy.ExpoWidgetsTarget",
+                  "bundleIdentifier": "app.ide.lexy.Widgets",
                   "entitlements": {
                     "com.apple.security.application-groups": [
                       "group.app.ide.lexy"
