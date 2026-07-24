@@ -1,0 +1,5 @@
+/.DS_Store
+/.venv/
+/scratchpad/
+__pycache__/
+*.py[cod]
