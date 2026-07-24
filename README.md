@@ -42,10 +42,12 @@ upstream API key to the client.
 
 Vehicle state is server state, not an app-owned relational data model. TanStack
 Query handles refresh and deduplication, and persists the last successful
-snapshot in AsyncStorage for fast startup/offline display. OAuth credentials
+snapshot through `expo-sqlite/kv-store` for fast startup and offline display.
+Network state pauses queries while the device is offline. OAuth credentials
 belong in backend secret storage (or SecureStore if a future build performs
-first-party sign-in on-device), never AsyncStorage. Add SQLite when the app needs
-queryable local history, queued commands, or multiple related entities.
+first-party sign-in on-device), never the SQLite cache. The key-value layout can
+grow into relational tables when the app needs queryable trip history or queued
+commands.
 
 ## API reference
 
