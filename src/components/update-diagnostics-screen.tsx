@@ -10,7 +10,10 @@ import {
   VStack,
 } from "@expo/ui/swift-ui";
 import {
+  accessibilityIdentifier,
   buttonStyle,
+  background,
+  clipShape,
   contentShape,
   controlSize,
   disabled as disabledModifier,
@@ -278,6 +281,9 @@ function NativeLogRow({
       <DisclosureGroup
         isExpanded={false}
         modifiers={[
+          accessibilityIdentifier(
+            `native-update-log-${entry.timestamp}-${entry.code}`,
+          ),
           frame({ maxWidth: Infinity, alignment: "leading" }),
           padding({ vertical: Spacing.two }),
         ]}
@@ -429,6 +435,86 @@ function NativeLogRow({
         </VStack>
       </DisclosureGroup>
       {!last ? <Divider /> : null}
+    </VStack>
+  );
+}
+
+function NativeLogSection({
+  logs,
+}: {
+  logs: Updates.UpdatesLogEntry[];
+}) {
+  return (
+    <VStack
+      alignment="leading"
+      spacing={Spacing.two}
+      modifiers={[
+        frame({ maxWidth: Infinity, alignment: "leading" }),
+        padding({
+          top: Spacing.four,
+          bottom: Spacing.six,
+          leading: Spacing.three,
+          trailing: Spacing.three,
+        }),
+      ]}
+    >
+      <SwiftUIText
+        modifiers={[
+          font({ textStyle: "caption", weight: "semibold" }),
+          foregroundStyle({ type: "hierarchical", style: "secondary" }),
+          padding({ leading: Spacing.two }),
+        ]}
+      >
+        NATIVE UPDATE LOG
+      </SwiftUIText>
+      <VStack
+        alignment="leading"
+        spacing={0}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          padding({
+            top: Spacing.three,
+            bottom: Spacing.three,
+            leading: Spacing.three,
+            trailing: Spacing.three,
+          }),
+          background(colors.card),
+          clipShape("roundedRectangle", 18),
+        ]}
+      >
+        {logs.length === 0 ? (
+          <SwiftUIText
+            modifiers={[
+              font({ textStyle: "subheadline" }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+              fixedSize({ horizontal: false, vertical: true }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+            ]}
+          >
+            No native expo-updates entries were recorded in the last 24 hours.
+          </SwiftUIText>
+        ) : (
+          logs.map((entry, index) => (
+            <NativeLogRow
+              key={`${entry.timestamp}-${entry.code}-${entry.message}`}
+              entry={entry}
+              last={index === logs.length - 1}
+            />
+          ))
+        )}
+      </VStack>
+      <SwiftUIText
+        modifiers={[
+          font({ textStyle: "footnote" }),
+          foregroundStyle({ type: "hierarchical", style: "secondary" }),
+          fixedSize({ horizontal: false, vertical: true }),
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          padding({ leading: Spacing.two, trailing: Spacing.two }),
+        ]}
+      >
+        Low-level expo-updates activity from the last 24 hours. Entries are
+        summarized; tap one to inspect its raw message and identifiers.
+      </SwiftUIText>
     </VStack>
   );
 }
@@ -674,7 +760,10 @@ export default function UpdateDiagnostics() {
     updateState.isRestarting;
 
   return (
-    <NativeScrollView contentContainerStyle={styles.content}>
+    <NativeScrollView
+      contentContainerStyle={styles.content}
+      nativeFooter=<NativeLogSection logs={logs} />
+    >
       <Card>
         <View style={styles.statusRow}>
           <View style={[styles.statusIcon, { backgroundColor: theme.fill }]}>
@@ -916,46 +1005,6 @@ export default function UpdateDiagnostics() {
         </Card>
       </View>
 
-      <View>
-        <SectionTitle>NATIVE UPDATE LOG</SectionTitle>
-        <Card>
-          {logs.length === 0 ? (
-            <ThemedText type="small" themeColor="secondaryLabel">
-              No native expo-updates entries were recorded in the last 24 hours.
-            </ThemedText>
-          ) : (
-            <Host
-              matchContents={{ vertical: true }}
-              seedColor={colors.systemBlue}
-              style={styles.nativeLogListHost}
-            >
-              <VStack
-                alignment="leading"
-                spacing={0}
-                modifiers={[
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                ]}
-              >
-                {logs.map((entry, index) => (
-                  <NativeLogRow
-                    key={`${entry.timestamp}-${entry.code}-${entry.message}`}
-                    entry={entry}
-                    last={index === logs.length - 1}
-                  />
-                ))}
-              </VStack>
-            </Host>
-          )}
-        </Card>
-        <ThemedText
-          type="small"
-          themeColor="secondaryLabel"
-          style={styles.note}
-        >
-          Low-level expo-updates activity from the last 24 hours. Entries are
-          summarized; tap one to inspect its raw message and identifiers.
-        </ThemedText>
-      </View>
     </NativeScrollView>
   );
 }
@@ -963,7 +1012,7 @@ export default function UpdateDiagnostics() {
 const styles = StyleSheet.create({
   content: {
     padding: Spacing.three,
-    paddingBottom: Spacing.six,
+    paddingBottom: 0,
     gap: Spacing.four,
   },
   card: {
@@ -1086,8 +1135,5 @@ const styles = StyleSheet.create({
   logEntry: {
     gap: Spacing.one,
     paddingVertical: Spacing.two,
-  },
-  nativeLogListHost: {
-    width: "100%",
   },
 });
