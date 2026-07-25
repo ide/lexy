@@ -282,6 +282,7 @@ function NativeLogRow({
       ]}
     >
       <DisclosureGroup
+        animationDisabled
         isExpanded={false}
         modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
       >
