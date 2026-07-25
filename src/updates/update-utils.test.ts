@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildUpdateEntries,
+  describeKnownUpdate,
+  describeNativeLog,
   mergeUpdateActivity,
+  resolveLastCheck,
   shortUpdateId,
   sortNewestFirst,
   type UpdateActivityEvent,
@@ -95,5 +98,65 @@ describe('mergeUpdateActivity', () => {
       newer,
       older,
     ]);
+  });
+});
+
+describe('describeNativeLog', () => {
+  it('turns state-machine dumps into a readable event', () => {
+    expect(
+      describeNativeLog({
+        code: 'None',
+        level: 'info',
+        message:
+          'Updates state change: state = check, event = checkComplete, context = {"isChecking":false,"downloadProgress":0}',
+      }),
+    ).toEqual({
+      title: 'Check complete',
+      summary: 'Update state changed to check.',
+    });
+  });
+
+  it('uses the error code as the title and keeps a concise message', () => {
+    expect(
+      describeNativeLog({
+        code: 'UpdateServerUnreachable',
+        level: 'error',
+        message: 'Could not contact the update server because the request timed out.',
+      }),
+    ).toEqual({
+      title: 'Update server unreachable',
+      summary: 'Could not contact the update server because the request timed out.',
+    });
+  });
+});
+
+describe('resolveLastCheck', () => {
+  it('uses the exact session check when expo-updates reports one', () => {
+    const checkedAt = new Date('2026-07-24T22:00:00Z');
+    expect(resolveLastCheck(checkedAt, 'ON_LOAD')).toEqual({ checkedAt });
+  });
+
+  it('explains automatic startup checks instead of saying unknown', () => {
+    expect(resolveLastCheck(undefined, 'ON_LOAD')).toEqual({
+      detail: 'At startup · exact time not reported',
+    });
+    expect(resolveLastCheck(undefined, 'NEVER')).toEqual({
+      detail: 'Not checked this session',
+    });
+  });
+});
+
+describe('describeKnownUpdate', () => {
+  it('explains the device state rather than repeating implementation terms', () => {
+    expect(describeKnownUpdate('Running now')).toEqual({
+      badge: 'CURRENT',
+      title: 'Running update',
+      detail: 'This JavaScript bundle is active now.',
+    });
+    expect(describeKnownUpdate('Downloaded · launches next')).toEqual({
+      badge: 'READY NEXT',
+      title: 'Downloaded update',
+      detail: 'Stored on this device. Reload to activate it.',
+    });
   });
 });

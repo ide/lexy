@@ -21,12 +21,16 @@ import {
 } from '@/updates/update-history';
 import {
   buildUpdateEntries,
+  describeKnownUpdate,
+  describeNativeLog,
+  resolveLastCheck,
   shortUpdateId,
   sortNewestFirst,
   type UpdateActivityEvent,
+  type UpdateEntry,
 } from '@/updates/update-utils';
 
-type Action = 'check' | 'download' | 'reload' | 'logs';
+type Action = 'check' | 'download' | 'reload';
 
 function Icon({
   name,
@@ -134,13 +138,177 @@ function ActionButton({
   );
 }
 
-function formatDate(value: Date | undefined): string {
+function formatDate(value: Date | undefined, fallback = 'Not reported'): string {
   return value
     ? value.toLocaleString([], {
         dateStyle: 'medium',
         timeStyle: 'short',
       })
-    : 'Unknown';
+    : fallback;
+}
+
+function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
+  const theme = useTheme();
+  const copy = describeKnownUpdate(entry.state);
+  const isCurrent = entry.state === 'Running now';
+  const isReady = entry.state === 'Downloaded · launches next';
+  const accent = isCurrent
+    ? (colors.systemGreen as string)
+    : isReady
+      ? (colors.systemBlue as string)
+      : (colors.systemOrange as string);
+
+  return (
+    <Card>
+      <View style={styles.updateCardHeader}>
+        <View style={[styles.updateGlyph, { backgroundColor: theme.fill }]}>
+          <Icon
+            name={
+              isCurrent
+                ? 'play.fill'
+                : isReady
+                  ? 'arrow.down'
+                  : 'icloud.and.arrow.down'
+            }
+            size={18}
+            tint={accent}
+          />
+        </View>
+        <View style={styles.flex}>
+          <View style={styles.updateTitleRow}>
+            <ThemedText type="smallBold" style={styles.updateTitle}>
+              {copy.title}
+            </ThemedText>
+            <View style={[styles.badge, { backgroundColor: theme.fill }]}>
+              <ThemedText type="code" style={{ color: accent }}>
+                {copy.badge}
+              </ThemedText>
+            </View>
+          </View>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            {copy.detail}
+          </ThemedText>
+        </View>
+      </View>
+      <View style={[styles.updateMetadata, { borderTopColor: theme.separator }]}>
+        <View style={styles.compactRow}>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            Published
+          </ThemedText>
+          <ThemedText selectable type="small">
+            {formatDate(entry.createdAt)}
+          </ThemedText>
+        </View>
+        <View style={styles.compactRow}>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            Source
+          </ThemedText>
+          <ThemedText type="small">{entry.source}</ThemedText>
+        </View>
+        <View style={styles.updateIdRow}>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            Update ID
+          </ThemedText>
+          <ThemedText selectable type="code" style={styles.updateId}>
+            {entry.id}
+          </ThemedText>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function NativeLogRow({
+  entry,
+  last,
+}: {
+  entry: Updates.UpdatesLogEntry;
+  last: boolean;
+}) {
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
+  const description = describeNativeLog(entry);
+  const isProblem = entry.level === 'error' || entry.level === 'fatal';
+  const isWarning = entry.level === 'warn';
+  const tint = isProblem
+    ? (colors.systemOrange as string)
+    : isWarning
+      ? (colors.systemOrange as string)
+      : (colors.systemBlue as string);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      onPress={() => setExpanded((value) => !value)}
+      style={({ pressed }) => [
+        styles.nativeLogRow,
+        !last && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: theme.separator,
+        },
+        pressed && { opacity: 0.65 },
+      ]}>
+      <View style={styles.nativeLogHeader}>
+        <View style={styles.logTitleGroup}>
+          <View style={[styles.severityDot, { backgroundColor: tint }]} />
+          <ThemedText type="smallBold" numberOfLines={1} style={styles.logTitle}>
+            {description.title}
+          </ThemedText>
+        </View>
+        <ThemedText type="small" themeColor="secondaryLabel" style={styles.logTime}>
+          {new Date(entry.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })}
+        </ThemedText>
+      </View>
+      <ThemedText
+        selectable
+        numberOfLines={expanded ? undefined : 2}
+        type="small"
+        themeColor="secondaryLabel">
+        {description.summary}
+      </ThemedText>
+      <View style={styles.logFooter}>
+        <ThemedText type="code" themeColor="secondaryLabel">
+          {entry.level.toUpperCase()}
+          {entry.code === 'None' ? '' : ` · ${entry.code}`}
+        </ThemedText>
+        <Icon
+          name={expanded ? 'chevron.up' : 'chevron.down'}
+          size={12}
+          tint={colors.secondaryLabel as string}
+        />
+      </View>
+      {expanded ? (
+        <View style={[styles.rawLog, { backgroundColor: theme.fill }]}>
+          <ThemedText type="code" themeColor="secondaryLabel">
+            RAW MESSAGE
+          </ThemedText>
+          <ThemedText selectable type="code">
+            {entry.message}
+          </ThemedText>
+          {entry.updateId ? (
+            <ThemedText selectable type="code" themeColor="secondaryLabel">
+              Update {entry.updateId}
+            </ThemedText>
+          ) : null}
+          {entry.assetId ? (
+            <ThemedText selectable type="code" themeColor="secondaryLabel">
+              Asset {entry.assetId}
+            </ThemedText>
+          ) : null}
+          {entry.stacktrace?.length ? (
+            <ThemedText selectable type="code" themeColor="secondaryLabel">
+              {entry.stacktrace.join('\n')}
+            </ThemedText>
+          ) : null}
+        </View>
+      ) : null}
+    </Pressable>
+  );
 }
 
 function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
@@ -215,7 +383,12 @@ export default function UpdateDiagnostics() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [logs, setLogs] = useState<Updates.UpdatesLogEntry[]>([]);
   const [activity, setActivity] = useState<UpdateActivityEvent[]>([]);
+  const [isRefreshingEvents, setIsRefreshingEvents] = useState(false);
   const status = statusFor(updateState);
+  const lastCheck = resolveLastCheck(
+    updateState.lastCheckForUpdateTimeSinceRestart,
+    Updates.checkAutomatically,
+  );
   const updateEntries = useMemo(
     () =>
       buildUpdateEntries({
@@ -243,6 +416,20 @@ export default function UpdateDiagnostics() {
     refreshEvents().catch((error: unknown) => {
       setActionError(error instanceof Error ? error.message : 'Could not read update logs.');
     });
+  }, [refreshEvents]);
+
+  const refreshEventLists = useCallback(async () => {
+    setIsRefreshingEvents(true);
+    try {
+      await refreshEvents();
+      if (process.env.EXPO_OS === 'ios') {
+        Haptics.selectionAsync();
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not read update logs.');
+    } finally {
+      setIsRefreshingEvents(false);
+    }
   }, [refreshEvents]);
 
   const perform = useCallback(
@@ -400,8 +587,12 @@ export default function UpdateDiagnostics() {
           />
           <DataRow label="Reloads this launch" value={`${updateState.restartCount}`} />
           <DataRow
-            label="Last checked"
-            value={formatDate(updateState.lastCheckForUpdateTimeSinceRestart)}
+            label="Most recent check"
+            value={
+              'checkedAt' in lastCheck
+                ? formatDate(lastCheck.checkedAt)
+                : lastCheck.detail
+            }
             last
           />
         </Card>
@@ -411,46 +602,13 @@ export default function UpdateDiagnostics() {
         <SectionTitle>KNOWN UPDATES</SectionTitle>
         <View style={styles.cardStack}>
           {updateEntries.map((entry) => (
-            <Card key={`${entry.state}-${entry.id}`}>
-              <View style={styles.betweenRow}>
-                <View style={styles.versionTitle}>
-                  <Icon
-                    name={
-                      entry.state === 'Running now'
-                        ? 'play.circle.fill'
-                        : entry.state === 'Downloaded · launches next'
-                          ? 'arrow.down.circle.fill'
-                          : 'icloud.and.arrow.down'
-                    }
-                    tint={
-                      entry.state === 'Running now'
-                        ? (colors.systemGreen as string)
-                        : (colors.systemBlue as string)
-                    }
-                  />
-                  <View style={styles.versionText}>
-                    <ThemedText type="smallBold">{entry.state}</ThemedText>
-                    <ThemedText
-                      numberOfLines={2}
-                      type="small"
-                      themeColor="secondaryLabel">
-                      {entry.source} · {formatDate(entry.createdAt)}
-                    </ThemedText>
-                  </View>
-                </View>
-                <ThemedText type="code" style={styles.versionBadge}>
-                  {shortUpdateId(entry.id)}
-                </ThemedText>
-              </View>
-              <ThemedText selectable type="code" themeColor="secondaryLabel">
-                {entry.id}
-              </ThemedText>
-            </Card>
+            <KnownUpdateCard key={`${entry.state}-${entry.id}`} entry={entry} />
           ))}
         </View>
         <ThemedText type="small" themeColor="secondaryLabel" style={styles.note}>
-          Expo exposes the running update, the available update, and the next downloaded
-          update. It does not expose the complete internal cache history to app code.
+          This is the actionable update state Expo exposes: what is running, what is
+          ready on this device, and what the server has offered. Older cached bundles
+          are managed internally and are not enumerable from app code.
         </ThemedText>
       </View>
 
@@ -505,13 +663,23 @@ export default function UpdateDiagnostics() {
           <SectionTitle>UPDATE ACTIVITY</SectionTitle>
           <Pressable
             accessibilityRole="button"
-            disabled={activeAction === 'logs'}
-            onPress={() =>
-              perform('logs', async () => {
-                await refreshEvents();
-                return 'Update events refreshed.';
-              })
-            }>
+            disabled={isRefreshingEvents}
+            onPress={refreshEventLists}
+            style={({ pressed }) => [
+              styles.refreshButton,
+              pressed && { opacity: 0.55 },
+            ]}>
+            <View style={styles.refreshIcon}>
+              {isRefreshingEvents ? (
+                <ActivityIndicator size="small" color={colors.systemBlue as string} />
+              ) : (
+                <Icon
+                  name="arrow.clockwise"
+                  size={14}
+                  tint={colors.systemBlue as string}
+                />
+              )}
+            </View>
             <ThemedText type="smallBold" style={{ color: colors.systemBlue as string }}>
               Refresh
             </ThemedText>
@@ -557,7 +725,7 @@ export default function UpdateDiagnostics() {
                 </ThemedText>
                 {entry.updateId ? (
                   <ThemedText selectable type="code" themeColor="secondaryLabel">
-                    {entry.updateId}
+                    Update {shortUpdateId(entry.updateId)}
                   </ThemedText>
                 ) : null}
               </View>
@@ -567,41 +735,26 @@ export default function UpdateDiagnostics() {
       </View>
 
       <View>
-        <SectionTitle>NATIVE ERROR &amp; RECOVERY LOG</SectionTitle>
+        <SectionTitle>NATIVE UPDATE LOG</SectionTitle>
         <Card>
           {logs.length === 0 ? (
             <ThemedText type="small" themeColor="secondaryLabel">
-              No native update errors or recovery events were recorded in the last 24
-              hours. Successful launches and downloads appear in Update Activity above.
+              No native expo-updates entries were recorded in the last 24 hours.
             </ThemedText>
           ) : (
             logs.map((entry, index) => (
-              <View
-                key={`${entry.timestamp}-${index}`}
-                style={[
-                  styles.logEntry,
-                  index < logs.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: theme.separator,
-                  },
-                ]}>
-                <View style={styles.betweenRow}>
-                  <ThemedText type="code">{entry.code}</ThemedText>
-                  <ThemedText type="small" themeColor="secondaryLabel">
-                    {new Date(entry.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })}
-                  </ThemedText>
-                </View>
-                <ThemedText selectable type="small">
-                  {entry.message}
-                </ThemedText>
-              </View>
+              <NativeLogRow
+                key={`${entry.timestamp}-${entry.code}-${entry.message}`}
+                entry={entry}
+                last={index === logs.length - 1}
+              />
             ))
           )}
         </Card>
+        <ThemedText type="small" themeColor="secondaryLabel" style={styles.note}>
+          Low-level expo-updates activity from the last 24 hours. Entries are summarized;
+          tap one to inspect its raw message and identifiers.
+        </ThemedText>
       </View>
     </ScrollView>
   );
@@ -670,19 +823,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  versionTitle: {
-    flex: 1,
-    minWidth: 0,
+  updateCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  updateGlyph: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
-  versionText: {
+  updateTitle: {
     flex: 1,
     minWidth: 0,
   },
-  versionBadge: {
+  badge: {
+    borderRadius: 7,
+    borderCurve: 'continuous',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
     flexShrink: 0,
+  },
+  updateMetadata: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.two,
+    paddingTop: Spacing.three,
+    marginTop: Spacing.three,
+  },
+  compactRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  updateIdRow: {
+    gap: Spacing.one,
+  },
+  updateId: {
+    lineHeight: 18,
   },
   note: {
     paddingHorizontal: Spacing.two,
@@ -708,8 +894,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingRight: Spacing.two,
   },
+  refreshButton: {
+    minWidth: 84,
+    height: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+  },
+  refreshIcon: {
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logEntry: {
     gap: Spacing.one,
     paddingVertical: Spacing.two,
+  },
+  nativeLogRow: {
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+  },
+  nativeLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  logTitleGroup: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  severityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  logTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  logTime: {
+    flexShrink: 0,
+    fontVariant: ['tabular-nums'],
+  },
+  logFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  rawLog: {
+    borderRadius: 10,
+    borderCurve: 'continuous',
+    gap: Spacing.two,
+    padding: Spacing.three,
   },
 });
