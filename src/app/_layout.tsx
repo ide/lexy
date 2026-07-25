@@ -1,13 +1,9 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { colors } from '@/constants/theme';
 import { VehicleDataProvider } from '@/data/query-client';
 import { UpdateHistoryRecorder } from '@/updates/update-history-recorder';
-
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -16,25 +12,16 @@ export default function RootLayout() {
     <VehicleDataProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <UpdateHistoryRecorder />
-        <AnimatedSplashOverlay />
         <Stack
           screenOptions={{
-            headerLargeTitle: true,
-            headerTransparent: process.env.EXPO_OS === 'ios',
+            headerTransparent: true,
             headerShadowVisible: false,
-            headerLargeTitleShadowVisible: false,
-            headerLargeStyle: { backgroundColor: 'transparent' },
             headerBackButtonDisplayMode: 'minimal',
             headerTintColor: colors.systemBlue as string,
             headerTitleStyle: { color: colors.label as string },
-            headerLargeTitleStyle: { color: colors.label as string },
             contentStyle: { backgroundColor: colors.groupedBackground },
           }}>
-          <Stack.Screen name="index" options={{ title: 'Vehicle' }} />
-          <Stack.Screen
-            name="details"
-            options={{ title: 'Vehicle Details', headerLargeTitle: false }}
-          />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="updates"
             options={{ title: 'Update Diagnostics', headerLargeTitle: false }}

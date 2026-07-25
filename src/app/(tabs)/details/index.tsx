@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import type { SFSymbol } from 'sf-symbols-typescript';
 
@@ -66,6 +67,7 @@ export default function CarDetails() {
   const spec: [string, string][] = [
     ['VIN', vehicle.vin],
     ['Model code', vehicle.modelCode],
+    ['Exterior', vehicle.color],
     ['Trim', vehicle.trim],
     ['Region', vehicle.region],
     ['Telematics', vehicle.generation],
@@ -83,7 +85,7 @@ export default function CarDetails() {
       style={{ backgroundColor: theme.groupedBackground }}
       contentContainerStyle={styles.content}>
       <Animated.View entering={FadeInDown.duration(300)}>
-        <SectionTitle>SPECIFICATION</SectionTitle>
+        <SectionTitle>VEHICLE</SectionTitle>
         <View style={[styles.card, { backgroundColor: theme.card }]}>
           {spec.map(([label, value], i) => (
             <InfoRow key={label} label={label} value={value} last={i === spec.length - 1} />
@@ -114,16 +116,58 @@ export default function CarDetails() {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(300).delay(150)}>
-        <SectionTitle>HEALTH</SectionTitle>
+        <SectionTitle>CONNECTED SERVICES</SectionTitle>
         <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <InfoRow label="Odometer" value={`${vehicle.odometerMiles.toLocaleString()} mi`} />
-          <InfoRow label="Fuel level" value={`${vehicle.fuelPercent}%`} />
-          <InfoRow
-            label="Active warnings"
-            value={vehicle.cautionCount === 0 ? 'None' : `${vehicle.cautionCount}`}
-            last
-          />
+          {vehicle.subscriptions.map((subscription, i) => (
+            <View
+              key={subscription.name}
+              style={[
+                styles.serviceRow,
+                i < vehicle.subscriptions.length - 1 && {
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: theme.separator,
+                },
+              ]}>
+              <View>
+                <ThemedText type="small">{subscription.name}</ThemedText>
+                <ThemedText type="small" themeColor="secondaryLabel">
+                  Expires {subscription.expires}
+                </ThemedText>
+              </View>
+              <ThemedText type="smallBold" style={{ color: colors.systemGreen }}>
+                {subscription.status}
+              </ThemedText>
+            </View>
+          ))}
         </View>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(300).delay(200)}>
+        <SectionTitle>APP</SectionTitle>
+        <Link href="/updates" asChild>
+          <Link.Trigger>
+            <Pressable>
+              {({ pressed }) => (
+                <View
+                  style={[
+                    styles.linkRow,
+                    { backgroundColor: theme.card },
+                    pressed && { opacity: 0.7 },
+                  ]}>
+                  <View style={styles.linkLabel}>
+                    <Icon
+                      name="arrow.trianglehead.2.clockwise.rotate.90"
+                      tint={colors.systemBlue as string}
+                    />
+                    <ThemedText type="smallBold">Update diagnostics</ThemedText>
+                  </View>
+                  <Icon name="chevron.right" size={14} tint={colors.secondaryLabel as string} />
+                </View>
+              )}
+            </Pressable>
+          </Link.Trigger>
+          <Link.Preview />
+        </Link>
       </Animated.View>
     </ScrollView>
   );
@@ -171,5 +215,25 @@ const styles = StyleSheet.create({
   },
   capabilityLabel: {
     flexShrink: 1,
+  },
+  serviceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.three,
+    gap: Spacing.three,
+  },
+  linkRow: {
+    borderRadius: 18,
+    borderCurve: 'continuous',
+    padding: Spacing.three,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  linkLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
 });
