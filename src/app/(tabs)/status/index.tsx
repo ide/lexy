@@ -6,7 +6,6 @@ import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { NativeScrollView } from "@/components/native-scroll-view";
@@ -156,7 +155,7 @@ export default function CarDashboard() {
         }}
         contentContainerStyle={styles.content}
       >
-        <Animated.View entering={FadeInDown.duration(350)}>
+        <View>
           <Card style={styles.hero}>
             <Image
               source={{ uri: vehicle.imageUrl }}
@@ -199,12 +198,9 @@ export default function CarDashboard() {
               </View>
             </View>
           </Card>
-        </Animated.View>
+        </View>
 
-        <Animated.View
-          entering={FadeInDown.duration(350).delay(50)}
-          style={styles.metricRow}
-        >
+        <View style={styles.metricRow}>
           <Metric
             symbol="fuelpump.fill"
             value={`${vehicle.fuelPercent}`}
@@ -224,9 +220,9 @@ export default function CarDashboard() {
             unit="mi"
             label="Odometer"
           />
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(350).delay(100)}>
+        <View>
           <SectionTitle>CLOSURES</SectionTitle>
           <Card style={styles.closureCard}>
             {vehicle.closures.map((c, i) => (
@@ -254,12 +250,9 @@ export default function CarDashboard() {
               </View>
             ))}
           </Card>
-        </Animated.View>
+        </View>
 
-        <Animated.View
-          entering={FadeInDown.duration(350).delay(150)}
-          style={styles.metricRow}
-        >
+        <View style={styles.metricRow}>
           <Card style={styles.halfCard}>
             <Icon name="thermometer.medium" tint={blue} />
             <ThemedText style={styles.metricValue}>
@@ -283,7 +276,7 @@ export default function CarDashboard() {
               </Card>
             )}
           </Pressable>
-        </Animated.View>
+        </View>
 
         <ThemedText
           type="small"
