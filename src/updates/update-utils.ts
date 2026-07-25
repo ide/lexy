@@ -16,6 +16,33 @@ export type UpdateEntry = {
   state: 'Running now' | 'Downloaded · launches next' | 'Available to download';
 };
 
+export type UpdateActivityEvent = {
+  id: string;
+  timestamp: number;
+  title: string;
+  detail: string;
+  updateId?: string;
+  level?: 'info' | 'error';
+};
+
+export function sortNewestFirst<T extends { timestamp: number }>(entries: readonly T[]): T[] {
+  return [...entries].sort((a, b) => b.timestamp - a.timestamp);
+}
+
+export function mergeUpdateActivity(
+  existing: readonly UpdateActivityEvent[],
+  incoming: readonly UpdateActivityEvent[],
+  limit = 50,
+): UpdateActivityEvent[] {
+  const byId = new Map(existing.map((entry) => [entry.id, entry]));
+  for (const entry of incoming) {
+    if (!byId.has(entry.id)) {
+      byId.set(entry.id, entry);
+    }
+  }
+  return sortNewestFirst([...byId.values()]).slice(0, limit);
+}
+
 export function shortUpdateId(updateId: string | undefined): string {
   return updateId?.slice(0, 8) ?? 'Embedded';
 }

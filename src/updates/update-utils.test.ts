@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildUpdateEntries, shortUpdateId } from './update-utils';
+import {
+  buildUpdateEntries,
+  mergeUpdateActivity,
+  shortUpdateId,
+  sortNewestFirst,
+  type UpdateActivityEvent,
+} from './update-utils';
 
 describe('buildUpdateEntries', () => {
   it('shows the running update and a downloaded next-launch update without duplicating it', () => {
@@ -56,5 +62,38 @@ describe('shortUpdateId', () => {
   it('makes update ids scannable without losing the full selectable value elsewhere', () => {
     expect(shortUpdateId('22222222-2222-2222-2222-222222222222')).toBe('22222222');
     expect(shortUpdateId(undefined)).toBe('Embedded');
+  });
+});
+
+describe('sortNewestFirst', () => {
+  it('sorts without relying on Array.toSorted or mutating native log results', () => {
+    const entries = [{ timestamp: 1 }, { timestamp: 3 }, { timestamp: 2 }];
+
+    expect(sortNewestFirst(entries).map((entry) => entry.timestamp)).toEqual([3, 2, 1]);
+    expect(entries.map((entry) => entry.timestamp)).toEqual([1, 3, 2]);
+  });
+});
+
+describe('mergeUpdateActivity', () => {
+  it('keeps one persistent event per update state and newest events first', () => {
+    const older: UpdateActivityEvent = {
+      id: 'running:first',
+      timestamp: 1,
+      title: 'Ran update',
+      detail: 'First',
+      updateId: 'first',
+    };
+    const newer: UpdateActivityEvent = {
+      id: 'downloaded:second',
+      timestamp: 2,
+      title: 'Downloaded update',
+      detail: 'Second',
+      updateId: 'second',
+    };
+
+    expect(mergeUpdateActivity([older], [newer, { ...older, timestamp: 3 }])).toEqual([
+      newer,
+      older,
+    ]);
   });
 });

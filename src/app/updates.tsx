@@ -15,7 +15,16 @@ import type { SFSymbol } from 'sf-symbols-typescript';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { buildUpdateEntries, shortUpdateId } from '@/updates/update-utils';
+import {
+  readUpdateActivity,
+  recordUpdateActivity,
+} from '@/updates/update-history';
+import {
+  buildUpdateEntries,
+  shortUpdateId,
+  sortNewestFirst,
+  type UpdateActivityEvent,
+} from '@/updates/update-utils';
 
 type Action = 'check' | 'download' | 'reload' | 'logs';
 
@@ -205,6 +214,7 @@ export default function UpdateDiagnostics() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [logs, setLogs] = useState<Updates.UpdatesLogEntry[]>([]);
+  const [activity, setActivity] = useState<UpdateActivityEvent[]>([]);
   const status = statusFor(updateState);
   const updateEntries = useMemo(
     () =>
@@ -220,16 +230,20 @@ export default function UpdateDiagnostics() {
     ],
   );
 
-  const refreshLogs = useCallback(async () => {
-    const entries = await Updates.readLogEntriesAsync(24 * 60 * 60 * 1_000);
-    setLogs(entries.toSorted((a, b) => b.timestamp - a.timestamp).slice(0, 20));
+  const refreshEvents = useCallback(async () => {
+    const [nativeEntries, activityEntries] = await Promise.all([
+      Updates.readLogEntriesAsync(24 * 60 * 60 * 1_000),
+      readUpdateActivity(),
+    ]);
+    setLogs(sortNewestFirst(nativeEntries).slice(0, 20));
+    setActivity(sortNewestFirst(activityEntries).slice(0, 20));
   }, []);
 
   useEffect(() => {
-    refreshLogs().catch((error: unknown) => {
+    refreshEvents().catch((error: unknown) => {
       setActionError(error instanceof Error ? error.message : 'Could not read update logs.');
     });
-  }, [refreshLogs]);
+  }, [refreshEvents]);
 
   const perform = useCallback(
     async (action: Action, operation: () => Promise<string>) => {
@@ -249,21 +263,38 @@ export default function UpdateDiagnostics() {
         }
       } finally {
         setActiveAction(null);
-        refreshLogs().catch(() => {});
+        refreshEvents().catch(() => {});
       }
     },
-    [refreshLogs],
+    [refreshEvents],
   );
 
   const check = () =>
     perform('check', async () => {
       const result = await Updates.checkForUpdateAsync();
       if (result.isAvailable) {
+        await recordUpdateActivity([
+          {
+            id: `available:${result.manifest.id}`,
+            timestamp: Date.now(),
+            title: 'Update found',
+            detail: 'A manual check found a compatible update.',
+            updateId: result.manifest.id,
+          },
+        ]);
         return 'A newer update is available to download.';
       }
       if (result.isRollBackToEmbedded) {
         return 'A rollback to the embedded update is available.';
       }
+      await recordUpdateActivity([
+        {
+          id: `check:${Date.now()}`,
+          timestamp: Date.now(),
+          title: 'Update check completed',
+          detail: `No newer compatible update (${result.reason}).`,
+        },
+      ]);
       return `No newer compatible update (${result.reason}).`;
     });
 
@@ -271,6 +302,15 @@ export default function UpdateDiagnostics() {
     perform('download', async () => {
       const result = await Updates.fetchUpdateAsync();
       if (result.isNew) {
+        await recordUpdateActivity([
+          {
+            id: `downloaded:${result.manifest.id}`,
+            timestamp: Date.now(),
+            title: 'Update downloaded',
+            detail: 'Ready for the next reload or cold launch.',
+            updateId: result.manifest.id,
+          },
+        ]);
         return 'Update downloaded. Reload now or launch it next time.';
       }
       if (result.isRollBackToEmbedded) {
@@ -279,11 +319,28 @@ export default function UpdateDiagnostics() {
       return 'No new update was downloaded.';
     });
 
-  const reload = () =>
-    perform('reload', async () => {
-      await Updates.reloadAsync();
-      return 'Reloading…';
-    });
+  const reload = () => {
+    setActiveAction('reload');
+    setActionMessage(null);
+    setActionError(null);
+    recordUpdateActivity([
+      {
+        id: `reload:${Date.now()}`,
+        timestamp: Date.now(),
+        title: 'Reload requested',
+        detail: updateState.isUpdatePending
+          ? 'Switching to the downloaded update.'
+          : 'Restarting the current update.',
+        updateId: updateState.downloadedUpdate?.updateId,
+      },
+    ])
+      .catch(() => {})
+      .then(() => Updates.reloadAsync())
+      .catch((error: unknown) => {
+        setActiveAction(null);
+        setActionError(error instanceof Error ? error.message : 'The app could not reload.');
+      });
+  };
 
   const busy =
     activeAction !== null ||
@@ -371,14 +428,19 @@ export default function UpdateDiagnostics() {
                         : (colors.systemBlue as string)
                     }
                   />
-                  <View>
+                  <View style={styles.versionText}>
                     <ThemedText type="smallBold">{entry.state}</ThemedText>
-                    <ThemedText type="small" themeColor="secondaryLabel">
+                    <ThemedText
+                      numberOfLines={2}
+                      type="small"
+                      themeColor="secondaryLabel">
                       {entry.source} · {formatDate(entry.createdAt)}
                     </ThemedText>
                   </View>
                 </View>
-                <ThemedText type="code">{shortUpdateId(entry.id)}</ThemedText>
+                <ThemedText type="code" style={styles.versionBadge}>
+                  {shortUpdateId(entry.id)}
+                </ThemedText>
               </View>
               <ThemedText selectable type="code" themeColor="secondaryLabel">
                 {entry.id}
@@ -440,13 +502,13 @@ export default function UpdateDiagnostics() {
 
       <View>
         <View style={styles.sectionHeader}>
-          <SectionTitle>RECENT UPDATE EVENTS</SectionTitle>
+          <SectionTitle>UPDATE ACTIVITY</SectionTitle>
           <Pressable
             accessibilityRole="button"
             disabled={activeAction === 'logs'}
             onPress={() =>
               perform('logs', async () => {
-                await refreshLogs();
+                await refreshEvents();
                 return 'Update events refreshed.';
               })
             }>
@@ -456,9 +518,61 @@ export default function UpdateDiagnostics() {
           </Pressable>
         </View>
         <Card>
+          {activity.length === 0 ? (
+            <ThemedText type="small" themeColor="secondaryLabel">
+              Activity tracking starts with this version. The current launch will appear
+              here after Refresh.
+            </ThemedText>
+          ) : (
+            activity.map((entry, index) => (
+              <View
+                key={entry.id}
+                style={[
+                  styles.logEntry,
+                  index < activity.length - 1 && {
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: theme.separator,
+                  },
+                ]}>
+                <View style={styles.betweenRow}>
+                  <ThemedText
+                    type="smallBold"
+                    style={
+                      entry.level === 'error'
+                        ? { color: colors.systemOrange as string }
+                        : undefined
+                    }>
+                    {entry.title}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="secondaryLabel">
+                    {new Date(entry.timestamp).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
+                  </ThemedText>
+                </View>
+                <ThemedText selectable type="small">
+                  {entry.detail}
+                </ThemedText>
+                {entry.updateId ? (
+                  <ThemedText selectable type="code" themeColor="secondaryLabel">
+                    {entry.updateId}
+                  </ThemedText>
+                ) : null}
+              </View>
+            ))
+          )}
+        </Card>
+      </View>
+
+      <View>
+        <SectionTitle>NATIVE ERROR &amp; RECOVERY LOG</SectionTitle>
+        <Card>
           {logs.length === 0 ? (
             <ThemedText type="small" themeColor="secondaryLabel">
-              No update events were recorded in the last 24 hours.
+              No native update errors or recovery events were recorded in the last 24
+              hours. Successful launches and downloads appear in Update Activity above.
             </ThemedText>
           ) : (
             logs.map((entry, index) => (
@@ -484,15 +598,6 @@ export default function UpdateDiagnostics() {
                 <ThemedText selectable type="small">
                   {entry.message}
                 </ThemedText>
-                {entry.updateId ? (
-                  <ThemedText selectable type="code" themeColor="secondaryLabel">
-                    {entry.level} · {entry.updateId}
-                  </ThemedText>
-                ) : (
-                  <ThemedText type="code" themeColor="secondaryLabel">
-                    {entry.level}
-                  </ThemedText>
-                )}
               </View>
             ))
           )}
@@ -567,9 +672,17 @@ const styles = StyleSheet.create({
   },
   versionTitle: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  versionText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  versionBadge: {
+    flexShrink: 0,
   },
   note: {
     paddingHorizontal: Spacing.two,
