@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 
-import { ThemedText } from '@/components/themed-text';
-import { Spacing, colors } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { Spacing, colors } from "@/constants/theme";
 
 export function VehicleLoading() {
   return (
@@ -25,7 +26,11 @@ export function VehicleError({
       <ThemedText themeColor="secondaryLabel" style={styles.message}>
         {message}
       </ThemedText>
-      <Pressable accessibilityRole="button" onPress={retry} style={styles.button}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={retry}
+        style={styles.button}
+      >
         <ThemedText type="smallBold" style={styles.buttonLabel}>
           Try again
         </ThemedText>
@@ -37,13 +42,13 @@ export function VehicleError({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.three,
     padding: Spacing.four,
   },
   message: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   button: {
     borderRadius: 100,
@@ -52,6 +57,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   buttonLabel: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
 });
