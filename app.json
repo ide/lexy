@@ -45,6 +45,7 @@
           "imageWidth": 76
         }
       ],
+      "./plugins/without-widget-push-notifications",
       [
         "expo-widgets",
         {

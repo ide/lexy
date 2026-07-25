@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { fetchVehicle, parseVehicle } from './vehicle';
+import { fetchVehicle, loadVehicle, parseVehicle } from './vehicle';
 
 const vehicle = {
   nickname: 'Daily driver',
@@ -60,5 +60,17 @@ describe('fetchVehicle', () => {
     await expect(fetchVehicle('https://lexy.example.test', request)).rejects.toThrow(
       'Vehicle API request failed (503)',
     );
+  });
+});
+
+describe('loadVehicle', () => {
+  it('uses bundled stub data when no backend is configured', async () => {
+    const request = vi.fn();
+
+    await expect(loadVehicle(undefined, request)).resolves.toMatchObject({
+      fullName: '2026 Lexus IS 350',
+      vin: 'DEMO0000000000001',
+    });
+    expect(request).not.toHaveBeenCalled();
   });
 });

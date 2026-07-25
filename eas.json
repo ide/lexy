@@ -10,6 +10,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "ios": {
+        "enterpriseProvisioning": "adhoc"
+      },
       "channel": "preview"
     },
     "production": {

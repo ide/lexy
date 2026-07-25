@@ -33,6 +33,10 @@ export default function RootLayout() {
             name="details"
             options={{ title: 'Vehicle Details', headerLargeTitle: false }}
           />
+          <Stack.Screen
+            name="updates"
+            options={{ title: 'Update Diagnostics', headerLargeTitle: false }}
+          />
         </Stack>
       </ThemeProvider>
     </VehicleDataProvider>

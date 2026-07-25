@@ -1,5 +1,7 @@
 import type { SFSymbol } from 'sf-symbols-typescript';
 
+import { stubVehicle } from './stub-vehicle';
+
 export type Closure = {
   label: string;
   state: 'Closed' | 'Open';
@@ -135,6 +137,17 @@ export async function fetchVehicle(
   }
 
   return parseVehicle(await response.json());
+}
+
+export function loadVehicle(
+  baseUrl: string | undefined,
+  request: Request = globalThis.fetch,
+  signal?: AbortSignal,
+): Promise<Vehicle> {
+  if (!baseUrl) {
+    return Promise.resolve(stubVehicle);
+  }
+  return fetchVehicle(baseUrl, request, signal);
 }
 
 export function updatedLabel(iso: string): string {
