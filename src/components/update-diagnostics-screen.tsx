@@ -1,24 +1,41 @@
-import Constants from 'expo-constants';
-import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
-import * as Updates from 'expo-updates';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import type { SFSymbol } from 'sf-symbols-typescript';
+  Button as SwiftUIButton,
+  DisclosureGroup,
+  HStack,
+  Host,
+  Image as SwiftUIImage,
+  Spacer,
+  Text as SwiftUIText,
+  VStack,
+} from "@expo/ui/swift-ui";
+import {
+  buttonStyle,
+  controlSize,
+  disabled as disabledModifier,
+  font,
+  foregroundStyle,
+  lineLimit,
+  monospacedDigit,
+  padding,
+  textSelection,
+  tint,
+} from "@expo/ui/swift-ui/modifiers";
+import Constants from "expo-constants";
+import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
+import * as Updates from "expo-updates";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import type { SFSymbol } from "sf-symbols-typescript";
 
-import { ThemedText } from '@/components/themed-text';
-import { Spacing, colors } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { NativeScrollView } from "@/components/native-scroll-view";
+import { ThemedText } from "@/components/themed-text";
+import { Spacing, colors } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
 import {
   readUpdateActivity,
   recordUpdateActivity,
-} from '@/updates/update-history';
+} from "@/updates/update-history";
 import {
   buildUpdateEntries,
   describeKnownUpdate,
@@ -28,9 +45,9 @@ import {
   sortNewestFirst,
   type UpdateActivityEvent,
   type UpdateEntry,
-} from '@/updates/update-utils';
+} from "@/updates/update-utils";
 
-type Action = 'check' | 'download' | 'reload';
+type Action = "check" | "download" | "reload";
 
 function Icon({
   name,
@@ -53,7 +70,11 @@ function Icon({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <ThemedText type="smallBold" themeColor="secondaryLabel" style={styles.sectionTitle}>
+    <ThemedText
+      type="smallBold"
+      themeColor="secondaryLabel"
+      style={styles.sectionTitle}
+    >
       {children}
     </ThemedText>
   );
@@ -61,7 +82,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
-  return <View style={[styles.card, { backgroundColor: theme.card }]}>{children}</View>;
+  return (
+    <View style={[styles.card, { backgroundColor: theme.card }]}>
+      {children}
+    </View>
+  );
 }
 
 function DataRow({
@@ -82,7 +107,8 @@ function DataRow({
           borderBottomWidth: StyleSheet.hairlineWidth,
           borderBottomColor: theme.separator,
         },
-      ]}>
+      ]}
+    >
       <ThemedText type="small" themeColor="secondaryLabel">
         {label}
       </ThemedText>
@@ -109,40 +135,34 @@ function ActionButton({
   primary?: boolean;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionButton,
-        primary
-          ? { backgroundColor: colors.systemBlue }
-          : { backgroundColor: colors.fill },
-        (pressed || disabled) && { opacity: disabled ? 0.45 : 0.7 },
-      ]}>
-      {busy ? (
-        <ActivityIndicator color={primary ? '#FFFFFF' : (colors.label as string)} />
-      ) : (
-        <Icon
-          name={icon}
-          size={17}
-          tint={primary ? '#FFFFFF' : (colors.label as string)}
-        />
-      )}
-      <ThemedText
-        type="smallBold"
-        style={primary ? { color: '#FFFFFF' } : undefined}>
-        {label}
-      </ThemedText>
-    </Pressable>
+    <Host
+      matchContents={{ vertical: true }}
+      seedColor={colors.systemBlue}
+      style={styles.nativeButtonHost}
+    >
+      <SwiftUIButton
+        label={busy ? `${label}…` : label}
+        systemImage={busy ? "hourglass" : icon}
+        onPress={onPress}
+        modifiers={[
+          buttonStyle(primary ? "borderedProminent" : "bordered"),
+          controlSize("large"),
+          tint(colors.systemBlue),
+          disabledModifier(disabled),
+        ]}
+      />
+    </Host>
   );
 }
 
-function formatDate(value: Date | undefined, fallback = 'Not reported'): string {
+function formatDate(
+  value: Date | undefined,
+  fallback = "Not reported",
+): string {
   return value
     ? value.toLocaleString([], {
-        dateStyle: 'medium',
-        timeStyle: 'short',
+        dateStyle: "medium",
+        timeStyle: "short",
       })
     : fallback;
 }
@@ -150,8 +170,8 @@ function formatDate(value: Date | undefined, fallback = 'Not reported'): string 
 function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
   const theme = useTheme();
   const copy = describeKnownUpdate(entry.state);
-  const isCurrent = entry.state === 'Running now';
-  const isReady = entry.state === 'Downloaded · launches next';
+  const isCurrent = entry.state === "Running now";
+  const isReady = entry.state === "Downloaded · launches next";
   const accent = isCurrent
     ? (colors.systemGreen as string)
     : isReady
@@ -165,10 +185,10 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
           <Icon
             name={
               isCurrent
-                ? 'play.fill'
+                ? "play.fill"
                 : isReady
-                  ? 'arrow.down'
-                  : 'icloud.and.arrow.down'
+                  ? "arrow.down"
+                  : "icloud.and.arrow.down"
             }
             size={18}
             tint={accent}
@@ -190,7 +210,9 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
           </ThemedText>
         </View>
       </View>
-      <View style={[styles.updateMetadata, { borderTopColor: theme.separator }]}>
+      <View
+        style={[styles.updateMetadata, { borderTopColor: theme.separator }]}
+      >
         <View style={styles.compactRow}>
           <ThemedText type="small" themeColor="secondaryLabel">
             Published
@@ -228,8 +250,8 @@ function NativeLogRow({
   const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
   const description = describeNativeLog(entry);
-  const isProblem = entry.level === 'error' || entry.level === 'fatal';
-  const isWarning = entry.level === 'warn';
+  const isProblem = entry.level === "error" || entry.level === "fatal";
+  const isWarning = entry.level === "warn";
   const tint = isProblem
     ? (colors.systemOrange as string)
     : isWarning
@@ -237,77 +259,130 @@ function NativeLogRow({
       : (colors.systemBlue as string);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ expanded }}
-      onPress={() => setExpanded((value) => !value)}
-      style={({ pressed }) => [
+    <Host
+      matchContents
+      seedColor={colors.systemBlue}
+      style={[
         styles.nativeLogRow,
         !last && {
           borderBottomWidth: StyleSheet.hairlineWidth,
           borderBottomColor: theme.separator,
         },
-        pressed && { opacity: 0.65 },
-      ]}>
-      <View style={styles.nativeLogHeader}>
-        <View style={styles.logTitleGroup}>
-          <View style={[styles.severityDot, { backgroundColor: tint }]} />
-          <ThemedText type="smallBold" numberOfLines={1} style={styles.logTitle}>
-            {description.title}
-          </ThemedText>
-        </View>
-        <ThemedText type="small" themeColor="secondaryLabel" style={styles.logTime}>
-          {new Date(entry.timestamp).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          })}
-        </ThemedText>
-      </View>
-      <ThemedText
-        selectable
-        numberOfLines={expanded ? undefined : 2}
-        type="small"
-        themeColor="secondaryLabel">
-        {description.summary}
-      </ThemedText>
-      <View style={styles.logFooter}>
-        <ThemedText type="code" themeColor="secondaryLabel">
-          {entry.level.toUpperCase()}
-          {entry.code === 'None' ? '' : ` · ${entry.code}`}
-        </ThemedText>
-        <Icon
-          name={expanded ? 'chevron.up' : 'chevron.down'}
-          size={12}
-          tint={colors.secondaryLabel as string}
-        />
-      </View>
-      {expanded ? (
-        <View style={[styles.rawLog, { backgroundColor: theme.fill }]}>
-          <ThemedText type="code" themeColor="secondaryLabel">
+      ]}
+    >
+      <DisclosureGroup
+        isExpanded={expanded}
+        onIsExpandedChange={setExpanded}
+        modifiers={[padding({ vertical: 8 })]}
+      >
+        <DisclosureGroup.Label>
+          <VStack alignment="leading" spacing={6}>
+            <HStack spacing={8}>
+              <SwiftUIImage systemName="circle.fill" size={8} color={tint} />
+              <SwiftUIText
+                modifiers={[
+                  font({ textStyle: "subheadline", weight: "semibold" }),
+                  lineLimit(1),
+                ]}
+              >
+                {description.title}
+              </SwiftUIText>
+              <Spacer />
+              <SwiftUIText
+                modifiers={[
+                  font({ textStyle: "caption" }),
+                  foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                  monospacedDigit(),
+                ]}
+              >
+                {new Date(entry.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+              </SwiftUIText>
+            </HStack>
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "footnote" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                lineLimit(expanded ? 8 : 2),
+              ]}
+            >
+              {description.summary}
+            </SwiftUIText>
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+              ]}
+            >
+              {entry.level.toUpperCase()}
+              {entry.code === "None" ? "" : ` · ${entry.code}`}
+            </SwiftUIText>
+          </VStack>
+        </DisclosureGroup.Label>
+        <VStack
+          alignment="leading"
+          spacing={8}
+          modifiers={[padding({ top: 8 })]}
+        >
+          <SwiftUIText
+            modifiers={[
+              font({
+                textStyle: "caption2",
+                design: "monospaced",
+                weight: "semibold",
+              }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+            ]}
+          >
             RAW MESSAGE
-          </ThemedText>
-          <ThemedText selectable type="code">
+          </SwiftUIText>
+          <SwiftUIText
+            modifiers={[
+              font({ textStyle: "caption", design: "monospaced" }),
+              textSelection(true),
+            ]}
+          >
             {entry.message}
-          </ThemedText>
+          </SwiftUIText>
           {entry.updateId ? (
-            <ThemedText selectable type="code" themeColor="secondaryLabel">
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                textSelection(true),
+              ]}
+            >
               Update {entry.updateId}
-            </ThemedText>
+            </SwiftUIText>
           ) : null}
           {entry.assetId ? (
-            <ThemedText selectable type="code" themeColor="secondaryLabel">
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                textSelection(true),
+              ]}
+            >
               Asset {entry.assetId}
-            </ThemedText>
+            </SwiftUIText>
           ) : null}
           {entry.stacktrace?.length ? (
-            <ThemedText selectable type="code" themeColor="secondaryLabel">
-              {entry.stacktrace.join('\n')}
-            </ThemedText>
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                textSelection(true),
+              ]}
+            >
+              {entry.stacktrace.join("\n")}
+            </SwiftUIText>
           ) : null}
-        </View>
-      ) : null}
-    </Pressable>
+        </VStack>
+      </DisclosureGroup>
+    </Host>
   );
 }
 
@@ -319,58 +394,58 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
 } {
   if (!Updates.isEnabled) {
     return {
-      icon: 'exclamationmark.triangle.fill',
-      title: 'Updates disabled',
-      detail: 'This build is not configured to use expo-updates.',
+      icon: "exclamationmark.triangle.fill",
+      title: "Updates disabled",
+      detail: "This build is not configured to use expo-updates.",
       color: colors.systemOrange as string,
     };
   }
   if (state.isRestarting) {
     return {
-      icon: 'arrow.clockwise',
-      title: 'Reloading',
-      detail: 'Switching to the newest downloaded update.',
+      icon: "arrow.clockwise",
+      title: "Reloading",
+      detail: "Switching to the newest downloaded update.",
       color: colors.systemBlue as string,
     };
   }
   if (state.isDownloading) {
     return {
-      icon: 'arrow.down.circle.fill',
+      icon: "arrow.down.circle.fill",
       title: `Downloading ${Math.round((state.downloadProgress ?? 0) * 100)}%`,
-      detail: 'The update will be ready to launch when the download completes.',
+      detail: "The update will be ready to launch when the download completes.",
       color: colors.systemBlue as string,
     };
   }
   if (state.isChecking) {
     return {
-      icon: 'magnifyingglass',
-      title: 'Checking for updates',
-      detail: 'Contacting the update server for this channel and runtime.',
+      icon: "magnifyingglass",
+      title: "Checking for updates",
+      detail: "Contacting the update server for this channel and runtime.",
       color: colors.systemBlue as string,
     };
   }
   if (state.isUpdatePending) {
     return {
-      icon: 'arrow.down.circle.fill',
-      title: 'Update ready',
-      detail: 'Downloaded and scheduled for the next reload or cold launch.',
+      icon: "arrow.down.circle.fill",
+      title: "Update ready",
+      detail: "Downloaded and scheduled for the next reload or cold launch.",
       color: colors.systemGreen as string,
     };
   }
   if (state.isUpdateAvailable) {
     return {
-      icon: 'sparkles',
-      title: 'Update available',
-      detail: 'A compatible update is available but has not been downloaded.',
+      icon: "sparkles",
+      title: "Update available",
+      detail: "A compatible update is available but has not been downloaded.",
       color: colors.systemOrange as string,
     };
   }
   return {
-    icon: 'checkmark.circle.fill',
-    title: 'Running normally',
+    icon: "checkmark.circle.fill",
+    title: "Running normally",
     detail: state.lastCheckForUpdateTimeSinceRestart
-      ? 'No newer compatible update was found at the last check.'
-      : 'Use Check Now to ask the update server for the latest version.',
+      ? "No newer compatible update was found at the last check."
+      : "Use Check Now to ask the update server for the latest version.",
     color: colors.systemGreen as string,
   };
 }
@@ -414,7 +489,9 @@ export default function UpdateDiagnostics() {
 
   useEffect(() => {
     refreshEvents().catch((error: unknown) => {
-      setActionError(error instanceof Error ? error.message : 'Could not read update logs.');
+      setActionError(
+        error instanceof Error ? error.message : "Could not read update logs.",
+      );
     });
   }, [refreshEvents]);
 
@@ -422,11 +499,13 @@ export default function UpdateDiagnostics() {
     setIsRefreshingEvents(true);
     try {
       await refreshEvents();
-      if (process.env.EXPO_OS === 'ios') {
+      if (process.env.EXPO_OS === "ios") {
         Haptics.selectionAsync();
       }
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Could not read update logs.');
+      setActionError(
+        error instanceof Error ? error.message : "Could not read update logs.",
+      );
     } finally {
       setIsRefreshingEvents(false);
     }
@@ -440,12 +519,16 @@ export default function UpdateDiagnostics() {
       try {
         const message = await operation();
         setActionMessage(message);
-        if (process.env.EXPO_OS === 'ios') {
+        if (process.env.EXPO_OS === "ios") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (error) {
-        setActionError(error instanceof Error ? error.message : 'The update operation failed.');
-        if (process.env.EXPO_OS === 'ios') {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "The update operation failed.",
+        );
+        if (process.env.EXPO_OS === "ios") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
       } finally {
@@ -457,28 +540,28 @@ export default function UpdateDiagnostics() {
   );
 
   const check = () =>
-    perform('check', async () => {
+    perform("check", async () => {
       const result = await Updates.checkForUpdateAsync();
       if (result.isAvailable) {
         await recordUpdateActivity([
           {
             id: `available:${result.manifest.id}`,
             timestamp: Date.now(),
-            title: 'Update found',
-            detail: 'A manual check found a compatible update.',
+            title: "Update found",
+            detail: "A manual check found a compatible update.",
             updateId: result.manifest.id,
           },
         ]);
-        return 'A newer update is available to download.';
+        return "A newer update is available to download.";
       }
       if (result.isRollBackToEmbedded) {
-        return 'A rollback to the embedded update is available.';
+        return "A rollback to the embedded update is available.";
       }
       await recordUpdateActivity([
         {
           id: `check:${Date.now()}`,
           timestamp: Date.now(),
-          title: 'Update check completed',
+          title: "Update check completed",
           detail: `No newer compatible update (${result.reason}).`,
         },
       ]);
@@ -486,38 +569,38 @@ export default function UpdateDiagnostics() {
     });
 
   const download = () =>
-    perform('download', async () => {
+    perform("download", async () => {
       const result = await Updates.fetchUpdateAsync();
       if (result.isNew) {
         await recordUpdateActivity([
           {
             id: `downloaded:${result.manifest.id}`,
             timestamp: Date.now(),
-            title: 'Update downloaded',
-            detail: 'Ready for the next reload or cold launch.',
+            title: "Update downloaded",
+            detail: "Ready for the next reload or cold launch.",
             updateId: result.manifest.id,
           },
         ]);
-        return 'Update downloaded. Reload now or launch it next time.';
+        return "Update downloaded. Reload now or launch it next time.";
       }
       if (result.isRollBackToEmbedded) {
-        return 'Rollback downloaded. Reload now or launch it next time.';
+        return "Rollback downloaded. Reload now or launch it next time.";
       }
-      return 'No new update was downloaded.';
+      return "No new update was downloaded.";
     });
 
   const reload = () => {
-    setActiveAction('reload');
+    setActiveAction("reload");
     setActionMessage(null);
     setActionError(null);
     recordUpdateActivity([
       {
         id: `reload:${Date.now()}`,
         timestamp: Date.now(),
-        title: 'Reload requested',
+        title: "Reload requested",
         detail: updateState.isUpdatePending
-          ? 'Switching to the downloaded update.'
-          : 'Restarting the current update.',
+          ? "Switching to the downloaded update."
+          : "Restarting the current update.",
         updateId: updateState.downloadedUpdate?.updateId,
       },
     ])
@@ -525,7 +608,9 @@ export default function UpdateDiagnostics() {
       .then(() => Updates.reloadAsync())
       .catch((error: unknown) => {
         setActiveAction(null);
-        setActionError(error instanceof Error ? error.message : 'The app could not reload.');
+        setActionError(
+          error instanceof Error ? error.message : "The app could not reload.",
+        );
       });
   };
 
@@ -536,9 +621,7 @@ export default function UpdateDiagnostics() {
     updateState.isRestarting;
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={styles.content}>
+    <NativeScrollView contentContainerStyle={styles.content}>
       <Card>
         <View style={styles.statusRow}>
           <View style={[styles.statusIcon, { backgroundColor: theme.fill }]}>
@@ -569,27 +652,36 @@ export default function UpdateDiagnostics() {
       <View>
         <SectionTitle>UPDATE SYSTEM</SectionTitle>
         <Card>
-          <DataRow label="Enabled" value={Updates.isEnabled ? 'Yes' : 'No'} />
-          <DataRow label="Channel" value={Updates.channel ?? 'None'} />
-          <DataRow label="Runtime" value={Updates.runtimeVersion ?? 'Unknown'} />
-          <DataRow label="App version" value={Constants.expoConfig?.version ?? 'Unknown'} />
+          <DataRow label="Enabled" value={Updates.isEnabled ? "Yes" : "No"} />
+          <DataRow label="Channel" value={Updates.channel ?? "None"} />
+          <DataRow
+            label="Runtime"
+            value={Updates.runtimeVersion ?? "Unknown"}
+          />
+          <DataRow
+            label="App version"
+            value={Constants.expoConfig?.version ?? "Unknown"}
+          />
           <DataRow
             label="Automatic checks"
-            value={Updates.checkAutomatically ?? 'Unknown'}
+            value={Updates.checkAutomatically ?? "Unknown"}
           />
           <DataRow
             label="Launch time"
             value={
               updateState.currentlyRunning.launchDuration === undefined
-                ? 'Unknown'
+                ? "Unknown"
                 : `${updateState.currentlyRunning.launchDuration} ms`
             }
           />
-          <DataRow label="Reloads this launch" value={`${updateState.restartCount}`} />
+          <DataRow
+            label="Reloads this launch"
+            value={`${updateState.restartCount}`}
+          />
           <DataRow
             label="Most recent check"
             value={
-              'checkedAt' in lastCheck
+              "checkedAt" in lastCheck
                 ? formatDate(lastCheck.checkedAt)
                 : lastCheck.detail
             }
@@ -605,10 +697,15 @@ export default function UpdateDiagnostics() {
             <KnownUpdateCard key={`${entry.state}-${entry.id}`} entry={entry} />
           ))}
         </View>
-        <ThemedText type="small" themeColor="secondaryLabel" style={styles.note}>
-          This is the actionable update state Expo exposes: what is running, what is
-          ready on this device, and what the server has offered. Older cached bundles
-          are managed internally and are not enumerable from app code.
+        <ThemedText
+          type="small"
+          themeColor="secondaryLabel"
+          style={styles.note}
+        >
+          This is the actionable update state Expo exposes: what is running,
+          what is ready on this device, and what the server has offered. Older
+          cached bundles are managed internally and are not enumerable from app
+          code.
         </ThemedText>
       </View>
 
@@ -616,7 +713,7 @@ export default function UpdateDiagnostics() {
         <SectionTitle>CONTROLS</SectionTitle>
         <View style={styles.actions}>
           <ActionButton
-            busy={activeAction === 'check' || updateState.isChecking}
+            busy={activeAction === "check" || updateState.isChecking}
             disabled={!Updates.isEnabled || busy}
             icon="arrow.clockwise"
             label="Check Now"
@@ -624,32 +721,43 @@ export default function UpdateDiagnostics() {
             primary
           />
           <ActionButton
-            busy={activeAction === 'download' || updateState.isDownloading}
-            disabled={!Updates.isEnabled || busy || !updateState.isUpdateAvailable}
+            busy={activeAction === "download" || updateState.isDownloading}
+            disabled={
+              !Updates.isEnabled || busy || !updateState.isUpdateAvailable
+            }
             icon="arrow.down.circle"
             label="Download Update"
             onPress={download}
           />
           <ActionButton
-            busy={activeAction === 'reload' || updateState.isRestarting}
+            busy={activeAction === "reload" || updateState.isRestarting}
             disabled={!Updates.isEnabled || busy}
             icon="arrow.clockwise.circle"
-            label={updateState.isUpdatePending ? 'Reload Into Update' : 'Reload App'}
+            label={
+              updateState.isUpdatePending ? "Reload Into Update" : "Reload App"
+            }
             onPress={reload}
           />
         </View>
       </View>
 
-      {actionMessage || actionError || updateState.checkError || updateState.downloadError ? (
+      {actionMessage ||
+      actionError ||
+      updateState.checkError ||
+      updateState.downloadError ? (
         <Card>
           <ThemedText
             selectable
             type="small"
             style={{
-              color: actionError || updateState.checkError || updateState.downloadError
-                ? (colors.systemOrange as string)
-                : (colors.systemGreen as string),
-            }}>
+              color:
+                actionError ||
+                updateState.checkError ||
+                updateState.downloadError
+                  ? (colors.systemOrange as string)
+                  : (colors.systemGreen as string),
+            }}
+          >
             {actionError ??
               updateState.checkError?.message ??
               updateState.downloadError?.message ??
@@ -661,35 +769,25 @@ export default function UpdateDiagnostics() {
       <View>
         <View style={styles.sectionHeader}>
           <SectionTitle>UPDATE ACTIVITY</SectionTitle>
-          <Pressable
-            accessibilityRole="button"
-            disabled={isRefreshingEvents}
-            onPress={refreshEventLists}
-            style={({ pressed }) => [
-              styles.refreshButton,
-              pressed && { opacity: 0.55 },
-            ]}>
-            <View style={styles.refreshIcon}>
-              {isRefreshingEvents ? (
-                <ActivityIndicator size="small" color={colors.systemBlue as string} />
-              ) : (
-                <Icon
-                  name="arrow.clockwise"
-                  size={14}
-                  tint={colors.systemBlue as string}
-                />
-              )}
-            </View>
-            <ThemedText type="smallBold" style={{ color: colors.systemBlue as string }}>
-              Refresh
-            </ThemedText>
-          </Pressable>
+          <Host matchContents seedColor={colors.systemBlue}>
+            <SwiftUIButton
+              label={isRefreshingEvents ? "Refreshing…" : "Refresh"}
+              systemImage="arrow.clockwise"
+              onPress={refreshEventLists}
+              modifiers={[
+                buttonStyle("borderless"),
+                controlSize("small"),
+                tint(colors.systemBlue),
+                disabledModifier(isRefreshingEvents),
+              ]}
+            />
+          </Host>
         </View>
         <Card>
           {activity.length === 0 ? (
             <ThemedText type="small" themeColor="secondaryLabel">
-              Activity tracking starts with this version. The current launch will appear
-              here after Refresh.
+              Activity tracking starts with this version. The current launch
+              will appear here after Refresh.
             </ThemedText>
           ) : (
             activity.map((entry, index) => (
@@ -701,22 +799,24 @@ export default function UpdateDiagnostics() {
                     borderBottomWidth: StyleSheet.hairlineWidth,
                     borderBottomColor: theme.separator,
                   },
-                ]}>
+                ]}
+              >
                 <View style={styles.betweenRow}>
                   <ThemedText
                     type="smallBold"
                     style={
-                      entry.level === 'error'
+                      entry.level === "error"
                         ? { color: colors.systemOrange as string }
                         : undefined
-                    }>
+                    }
+                  >
                     {entry.title}
                   </ThemedText>
                   <ThemedText type="small" themeColor="secondaryLabel">
                     {new Date(entry.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
                     })}
                   </ThemedText>
                 </View>
@@ -724,7 +824,11 @@ export default function UpdateDiagnostics() {
                   {entry.detail}
                 </ThemedText>
                 {entry.updateId ? (
-                  <ThemedText selectable type="code" themeColor="secondaryLabel">
+                  <ThemedText
+                    selectable
+                    type="code"
+                    themeColor="secondaryLabel"
+                  >
                     Update {shortUpdateId(entry.updateId)}
                   </ThemedText>
                 ) : null}
@@ -751,12 +855,16 @@ export default function UpdateDiagnostics() {
             ))
           )}
         </Card>
-        <ThemedText type="small" themeColor="secondaryLabel" style={styles.note}>
-          Low-level expo-updates activity from the last 24 hours. Entries are summarized;
-          tap one to inspect its raw message and identifiers.
+        <ThemedText
+          type="small"
+          themeColor="secondaryLabel"
+          style={styles.note}
+        >
+          Low-level expo-updates activity from the last 24 hours. Entries are
+          summarized; tap one to inspect its raw message and identifiers.
         </ThemedText>
       </View>
-    </ScrollView>
+    </NativeScrollView>
   );
 }
 
@@ -768,7 +876,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 18,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
     padding: Spacing.three,
   },
   cardStack: {
@@ -780,17 +888,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.three,
   },
   statusIcon: {
     width: 48,
     height: 48,
     borderRadius: 15,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
   },
   flex: {
     flex: 1,
@@ -799,46 +907,46 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 8,
     borderRadius: 100,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginTop: Spacing.three,
   },
   progressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 100,
   },
   dataRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     gap: Spacing.three,
     paddingVertical: Spacing.two,
   },
   dataValue: {
     flex: 1,
-    textAlign: 'right',
+    textAlign: "right",
   },
   betweenRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     gap: Spacing.two,
   },
   updateCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.three,
   },
   updateGlyph: {
     width: 42,
     height: 42,
     borderRadius: 13,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
   },
   updateTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.two,
   },
   updateTitle: {
@@ -847,7 +955,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     borderRadius: 7,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
     flexShrink: 0,
@@ -859,9 +967,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
   },
   compactRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: Spacing.three,
   },
   updateIdRow: {
@@ -877,81 +985,21 @@ const styles = StyleSheet.create({
   actions: {
     gap: Spacing.two,
   },
-  actionButton: {
+  nativeButtonHost: {
+    width: "100%",
     minHeight: 48,
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingRight: Spacing.two,
-  },
-  refreshButton: {
-    minWidth: 84,
-    height: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
-  },
-  refreshIcon: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   logEntry: {
     gap: Spacing.one,
     paddingVertical: Spacing.two,
   },
   nativeLogRow: {
-    gap: Spacing.two,
-    paddingVertical: Spacing.three,
-  },
-  nativeLogHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  logTitleGroup: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  severityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    flexShrink: 0,
-  },
-  logTitle: {
-    flex: 1,
-    minWidth: 0,
-  },
-  logTime: {
-    flexShrink: 0,
-    fontVariant: ['tabular-nums'],
-  },
-  logFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  rawLog: {
-    borderRadius: 10,
-    borderCurve: 'continuous',
-    gap: Spacing.two,
-    padding: Spacing.three,
+    paddingVertical: Spacing.two,
   },
 });
