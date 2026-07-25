@@ -1,11 +1,16 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { Observe, ObserveRoot } from "expo-observe";
 import { useColorScheme } from "react-native";
 
 import { colors } from "@/constants/theme";
 import { VehicleDataProvider } from "@/data/query-client";
 import { UpdateHistoryRecorder } from "@/updates/update-history-recorder";
 
-export default function RootLayout() {
+Observe.configure({
+  integrations: { "expo-router": true },
+});
+
+function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
@@ -28,3 +33,5 @@ export default function RootLayout() {
     </VehicleDataProvider>
   );
 }
+
+export default ObserveRoot.wrap(RootLayout);
