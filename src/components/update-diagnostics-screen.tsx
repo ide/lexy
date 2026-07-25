@@ -27,6 +27,7 @@ import {
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
+import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -511,6 +512,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
 export default function UpdateDiagnostics() {
   const theme = useTheme();
   const updateState = Updates.useUpdates();
+  const { markInteractive } = useObserve();
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -535,6 +537,10 @@ export default function UpdateDiagnostics() {
       updateState.downloadedUpdate,
     ],
   );
+
+  useEffect(() => {
+    markInteractive();
+  }, [markInteractive]);
 
   const refreshEvents = useCallback(async () => {
     const [nativeEntries, activityEntries] = await Promise.all([

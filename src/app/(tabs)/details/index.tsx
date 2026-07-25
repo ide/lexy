@@ -1,4 +1,6 @@
 import { Image } from "expo-image";
+import { useObserve } from "expo-observe";
+import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -74,6 +76,13 @@ function InfoRow({
 export default function CarDetails() {
   const theme = useTheme();
   const { data: vehicle, error, isLoading, refetch } = useVehicle();
+  const { markInteractive } = useObserve();
+
+  useEffect(() => {
+    if (!isLoading) {
+      markInteractive();
+    }
+  }, [isLoading, markInteractive]);
 
   if (isLoading && !vehicle) {
     return <VehicleLoading />;
