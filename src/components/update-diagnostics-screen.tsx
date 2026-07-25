@@ -1,6 +1,7 @@
 import {
   Button as SwiftUIButton,
   DisclosureGroup,
+  Divider,
   HStack,
   Host,
   Image as SwiftUIImage,
@@ -259,7 +260,6 @@ function NativeLogRow({
   entry: Updates.UpdatesLogEntry;
   last: boolean;
 }) {
-  const theme = useTheme();
   const description = describeNativeLog(entry);
   const isProblem = entry.level === "error" || entry.level === "fatal";
   const isWarning = entry.level === "warn";
@@ -270,21 +270,17 @@ function NativeLogRow({
       : (colors.systemBlue as string);
 
   return (
-    <Host
-      matchContents={{ vertical: true }}
-      seedColor={colors.systemBlue}
-      style={[
-        styles.nativeLogRow,
-        !last && {
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: theme.separator,
-        },
-      ]}
+    <VStack
+      alignment="leading"
+      spacing={0}
+      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
     >
       <DisclosureGroup
-        animationDisabled
         isExpanded={false}
-        modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          padding({ vertical: Spacing.two }),
+        ]}
       >
         <DisclosureGroup.Label>
           <VStack
@@ -432,7 +428,8 @@ function NativeLogRow({
           ) : null}
         </VStack>
       </DisclosureGroup>
-    </Host>
+      {!last ? <Divider /> : null}
+    </VStack>
   );
 }
 
@@ -927,13 +924,27 @@ export default function UpdateDiagnostics() {
               No native expo-updates entries were recorded in the last 24 hours.
             </ThemedText>
           ) : (
-            logs.map((entry, index) => (
-              <NativeLogRow
-                key={`${entry.timestamp}-${entry.code}-${entry.message}`}
-                entry={entry}
-                last={index === logs.length - 1}
-              />
-            ))
+            <Host
+              matchContents={{ vertical: true }}
+              seedColor={colors.systemBlue}
+              style={styles.nativeLogListHost}
+            >
+              <VStack
+                alignment="leading"
+                spacing={0}
+                modifiers={[
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
+                ]}
+              >
+                {logs.map((entry, index) => (
+                  <NativeLogRow
+                    key={`${entry.timestamp}-${entry.code}-${entry.message}`}
+                    entry={entry}
+                    last={index === logs.length - 1}
+                  />
+                ))}
+              </VStack>
+            </Host>
           )}
         </Card>
         <ThemedText
@@ -1076,7 +1087,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingVertical: Spacing.two,
   },
-  nativeLogRow: {
-    paddingVertical: Spacing.two,
+  nativeLogListHost: {
+    width: "100%",
   },
 });
