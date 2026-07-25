@@ -1,7 +1,9 @@
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
+import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -115,6 +117,13 @@ const blue = colors.systemBlue as string;
 export default function CarDashboard() {
   const theme = useTheme();
   const { data: vehicle, error, isLoading, refetch } = useVehicle();
+  const { markInteractive } = useObserve();
+
+  useEffect(() => {
+    if (!isLoading) {
+      markInteractive();
+    }
+  }, [isLoading, markInteractive]);
 
   if (isLoading && !vehicle) {
     return <VehicleLoading />;
