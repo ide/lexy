@@ -1,5 +1,6 @@
 import {
   Button as SwiftUIButton,
+  DisclosureGroup,
   HStack,
   Host,
   Image as SwiftUIImage,
@@ -140,24 +141,18 @@ function ActionButton({
   primary?: boolean;
 }) {
   return (
-    <Host
-      matchContents={{ vertical: true }}
-      seedColor={colors.systemBlue}
-      style={styles.nativeButtonHost}
-    >
-      <SwiftUIButton
-        label={busy ? `${label}…` : label}
-        systemImage={busy ? "hourglass" : icon}
-        onPress={onPress}
-        modifiers={[
-          buttonStyle(primary ? "borderedProminent" : "bordered"),
-          controlSize("large"),
-          tint(colors.systemBlue),
-          disabledModifier(disabled),
-          frame({ maxWidth: Infinity }),
-        ]}
-      />
-    </Host>
+    <SwiftUIButton
+      label={busy ? `${label}…` : label}
+      systemImage={busy ? "hourglass" : icon}
+      onPress={onPress}
+      modifiers={[
+        buttonStyle(primary ? "borderedProminent" : "bordered"),
+        controlSize("large"),
+        tint(colors.systemBlue),
+        disabledModifier(disabled),
+        frame({ maxWidth: Infinity }),
+      ]}
+    />
   );
 }
 
@@ -254,7 +249,6 @@ function NativeLogRow({
   last: boolean;
 }) {
   const theme = useTheme();
-  const [expanded, setExpanded] = useState(false);
   const description = describeNativeLog(entry);
   const isProblem = entry.level === "error" || entry.level === "fatal";
   const isWarning = entry.level === "warn";
@@ -276,18 +270,11 @@ function NativeLogRow({
         },
       ]}
     >
-      <VStack
-        alignment="leading"
-        spacing={0}
+      <DisclosureGroup
+        isExpanded={false}
         modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
       >
-        <SwiftUIButton
-          onPress={() => setExpanded((value) => !value)}
-          modifiers={[
-            buttonStyle("plain"),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
+        <DisclosureGroup.Label>
           <VStack
             alignment="leading"
             spacing={6}
@@ -327,18 +314,12 @@ function NativeLogRow({
                   second: "2-digit",
                 })}
               </SwiftUIText>
-              <SwiftUIImage
-                systemName={expanded ? "chevron.down" : "chevron.right"}
-                size={12}
-                color={colors.secondaryLabel}
-                modifiers={[frame({ width: 14, alignment: "center" })]}
-              />
             </HStack>
             <SwiftUIText
               modifiers={[
                 font({ textStyle: "footnote" }),
                 foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                lineLimit(expanded ? 8 : 2),
+                lineLimit(2),
                 fixedSize({ horizontal: false, vertical: true }),
                 frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
@@ -357,90 +338,88 @@ function NativeLogRow({
               {entry.code === "None" ? "" : ` · ${entry.code}`}
             </SwiftUIText>
           </VStack>
-        </SwiftUIButton>
-        {expanded ? (
-          <VStack
-            alignment="leading"
-            spacing={8}
+        </DisclosureGroup.Label>
+        <VStack
+          alignment="leading"
+          spacing={8}
+          modifiers={[
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+            padding({ bottom: 8 }),
+          ]}
+        >
+          <SwiftUIText
             modifiers={[
+              font({
+                textStyle: "caption2",
+                design: "monospaced",
+                weight: "semibold",
+              }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
               frame({ maxWidth: Infinity, alignment: "leading" }),
-              padding({ bottom: 8 }),
             ]}
           >
+            RAW MESSAGE
+          </SwiftUIText>
+          <SwiftUIText
+            modifiers={[
+              font({ textStyle: "caption", design: "monospaced" }),
+              textSelection(true),
+              fixedSize({ horizontal: false, vertical: true }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+            ]}
+          >
+            {entry.message}
+          </SwiftUIText>
+          {entry.updateId ? (
             <SwiftUIText
               modifiers={[
-                font({
-                  textStyle: "caption2",
-                  design: "monospaced",
-                  weight: "semibold",
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({
+                  type: "hierarchical",
+                  style: "secondary",
                 }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-              ]}
-            >
-              RAW MESSAGE
-            </SwiftUIText>
-            <SwiftUIText
-              modifiers={[
-                font({ textStyle: "caption", design: "monospaced" }),
                 textSelection(true),
                 fixedSize({ horizontal: false, vertical: true }),
                 frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              {entry.message}
+              Update {entry.updateId}
             </SwiftUIText>
-            {entry.updateId ? (
-              <SwiftUIText
-                modifiers={[
-                  font({ textStyle: "caption2", design: "monospaced" }),
-                  foregroundStyle({
-                    type: "hierarchical",
-                    style: "secondary",
-                  }),
-                  textSelection(true),
-                  fixedSize({ horizontal: false, vertical: true }),
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                ]}
-              >
-                Update {entry.updateId}
-              </SwiftUIText>
-            ) : null}
-            {entry.assetId ? (
-              <SwiftUIText
-                modifiers={[
-                  font({ textStyle: "caption2", design: "monospaced" }),
-                  foregroundStyle({
-                    type: "hierarchical",
-                    style: "secondary",
-                  }),
-                  textSelection(true),
-                  fixedSize({ horizontal: false, vertical: true }),
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                ]}
-              >
-                Asset {entry.assetId}
-              </SwiftUIText>
-            ) : null}
-            {entry.stacktrace?.length ? (
-              <SwiftUIText
-                modifiers={[
-                  font({ textStyle: "caption2", design: "monospaced" }),
-                  foregroundStyle({
-                    type: "hierarchical",
-                    style: "secondary",
-                  }),
-                  textSelection(true),
-                  fixedSize({ horizontal: false, vertical: true }),
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                ]}
-              >
-                {entry.stacktrace.join("\n")}
-              </SwiftUIText>
-            ) : null}
-          </VStack>
-        ) : null}
-      </VStack>
+          ) : null}
+          {entry.assetId ? (
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({
+                  type: "hierarchical",
+                  style: "secondary",
+                }),
+                textSelection(true),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+              ]}
+            >
+              Asset {entry.assetId}
+            </SwiftUIText>
+          ) : null}
+          {entry.stacktrace?.length ? (
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "caption2", design: "monospaced" }),
+                foregroundStyle({
+                  type: "hierarchical",
+                  style: "secondary",
+                }),
+                textSelection(true),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+              ]}
+            >
+              {entry.stacktrace.join("\n")}
+            </SwiftUIText>
+          ) : null}
+        </VStack>
+      </DisclosureGroup>
     </Host>
   );
 }
@@ -775,34 +754,45 @@ export default function UpdateDiagnostics() {
 
       <View>
         <SectionTitle>CONTROLS</SectionTitle>
-        <View style={styles.actions}>
-          <ActionButton
-            busy={activeAction === "check" || updateState.isChecking}
-            disabled={!Updates.isEnabled || busy}
-            icon="arrow.clockwise"
-            label="Check Now"
-            onPress={check}
-            primary
-          />
-          <ActionButton
-            busy={activeAction === "download" || updateState.isDownloading}
-            disabled={
-              !Updates.isEnabled || busy || !updateState.isUpdateAvailable
-            }
-            icon="arrow.down.circle"
-            label="Download Update"
-            onPress={download}
-          />
-          <ActionButton
-            busy={activeAction === "reload" || updateState.isRestarting}
-            disabled={!Updates.isEnabled || busy}
-            icon="arrow.clockwise.circle"
-            label={
-              updateState.isUpdatePending ? "Reload Into Update" : "Reload App"
-            }
-            onPress={reload}
-          />
-        </View>
+        <Host
+          matchContents={{ vertical: true }}
+          seedColor={colors.systemBlue}
+          style={styles.nativeControlsHost}
+        >
+          <VStack
+            spacing={Spacing.two}
+            modifiers={[frame({ maxWidth: Infinity })]}
+          >
+            <ActionButton
+              busy={activeAction === "check" || updateState.isChecking}
+              disabled={!Updates.isEnabled || busy}
+              icon="arrow.clockwise"
+              label="Check Now"
+              onPress={check}
+              primary
+            />
+            <ActionButton
+              busy={activeAction === "download" || updateState.isDownloading}
+              disabled={
+                !Updates.isEnabled || busy || !updateState.isUpdateAvailable
+              }
+              icon="arrow.down.circle"
+              label="Download Update"
+              onPress={download}
+            />
+            <ActionButton
+              busy={activeAction === "reload" || updateState.isRestarting}
+              disabled={!Updates.isEnabled || busy}
+              icon="arrow.clockwise.circle"
+              label={
+                updateState.isUpdatePending
+                  ? "Reload Into Update"
+                  : "Reload App"
+              }
+              onPress={reload}
+            />
+          </VStack>
+        </Host>
       </View>
 
       {actionMessage ||
@@ -1046,12 +1036,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingTop: Spacing.two,
   },
-  actions: {
-    gap: Spacing.two,
-  },
-  nativeButtonHost: {
+  nativeControlsHost: {
     width: "100%",
-    minHeight: 48,
   },
   sectionHeader: {
     flexDirection: "row",
