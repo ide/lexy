@@ -293,6 +293,25 @@ export default function CarDashboard() {
         </Link>
       </Animated.View>
 
+      <Animated.View entering={FadeInDown.duration(350).delay(325)}>
+        <Link href="/updates" asChild>
+          <Link.Trigger>
+            <Pressable>
+              {({ pressed }) => (
+                <Card style={[styles.linkRow, pressed && { opacity: 0.7 }]}>
+                  <View style={styles.closureState}>
+                    <Icon name="arrow.trianglehead.2.clockwise.rotate.90" size={20} tint={blue} />
+                    <ThemedText type="smallBold">Update diagnostics</ThemedText>
+                  </View>
+                  <Icon name="chevron.right" size={14} tint={colors.secondaryLabel as string} />
+                </Card>
+              )}
+            </Pressable>
+          </Link.Trigger>
+          <Link.Preview />
+        </Link>
+      </Animated.View>
+
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.footer}>
         Updated {updatedLabel(vehicle.updatedAt)} · via Lexus Connected Services
       </ThemedText>
