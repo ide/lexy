@@ -1,6 +1,5 @@
 import {
   Button as SwiftUIButton,
-  DisclosureGroup,
   HStack,
   Host,
   Image as SwiftUIImage,
@@ -10,13 +9,18 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
+  contentShape,
   controlSize,
   disabled as disabledModifier,
+  fixedSize,
   font,
   foregroundStyle,
+  frame,
+  layoutPriority,
   lineLimit,
   monospacedDigit,
   padding,
+  shapes,
   textSelection,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
@@ -149,6 +153,7 @@ function ActionButton({
           controlSize("large"),
           tint(colors.systemBlue),
           disabledModifier(disabled),
+          frame({ maxWidth: Infinity }),
         ]}
       />
     </Host>
@@ -260,7 +265,7 @@ function NativeLogRow({
 
   return (
     <Host
-      matchContents
+      matchContents={{ vertical: true }}
       seedColor={colors.systemBlue}
       style={[
         styles.nativeLogRow,
@@ -270,19 +275,38 @@ function NativeLogRow({
         },
       ]}
     >
-      <DisclosureGroup
-        isExpanded={expanded}
-        onIsExpandedChange={setExpanded}
-        modifiers={[padding({ vertical: 8 })]}
+      <VStack
+        alignment="leading"
+        spacing={0}
+        modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
       >
-        <DisclosureGroup.Label>
-          <VStack alignment="leading" spacing={6}>
-            <HStack spacing={8}>
+        <SwiftUIButton
+          onPress={() => setExpanded((value) => !value)}
+          modifiers={[
+            buttonStyle("plain"),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          <VStack
+            alignment="leading"
+            spacing={6}
+            modifiers={[
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+              contentShape(shapes.rectangle()),
+              padding({ vertical: 8 }),
+            ]}
+          >
+            <HStack alignment="center" spacing={8}>
               <SwiftUIImage systemName="circle.fill" size={8} color={tint} />
               <SwiftUIText
                 modifiers={[
                   font({ textStyle: "subheadline", weight: "semibold" }),
-                  lineLimit(1),
+                  foregroundStyle({
+                    type: "hierarchical",
+                    style: "primary",
+                  }),
+                  lineLimit(2),
+                  layoutPriority(1),
                 ]}
               >
                 {description.title}
@@ -293,6 +317,7 @@ function NativeLogRow({
                   font({ textStyle: "caption" }),
                   foregroundStyle({ type: "hierarchical", style: "secondary" }),
                   monospacedDigit(),
+                  fixedSize(),
                 ]}
               >
                 {new Date(entry.timestamp).toLocaleTimeString([], {
@@ -301,12 +326,20 @@ function NativeLogRow({
                   second: "2-digit",
                 })}
               </SwiftUIText>
+              <SwiftUIImage
+                systemName={expanded ? "chevron.down" : "chevron.right"}
+                size={12}
+                color={colors.secondaryLabel}
+                modifiers={[frame({ width: 14, alignment: "center" })]}
+              />
             </HStack>
             <SwiftUIText
               modifiers={[
                 font({ textStyle: "footnote" }),
                 foregroundStyle({ type: "hierarchical", style: "secondary" }),
                 lineLimit(expanded ? 8 : 2),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
               {description.summary}
@@ -315,73 +348,98 @@ function NativeLogRow({
               modifiers={[
                 font({ textStyle: "caption2", design: "monospaced" }),
                 foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
               {entry.level.toUpperCase()}
               {entry.code === "None" ? "" : ` · ${entry.code}`}
             </SwiftUIText>
           </VStack>
-        </DisclosureGroup.Label>
-        <VStack
-          alignment="leading"
-          spacing={8}
-          modifiers={[padding({ top: 8 })]}
-        >
-          <SwiftUIText
+        </SwiftUIButton>
+        {expanded ? (
+          <VStack
+            alignment="leading"
+            spacing={8}
             modifiers={[
-              font({
-                textStyle: "caption2",
-                design: "monospaced",
-                weight: "semibold",
-              }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+              padding({ bottom: 8 }),
             ]}
           >
-            RAW MESSAGE
-          </SwiftUIText>
-          <SwiftUIText
-            modifiers={[
-              font({ textStyle: "caption", design: "monospaced" }),
-              textSelection(true),
-            ]}
-          >
-            {entry.message}
-          </SwiftUIText>
-          {entry.updateId ? (
             <SwiftUIText
               modifiers={[
-                font({ textStyle: "caption2", design: "monospaced" }),
+                font({
+                  textStyle: "caption2",
+                  design: "monospaced",
+                  weight: "semibold",
+                }),
                 foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                textSelection(true),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              Update {entry.updateId}
+              RAW MESSAGE
             </SwiftUIText>
-          ) : null}
-          {entry.assetId ? (
             <SwiftUIText
               modifiers={[
-                font({ textStyle: "caption2", design: "monospaced" }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                font({ textStyle: "caption", design: "monospaced" }),
                 textSelection(true),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              Asset {entry.assetId}
+              {entry.message}
             </SwiftUIText>
-          ) : null}
-          {entry.stacktrace?.length ? (
-            <SwiftUIText
-              modifiers={[
-                font({ textStyle: "caption2", design: "monospaced" }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                textSelection(true),
-              ]}
-            >
-              {entry.stacktrace.join("\n")}
-            </SwiftUIText>
-          ) : null}
-        </VStack>
-      </DisclosureGroup>
+            {entry.updateId ? (
+              <SwiftUIText
+                modifiers={[
+                  font({ textStyle: "caption2", design: "monospaced" }),
+                  foregroundStyle({
+                    type: "hierarchical",
+                    style: "secondary",
+                  }),
+                  textSelection(true),
+                  fixedSize({ horizontal: false, vertical: true }),
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
+                ]}
+              >
+                Update {entry.updateId}
+              </SwiftUIText>
+            ) : null}
+            {entry.assetId ? (
+              <SwiftUIText
+                modifiers={[
+                  font({ textStyle: "caption2", design: "monospaced" }),
+                  foregroundStyle({
+                    type: "hierarchical",
+                    style: "secondary",
+                  }),
+                  textSelection(true),
+                  fixedSize({ horizontal: false, vertical: true }),
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
+                ]}
+              >
+                Asset {entry.assetId}
+              </SwiftUIText>
+            ) : null}
+            {entry.stacktrace?.length ? (
+              <SwiftUIText
+                modifiers={[
+                  font({ textStyle: "caption2", design: "monospaced" }),
+                  foregroundStyle({
+                    type: "hierarchical",
+                    style: "secondary",
+                  }),
+                  textSelection(true),
+                  fixedSize({ horizontal: false, vertical: true }),
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
+                ]}
+              >
+                {entry.stacktrace.join("\n")}
+              </SwiftUIText>
+            ) : null}
+          </VStack>
+        ) : null}
+      </VStack>
     </Host>
   );
 }
