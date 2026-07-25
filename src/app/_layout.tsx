@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { colors } from '@/constants/theme';
 import { VehicleDataProvider } from '@/data/query-client';
+import { UpdateHistoryRecorder } from '@/updates/update-history-recorder';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,6 +15,7 @@ export default function RootLayout() {
   return (
     <VehicleDataProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <UpdateHistoryRecorder />
         <AnimatedSplashOverlay />
         <Stack
           screenOptions={{
