@@ -54,6 +54,7 @@ import {
 } from "@/updates/update-utils";
 
 type Action = "check" | "download" | "reload";
+const ACTION_BUTTON_HORIZONTAL_CHROME = 40;
 
 function Icon({
   name,
@@ -127,6 +128,7 @@ function DataRow({
 
 function ActionButton({
   busy,
+  buttonWidth,
   disabled,
   icon,
   label,
@@ -134,6 +136,7 @@ function ActionButton({
   primary = false,
 }: {
   busy: boolean;
+  buttonWidth?: number;
   disabled: boolean;
   icon: SFSymbol;
   label: string;
@@ -142,17 +145,25 @@ function ActionButton({
 }) {
   return (
     <SwiftUIButton
-      label={busy ? `${label}…` : label}
-      systemImage={busy ? "hourglass" : icon}
       onPress={onPress}
       modifiers={[
         buttonStyle(primary ? "borderedProminent" : "bordered"),
         controlSize("large"),
         tint(colors.systemBlue),
         disabledModifier(disabled),
-        frame({ maxWidth: Infinity }),
       ]}
-    />
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.two}
+        modifiers={[
+          frame(buttonWidth ? { width: buttonWidth } : { maxWidth: Infinity }),
+        ]}
+      >
+        <SwiftUIImage systemName={busy ? "hourglass" : icon} />
+        <SwiftUIText>{busy ? `${label}…` : label}</SwiftUIText>
+      </HStack>
+    </SwiftUIButton>
   );
 }
 
@@ -492,6 +503,7 @@ export default function UpdateDiagnostics() {
   const theme = useTheme();
   const updateState = Updates.useUpdates();
   const { markInteractive } = useObserve();
+  const [controlsLabelWidth, setControlsLabelWidth] = useState<number>();
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -752,7 +764,18 @@ export default function UpdateDiagnostics() {
         </ThemedText>
       </View>
 
-      <View>
+      <View
+        onLayout={(event) => {
+          const nextWidth = event.nativeEvent.layout.width;
+          const nextLabelWidth = Math.max(
+            nextWidth - ACTION_BUTTON_HORIZONTAL_CHROME,
+            0,
+          );
+          setControlsLabelWidth((width) =>
+            width === nextLabelWidth ? width : nextLabelWidth,
+          );
+        }}
+      >
         <SectionTitle>CONTROLS</SectionTitle>
         <Host
           matchContents={{ vertical: true }}
@@ -765,6 +788,7 @@ export default function UpdateDiagnostics() {
           >
             <ActionButton
               busy={activeAction === "check" || updateState.isChecking}
+              buttonWidth={controlsLabelWidth}
               disabled={!Updates.isEnabled || busy}
               icon="arrow.clockwise"
               label="Check Now"
@@ -773,6 +797,7 @@ export default function UpdateDiagnostics() {
             />
             <ActionButton
               busy={activeAction === "download" || updateState.isDownloading}
+              buttonWidth={controlsLabelWidth}
               disabled={
                 !Updates.isEnabled || busy || !updateState.isUpdateAvailable
               }
@@ -782,6 +807,7 @@ export default function UpdateDiagnostics() {
             />
             <ActionButton
               busy={activeAction === "reload" || updateState.isRestarting}
+              buttonWidth={controlsLabelWidth}
               disabled={!Updates.isEnabled || busy}
               icon="arrow.clockwise.circle"
               label={
