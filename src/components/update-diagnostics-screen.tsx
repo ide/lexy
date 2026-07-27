@@ -14,6 +14,8 @@ import {
   ZStack,
 } from "@expo/ui/swift-ui";
 import {
+  Animation,
+  animation,
   background,
   buttonStyle,
   contentShape,
@@ -688,7 +690,7 @@ export default function UpdateDiagnostics() {
         const message = await operation();
         setActionMessage(message);
         if (process.env.EXPO_OS === "ios") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          Haptics.selectionAsync();
         }
       } catch (error) {
         setActionError(
@@ -697,7 +699,7 @@ export default function UpdateDiagnostics() {
             : "The update operation failed.",
         );
         if (process.env.EXPO_OS === "ios") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
       } finally {
         setActiveAction(null);
@@ -812,6 +814,9 @@ export default function UpdateDiagnostics() {
               horizontal: Spacing.three,
               bottom: Spacing.six,
             }),
+            // Animate the relayout when a known-update card appears or
+            // disappears instead of letting the sections below jump.
+            animation(Animation.spring({ duration: 0.35 }), updateEntries.length),
           ]}
         >
           <Card spacing={Spacing.three}>
