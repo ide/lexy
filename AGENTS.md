@@ -22,6 +22,19 @@ user explicitly asks for it.
 - Preserve native pressed, disabled, focus, accessibility, and haptic behavior;
   do not recreate those states with JavaScript opacity changes.
 
+# Screenshots
+
+ALWAYS downsample phone and simulator screenshots before viewing or sharing
+them. Device screenshots come out at native pixel resolution (2x–3x the point
+size, depending on the source device's DPI); scale them down to roughly 1x
+point resolution. Exact scaling doesn't matter — close is fine. For example,
+with `sips`:
+
+```sh
+# 3x device (e.g. iPhone Pro): scale width to 1/3 of the pixel width
+sips --resampleWidth 393 screenshot.png
+```
+
 # Git workflow
 
 Commit changes directly to `main`. Do not open pull requests.
