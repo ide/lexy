@@ -10,7 +10,8 @@ export interface UpdateHistoryStorage {
 
 export interface UpdateHistoryRepository {
   read(): Promise<UpdateActivityEvent[]>;
-  record(events: readonly UpdateActivityEvent[]): Promise<void>;
+  /** Resolves with the events that were newly persisted (ids not seen before). */
+  record(events: readonly UpdateActivityEvent[]): Promise<UpdateActivityEvent[]>;
 }
 
 function parseActivity(value: string | null): UpdateActivityEvent[] {
@@ -45,12 +46,21 @@ export function createUpdateHistoryRepository(
       enqueue(async () => parseActivity(await storage.getItemAsync(storageKey))),
     record: (events) => {
       if (events.length === 0) {
-        return Promise.resolve();
+        return Promise.resolve([]);
       }
       return enqueue(async () => {
-        const previous = await storage.getItemAsync(storageKey);
-        const merged = mergeUpdateActivity(parseActivity(previous), events);
+        const previous = parseActivity(await storage.getItemAsync(storageKey));
+        const seenIds = new Set(previous.map((entry) => entry.id));
+        const added: UpdateActivityEvent[] = [];
+        for (const entry of events) {
+          if (!seenIds.has(entry.id)) {
+            seenIds.add(entry.id);
+            added.push(entry);
+          }
+        }
+        const merged = mergeUpdateActivity(previous, events);
         await storage.setItemAsync(storageKey, JSON.stringify(merged));
+        return added;
       });
     },
   };

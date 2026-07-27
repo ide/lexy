@@ -60,6 +60,19 @@ describe("update history repository", () => {
     expect(typeof storage.writtenValues[0]).toBe("string");
   });
 
+  it("resolves record with only newly persisted events", async () => {
+    const storage = new TestStorage();
+    const repository = createUpdateHistoryRepository(storage);
+
+    await expect(repository.record([event("running:abc", 1)])).resolves.toEqual([
+      event("running:abc", 1),
+    ]);
+    await expect(
+      repository.record([event("running:abc", 2), event("downloaded:abc", 2)]),
+    ).resolves.toEqual([event("downloaded:abc", 2)]);
+    await expect(repository.record([])).resolves.toEqual([]);
+  });
+
   it("queues reads behind pending writes", async () => {
     const storage = new TestStorage();
     const repository = createUpdateHistoryRepository(storage);

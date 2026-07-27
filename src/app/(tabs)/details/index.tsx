@@ -79,10 +79,10 @@ export default function CarDetails() {
   const { markInteractive } = useObserve();
 
   useEffect(() => {
-    if (!isLoading) {
-      markInteractive();
-    }
-  }, [isLoading, markInteractive]);
+    // TTI marks the UI shell becoming interactive; data readiness is tracked
+    // separately by the vehicle.load events.
+    markInteractive();
+  }, [markInteractive]);
 
   if (isLoading && !vehicle) {
     return <VehicleLoading />;
