@@ -193,11 +193,13 @@ function ActionButton({
         spacing={Spacing.two}
         modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
       >
-        {/* Fixed icon frame keeps the labels aligned across buttons whose
-            symbols have different intrinsic widths. */}
+        {/* The fixed icon frame keeps the labels aligned across buttons whose
+            symbols have different intrinsic widths, and keeps the button
+            height stable when the busy hourglass swaps in. */}
         <SwiftUIImage
           systemName={busy ? "hourglass" : icon}
-          modifiers={[frame({ width: 24 })]}
+          size={17}
+          modifiers={[frame({ width: 24, height: 20 })]}
         />
         <SwiftUIText>{busy ? `${label}…` : label}</SwiftUIText>
       </HStack>
@@ -785,6 +787,14 @@ export default function UpdateDiagnostics() {
     updateState.isChecking ||
     updateState.isDownloading ||
     updateState.isRestarting;
+  const resultIsError = Boolean(
+    actionError || updateState.checkError || updateState.downloadError,
+  );
+  const resultText =
+    actionError ??
+    updateState.checkError?.message ??
+    updateState.downloadError?.message ??
+    actionMessage;
 
   return (
     <Host
@@ -844,6 +854,9 @@ export default function UpdateDiagnostics() {
                       style: "secondary",
                     }),
                     fixedSize({ horizontal: false, vertical: true }),
+                    // Reserve two lines so the card keeps one height as the
+                    // status copy changes between states.
+                    lineLimit({ min: 2, max: 4 }),
                   ]}
                 >
                   {status.detail}
@@ -991,32 +1004,30 @@ export default function UpdateDiagnostics() {
             </VStack>
           </VStack>
 
-          {actionMessage ||
-          actionError ||
-          updateState.checkError ||
-          updateState.downloadError ? (
-            <Card>
-              <SwiftUIText
-                modifiers={[
-                  font({ textStyle: "footnote", weight: "medium" }),
-                  foregroundStyle(
-                    actionError ||
-                      updateState.checkError ||
-                      updateState.downloadError
-                      ? colors.systemOrange
-                      : colors.systemGreen,
-                  ),
-                  textSelection(true),
-                  fixedSize({ horizontal: false, vertical: true }),
-                ]}
-              >
-                {actionError ??
-                  updateState.checkError?.message ??
-                  updateState.downloadError?.message ??
-                  actionMessage}
-              </SwiftUIText>
-            </Card>
-          ) : null}
+          {/* Always rendered with two reserved lines so results appearing
+              (or changing) below the controls never shift the layout. */}
+          <Card>
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "footnote", weight: "medium" }),
+                resultText
+                  ? foregroundStyle(
+                      resultIsError ? colors.systemOrange : colors.systemGreen,
+                    )
+                  : foregroundStyle({
+                      type: "hierarchical",
+                      style: "tertiary",
+                    }),
+                textSelection(true),
+                fixedSize({ horizontal: false, vertical: true }),
+                lineLimit({ min: 2, max: 8 }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+              ]}
+            >
+              {resultText ??
+                "Results from the controls above will appear here."}
+            </SwiftUIText>
+          </Card>
 
           <VStack
             alignment="leading"
