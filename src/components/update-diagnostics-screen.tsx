@@ -375,52 +375,68 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
 
 function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
   const description = describeNativeLog(entry);
-  const isProblem = entry.level === "error" || entry.level === "fatal";
-  const isWarning = entry.level === "warn";
-  const tint = isProblem
+  const isProblem =
+    entry.level === "error" || entry.level === "fatal" || entry.level === "warn";
+  const accent = isProblem
     ? (colors.systemOrange as string)
-    : isWarning
-      ? (colors.systemOrange as string)
-      : (colors.systemBlue as string);
+    : (colors.systemBlue as string);
+  const detailRows = [
+    entry.updateId ? `Update ${entry.updateId}` : null,
+    entry.assetId ? `Asset ${entry.assetId}` : null,
+    entry.stacktrace?.length ? entry.stacktrace.join("\n") : null,
+  ].filter((row): row is string => row !== null);
 
   return (
     <DisclosureGroup
       isExpanded={false}
-      modifiers={[
-        frame({ maxWidth: Infinity, alignment: "leading" }),
-        padding({ vertical: Spacing.two }),
-      ]}
+      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
     >
       <DisclosureGroup.Label>
         <VStack
           alignment="leading"
-          spacing={6}
+          spacing={Spacing.one}
           modifiers={[
             frame({ maxWidth: Infinity, alignment: "leading" }),
             contentShape(shapes.rectangle()),
-            padding({ vertical: 8 }),
+            padding({ vertical: Spacing.two }),
           ]}
         >
-          <HStack alignment="center" spacing={8}>
-            <SwiftUIImage systemName="circle.fill" size={8} color={tint} />
+          <HStack
+            alignment="firstTextBaseline"
+            spacing={Spacing.two}
+            modifiers={[frame({ maxWidth: Infinity })]}
+          >
+            <SwiftUIImage systemName="circle.fill" size={8} color={accent} />
             <SwiftUIText
               modifiers={[
                 font({ textStyle: "subheadline", weight: "semibold" }),
-                foregroundStyle({
-                  type: "hierarchical",
-                  style: "primary",
-                }),
-                lineLimit(2),
+                foregroundStyle(colors.label),
+                lineLimit(1),
                 layoutPriority(1),
               ]}
             >
               {description.title}
             </SwiftUIText>
+            {isProblem ? (
+              <SwiftUIText
+                modifiers={[
+                  font({
+                    textStyle: "caption2",
+                    design: "monospaced",
+                    weight: "semibold",
+                  }),
+                  foregroundStyle(colors.systemOrange),
+                  fixedSize(),
+                ]}
+              >
+                {entry.level.toUpperCase()}
+              </SwiftUIText>
+            ) : null}
             <Spacer />
             <SwiftUIText
               modifiers={[
                 font({ textStyle: "caption" }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                foregroundStyle(colors.secondaryLabel),
                 monospacedDigit(),
                 fixedSize(),
               ]}
@@ -435,33 +451,24 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
           <SwiftUIText
             modifiers={[
               font({ textStyle: "footnote" }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
-              lineLimit(2),
+              foregroundStyle(colors.secondaryLabel),
+              multilineTextAlignment("leading"),
+              lineLimit(3),
               fixedSize({ horizontal: false, vertical: true }),
               frame({ maxWidth: Infinity, alignment: "leading" }),
+              padding({ leading: Spacing.three }),
             ]}
           >
             {description.summary}
-          </SwiftUIText>
-          <SwiftUIText
-            modifiers={[
-              font({ textStyle: "caption2", design: "monospaced" }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
-              fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-            ]}
-          >
-            {entry.level.toUpperCase()}
-            {entry.code === "None" ? "" : ` · ${entry.code}`}
           </SwiftUIText>
         </VStack>
       </DisclosureGroup.Label>
       <VStack
         alignment="leading"
-        spacing={8}
+        spacing={Spacing.two}
         modifiers={[
           frame({ maxWidth: Infinity, alignment: "leading" }),
-          padding({ bottom: 8 }),
+          padding({ leading: Spacing.three, bottom: Spacing.two }),
         ]}
       >
         <SwiftUIText
@@ -471,15 +478,18 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
               design: "monospaced",
               weight: "semibold",
             }),
-            foregroundStyle({ type: "hierarchical", style: "secondary" }),
+            foregroundStyle(colors.secondaryLabel),
             frame({ maxWidth: Infinity, alignment: "leading" }),
           ]}
         >
-          RAW MESSAGE
+          {entry.level.toUpperCase()}
+          {entry.code === "None" ? "" : ` · ${entry.code}`}
         </SwiftUIText>
         <SwiftUIText
           modifiers={[
             font({ textStyle: "caption", design: "monospaced" }),
+            foregroundStyle(colors.label),
+            multilineTextAlignment("leading"),
             textSelection(true),
             fixedSize({ horizontal: false, vertical: true }),
             frame({ maxWidth: Infinity, alignment: "leading" }),
@@ -487,54 +497,21 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
         >
           {entry.message}
         </SwiftUIText>
-        {entry.updateId ? (
+        {detailRows.map((row) => (
           <SwiftUIText
+            key={row}
             modifiers={[
               font({ textStyle: "caption2", design: "monospaced" }),
-              foregroundStyle({
-                type: "hierarchical",
-                style: "secondary",
-              }),
+              foregroundStyle(colors.secondaryLabel),
+              multilineTextAlignment("leading"),
               textSelection(true),
               fixedSize({ horizontal: false, vertical: true }),
               frame({ maxWidth: Infinity, alignment: "leading" }),
             ]}
           >
-            Update {entry.updateId}
+            {row}
           </SwiftUIText>
-        ) : null}
-        {entry.assetId ? (
-          <SwiftUIText
-            modifiers={[
-              font({ textStyle: "caption2", design: "monospaced" }),
-              foregroundStyle({
-                type: "hierarchical",
-                style: "secondary",
-              }),
-              textSelection(true),
-              fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-            ]}
-          >
-            Asset {entry.assetId}
-          </SwiftUIText>
-        ) : null}
-        {entry.stacktrace?.length ? (
-          <SwiftUIText
-            modifiers={[
-              font({ textStyle: "caption2", design: "monospaced" }),
-              foregroundStyle({
-                type: "hierarchical",
-                style: "secondary",
-              }),
-              textSelection(true),
-              fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-            ]}
-          >
-            {entry.stacktrace.join("\n")}
-          </SwiftUIText>
-        ) : null}
+        ))}
       </VStack>
     </DisclosureGroup>
   );
