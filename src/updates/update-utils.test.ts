@@ -138,10 +138,10 @@ describe('resolveLastCheck', () => {
 
   it('explains automatic startup checks instead of saying unknown', () => {
     expect(resolveLastCheck(undefined, 'ON_LOAD')).toEqual({
-      detail: 'At startup · exact time not reported',
+      detail: 'At startup',
     });
     expect(resolveLastCheck(undefined, 'NEVER')).toEqual({
-      detail: 'Not checked this session',
+      detail: 'Not checked yet',
     });
   });
 });
