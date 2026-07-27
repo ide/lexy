@@ -737,7 +737,9 @@ export default function UpdateDiagnostics() {
           detail: `No newer compatible update (${result.reason}).`,
         },
       ]);
-      return `No newer compatible update (${result.reason}).`;
+      // The raw reason code stays in the recorded activity above; the result
+      // card keeps to plain language.
+      return "You are already running the latest compatible update.";
     });
 
   const download = () =>
