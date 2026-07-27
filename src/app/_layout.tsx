@@ -9,6 +9,10 @@ import { UpdateHistoryRecorder } from "@/updates/update-history-recorder";
 
 Observe.configure({
   integrations: { "expo-router": true },
+  // Debug builds never dispatch unless opted in; set EXPO_PUBLIC_OBSERVE_DEV=1
+  // when starting Metro to verify the Observe pipeline from a dev build.
+  // Release builds ignore this flag.
+  dispatchInDebug: process.env.EXPO_PUBLIC_OBSERVE_DEV === "1",
 });
 
 function RootLayout() {
