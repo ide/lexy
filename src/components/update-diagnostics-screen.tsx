@@ -688,7 +688,7 @@ export default function UpdateDiagnostics() {
         const message = await operation();
         setActionMessage(message);
         if (process.env.EXPO_OS === "ios") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
       } catch (error) {
         setActionError(
@@ -697,7 +697,7 @@ export default function UpdateDiagnostics() {
             : "The update operation failed.",
         );
         if (process.env.EXPO_OS === "ios") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
       } finally {
         setActiveAction(null);

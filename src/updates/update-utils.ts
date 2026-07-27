@@ -98,13 +98,16 @@ export function resolveLastCheck(
   if (checkedAt) {
     return { checkedAt };
   }
+  // Keep these short enough to share one line with the row label; a value
+  // that wraps changes the row height and shifts the layout below it once a
+  // real check time replaces it.
   if (automaticChecks === 'ON_LOAD' || automaticChecks === 'WIFI_ONLY') {
-    return { detail: 'At startup · exact time not reported' };
+    return { detail: 'At startup' };
   }
   if (automaticChecks === 'ON_ERROR_RECOVERY') {
-    return { detail: 'Only checked during error recovery' };
+    return { detail: 'On error recovery' };
   }
-  return { detail: 'Not checked this session' };
+  return { detail: 'Not checked yet' };
 }
 
 export function describeKnownUpdate(state: UpdateEntry['state']): {
