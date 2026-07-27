@@ -59,6 +59,9 @@ import {
 
 type Action = "check" | "download" | "reload";
 
+const MAX_VISIBLE_EVENTS = 20;
+const NATIVE_LOG_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
+
 function Icon({
   name,
   size = 20,
@@ -188,9 +191,14 @@ function ActionButton({
       <HStack
         alignment="center"
         spacing={Spacing.two}
-        modifiers={[frame({ maxWidth: Infinity })]}
+        modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
       >
-        <SwiftUIImage systemName={busy ? "hourglass" : icon} />
+        {/* Fixed icon frame keeps the labels aligned across buttons whose
+            symbols have different intrinsic widths. */}
+        <SwiftUIImage
+          systemName={busy ? "hourglass" : icon}
+          modifiers={[frame({ width: 24 })]}
+        />
         <SwiftUIText>{busy ? `${label}…` : label}</SwiftUIText>
       </HStack>
     </SwiftUIButton>
@@ -626,11 +634,14 @@ export default function UpdateDiagnostics() {
 
   const refreshEvents = useCallback(async () => {
     const [nativeEntries, activityEntries] = await Promise.all([
-      Updates.readLogEntriesAsync(24 * 60 * 60 * 1_000),
+      Updates.readLogEntriesAsync(NATIVE_LOG_MAX_AGE_MS),
       readUpdateActivity(),
     ]);
-    const nextLogs = sortNewestFirst(nativeEntries).slice(0, 20);
-    const nextActivity = sortNewestFirst(activityEntries).slice(0, 20);
+    const nextLogs = sortNewestFirst(nativeEntries).slice(0, MAX_VISIBLE_EVENTS);
+    const nextActivity = sortNewestFirst(activityEntries).slice(
+      0,
+      MAX_VISIBLE_EVENTS,
+    );
     // Keep the previous arrays when nothing changed so a no-op refresh does
     // not re-render (and visibly flash) the native tree.
     setLogs((previous) => (sameEntries(previous, nextLogs) ? previous : nextLogs));
@@ -1147,6 +1158,23 @@ export default function UpdateDiagnostics() {
                 ))
               )}
             </Card>
+            <SwiftUIText
+              modifiers={[
+                font({ textStyle: "footnote", weight: "medium" }),
+                foregroundStyle({
+                  type: "hierarchical",
+                  style: "secondary",
+                }),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+                padding({
+                  top: Spacing.two,
+                  horizontal: Spacing.two,
+                }),
+              ]}
+            >
+              {`Update checks, downloads, and reloads recorded by Lexy on this device. The ${MAX_VISIBLE_EVENTS} most recent events are shown.`}
+            </SwiftUIText>
           </VStack>
 
           <VStack
@@ -1205,9 +1233,7 @@ export default function UpdateDiagnostics() {
                 }),
               ]}
             >
-              Low-level expo-updates activity from the last 24 hours. Entries
-              are summarized; tap one to inspect its raw message and
-              identifiers.
+              {`The ${MAX_VISIBLE_EVENTS} most recent low-level expo-updates entries from the last 24 hours. Entries are summarized; tap one to inspect its raw message and identifiers.`}
             </SwiftUIText>
           </VStack>
         </VStack>
