@@ -684,11 +684,12 @@ export default function UpdateDiagnostics() {
   const perform = useCallback(
     async (action: Action, operation: () => Promise<string>) => {
       setActiveAction(action);
-      setActionMessage(null);
-      setActionError(null);
+      // Leave the previous result visible while the action runs; clearing it
+      // here would flip the result card's colors twice per action.
       try {
         const message = await operation();
         setActionMessage(message);
+        setActionError(null);
         if (process.env.EXPO_OS === "ios") {
           Haptics.selectionAsync();
         }
@@ -698,6 +699,7 @@ export default function UpdateDiagnostics() {
             ? error.message
             : "The update operation failed.",
         );
+        setActionMessage(null);
         if (process.env.EXPO_OS === "ios") {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
         }
@@ -817,6 +819,9 @@ export default function UpdateDiagnostics() {
             // Animate the relayout when a known-update card appears or
             // disappears instead of letting the sections below jump.
             animation(Animation.spring({ duration: 0.35 }), updateEntries.length),
+            // Fade the busy-state color changes (status tint, disabled
+            // buttons, result text) instead of snapping them.
+            animation(Animation.easeInOut({ duration: 0.2 }), busy),
           ]}
         >
           <Card spacing={Spacing.three}>
