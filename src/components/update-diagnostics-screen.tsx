@@ -38,7 +38,7 @@ import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Spacing, colors } from "@/constants/theme";
@@ -385,7 +385,6 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
 
   return (
     <DisclosureGroup
-      animationDisabled
       isExpanded={false}
       modifiers={[
         frame({ maxWidth: Infinity, alignment: "leading" }),
@@ -541,6 +540,15 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
   );
 }
 
+function sameEntries<T>(previous: T[], next: T[]): boolean {
+  return (
+    previous.length === next.length &&
+    previous.every(
+      (entry, index) => JSON.stringify(entry) === JSON.stringify(next[index]),
+    )
+  );
+}
+
 function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
   icon: SFSymbol;
   title: string;
@@ -613,7 +621,7 @@ export default function UpdateDiagnostics() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [logs, setLogs] = useState<Updates.UpdatesLogEntry[]>([]);
   const [activity, setActivity] = useState<UpdateActivityEvent[]>([]);
-  const [isRefreshingEvents, setIsRefreshingEvents] = useState(false);
+  const isRefreshingEventsRef = useRef(false);
   const status = statusFor(updateState);
   const lastCheck = resolveLastCheck(
     updateState.lastCheckForUpdateTimeSinceRestart,
@@ -642,8 +650,14 @@ export default function UpdateDiagnostics() {
       Updates.readLogEntriesAsync(24 * 60 * 60 * 1_000),
       readUpdateActivity(),
     ]);
-    setLogs(sortNewestFirst(nativeEntries).slice(0, 20));
-    setActivity(sortNewestFirst(activityEntries).slice(0, 20));
+    const nextLogs = sortNewestFirst(nativeEntries).slice(0, 20);
+    const nextActivity = sortNewestFirst(activityEntries).slice(0, 20);
+    // Keep the previous arrays when nothing changed so a no-op refresh does
+    // not re-render (and visibly flash) the native tree.
+    setLogs((previous) => (sameEntries(previous, nextLogs) ? previous : nextLogs));
+    setActivity((previous) =>
+      sameEntries(previous, nextActivity) ? previous : nextActivity,
+    );
   }, []);
 
   useEffect(() => {
@@ -655,7 +669,10 @@ export default function UpdateDiagnostics() {
   }, [refreshEvents]);
 
   const refreshEventLists = useCallback(async () => {
-    setIsRefreshingEvents(true);
+    if (isRefreshingEventsRef.current) {
+      return;
+    }
+    isRefreshingEventsRef.current = true;
     try {
       await refreshEvents();
       if (process.env.EXPO_OS === "ios") {
@@ -666,7 +683,7 @@ export default function UpdateDiagnostics() {
         error instanceof Error ? error.message : "Could not read update logs.",
       );
     } finally {
-      setIsRefreshingEvents(false);
+      isRefreshingEventsRef.current = false;
     }
   }, [refreshEvents]);
 
@@ -1017,11 +1034,11 @@ export default function UpdateDiagnostics() {
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
             <HStack
-              alignment="center"
+              alignment="firstTextBaseline"
               spacing={Spacing.two}
               modifiers={[
                 frame({ maxWidth: Infinity }),
-                padding({ leading: Spacing.two, bottom: Spacing.two }),
+                padding({ horizontal: Spacing.two, bottom: Spacing.two }),
               ]}
             >
               <SwiftUIText
@@ -1037,14 +1054,13 @@ export default function UpdateDiagnostics() {
               </SwiftUIText>
               <Spacer />
               <SwiftUIButton
-                label={isRefreshingEvents ? "Refreshing…" : "Refresh"}
+                label="Refresh"
                 systemImage="arrow.clockwise"
                 onPress={refreshEventLists}
                 modifiers={[
                   buttonStyle("borderless"),
                   controlSize("small"),
                   tint(colors.systemBlue),
-                  disabledModifier(isRefreshingEvents),
                 ]}
               />
             </HStack>

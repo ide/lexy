@@ -1,6 +1,7 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { Observe, ObserveRoot } from "expo-observe";
 import { useColorScheme } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { colors } from "@/constants/theme";
 import { VehicleDataProvider } from "@/data/query-client";
@@ -14,23 +15,27 @@ function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <VehicleDataProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <UpdateHistoryRecorder />
-        <Stack
-          screenOptions={{
-            headerTransparent: true,
-            headerShadowVisible: false,
-            headerBackButtonDisplayMode: "minimal",
-            headerTintColor: colors.systemBlue as string,
-            headerTitleStyle: { color: colors.label as string },
-            contentStyle: { backgroundColor: colors.groupedBackground },
-          }}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <VehicleDataProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
-    </VehicleDataProvider>
+          <UpdateHistoryRecorder />
+          <Stack
+            screenOptions={{
+              headerTransparent: true,
+              headerShadowVisible: false,
+              headerBackButtonDisplayMode: "minimal",
+              headerTintColor: colors.systemBlue as string,
+              headerTitleStyle: { color: colors.label as string },
+              contentStyle: { backgroundColor: colors.groupedBackground },
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+        </ThemeProvider>
+      </VehicleDataProvider>
+    </GestureHandlerRootView>
   );
 }
 
