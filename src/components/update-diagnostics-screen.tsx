@@ -89,9 +89,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function Card({
   children,
   spacing = 0,
+  verticalPadding = Spacing.three,
 }: {
   children: React.ReactNode;
   spacing?: number;
+  verticalPadding?: number;
 }) {
   return (
     <VStack
@@ -99,7 +101,7 @@ function Card({
       spacing={spacing}
       modifiers={[
         frame({ maxWidth: Infinity, alignment: "leading" }),
-        padding({ all: Spacing.three }),
+        padding({ horizontal: Spacing.three, vertical: verticalPadding }),
         background(
           colors.card,
           shapes.roundedRectangle({
@@ -855,7 +857,7 @@ export default function UpdateDiagnostics() {
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
             <SectionTitle>UPDATE SYSTEM</SectionTitle>
-            <Card>
+            <Card verticalPadding={Spacing.two}>
               <DataRow
                 label="Enabled"
                 value={Updates.isEnabled ? "Yes" : "No"}
@@ -1041,7 +1043,11 @@ export default function UpdateDiagnostics() {
                 ]}
               />
             </HStack>
-            <Card>
+            <Card
+              verticalPadding={
+                activity.length === 0 ? Spacing.three : Spacing.two
+              }
+            >
               {activity.length === 0 ? (
                 <SwiftUIText
                   modifiers={[
@@ -1149,7 +1155,9 @@ export default function UpdateDiagnostics() {
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
             <SectionTitle>NATIVE UPDATE LOG</SectionTitle>
-            <Card>
+            <Card
+              verticalPadding={logs.length === 0 ? Spacing.three : Spacing.two}
+            >
               {logs.length === 0 ? (
                 <SwiftUIText
                   modifiers={[
