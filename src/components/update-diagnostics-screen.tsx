@@ -29,6 +29,7 @@ import {
   lineLimit,
   monospacedDigit,
   multilineTextAlignment,
+  opacity,
   padding,
   progressViewStyle,
   refreshable,
@@ -875,16 +876,21 @@ export default function UpdateDiagnostics() {
                 </SwiftUIText>
               </VStack>
             </HStack>
-            {updateState.isDownloading ? (
-              <ProgressView
-                value={updateState.downloadProgress ?? 0}
-                modifiers={[
-                  progressViewStyle("linear"),
-                  tint(colors.systemBlue),
-                  frame({ maxWidth: Infinity }),
-                ]}
-              />
-            ) : null}
+            {/* Always laid out; toggling only opacity keeps the card height
+                fixed so a starting download cannot shift the layout below. */}
+            <ProgressView
+              value={
+                updateState.isDownloading
+                  ? (updateState.downloadProgress ?? 0)
+                  : 0
+              }
+              modifiers={[
+                progressViewStyle("linear"),
+                tint(colors.systemBlue),
+                frame({ maxWidth: Infinity }),
+                opacity(updateState.isDownloading ? 1 : 0),
+              ]}
+            />
           </Card>
 
           <VStack
