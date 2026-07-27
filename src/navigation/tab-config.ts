@@ -20,7 +20,7 @@ export const appTabs = [
     name: "updates",
     label: "Updates",
     icon: {
-      default: "arrow.trianglehead.2.clockwise.rotate.90",
+      default: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
       selected: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
     },
   },
