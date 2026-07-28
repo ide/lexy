@@ -316,7 +316,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
             frame({ maxWidth: Infinity, alignment: "center" }),
             padding({
               top: Spacing.six,
-              horizontal: Spacing.four,
+              horizontal: Spacing.three,
               bottom: Spacing.six,
             }),
             animation(Animation.spring({ duration: 0.35 }), screenIndex),
