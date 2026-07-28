@@ -290,7 +290,7 @@ export function mapVehicle(
     manufacturedDate: specValue(spec, 'Order Date') || '—',
     updatedAt: str(st.occurrenceDate, new Date().toISOString()),
     fuelPercent: Math.round(num(asRecord(telemetry.fugage).value)),
-    rangeMiles: Math.round(num(asRecord(telemetry.rage).value)),
+    rangeMiles: Math.round(num(asRecord(telemetry.range).value)),
     odometerMiles: Math.round(num(asRecord(telemetry.odo).value)),
     cautionCount: num(st.cautionOverallCount),
     tripAMiles: tripMiles(vehicleStatus, 'Trip A'),
@@ -320,4 +320,28 @@ export function updatedLabel(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+// A plain, human "how long ago" for the server-reported vs client-checked
+// timestamps on the dashboard. Accepts an ISO string (server occurrenceDate) or
+// an epoch-ms number (TanStack Query's dataUpdatedAt).
+export function relativeTime(from: string | number, now: number = Date.now()): string {
+  const then = typeof from === 'number' ? from : new Date(from).getTime();
+  if (!Number.isFinite(then)) {
+    return 'unknown';
+  }
+  const seconds = Math.max(0, Math.round((now - then) / 1000));
+  if (seconds < 45) {
+    return 'just now';
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `${hours} hr ago`;
+  }
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
 }
