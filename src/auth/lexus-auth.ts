@@ -150,11 +150,27 @@ function answerableType(node: AuthenticationNode, step: AuthenticationStep): str
   }
 }
 
+function unanswerableStepMessage(step: AuthenticationStep): string {
+  switch (step) {
+    case 'otp':
+      return "We couldn't submit that verification code. Please request a new code and try again.";
+    case 'password':
+      return "We couldn't submit your password. Please try signing in again.";
+    case 'username':
+      return "We couldn't submit your email. Please try signing in again.";
+    case 'choice':
+      return "We couldn't select that verification option. Please try again.";
+    case 'complete':
+      return 'You are already signed in.';
+  }
+}
+
 export function answerAuthenticationNode(
   node: AuthenticationNode,
   value: string | number,
 ): AuthenticationNode {
-  const callbackType = answerableType(node, classifyAuthenticationNode(node));
+  const step = classifyAuthenticationNode(node);
+  const callbackType = answerableType(node, step);
   let answered = false;
   const callbacks = node.callbacks?.map((callback) => {
     if (answered || callback.type !== callbackType || !callback.input?.length) {
@@ -169,7 +185,7 @@ export function answerAuthenticationNode(
     };
   });
   if (!answered) {
-    throw new LexusAuthError('The current Lexus authentication step cannot be answered', 'invalid_step');
+    throw new LexusAuthError(unanswerableStepMessage(step), 'invalid_step');
   }
   return { ...node, callbacks };
 }
