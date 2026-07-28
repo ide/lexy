@@ -8,10 +8,12 @@ const tabStackScreenOptions = createTabStackScreenOptions({
   groupedBackground: colors.groupedBackground as string,
 });
 
-export default function UpdatesLayout() {
+export default function DevelopmentLayout() {
   return (
     <Stack screenOptions={tabStackScreenOptions}>
-      <Stack.Screen name="index" options={{ title: "Updates" }} />
+      <Stack.Screen name="index" options={{ title: "Development" }} />
+      <Stack.Screen name="updates" options={{ title: "Updates" }} />
+      <Stack.Screen name="login" options={{ title: "Login Flow" }} />
     </Stack>
   );
 }

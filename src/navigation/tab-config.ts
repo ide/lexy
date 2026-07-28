@@ -17,12 +17,9 @@ export const appTabs = [
     },
   },
   {
-    name: "updates",
-    label: "Updates",
-    icon: {
-      default: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
-      selected: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
-    },
+    name: "development",
+    label: "Development",
+    icon: { default: "hammer", selected: "hammer.fill" },
   },
 ] as const satisfies readonly {
   name: string;

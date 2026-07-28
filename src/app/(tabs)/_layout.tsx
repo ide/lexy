@@ -8,7 +8,7 @@ export const unstable_settings = {
 };
 
 export default function TabLayout() {
-  const [status, details, updates] = appTabs;
+  const [status, details, development] = appTabs;
 
   return (
     <NativeTabs
@@ -24,9 +24,9 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Icon sf={details.icon} />
         <NativeTabs.Trigger.Label>{details.label}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name={updates.name}>
-        <NativeTabs.Trigger.Icon sf={updates.icon} />
-        <NativeTabs.Trigger.Label>{updates.label}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name={development.name}>
+        <NativeTabs.Trigger.Icon sf={development.icon} />
+        <NativeTabs.Trigger.Label>{development.label}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
