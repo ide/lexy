@@ -9,9 +9,15 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
 import { NativeScrollView } from "@/components/native-scroll-view";
+import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
-import { VehicleError, VehicleLoading } from "@/components/vehicle-state";
+import {
+  VehicleError,
+  VehicleLoading,
+  VehiclePlaceholder,
+} from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
+import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
 
@@ -118,6 +124,7 @@ export default function CarDetails() {
   const theme = useTheme();
   const { data: vehicle, error, isLoading, refetch } = useVehicle();
   const { markInteractive } = useObserve();
+  const isOnline = useIsOnline();
 
   useEffect(() => {
     // TTI marks the UI shell becoming interactive; data readiness is tracked
@@ -125,11 +132,15 @@ export default function CarDetails() {
     markInteractive();
   }, [markInteractive]);
 
-  if (isLoading && !vehicle) {
-    return <VehicleLoading />;
-  }
-
   if (!vehicle) {
+    // Offline with nothing cached yet: show placeholders + an offline banner
+    // instead of a spinner (which would never resolve) or a misleading error.
+    if (!isOnline) {
+      return <VehiclePlaceholder />;
+    }
+    if (isLoading) {
+      return <VehicleLoading />;
+    }
     return (
       <VehicleError
         message={
@@ -159,6 +170,9 @@ export default function CarDetails() {
 
   return (
     <NativeScrollView contentContainerStyle={styles.content}>
+      {!isOnline ? (
+        <OfflineBanner message="No internet connection — showing last saved data" />
+      ) : null}
       <Animated.View entering={FadeInDown.duration(300)}>
         <SectionTitle>VEHICLE</SectionTitle>
         <View style={[styles.card, { backgroundColor: theme.card }]}>
