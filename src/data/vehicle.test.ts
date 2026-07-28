@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapVehicle, parseVehicle, parseVehicleContext } from './vehicle';
+import {
+  absoluteLocalTime,
+  mapVehicle,
+  parseVehicle,
+  parseVehicleContext,
+  relativeTime,
+} from './vehicle';
 
 const vehicle = {
   nickname: 'Daily driver',
@@ -186,5 +192,52 @@ describe('mapVehicle', () => {
 
   it('produces a value that passes parseVehicle validation', () => {
     expect(() => parseVehicle(mapVehicle(discovery, status, climate, spec))).not.toThrow();
+  });
+});
+
+describe('relativeTime', () => {
+  const now = Date.parse('2026-07-28T12:00:00Z');
+  const ago = (ms: number) => relativeTime(now - ms, now);
+  const sec = 1000;
+  const min = 60 * sec;
+  const hour = 60 * min;
+  const day = 24 * hour;
+
+  it('says "just now" for the last few seconds', () => {
+    expect(ago(0)).toBe('just now');
+    expect(ago(4 * sec)).toBe('just now');
+  });
+
+  it('counts seconds', () => {
+    expect(ago(5 * sec)).toBe('5 seconds ago');
+    expect(ago(59 * sec)).toBe('59 seconds ago');
+  });
+
+  it('counts minutes', () => {
+    expect(ago(1 * min)).toBe('1 minute ago');
+    expect(ago(59 * min + 59 * sec)).toBe('59 minutes ago');
+  });
+
+  it('pairs hours with leftover minutes', () => {
+    expect(ago(2 * hour)).toBe('2 hours ago');
+    expect(ago(1 * hour)).toBe('1 hour ago');
+    expect(ago(2 * hour + 5 * min)).toBe('2 hours 5 minutes ago');
+    expect(ago(1 * hour + 1 * min)).toBe('1 hour 1 minute ago');
+  });
+
+  it('pairs days with leftover hours', () => {
+    expect(ago(1 * day)).toBe('1 day ago');
+    expect(ago(3 * day + 2 * hour)).toBe('3 days 2 hours ago');
+  });
+
+  it('returns "unknown" for unparseable input', () => {
+    expect(relativeTime('not a date', now)).toBe('unknown');
+  });
+});
+
+describe('absoluteLocalTime', () => {
+  it('formats a timestamp and rejects garbage', () => {
+    expect(absoluteLocalTime(Date.parse('2026-07-28T12:00:00Z'))).toMatch(/2026/);
+    expect(absoluteLocalTime('not a date')).toBe('Unknown time');
   });
 });

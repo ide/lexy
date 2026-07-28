@@ -315,35 +315,58 @@ export function mapVehicle(
   };
 }
 
-export function updatedLabel(iso: string): string {
-  return new Date(iso).toLocaleString([], {
+// The precise timestamp shown in the dashboard tooltips, formatted in the
+// device's local time zone. Accepts an ISO string (server occurrenceDate) or an
+// epoch-ms number (TanStack Query's dataUpdatedAt).
+export function absoluteLocalTime(from: string | number): string {
+  const then = typeof from === 'number' ? from : new Date(from).getTime();
+  if (!Number.isFinite(then)) {
+    return 'Unknown time';
+  }
+  return new Date(then).toLocaleString([], {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
-    hour: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
     minute: '2-digit',
+    second: '2-digit',
   });
 }
 
-// A plain, human "how long ago" for the server-reported vs client-checked
+const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+
+// A plain, human "how long ago" for the vehicle-sync and data-freshness
 // timestamps on the dashboard. Accepts an ISO string (server occurrenceDate) or
-// an epoch-ms number (TanStack Query's dataUpdatedAt).
+// an epoch-ms number (TanStack Query's dataUpdatedAt). Reads down to seconds and
+// pairs the two largest units (e.g. "2 hours 5 minutes ago") so recent syncs
+// stay legible.
 export function relativeTime(from: string | number, now: number = Date.now()): string {
   const then = typeof from === 'number' ? from : new Date(from).getTime();
   if (!Number.isFinite(then)) {
     return 'unknown';
   }
   const seconds = Math.max(0, Math.round((now - then) / 1000));
-  if (seconds < 45) {
+  if (seconds < 5) {
     return 'just now';
   }
-  const minutes = Math.round(seconds / 60);
+  if (seconds < 60) {
+    return `${plural(seconds, 'second')} ago`;
+  }
+  const minutes = Math.floor(seconds / 60);
   if (minutes < 60) {
-    return `${minutes} min ago`;
+    return `${plural(minutes, 'minute')} ago`;
   }
-  const hours = Math.round(minutes / 60);
+  const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours} hr ago`;
+    const remMinutes = minutes % 60;
+    return remMinutes === 0
+      ? `${plural(hours, 'hour')} ago`
+      : `${plural(hours, 'hour')} ${plural(remMinutes, 'minute')} ago`;
   }
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours === 0
+    ? `${plural(days, 'day')} ago`
+    : `${plural(days, 'day')} ${plural(remHours, 'hour')} ago`;
 }
