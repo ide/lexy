@@ -42,6 +42,21 @@ export function usePreviewSignInController(): SignInController {
     afterDelay(() => setStep("choice"));
   }, [afterDelay]);
 
+  // Resend restarts verification but keeps the same channel, so the preview just
+  // stays on the OTP step after a simulated round-trip.
+  const resendCode = useCallback(() => {
+    afterDelay(() => setStep("otp"));
+  }, [afterDelay]);
+
+  // Switching methods returns to the choice step so another channel can be
+  // picked, mirroring the real restart-and-reselect flow.
+  const changeMethod = useCallback(() => {
+    afterDelay(() => {
+      setStep("choice");
+      setMethod(null);
+    });
+  }, [afterDelay]);
+
   const submit = useCallback(
     (value: string | number) => {
       if (step === "choice" && typeof value === "number") {
@@ -65,6 +80,8 @@ export function usePreviewSignInController(): SignInController {
 
   return {
     busy,
+    canChangeMethod: PREVIEW_CHOICES.length > 1,
+    changeMethod,
     choices: step === "choice" ? PREVIEW_CHOICES : [],
     error: null,
     method,
@@ -72,6 +89,7 @@ export function usePreviewSignInController(): SignInController {
       step === "choice"
         ? "Choose how you'd like to receive your verification code."
         : null,
+    resendCode,
     step,
     submit,
     submitCredentials,
