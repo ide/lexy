@@ -39,6 +39,9 @@ function RootNavigator() {
         animation: "none",
       }}
     >
+      {/* The `/` entry renders nothing (it redirects to tabs or sign-in); hide
+          its header so the route name doesn't flash in the bar on launch. */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Protected guard={session !== null}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack.Protected>
