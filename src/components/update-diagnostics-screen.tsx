@@ -866,9 +866,10 @@ export default function UpdateDiagnostics() {
                       style: "secondary",
                     }),
                     fixedSize({ horizontal: false, vertical: true }),
-                    // Reserve two lines so the card keeps one height as the
-                    // status copy changes between states.
-                    lineLimit({ min: 2, max: 4 }),
+                    // Cap at four lines but do not reserve a minimum — a
+                    // reserved second line left empty space under short status
+                    // copy (e.g. "Running normally").
+                    lineLimit(4),
                   ]}
                 >
                   {status.detail}
