@@ -153,7 +153,7 @@ function answerableType(node: AuthenticationNode, step: AuthenticationStep): str
 function unanswerableStepMessage(step: AuthenticationStep): string {
   switch (step) {
     case 'otp':
-      return "We couldn't submit that verification code. Please request a new code and try again.";
+      return 'Lexus could not verify this code. Request a new code and try again.';
     case 'password':
       return "We couldn't submit your password. Please try signing in again.";
     case 'username':
