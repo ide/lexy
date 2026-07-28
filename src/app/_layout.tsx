@@ -16,6 +16,16 @@ Observe.configure({
   dispatchInDebug: process.env.EXPO_PUBLIC_OBSERVE_DEV === "1",
 });
 
+// Anchor the root stack on the authenticated tabs. Without an anchor there is
+// no route matching "/", so on a logged-in cold launch expo-router resolves
+// the initial URL by *navigating* to the first available screen — which slides
+// the car screen in from the right. Anchoring makes (tabs) the initial route so
+// it renders in place. When signed out the guard drops (tabs) and the router
+// falls back to the sign-in screen, exactly as it does for a denied route.
+export const unstable_settings = {
+  anchor: "(tabs)",
+};
+
 function RootNavigator() {
   const { session, isLoading } = useAuth();
 
