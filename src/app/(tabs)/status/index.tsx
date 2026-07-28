@@ -306,12 +306,14 @@ export default function CarDashboard() {
         contentContainerStyle={styles.content}
       >
         <Card style={styles.hero}>
-          <Image
-            source={{ uri: vehicle.imageUrl }}
-            style={styles.heroImage}
-            contentFit="contain"
-            transition={200}
-          />
+          <View style={styles.heroImageFrame}>
+            <Image
+              source={{ uri: vehicle.imageUrl }}
+              style={styles.heroImage}
+              contentFit="contain"
+              transition={200}
+            />
+          </View>
           <View
             style={[
               styles.pill,
@@ -464,13 +466,24 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: "center",
-    gap: Spacing.one,
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    gap: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
+  },
+  // The Lexus render ships with ~26% transparent margin top and bottom, so a
+  // plain `contain` fit floats a small car in a sea of whitespace. Clip the
+  // image in a fixed frame and oversize it (width > 100%) so the car fills the
+  // frame and the transparent bands are cropped out.
+  heroImageFrame: {
+    width: "100%",
+    height: 185,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
   },
   heroImage: {
-    width: "100%",
-    height: 200,
+    width: "110%",
+    aspectRatio: 700 / 631,
   },
   pill: {
     flexDirection: "row",
