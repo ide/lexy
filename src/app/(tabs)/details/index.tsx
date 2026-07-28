@@ -1,10 +1,13 @@
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import { useAuth } from "@/auth/auth-context";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleError, VehicleLoading } from "@/components/vehicle-state";
@@ -70,6 +73,44 @@ function InfoRow({
         {value}
       </ThemedText>
     </View>
+  );
+}
+
+function SignOutButton() {
+  const theme = useTheme();
+  const { signOut } = useAuth();
+  const red = colors.systemRed as string;
+
+  const handleSignOut = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // signOut clears the stored session; the Stack.Protected guard in the root
+    // layout then swaps back to the sign-in screen. No manual navigation.
+    signOut().catch(() => {
+      // Clearing the Keychain is best-effort; if it fails the user stays
+      // signed in and can retry.
+    });
+  };
+
+  return (
+    <Pressable onPress={handleSignOut}>
+      {({ pressed }) => (
+        <View
+          style={[
+            styles.card,
+            styles.signOut,
+            { backgroundColor: theme.card },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Icon name="rectangle.portrait.and.arrow.right" tint={red} />
+          <ThemedText type="smallBold" style={{ color: red }}>
+            Sign Out
+          </ThemedText>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
@@ -186,6 +227,11 @@ export default function CarDetails() {
           ))}
         </View>
       </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(300).delay(200)}>
+        <SectionTitle>ACCOUNT</SectionTitle>
+        <SignOutButton />
+      </Animated.View>
     </NativeScrollView>
   );
 }
@@ -205,6 +251,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     paddingHorizontal: Spacing.three,
+  },
+  signOut: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   row: {
     flexDirection: "row",

@@ -57,6 +57,11 @@ export const colors = {
     android: '#FF9500',
     default: '#FF9500',
   })!,
+  systemRed: Platform.select({
+    ios: Color.ios.systemRed,
+    android: '#FF3B30',
+    default: '#FF3B30',
+  })!,
 } as const;
 
 export type ThemeColor = keyof typeof colors;

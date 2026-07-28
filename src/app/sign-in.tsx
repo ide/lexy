@@ -1,20 +1,32 @@
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useAuth } from '@/auth/auth-context';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing, colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+
+// The official Lexus app (Toyota Motor Sales) — where drivers create their
+// Lexus account and enroll a vehicle. Lexy signs in with those credentials.
+const LEXUS_APP_URL = 'https://apps.apple.com/us/app/lexus/id1468484450';
+
+function openLexusApp() {
+  if (process.env.EXPO_OS === 'ios') {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+  Linking.openURL(LEXUS_APP_URL);
+}
 
 function copyForStep(step: ReturnType<typeof useAuth>['step']) {
   switch (step) {
@@ -79,7 +91,8 @@ export default function SignIn() {
         </View>
         <ThemedText type="title">{copy.title}</ThemedText>
         <ThemedText themeColor="secondaryLabel" style={styles.subtitle}>
-          {prompt ?? 'Connect directly to your Lexus account.'}
+          {prompt ??
+            'Sign in with the Lexus account you created in the Lexus app.'}
         </ThemedText>
       </View>
 
@@ -160,6 +173,36 @@ export default function SignIn() {
             {error}
           </ThemedText>
         </Animated.View>
+      ) : null}
+
+      {!step ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityHint="Opens the Lexus app on the App Store"
+          onPress={openLexusApp}
+          style={({ pressed }) => [
+            styles.callout,
+            { backgroundColor: theme.card },
+            pressed && styles.pressed,
+          ]}>
+          <Image
+            source="sf:apple.logo"
+            tintColor={colors.label as string}
+            style={styles.calloutIcon}
+          />
+          <View style={styles.calloutText}>
+            <ThemedText type="smallBold">New to Lexus?</ThemedText>
+            <ThemedText type="small" themeColor="secondaryLabel">
+              Create an account and add your car in the Lexus app, then come back
+              here to sign in.
+            </ThemedText>
+          </View>
+          <Image
+            source="sf:arrow.up.forward"
+            tintColor={colors.systemBlue as string}
+            style={styles.calloutChevron}
+          />
+        </Pressable>
       ) : null}
 
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.privacy}>
@@ -247,5 +290,25 @@ const styles = StyleSheet.create({
   },
   privacy: {
     textAlign: 'center',
+  },
+  callout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    padding: Spacing.three,
+  },
+  calloutIcon: {
+    width: 26,
+    height: 26,
+  },
+  calloutText: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  calloutChevron: {
+    width: 16,
+    height: 16,
   },
 });
