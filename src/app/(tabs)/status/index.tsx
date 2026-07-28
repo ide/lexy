@@ -12,7 +12,8 @@ import { NativeScrollView } from "@/components/native-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleError, VehicleLoading } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
-import { updatedLabel, type Vehicle } from "@/data/vehicle";
+import { groupClosures, type Corner, type Side } from "@/data/closures";
+import { relativeTime, updatedLabel, type Closure, type Vehicle } from "@/data/vehicle";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
 
@@ -97,6 +98,124 @@ function Metric({
   );
 }
 
+const green = colors.systemGreen as string;
+const blue = colors.systemBlue as string;
+const orange = colors.systemOrange as string;
+
+type Status = { text: string; color: string; symbol: SFSymbol };
+
+function doorStatus(door: Closure, side: Side): Status {
+  const hand = side === "driver" ? "left" : "right";
+  if (door.state === "Open") {
+    return { text: "Open", color: orange, symbol: `door.${hand}.hand.open` };
+  }
+  if (door.locked === false) {
+    return {
+      text: "Unlocked",
+      color: orange,
+      symbol: `door.${hand}.hand.closed`,
+    };
+  }
+  return {
+    text: door.locked ? "Locked" : "Closed",
+    color: green,
+    symbol: `door.${hand}.hand.closed`,
+  };
+}
+
+function windowStatus(window: Closure, side: Side): Status {
+  const symbol: SFSymbol =
+    side === "driver" ? "car.window.left" : "car.window.right";
+  return window.state === "Open"
+    ? { text: "Open", color: orange, symbol }
+    : { text: "Closed", color: green, symbol };
+}
+
+function StatusLine({ status }: { status: Status }) {
+  return (
+    <View style={styles.statusLine}>
+      <Icon name={status.symbol} size={17} tint={status.color} />
+      <ThemedText type="small" style={{ color: status.color }}>
+        {status.text}
+      </ThemedText>
+    </View>
+  );
+}
+
+function CornerCard({ corner }: { corner: Corner }) {
+  return (
+    <Card style={styles.cornerCard}>
+      <ThemedText type="smallBold" themeColor="secondaryLabel">
+        {corner.title}
+      </ThemedText>
+      <View style={styles.cornerStates}>
+        {corner.door ? (
+          <StatusLine status={doorStatus(corner.door, corner.side)} />
+        ) : null}
+        {corner.window ? (
+          <StatusLine status={windowStatus(corner.window, corner.side)} />
+        ) : null}
+      </View>
+    </Card>
+  );
+}
+
+function SideGrid({ corners }: { corners: Corner[] }) {
+  const driver = corners.filter((c) => c.side === "driver");
+  const passenger = corners.filter((c) => c.side === "passenger");
+  return (
+    <View style={styles.grid}>
+      <View style={styles.gridColumn}>
+        {driver.map((c) => (
+          <CornerCard key={c.key} corner={c} />
+        ))}
+      </View>
+      <View style={styles.gridColumn}>
+        {passenger.map((c) => (
+          <CornerCard key={c.key} corner={c} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function TireCell({
+  label,
+  value,
+  unit,
+  low,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  low: boolean;
+}) {
+  const color = low ? orange : green;
+  return (
+    <Card style={styles.cornerCard}>
+      <ThemedText type="smallBold" themeColor="secondaryLabel">
+        {label}
+      </ThemedText>
+      <View style={styles.metricValueRow}>
+        <ThemedText style={[styles.tireValue, { color }]}>{value}</ThemedText>
+        <ThemedText
+          type="small"
+          themeColor="secondaryLabel"
+          style={styles.metricUnit}
+        >
+          {unit}
+        </ThemedText>
+      </View>
+    </Card>
+  );
+}
+
+function openingStatus(opening: Closure): Status {
+  return opening.state === "Open"
+    ? { text: "Open", color: orange, symbol: "exclamationmark.triangle.fill" }
+    : { text: "Closed", color: green, symbol: "checkmark.circle.fill" };
+}
+
 function openLastParkedInMaps(vehicle: Vehicle) {
   if (process.env.EXPO_OS === "ios") {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -110,12 +229,15 @@ function openLastParkedInMaps(vehicle: Vehicle) {
   Linking.openURL(url);
 }
 
-const green = colors.systemGreen as string;
-const blue = colors.systemBlue as string;
-
 export default function CarDashboard() {
   const theme = useTheme();
-  const { data: vehicle, error, isLoading, refetch } = useVehicle();
+  const {
+    data: vehicle,
+    error,
+    isLoading,
+    refetch,
+    dataUpdatedAt,
+  } = useVehicle();
   const { markInteractive } = useObserve();
 
   useEffect(() => {
@@ -145,7 +267,11 @@ export default function CarDashboard() {
     .map((closure) => closure.locked)
     .filter((locked): locked is boolean => locked !== undefined);
   const locked = lockStates.length > 0 && lockStates.every(Boolean);
-  const lockColor = locked ? green : (colors.systemOrange as string);
+  const lockColor = locked ? green : orange;
+  const { corners, openings } = groupClosures(vehicle.closures);
+  const tires = vehicle.tires?.positions ?? [];
+  const leftTires = tires.filter((t) => /left/i.test(t.label));
+  const rightTires = tires.filter((t) => /right/i.test(t.label));
   return (
     <>
       <Stack.Screen options={{ title: vehicle.nickname }} />
@@ -155,50 +281,33 @@ export default function CarDashboard() {
         }}
         contentContainerStyle={styles.content}
       >
-        <View>
-          <Card style={styles.hero}>
-            <Image
-              source={{ uri: vehicle.imageUrl }}
-              style={styles.heroImage}
-              contentFit="contain"
-              transition={200}
+        <Card style={styles.hero}>
+          <Image
+            source={{ uri: vehicle.imageUrl }}
+            style={styles.heroImage}
+            contentFit="contain"
+            transition={200}
+          />
+          <View
+            style={[
+              styles.pill,
+              {
+                backgroundColor: locked
+                  ? "rgba(52,199,89,0.15)"
+                  : "rgba(255,149,0,0.15)",
+              },
+            ]}
+          >
+            <Icon
+              name={locked ? "lock.fill" : "lock.open.fill"}
+              size={13}
+              tint={lockColor}
             />
-            <View style={styles.pillRow}>
-              <View
-                style={[
-                  styles.pill,
-                  {
-                    backgroundColor: locked
-                      ? "rgba(52,199,89,0.15)"
-                      : "rgba(255,149,0,0.15)",
-                  },
-                ]}
-              >
-                <Icon
-                  name={locked ? "lock.fill" : "lock.open.fill"}
-                  size={13}
-                  tint={lockColor}
-                />
-                <ThemedText type="small" style={{ color: lockColor }}>
-                  {locked ? "Locked" : "Unlocked"}
-                </ThemedText>
-              </View>
-              <View
-                style={[
-                  styles.pill,
-                  { backgroundColor: "rgba(52,199,89,0.15)" },
-                ]}
-              >
-                <Icon name="checkmark.seal.fill" size={13} tint={green} />
-                <ThemedText type="small" style={{ color: green }}>
-                  {vehicle.cautionCount === 0
-                    ? "No alerts"
-                    : `${vehicle.cautionCount} alerts`}
-                </ThemedText>
-              </View>
-            </View>
-          </Card>
-        </View>
+            <ThemedText type="small" style={{ color: lockColor }}>
+              {locked ? "Locked" : "Unlocked"}
+            </ThemedText>
+          </View>
+        </Card>
 
         <View style={styles.metricRow}>
           <Metric
@@ -222,69 +331,63 @@ export default function CarDashboard() {
           />
         </View>
 
-        <View>
-          <SectionTitle>CLOSURES</SectionTitle>
-          <Card style={styles.closureCard}>
-            {vehicle.closures.map((c, i) => (
-              <View
-                key={c.label}
-                style={[
-                  styles.closureRow,
-                  i < vehicle.closures.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: theme.separator,
-                  },
-                ]}
-              >
-                <ThemedText type="small">{c.label}</ThemedText>
-                <View style={styles.closureState}>
-                  <ThemedText type="small" themeColor="secondaryLabel">
-                    {c.locked ? "Locked" : c.state}
-                  </ThemedText>
-                  <Icon
-                    name={c.locked ? "lock.fill" : "checkmark.circle.fill"}
-                    size={15}
-                    tint={green}
-                  />
-                </View>
-              </View>
-            ))}
-          </Card>
-        </View>
-
-        {vehicle.tires ? (
+        {corners.length > 0 ? (
           <View>
-            <SectionTitle>TIRE PRESSURE</SectionTitle>
-            <Card style={styles.closureCard}>
-              {vehicle.tires.positions.map((t, i) => (
+            <SectionTitle>DOORS & WINDOWS</SectionTitle>
+            <SideGrid corners={corners} />
+          </View>
+        ) : null}
+
+        {openings.length > 0 ? (
+          <Card style={styles.closureCard}>
+            {openings.map((o, i) => {
+              const status = openingStatus(o);
+              return (
                 <View
-                  key={t.label}
+                  key={o.label}
                   style={[
                     styles.closureRow,
-                    i < vehicle.tires!.positions.length - 1 && {
+                    i < openings.length - 1 && {
                       borderBottomWidth: StyleSheet.hairlineWidth,
                       borderBottomColor: theme.separator,
                     },
                   ]}
                 >
-                  <ThemedText type="small">{t.label}</ThemedText>
-                  <View style={styles.closureState}>
-                    <ThemedText type="small" themeColor="secondaryLabel">
-                      {t.value} {vehicle.tires!.unit}
-                    </ThemedText>
-                    <Icon
-                      name={
-                        t.low
-                          ? "exclamationmark.triangle.fill"
-                          : "checkmark.circle.fill"
-                      }
-                      size={15}
-                      tint={t.low ? (colors.systemOrange as string) : green}
-                    />
-                  </View>
+                  <ThemedText type="small">{o.label}</ThemedText>
+                  <StatusLine status={status} />
                 </View>
-              ))}
-            </Card>
+              );
+            })}
+          </Card>
+        ) : null}
+
+        {tires.length > 0 ? (
+          <View>
+            <SectionTitle>TIRE PRESSURE ({vehicle.tires!.unit})</SectionTitle>
+            <View style={styles.grid}>
+              <View style={styles.gridColumn}>
+                {leftTires.map((t) => (
+                  <TireCell
+                    key={t.label}
+                    label={t.label}
+                    value={t.value}
+                    unit={vehicle.tires!.unit}
+                    low={t.low}
+                  />
+                ))}
+              </View>
+              <View style={styles.gridColumn}>
+                {rightTires.map((t) => (
+                  <TireCell
+                    key={t.label}
+                    label={t.label}
+                    value={t.value}
+                    unit={vehicle.tires!.unit}
+                    low={t.low}
+                  />
+                ))}
+              </View>
+            </View>
           </View>
         ) : null}
 
@@ -314,13 +417,15 @@ export default function CarDashboard() {
           </Pressable>
         </View>
 
-        <ThemedText
-          type="small"
-          themeColor="secondaryLabel"
-          style={styles.footer}
-        >
-          Updated {updatedLabel(vehicle.updatedAt)}
-        </ThemedText>
+        <View style={styles.footer}>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            Vehicle reported {relativeTime(vehicle.updatedAt)} ·{" "}
+            {updatedLabel(vehicle.updatedAt)}
+          </ThemedText>
+          <ThemedText type="small" themeColor="secondaryLabel">
+            App checked {relativeTime(dataUpdatedAt)}
+          </ThemedText>
+        </View>
       </NativeScrollView>
     </>
   );
@@ -340,17 +445,12 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: "center",
     gap: Spacing.two,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
   },
   heroImage: {
     width: "100%",
-    height: 170,
-  },
-  pillRow: {
-    flexDirection: "row",
-    gap: Spacing.two,
-    marginTop: Spacing.two,
+    height: 220,
   },
   pill: {
     flexDirection: "row",
@@ -386,11 +486,36 @@ const styles = StyleSheet.create({
   metricUnit: {
     marginBottom: 4,
   },
+  tireValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 28,
+    fontVariant: ["tabular-nums"],
+  },
   sectionTitle: {
     marginTop: Spacing.one,
     marginLeft: Spacing.two,
     marginBottom: Spacing.two,
     letterSpacing: 0.5,
+  },
+  grid: {
+    flexDirection: "row",
+    gap: Spacing.two,
+  },
+  gridColumn: {
+    flex: 1,
+    gap: Spacing.two,
+  },
+  cornerCard: {
+    gap: Spacing.one,
+  },
+  cornerStates: {
+    gap: Spacing.half,
+  },
+  statusLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
   },
   closureCard: {
     paddingVertical: 0,
@@ -401,13 +526,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.three,
   },
-  closureState: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-  },
   footer: {
-    textAlign: "center",
+    alignItems: "center",
     marginTop: Spacing.two,
+    gap: Spacing.half,
   },
 });
