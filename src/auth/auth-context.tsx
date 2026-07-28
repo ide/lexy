@@ -1,4 +1,4 @@
-import { fetch } from 'expo/fetch';
+import { fetch as expoFetch } from 'expo/fetch';
 import {
   createContext,
   type PropsWithChildren,
@@ -19,8 +19,9 @@ import {
   type AuthenticationNode,
   type AuthenticationStep,
   type LexusSession,
+  type RequestLike,
 } from '@/auth/lexus-auth';
-import { secureTokenStore } from '@/auth/token-store';
+import { secureTokenStore, type TokenStore } from '@/auth/token-store';
 
 type AuthContextValue = {
   busy: boolean;
@@ -94,7 +95,22 @@ function errorMessage(error: unknown): string {
   return 'Lexus sign-in failed. Please try again.';
 }
 
-export function AuthProvider({ children }: PropsWithChildren) {
+/**
+ * The Lexus network and storage dependencies. Production uses the real Expo
+ * `fetch` and Keychain-backed token store (the defaults); the Development tab's
+ * login preview injects a mock backend and an in-memory store so the exact same
+ * flow can be exercised without a network call or touching the real session.
+ */
+export type AuthProviderProps = PropsWithChildren<{
+  fetch?: RequestLike;
+  tokenStore?: TokenStore;
+}>;
+
+export function AuthProvider({
+  children,
+  fetch = expoFetch,
+  tokenStore = secureTokenStore,
+}: AuthProviderProps) {
   const [session, setSession] = useState<LexusSession | null>(null);
   const [node, setNode] = useState<AuthenticationNode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,7 +130,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let active = true;
-    secureTokenStore
+    tokenStore
       .load()
       .then(async (stored) => {
         if (!stored) {
@@ -124,7 +140,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return stored;
         }
         const refreshed = await refreshSession(stored.refreshToken, fetch);
-        await secureTokenStore.save(refreshed);
+        await tokenStore.save(refreshed);
         return refreshed;
       })
       .then((restored) => {
@@ -145,22 +161,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [fetch, tokenStore]);
 
   // Apply the next node: exchange for a session when authentication is
   // complete, otherwise advance the UI to the returned step.
-  const advance = useCallback(async (next: AuthenticationNode) => {
-    if (next.tokenId) {
-      const authenticated = await exchangeSsoToken(next.tokenId, fetch);
-      await secureTokenStore.save(authenticated);
-      setSession(authenticated);
-      setNode(null);
-      // Authentication is done — drop the in-memory credentials.
-      setCredentials(null);
-    } else {
-      setNode(next);
-    }
-  }, []);
+  const advance = useCallback(
+    async (next: AuthenticationNode) => {
+      if (next.tokenId) {
+        const authenticated = await exchangeSsoToken(next.tokenId, fetch);
+        await tokenStore.save(authenticated);
+        setSession(authenticated);
+        setNode(null);
+        // Authentication is done — drop the in-memory credentials.
+        setCredentials(null);
+      } else {
+        setNode(next);
+      }
+    },
+    [fetch, tokenStore],
+  );
 
   const submit = useCallback(
     async (value: string | number) => {
@@ -183,7 +202,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setBusy(false);
       }
     },
-    [advance, node],
+    [advance, fetch, node],
   );
 
   const submitCredentials = useCallback(
@@ -214,7 +233,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setBusy(false);
       }
     },
-    [advance, node],
+    [advance, fetch, node],
   );
 
   // Restart the authentication tree from scratch and replay the stored
@@ -266,14 +285,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setBusy(false);
       }
     },
-    [advance, credentials, method],
+    [advance, credentials, fetch, method],
   );
 
   const resendCode = useCallback(() => restartVerification(true), [restartVerification]);
   const changeMethod = useCallback(() => restartVerification(false), [restartVerification]);
 
   const signOut = useCallback(async () => {
-    await secureTokenStore.clear();
+    await tokenStore.clear();
     setSession(null);
     setNode(null);
     setError(null);
