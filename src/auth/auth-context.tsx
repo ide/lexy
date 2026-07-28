@@ -27,11 +27,19 @@ type AuthContextValue = {
   choices: string[];
   error: string | null;
   isLoading: boolean;
+  /** The verification method the user selected at the `choice` step (e.g. "Email"), if any. */
+  method: string | null;
   prompt: string | null;
   session: LexusSession | null;
   signOut: () => Promise<void>;
   step: AuthenticationStep | null;
   submit: (value: string | number) => Promise<void>;
+  /**
+   * Answer the username and password steps back to back so the sign-in screen
+   * can collect both credentials at once. Lexus models them as two sequential
+   * nodes; this drives them without surfacing the intermediate password node.
+   */
+  submitCredentials: (username: string, password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -75,6 +83,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isLoading, setIsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [method, setMethod] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -111,28 +120,66 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  // Apply the next node: exchange for a session when authentication is
+  // complete, otherwise advance the UI to the returned step.
+  const advance = useCallback(async (next: AuthenticationNode) => {
+    if (next.tokenId) {
+      const authenticated = await exchangeSsoToken(next.tokenId, fetch);
+      await secureTokenStore.save(authenticated);
+      setSession(authenticated);
+      setNode(null);
+    } else {
+      setNode(next);
+    }
+  }, []);
+
   const submit = useCallback(
     async (value: string | number) => {
       setBusy(true);
       setError(null);
       try {
         const current = node ?? (await startAuthentication(fetch));
-        const next = await continueAuthentication(current, value, fetch);
-        if (next.tokenId) {
-          const authenticated = await exchangeSsoToken(next.tokenId, fetch);
-          await secureTokenStore.save(authenticated);
-          setSession(authenticated);
-          setNode(null);
-        } else {
-          setNode(next);
+        // Remember which verification method was picked so the OTP screen can
+        // name it correctly (e.g. an email code vs. an SMS code).
+        if (typeof value === 'number' && classifyAuthenticationNode(current) === 'choice') {
+          setMethod(nodeChoices(current)[value] ?? null);
         }
+        await advance(await continueAuthentication(current, value, fetch));
       } catch (cause) {
         setError(errorMessage(cause));
       } finally {
         setBusy(false);
       }
     },
-    [node],
+    [advance, node],
+  );
+
+  const submitCredentials = useCallback(
+    async (username: string, password: string) => {
+      setBusy(true);
+      setError(null);
+      try {
+        let current = node ?? (await startAuthentication(fetch));
+        // Answer the username step unless we are already resuming at the
+        // password step (e.g. after a wrong-password retry that re-prompts only
+        // the password) — otherwise the username would be sent as the password.
+        if (classifyAuthenticationNode(current) !== 'password') {
+          current = await continueAuthentication(current, username, fetch);
+        }
+        // The happy path lands on the password node; answer it in the same pass.
+        // Anything else (a rejected username, a jump straight to 2FA) is
+        // surfaced as-is.
+        if (!current.tokenId && classifyAuthenticationNode(current) === 'password') {
+          current = await continueAuthentication(current, password, fetch);
+        }
+        await advance(current);
+      } catch (cause) {
+        setError(errorMessage(cause));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [advance, node],
   );
 
   const signOut = useCallback(async () => {
@@ -140,6 +187,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setSession(null);
     setNode(null);
     setError(null);
+    setMethod(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -148,13 +196,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       choices: nodeChoices(node),
       error,
       isLoading,
+      method,
       prompt: nodePrompt(node),
       session,
       signOut,
       step: node ? classifyAuthenticationNode(node) : null,
       submit,
+      submitCredentials,
     }),
-    [busy, error, isLoading, node, session, signOut, submit],
+    [busy, error, isLoading, method, node, session, signOut, submit, submitCredentials],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
