@@ -9,7 +9,7 @@
     "scheme": "lexy",
     "userInterfaceStyle": "automatic",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/50920011-b780-458b-9aaa-e305a424af77"
@@ -64,7 +64,8 @@
           ]
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

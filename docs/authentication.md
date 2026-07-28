@@ -68,11 +68,42 @@ fixed in the client.
 
 ## Per-request context
 
-After sign-in, business requests carry the bearer token plus the context headers
-listed in [README → request conventions](./README.md#request-conventions):
-`X-API-KEY`, `X-GUID`, `X-APPBRAND` (`L`), `X-CHANNEL` (`ONEAPP`), locale, client
-build, a unique `X-CORRELATIONID`, and — for vehicle-scoped calls — `VIN`,
-`X-BRAND`, and `X-GENERATION`.
+After sign-in, every business request to `onecdn.telematicsct.com` carries the
+bearer token plus a set of context headers. Below are the exact headers the Lexy
+iOS client sends (see `src/data/lexus-api.ts`), with their production values.
+
+### Base headers (every authenticated call)
+
+| Header | Value | Notes |
+|---|---|---|
+| `Authorization` | `Bearer <access token>` | Per-user; from the token exchange/refresh. |
+| `X-API-KEY` | `pypIHG015k4ABHWbcI4G0a94F7cC0JDo1OynpAsG` | **App-wide, public client key** — the same value ships in the OneApp store binary for all users. Identifies the app, not the user. Not a secret. |
+| `X-GUID` | `<extension_tmsguid>` | Per-user customer GUID, decoded from the ID token. |
+| `X-APPBRAND` | `L` | `L` = Lexus (Toyota uses `T`). |
+| `X-CHANNEL` | `ONEAPP` | |
+| `X-LOCALE` | `en-US` | |
+| `X-OSNAME` | `iOS` | Reported client platform. Lexy is an iOS app. |
+| `X-OSVERSION` | `18.5` | Reported iOS version. |
+| `X-APPVERSION` | `3.4.0` | Mirrors the shipped OneApp client version. |
+| `X-DEVICE-TIMEZONE` | `PST` | |
+| `X-CORRELATIONID` | `<uuid v4>` | Unique per request. |
+| `Content-Type` | `application/json` | |
+| `Accept` | `application/json` | |
+
+The gateway validates the `X-API-KEY` and bearer token; the `X-OSNAME` /
+`X-OSVERSION` / `X-APPVERSION` fields are client-reported context and are accepted
+as `iOS` (verified: discovery returns `200` with the iOS values above).
+
+### Vehicle-scoped headers (status, commands, per-VIN reads)
+
+Added on top of the base headers, sourced from the discovery record
+(`GET /oneapi/v2/vehicle/guid`):
+
+| Header | Value | Notes |
+|---|---|---|
+| `VIN` | `<vin>` | The customer's vehicle. Never client-supplied for writes — bind to server-verified ownership. |
+| `X-GENERATION` | e.g. `21MM` | Telematics generation; selects the REST vs GraphQL command plane. |
+| `X-BRAND` | e.g. `L` | Per-vehicle brand from discovery. |
 
 ## Other identity surfaces
 

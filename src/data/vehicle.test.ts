@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { fetchVehicle, loadVehicle, parseVehicle } from './vehicle';
+import { mapVehicle, parseVehicle, parseVehicleContext } from './vehicle';
 
 const vehicle = {
   nickname: 'Daily driver',
@@ -43,34 +43,148 @@ describe('parseVehicle', () => {
   });
 });
 
-describe('fetchVehicle', () => {
-  it('fetches the normalized vehicle from the configured backend', async () => {
-    const request = vi.fn(async () => new Response(JSON.stringify(vehicle), { status: 200 }));
-
-    await expect(fetchVehicle('https://lexy.example.test/', request)).resolves.toEqual(vehicle);
-    expect(request).toHaveBeenCalledWith('https://lexy.example.test/vehicle', {
-      headers: { Accept: 'application/json' },
-      signal: undefined,
+describe('parseVehicleContext', () => {
+  it('pulls VIN, brand, and generation from the single discovery entry', () => {
+    const body = { payload: [{ vin: 'TESTVIN1234567890', brand: 'L', generation: '21MM' }] };
+    expect(parseVehicleContext(body)).toEqual({
+      vin: 'TESTVIN1234567890',
+      brand: 'L',
+      generation: '21MM',
     });
   });
 
-  it('surfaces backend errors', async () => {
-    const request = vi.fn(async () => new Response('unavailable', { status: 503 }));
+  it('throws when discovery does not resolve to exactly one vehicle', () => {
+    expect(() => parseVehicleContext({ payload: [] })).toThrow('returned 0 vehicles');
+  });
 
-    await expect(fetchVehicle('https://lexy.example.test', request)).rejects.toThrow(
-      'Vehicle API request failed (503)',
+  it('throws when the discovery entry is missing required fields', () => {
+    expect(() => parseVehicleContext({ payload: [{ vin: 'V1' }] })).toThrow(
+      'missing VIN, brand, or generation',
     );
   });
 });
 
-describe('loadVehicle', () => {
-  it('uses bundled stub data when no backend is configured', async () => {
-    const request = vi.fn();
+describe('mapVehicle', () => {
+  // Fixtures captured from live production responses for the account's IS 350.
+  const discovery = {
+    payload: [
+      {
+        vin: 'JTHGZ1B25T5100335',
+        nickName: '2026 IS 350',
+        displayModelDescription: '2026 Lexus IS 350 4-DOOR SEDAN',
+        modelName: 'IS 350 4-DOOR SEDAN',
+        modelYear: '2026',
+        modelCode: '9510',
+        color: 'Cloudburst Grey',
+        region: 'US',
+        generation: '21MM',
+        brand: 'L',
+        fuelType: 'G',
+        image: 'https://img.example/is350.png',
+      },
+    ],
+  };
+  const status = {
+    payload: {
+      status: {
+        driverPosition: 'LEFT',
+        vehicleStatus: [
+          {
+            category: 'Driver Side',
+            sections: [
+              { section: 'Door', values: [{ value: 'Closed', status: 0 }, { value: 'Locked', status: 0 }] },
+              { section: 'Window', values: [{ value: 'Closed', status: 0 }] },
+            ],
+          },
+          { category: 'Other', sections: [{ section: 'Trunk', values: [{ value: 'Open', status: 1 }] }] },
+          {
+            category: 'Trip Details',
+            sections: [
+              { section: 'Trip A', values: [{ value: '272.1 miles', status: 0 }] },
+              { section: 'Trip B', values: [{ value: '735.1 miles', status: 0 }] },
+            ],
+          },
+        ],
+        telemetry: {
+          fugage: { value: 100, unit: '%' },
+          rage: { value: 281, unit: 'Mile' },
+          odo: { value: 735, unit: 'Mile' },
+        },
+        occurrenceDate: '2026-07-28T01:23:50Z',
+        cautionOverallCount: 0,
+        latitude: 37.41144,
+        longitude: -122.12686,
+      },
+    },
+  };
+  const climate = { payload: { temperature: 71, temperatureUnit: 'F', minTemp: 65, maxTemp: 85 } };
+  const spec = {
+    payload: {
+      vehicleSpecifications: {
+        dataItems: [
+          { dataName: 'Drive Type', dataValue: '2WD' },
+          { dataName: 'Grade', dataValue: 'F SPORT' },
+          { dataName: 'Transmission', dataValue: '8AT-F' },
+          { dataName: 'Date of First Use', dataValue: 'April 23, 2026' },
+        ],
+      },
+      additionalDetails: { dataItems: [{ dataName: 'Order Date', dataValue: '03/2026' }] },
+    },
+  };
 
-    await expect(loadVehicle(undefined, request)).resolves.toMatchObject({
-      fullName: '2026 Lexus IS 350',
+  const tires = {
+    payload: {
       vin: 'JTHGZ1B25T5100335',
+      tirePressureStatus: 'Good',
+      flTirePressure: { value: 39, unit: 'psi', displayLowTirePressureWarning: false },
+      frTirePressure: { value: 39, unit: 'psi', displayLowTirePressureWarning: false },
+      rlTirePressure: { value: 40, unit: 'psi', displayLowTirePressureWarning: false },
+      rrTirePressure: { value: 33, unit: 'psi', displayLowTirePressureWarning: true },
+    },
+  };
+
+  it('composes the live responses into the UI vehicle shape', () => {
+    const mapped = mapVehicle(discovery, status, climate, spec, tires);
+    expect(mapped.tires).toEqual({
+      status: 'Good',
+      unit: 'psi',
+      positions: [
+        { label: 'Front Left', value: 39, low: false },
+        { label: 'Front Right', value: 39, low: false },
+        { label: 'Rear Left', value: 40, low: false },
+        { label: 'Rear Right', value: 33, low: true },
+      ],
     });
-    expect(request).not.toHaveBeenCalled();
+    expect(mapped).toMatchObject({
+      nickname: '2026 IS 350',
+      fullName: '2026 Lexus IS 350 4-DOOR SEDAN',
+      model: 'IS 350 4-DOOR SEDAN',
+      color: 'Cloudburst Grey',
+      vin: 'JTHGZ1B25T5100335',
+      modelCode: '9510',
+      generation: '21MM',
+      fuelType: 'Gasoline',
+      transmission: '8AT-F',
+      drivetrain: '2WD',
+      trim: 'F SPORT',
+      headUnit: 'Lexus Multimedia (21MM)',
+      inServiceDate: 'April 23, 2026',
+      fuelPercent: 100,
+      rangeMiles: 281,
+      odometerMiles: 735,
+      tripAMiles: 272.1,
+      tripBMiles: 735.1,
+      location: { latitude: 37.41144, longitude: -122.12686 },
+      climate: { temperatureF: 71, minF: 65, maxF: 85 },
+    });
+    expect(mapped.closures).toEqual([
+      { label: 'Driver Door', state: 'Closed', locked: true },
+      { label: 'Driver Window', state: 'Closed' },
+      { label: 'Trunk', state: 'Open' },
+    ]);
+  });
+
+  it('produces a value that passes parseVehicle validation', () => {
+    expect(() => parseVehicle(mapVehicle(discovery, status, climate, spec))).not.toThrow();
   });
 });

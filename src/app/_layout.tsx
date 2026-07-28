@@ -3,6 +3,7 @@ import { Observe, ObserveRoot } from "expo-observe";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { AuthProvider, useAuth } from "@/auth/auth-context";
 import { colors } from "@/constants/theme";
 import { VehicleDataProvider } from "@/data/query-client";
 import { UpdateHistoryRecorder } from "@/updates/update-history-recorder";
@@ -15,30 +16,49 @@ Observe.configure({
   dispatchInDebug: process.env.EXPO_PUBLIC_OBSERVE_DEV === "1",
 });
 
+function RootNavigator() {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  return (
+    <Stack
+      screenOptions={{
+        headerTransparent: true,
+        headerShadowVisible: false,
+        headerBackButtonDisplayMode: "minimal",
+        headerTintColor: colors.systemBlue as string,
+        headerTitleStyle: { color: colors.label as string },
+        contentStyle: { backgroundColor: colors.groupedBackground },
+      }}
+    >
+      <Stack.Protected guard={session !== null}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={session === null}>
+        <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
 function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <VehicleDataProvider>
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
-          <UpdateHistoryRecorder />
-          <Stack
-            screenOptions={{
-              headerTransparent: true,
-              headerShadowVisible: false,
-              headerBackButtonDisplayMode: "minimal",
-              headerTintColor: colors.systemBlue as string,
-              headerTitleStyle: { color: colors.label as string },
-              contentStyle: { backgroundColor: colors.groupedBackground },
-            }}
+      <AuthProvider>
+        <VehicleDataProvider>
+          <ThemeProvider
+            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-        </ThemeProvider>
-      </VehicleDataProvider>
+            <UpdateHistoryRecorder />
+            <RootNavigator />
+          </ThemeProvider>
+        </VehicleDataProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }
