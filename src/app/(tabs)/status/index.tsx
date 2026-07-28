@@ -470,10 +470,19 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
     paddingBottom: Spacing.three,
   },
-  // The Lexus render ships with ~26% transparent margin top and bottom, so a
-  // plain `contain` fit floats a small car in a sea of whitespace. Clip the
-  // image in a fixed frame and oversize it (width > 100%) so the car fills the
-  // frame and the transparent bands are cropped out.
+  // The Lexus vehicle render (from the telematics CDN) is a 700x631 PNG whose
+  // car only occupies the middle ~46% of the height: it ships with ~26%
+  // transparent margin on top and ~28% on the bottom. A plain `contentFit:
+  // "contain"` faithfully draws all that empty space, so the car floats small
+  // in a sea of whitespace (which reads as excess vertical padding in the card).
+  //
+  // Fix: clip the image in a fixed-height frame (overflow: hidden) and oversize
+  // it (width > 100%) so the car fills the frame and the transparent bands get
+  // cropped away instead of rendered. The car sits dead-center in the source,
+  // so a symmetric scale needs no translation. Frame height (185) + width
+  // (110%) are tuned so the whole car stays visible with a little breathing
+  // room (~11pt above / ~18pt below) — don't crank them without re-checking the
+  // car isn't getting clipped. aspectRatio matches the source (700/631).
   heroImageFrame: {
     width: "100%",
     height: 185,
