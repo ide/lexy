@@ -2,23 +2,51 @@ import { useQuery } from '@tanstack/react-query';
 import { Observe } from 'expo-observe';
 import { fetch } from 'expo/fetch';
 
-import { loadVehicle } from '@/data/vehicle';
+import { useAuth } from '@/auth/auth-context';
+import {
+  VEHICLE_CLIMATE_ENDPOINT,
+  VEHICLE_DISCOVERY_ENDPOINT,
+  VEHICLE_SPEC_ENDPOINT,
+  VEHICLE_STATUS_ENDPOINT,
+  VEHICLE_TIRES_ENDPOINT,
+  businessHeaders,
+  vehicleHeaders,
+} from '@/data/lexus-api';
+import { mapVehicle, parseVehicle, parseVehicleContext } from '@/data/vehicle';
 
-const apiUrl = process.env.EXPO_PUBLIC_LEXY_API_URL;
-const source = apiUrl ? 'api' : 'stub';
+async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
+  const response = await fetch(url, { headers, signal });
+  if (!response.ok) {
+    throw new Error(`Lexus request failed (${response.status})`);
+  }
+  return response.json();
+}
 
 export function useVehicle() {
+  const { session } = useAuth();
   return useQuery({
-    queryKey: ['vehicle', apiUrl ?? 'stub'],
+    queryKey: ['vehicle'],
+    enabled: session !== null,
     queryFn: async ({ signal }) => {
+      if (!session) {
+        throw new Error('Sign in to load your vehicle');
+      }
       const startedAt = performance.now();
       try {
-        const vehicle = await loadVehicle(apiUrl, fetch, signal);
+        // Discover the car (VIN + brand + generation), then read status,
+        // climate, spec, and tires with vehicle-scoped headers and map into the
+        // UI shape.
+        const discovery = await getJson(VEHICLE_DISCOVERY_ENDPOINT, businessHeaders(session), signal);
+        const scoped = vehicleHeaders(session, parseVehicleContext(discovery));
+        const [status, climate, spec, tires] = await Promise.all([
+          getJson(VEHICLE_STATUS_ENDPOINT, scoped, signal),
+          getJson(VEHICLE_CLIMATE_ENDPOINT, scoped, signal),
+          getJson(VEHICLE_SPEC_ENDPOINT, scoped, signal),
+          getJson(VEHICLE_TIRES_ENDPOINT, scoped, signal).catch(() => null),
+        ]);
+        const vehicle = parseVehicle(mapVehicle(discovery, status, climate, spec, tires));
         Observe.logEvent('vehicle.load.completed', {
-          attributes: {
-            source,
-            durationMs: Math.round(performance.now() - startedAt),
-          },
+          attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
         });
         return vehicle;
       } catch (error) {
@@ -27,14 +55,8 @@ export function useVehicle() {
         if (!signal.aborted) {
           Observe.logEvent('vehicle.load.failed', {
             severity: 'error',
-            body:
-              error instanceof Error
-                ? error.message
-                : 'Unknown error loading vehicle data',
-            attributes: {
-              source,
-              durationMs: Math.round(performance.now() - startedAt),
-            },
+            body: error instanceof Error ? error.message : 'Unknown error loading vehicle data',
+            attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
           });
         }
         throw error;

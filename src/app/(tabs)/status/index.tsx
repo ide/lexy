@@ -252,6 +252,42 @@ export default function CarDashboard() {
           </Card>
         </View>
 
+        {vehicle.tires ? (
+          <View>
+            <SectionTitle>TIRE PRESSURE</SectionTitle>
+            <Card style={styles.closureCard}>
+              {vehicle.tires.positions.map((t, i) => (
+                <View
+                  key={t.label}
+                  style={[
+                    styles.closureRow,
+                    i < vehicle.tires!.positions.length - 1 && {
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: theme.separator,
+                    },
+                  ]}
+                >
+                  <ThemedText type="small">{t.label}</ThemedText>
+                  <View style={styles.closureState}>
+                    <ThemedText type="small" themeColor="secondaryLabel">
+                      {t.value} {vehicle.tires!.unit}
+                    </ThemedText>
+                    <Icon
+                      name={
+                        t.low
+                          ? "exclamationmark.triangle.fill"
+                          : "checkmark.circle.fill"
+                      }
+                      size={15}
+                      tint={t.low ? (colors.systemOrange as string) : green}
+                    />
+                  </View>
+                </View>
+              ))}
+            </Card>
+          </View>
+        ) : null}
+
         <View style={styles.metricRow}>
           <Card style={styles.halfCard}>
             <Icon name="thermometer.medium" tint={blue} />
