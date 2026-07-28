@@ -42,7 +42,24 @@ import { useEffect, useRef, useState } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
+import type { AuthenticationStep } from "@/auth/lexus-auth";
 import { Spacing, colors } from "@/constants/theme";
+
+/**
+ * The slice of auth state the sign-in UI renders. The real screen wires this to
+ * `useAuth()`, but the Development tab's login preview supplies a mock so the
+ * flow can be walked without any network calls or session changes.
+ */
+export type SignInController = {
+  busy: boolean;
+  choices: string[];
+  error: string | null;
+  method: string | null;
+  prompt: string | null;
+  step: AuthenticationStep | null;
+  submit: (value: string | number) => void | Promise<void>;
+  submitCredentials: (username: string, password: string) => void | Promise<void>;
+};
 
 type Screen = "credentials" | "choice" | "otp";
 
@@ -223,7 +240,11 @@ function ErrorNotice({ message }: { message: string }) {
 }
 
 export default function SignInScreen() {
-  const { busy, choices, error, method, prompt, step, submit, submitCredentials } = useAuth();
+  return <SignInView controller={useAuth()} />;
+}
+
+export function SignInView({ controller }: { controller: SignInController }) {
+  const { busy, choices, error, method, prompt, step, submit, submitCredentials } = controller;
   const { markInteractive } = useObserve();
 
   const [email, setEmail] = useState("");

@@ -8,7 +8,7 @@ describe("app tab configuration", () => {
     expect(appTabs.map(({ name, label }) => ({ name, label }))).toEqual([
       { name: "status", label: "Status" },
       { name: "details", label: "Details" },
-      { name: "updates", label: "Updates" },
+      { name: "development", label: "Development" },
     ]);
   });
 });
