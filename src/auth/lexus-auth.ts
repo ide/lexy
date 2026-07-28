@@ -10,7 +10,7 @@ const CLIENT_ID = 'oneappsdkclient';
 const REDIRECT_URI = 'com.toyota.oneapp:/oauth2Callback';
 const SCOPE = 'openid profile write';
 
-type RequestLike = (input: string, init?: RequestInit) => Promise<Response>;
+export type RequestLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export type AuthenticationCallback = {
   type: string;
