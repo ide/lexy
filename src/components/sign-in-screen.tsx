@@ -54,10 +54,13 @@ import { Spacing, colors } from "@/constants/theme";
  */
 export type SignInController = {
   busy: boolean;
+  canChangeMethod: boolean;
+  changeMethod: () => void | Promise<void>;
   choices: string[];
   error: string | null;
   method: string | null;
   prompt: string | null;
+  resendCode: () => void | Promise<void>;
   step: AuthenticationStep | null;
   submit: (value: string | number) => void | Promise<void>;
   submitCredentials: (username: string, password: string) => void | Promise<void>;
@@ -215,6 +218,30 @@ function PrimaryButton({
   );
 }
 
+function SecondaryAction({
+  disabled,
+  label,
+  onPress,
+}: {
+  disabled: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Button
+      label={label}
+      onPress={onPress}
+      modifiers={[
+        buttonStyle("plain"),
+        controlSize("large"),
+        tint(colors.systemBlue),
+        disabledModifier(disabled),
+        frame({ maxWidth: Infinity }),
+      ]}
+    />
+  );
+}
+
 function NewToLexusCallout() {
   return (
     <Button
@@ -308,7 +335,19 @@ export default function SignInScreen() {
 }
 
 export function SignInView({ controller }: { controller: SignInController }) {
-  const { busy, choices, error, method, prompt, step, submit, submitCredentials } = controller;
+  const {
+    busy,
+    canChangeMethod,
+    changeMethod,
+    choices,
+    error,
+    method,
+    prompt,
+    resendCode,
+    step,
+    submit,
+    submitCredentials,
+  } = controller;
   const { markInteractive } = useObserve();
 
   const [email, setEmail] = useState("");
@@ -348,6 +387,26 @@ export function SignInView({ controller }: { controller: SignInController }) {
     }
     tapImpact();
     submit(code.trim());
+  };
+
+  // Resend a fresh code / switch delivery method by restarting verification. The
+  // previously entered code is cleared since it's no longer the active one.
+  const resend = () => {
+    if (busy) {
+      return;
+    }
+    tapImpact();
+    setCode("");
+    resendCode();
+  };
+
+  const switchMethod = () => {
+    if (busy) {
+      return;
+    }
+    tapImpact();
+    setCode("");
+    changeMethod();
   };
 
   const otp = otpCopy(method);
@@ -494,6 +553,20 @@ export function SignInView({ controller }: { controller: SignInController }) {
                 label="Verify"
                 onPress={verify}
               />
+              <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+                <SecondaryAction
+                  disabled={busy}
+                  label="Resend code"
+                  onPress={resend}
+                />
+                {canChangeMethod ? (
+                  <SecondaryAction
+                    disabled={busy}
+                    label="Use a different method"
+                    onPress={switchMethod}
+                  />
+                ) : null}
+              </VStack>
             </VStack>
           ) : null}
 
