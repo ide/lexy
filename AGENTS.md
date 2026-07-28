@@ -35,6 +35,13 @@ with `sips`:
 sips --resampleWidth 393 screenshot.png
 ```
 
+# EAS Updates
+
+Publish updates for iOS only — pass `--platform ios` to `eas update`. Lexy is
+iOS-only, and the default all-platform export fails to bundle for web (the
+`expo-sqlite` web path imports a `.wasm` module). The preview and production
+channels target iOS anyway.
+
 # Git workflow
 
 Commit changes directly to `main`. Do not open pull requests.
