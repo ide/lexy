@@ -170,9 +170,7 @@ function StatusLine({ status }: { status: Status }) {
   return (
     <View style={styles.statusLine}>
       <Icon name={status.symbol} size={17} tint={status.color} />
-      <ThemedText type="small" style={{ color: status.color }}>
-        {status.text}
-      </ThemedText>
+      <ThemedText type="small">{status.text}</ThemedText>
     </View>
   );
 }
@@ -225,14 +223,15 @@ function TireCell({
   unit: string;
   low: boolean;
 }) {
-  const color = low ? orange : green;
   return (
     <Card style={styles.cornerCard}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
         {label}
       </ThemedText>
       <View style={styles.metricValueRow}>
-        <ThemedText style={[styles.tireValue, { color }]}>{value}</ThemedText>
+        <ThemedText style={[styles.tireValue, low && { color: orange }]}>
+          {value}
+        </ThemedText>
         <ThemedText
           type="small"
           themeColor="secondaryLabel"
