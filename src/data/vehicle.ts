@@ -290,7 +290,9 @@ export function mapVehicle(
     manufacturedDate: specValue(spec, 'Order Date') || '—',
     updatedAt: str(st.occurrenceDate, new Date().toISOString()),
     fuelPercent: Math.round(num(asRecord(telemetry.fugage).value)),
-    rangeMiles: Math.round(num(asRecord(telemetry.range).value)),
+    // The live 21MM REST telemetry key is `rage` (not the `range` the docs list);
+    // reading `range` returns 0 in production, so trust the wire, not the docs.
+    rangeMiles: Math.round(num(asRecord(telemetry.rage).value)),
     odometerMiles: Math.round(num(asRecord(telemetry.odo).value)),
     cautionCount: num(st.cautionOverallCount),
     tripAMiles: tripMiles(vehicleStatus, 'Trip A'),

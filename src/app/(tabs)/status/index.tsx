@@ -104,31 +104,54 @@ const orange = colors.systemOrange as string;
 
 type Status = { text: string; color: string; symbol: SFSymbol };
 
-function doorStatus(door: Closure, side: Side): Status {
-  const hand = side === "driver" ? "left" : "right";
+function doorStatus(door: Closure): Status {
   if (door.state === "Open") {
-    return { text: "Open", color: orange, symbol: `door.${hand}.hand.open` };
+    return { text: "Door open", color: orange, symbol: "lock.open.fill" };
   }
   if (door.locked === false) {
-    return {
-      text: "Unlocked",
-      color: orange,
-      symbol: `door.${hand}.hand.closed`,
-    };
+    return { text: "Door unlocked", color: orange, symbol: "lock.open.fill" };
   }
-  return {
-    text: door.locked ? "Locked" : "Closed",
-    color: green,
-    symbol: `door.${hand}.hand.closed`,
-  };
+  return { text: "Door locked", color: green, symbol: "lock.fill" };
 }
 
 function windowStatus(window: Closure, side: Side): Status {
+  // The `car.window.left`/`right` glyphs read reversed against our driver-left /
+  // passenger-right columns, so the sides are intentionally swapped here.
   const symbol: SFSymbol =
-    side === "driver" ? "car.window.left" : "car.window.right";
+    side === "driver" ? "car.window.right" : "car.window.left";
   return window.state === "Open"
-    ? { text: "Open", color: orange, symbol }
-    : { text: "Closed", color: green, symbol };
+    ? { text: "Window open", color: orange, symbol }
+    : { text: "Window closed", color: green, symbol };
+}
+
+// Non-door/window closures (moonroof, trunk, hood). Each carries its own
+// identity glyph; open/closed is conveyed by color + the written word rather
+// than a checkmark, keeping them visually consistent with doors and windows.
+const OPENING_SYMBOLS: { match: RegExp; open: SFSymbol; closed: SFSymbol }[] = [
+  { match: /moonroof|sunroof/i, open: "window.ceiling", closed: "window.ceiling.closed" },
+  {
+    match: /trunk|hatch|tailgate/i,
+    open: "car.side.rear.crop.trunk.partition.fill",
+    closed: "car.side.rear.crop.trunk.partition.fill",
+  },
+  { match: /hood/i, open: "engine.combustion.fill", closed: "engine.combustion.fill" },
+];
+
+function openingStatus(opening: Closure): Status {
+  const isOpen = opening.state === "Open";
+  const match = OPENING_SYMBOLS.find((o) => o.match.test(opening.label));
+  const symbol: SFSymbol = match
+    ? isOpen
+      ? match.open
+      : match.closed
+    : isOpen
+      ? "exclamationmark.triangle.fill"
+      : "checkmark.circle.fill";
+  return {
+    text: `${opening.label} ${isOpen ? "open" : "closed"}`,
+    color: isOpen ? orange : green,
+    symbol,
+  };
 }
 
 function StatusLine({ status }: { status: Status }) {
@@ -150,7 +173,7 @@ function CornerCard({ corner }: { corner: Corner }) {
       </ThemedText>
       <View style={styles.cornerStates}>
         {corner.door ? (
-          <StatusLine status={doorStatus(corner.door, corner.side)} />
+          <StatusLine status={doorStatus(corner.door)} />
         ) : null}
         {corner.window ? (
           <StatusLine status={windowStatus(corner.window, corner.side)} />
@@ -210,10 +233,12 @@ function TireCell({
   );
 }
 
-function openingStatus(opening: Closure): Status {
-  return opening.state === "Open"
-    ? { text: "Open", color: orange, symbol: "exclamationmark.triangle.fill" }
-    : { text: "Closed", color: green, symbol: "checkmark.circle.fill" };
+function OpeningCard({ opening }: { opening: Closure }) {
+  return (
+    <Card style={styles.cornerCard}>
+      <StatusLine status={openingStatus(opening)} />
+    </Card>
+  );
 }
 
 function openLastParkedInMaps(vehicle: Vehicle) {
@@ -230,7 +255,6 @@ function openLastParkedInMaps(vehicle: Vehicle) {
 }
 
 export default function CarDashboard() {
-  const theme = useTheme();
   const {
     data: vehicle,
     error,
@@ -339,26 +363,22 @@ export default function CarDashboard() {
         ) : null}
 
         {openings.length > 0 ? (
-          <Card style={styles.closureCard}>
-            {openings.map((o, i) => {
-              const status = openingStatus(o);
-              return (
-                <View
-                  key={o.label}
-                  style={[
-                    styles.closureRow,
-                    i < openings.length - 1 && {
-                      borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: theme.separator,
-                    },
-                  ]}
-                >
-                  <ThemedText type="small">{o.label}</ThemedText>
-                  <StatusLine status={status} />
-                </View>
-              );
-            })}
-          </Card>
+          <View style={styles.grid}>
+            <View style={styles.gridColumn}>
+              {openings
+                .filter((_, i) => i % 2 === 0)
+                .map((o) => (
+                  <OpeningCard key={o.label} opening={o} />
+                ))}
+            </View>
+            <View style={styles.gridColumn}>
+              {openings
+                .filter((_, i) => i % 2 === 1)
+                .map((o) => (
+                  <OpeningCard key={o.label} opening={o} />
+                ))}
+            </View>
+          </View>
         ) : null}
 
         {tires.length > 0 ? (
@@ -444,13 +464,13 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: "center",
-    gap: Spacing.two,
-    paddingTop: Spacing.two,
+    gap: Spacing.one,
+    paddingTop: Spacing.one,
     paddingBottom: Spacing.two,
   },
   heroImage: {
     width: "100%",
-    height: 220,
+    height: 200,
   },
   pill: {
     flexDirection: "row",
@@ -516,15 +536,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.one,
-  },
-  closureCard: {
-    paddingVertical: 0,
-  },
-  closureRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: Spacing.three,
   },
   footer: {
     alignItems: "center",

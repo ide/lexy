@@ -107,7 +107,7 @@ describe('mapVehicle', () => {
         ],
         telemetry: {
           fugage: { value: 100, unit: '%' },
-          range: { value: 281, unit: 'Mile' },
+          rage: { value: 281, unit: 'Mile' },
           odo: { value: 735, unit: 'Mile' },
         },
         occurrenceDate: '2026-07-28T01:23:50Z',
