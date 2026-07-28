@@ -18,6 +18,7 @@ import {
   autocorrectionDisabled,
   background,
   buttonStyle,
+  contentShape,
   controlSize,
   disabled as disabledModifier,
   fixedSize,
@@ -37,6 +38,7 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { useEffect, useRef, useState } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -63,10 +65,19 @@ export type SignInController = {
 
 type Screen = "credentials" | "choice" | "otp";
 
+// The official Lexus app (Toyota Motor Sales) — where drivers create their
+// Lexus account and enroll a vehicle. Lexy signs in with those credentials.
+const LEXUS_APP_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
+
 function tapImpact() {
   if (process.env.EXPO_OS === "ios") {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
+}
+
+function openLexusApp() {
+  tapImpact();
+  Linking.openURL(LEXUS_APP_URL);
 }
 
 // The OTP node's server prompt is often generic, so the copy (and icon) are
@@ -204,6 +215,59 @@ function PrimaryButton({
   );
 }
 
+function NewToLexusCallout() {
+  return (
+    <Button
+      onPress={openLexusApp}
+      modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.three}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          contentShape(shapes.rectangle()),
+          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
+          background(
+            colors.card,
+            shapes.roundedRectangle({
+              cornerRadius: 14,
+              roundedCornerStyle: "continuous",
+            }),
+          ),
+        ]}
+      >
+        <Image systemName="apple.logo" size={22} color={colors.label as string} />
+        <VStack
+          alignment="leading"
+          spacing={Spacing.half}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        >
+          <Text modifiers={[font({ textStyle: "footnote", weight: "bold" })]}>
+            New to Lexus?
+          </Text>
+          <Text
+            modifiers={[
+              font({ textStyle: "footnote", weight: "medium" }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+              fixedSize({ horizontal: false, vertical: true }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+            ]}
+          >
+            Create an account and add your car in the Lexus app, then come back
+            here to sign in.
+          </Text>
+        </VStack>
+        <Image
+          systemName="arrow.up.forward"
+          size={14}
+          color={colors.systemBlue as string}
+        />
+      </HStack>
+    </Button>
+  );
+}
+
 function ErrorNotice({ message }: { message: string }) {
   return (
     <HStack
@@ -295,7 +359,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
         : { icon: "key.fill" as SFSymbol, title: "Sign in to Lexus" };
   const subtitle =
     screen === "credentials"
-      ? "Connect Lexy directly to your Lexus account."
+      ? "Sign in with the Lexus account you created in the Lexus app."
       : screen === "choice"
         ? (prompt ?? "Choose how you'd like to receive your verification code.")
         : (prompt ?? otp.subtitle);
@@ -434,6 +498,8 @@ export function SignInView({ controller }: { controller: SignInController }) {
           ) : null}
 
           {error ? <ErrorNotice message={error} /> : null}
+
+          {screen === "credentials" ? <NewToLexusCallout /> : null}
 
           <Text
             modifiers={[
