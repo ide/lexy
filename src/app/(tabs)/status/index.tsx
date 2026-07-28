@@ -1,9 +1,16 @@
+import { Button, Host, Popover, Text, VStack } from "@expo/ui/swift-ui";
+import {
+  buttonStyle,
+  font,
+  foregroundStyle,
+  padding,
+} from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -13,7 +20,12 @@ import { ThemedText } from "@/components/themed-text";
 import { VehicleError, VehicleLoading } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
-import { relativeTime, updatedLabel, type Closure, type Vehicle } from "@/data/vehicle";
+import {
+  absoluteLocalTime,
+  relativeTime,
+  type Closure,
+  type Vehicle,
+} from "@/data/vehicle";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
 
@@ -254,6 +266,47 @@ function openLastParkedInMaps(vehicle: Vehicle) {
   Linking.openURL(url);
 }
 
+// A non-bold footer line whose tap reveals the precise local timestamp in a
+// native SwiftUI popover — a tooltip anchored to the sentence itself.
+function FooterTimeRow({
+  label,
+  timestamp,
+}: {
+  label: string;
+  timestamp: string | number;
+}) {
+  const [isPresented, setIsPresented] = useState(false);
+  return (
+    <Popover isPresented={isPresented} onIsPresentedChange={setIsPresented}>
+      <Popover.Trigger>
+        <Button
+          onPress={() => setIsPresented(true)}
+          modifiers={[buttonStyle("plain")]}
+        >
+          <Text
+            modifiers={[
+              font({ textStyle: "footnote", weight: "regular" }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+            ]}
+          >
+            {label}
+          </Text>
+        </Button>
+      </Popover.Trigger>
+      <Popover.Content>
+        <Text
+          modifiers={[
+            padding({ all: Spacing.three }),
+            font({ textStyle: "callout", weight: "regular" }),
+          ]}
+        >
+          {absoluteLocalTime(timestamp)}
+        </Text>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
 export default function CarDashboard() {
   const {
     data: vehicle,
@@ -440,13 +493,20 @@ export default function CarDashboard() {
         </View>
 
         <View style={styles.footer}>
-          <ThemedText type="small" themeColor="secondaryLabel">
-            Vehicle reported {relativeTime(vehicle.updatedAt)} ·{" "}
-            {updatedLabel(vehicle.updatedAt)}
-          </ThemedText>
-          <ThemedText type="small" themeColor="secondaryLabel">
-            App checked {relativeTime(dataUpdatedAt)}
-          </ThemedText>
+          <Host matchContents style={styles.footerHost}>
+            <VStack alignment="center" spacing={Spacing.half}>
+              <FooterTimeRow
+                label={`Vehicle last synced with Lexus ${relativeTime(
+                  vehicle.updatedAt,
+                )}.`}
+                timestamp={vehicle.updatedAt}
+              />
+              <FooterTimeRow
+                label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
+                timestamp={dataUpdatedAt}
+              />
+            </VStack>
+          </Host>
         </View>
       </NativeScrollView>
     </>
@@ -563,5 +623,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.two,
     gap: Spacing.half,
+  },
+  footerHost: {
+    backgroundColor: "transparent",
   },
 });
