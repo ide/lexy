@@ -1,8 +1,10 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 
+import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
 
 export function VehicleLoading() {
   return (
@@ -39,6 +41,37 @@ export function VehicleError({
   );
 }
 
+function Skeleton({ style }: { style?: object }) {
+  const theme = useTheme();
+  return <View style={[{ backgroundColor: theme.fill }, style]} />;
+}
+
+/**
+ * Shown when there is no cached vehicle to display and the device is offline —
+ * i.e. we have nothing to render yet but don't want a blank screen or a
+ * misleading "unavailable" error. An offline banner sits above grayed-out
+ * placeholder cards shaped like the dashboard, so the app reads as "waiting for
+ * a connection" rather than broken.
+ */
+export function VehiclePlaceholder() {
+  return (
+    <View style={styles.placeholder}>
+      <OfflineBanner message="No internet connection — connect to load your vehicle" />
+      <Skeleton style={styles.heroSkeleton} />
+      <View style={styles.metricRow}>
+        <Skeleton style={styles.metricSkeleton} />
+        <Skeleton style={styles.metricSkeleton} />
+        <Skeleton style={styles.metricSkeleton} />
+      </View>
+      <View style={styles.metricRow}>
+        <Skeleton style={styles.blockSkeleton} />
+        <Skeleton style={styles.blockSkeleton} />
+      </View>
+      <Skeleton style={styles.wideSkeleton} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -58,5 +91,36 @@ const styles = StyleSheet.create({
   },
   buttonLabel: {
     color: "#FFFFFF",
+  },
+  placeholder: {
+    flex: 1,
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
+  metricRow: {
+    flexDirection: "row",
+    gap: Spacing.two,
+  },
+  heroSkeleton: {
+    height: 220,
+    borderRadius: 18,
+    borderCurve: "continuous",
+  },
+  metricSkeleton: {
+    flex: 1,
+    height: 96,
+    borderRadius: 18,
+    borderCurve: "continuous",
+  },
+  blockSkeleton: {
+    flex: 1,
+    height: 120,
+    borderRadius: 18,
+    borderCurve: "continuous",
+  },
+  wideSkeleton: {
+    height: 120,
+    borderRadius: 18,
+    borderCurve: "continuous",
   },
 });

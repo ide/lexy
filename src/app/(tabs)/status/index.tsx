@@ -16,8 +16,13 @@ import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { NativeScrollView } from "@/components/native-scroll-view";
+import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
-import { VehicleError, VehicleLoading } from "@/components/vehicle-state";
+import {
+  VehicleError,
+  VehicleLoading,
+  VehiclePlaceholder,
+} from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
 import {
@@ -26,6 +31,7 @@ import {
   type Closure,
   type Vehicle,
 } from "@/data/vehicle";
+import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
 
@@ -315,6 +321,7 @@ export default function CarDashboard() {
     dataUpdatedAt,
   } = useVehicle();
   const { markInteractive } = useObserve();
+  const isOnline = useIsOnline();
 
   useEffect(() => {
     // TTI marks the UI shell becoming interactive; data readiness is tracked
@@ -322,11 +329,15 @@ export default function CarDashboard() {
     markInteractive();
   }, [markInteractive]);
 
-  if (isLoading && !vehicle) {
-    return <VehicleLoading />;
-  }
-
   if (!vehicle) {
+    // Offline with nothing cached yet: show placeholders + an offline banner
+    // instead of a spinner (which would never resolve) or a misleading error.
+    if (!isOnline) {
+      return <VehiclePlaceholder />;
+    }
+    if (isLoading) {
+      return <VehicleLoading />;
+    }
     return (
       <VehicleError
         message={
@@ -357,6 +368,9 @@ export default function CarDashboard() {
         }}
         contentContainerStyle={styles.content}
       >
+        {!isOnline ? (
+          <OfflineBanner message="No internet connection — showing last saved data" />
+        ) : null}
         <Card style={styles.hero}>
           <View style={styles.heroImageFrame}>
             <Image
