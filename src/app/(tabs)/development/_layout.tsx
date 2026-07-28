@@ -12,7 +12,14 @@ export default function DevelopmentLayout() {
   return (
     <Stack screenOptions={tabStackScreenOptions}>
       <Stack.Screen name="index" options={{ title: "Development" }} />
-      <Stack.Screen name="updates" options={{ title: "Updates" }} />
+      <Stack.Screen
+        name="updates"
+        options={{
+          title: "Updates",
+          // "Development" is a long back-title, so show just the chevron.
+          headerBackButtonDisplayMode: "minimal",
+        }}
+      />
       {/* No header so the preview is pixel-identical to the real, headerless
           sign-in screen. Swipe from the left edge to return to the menu. */}
       <Stack.Screen name="login" options={{ headerShown: false }} />
