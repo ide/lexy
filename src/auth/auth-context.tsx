@@ -24,12 +24,29 @@ import { secureTokenStore } from '@/auth/token-store';
 
 type AuthContextValue = {
   busy: boolean;
+  /**
+   * Whether the OTP step can offer switching to another delivery method — true
+   * only when the account presented more than one verification channel.
+   */
+  canChangeMethod: boolean;
+  /**
+   * Restart verification and return to the `choice` step so the user can pick a
+   * different delivery method (e.g. switch from SMS to email). Available on the
+   * OTP step once credentials have been accepted.
+   */
+  changeMethod: () => Promise<void>;
   choices: string[];
   error: string | null;
   isLoading: boolean;
   /** The verification method the user selected at the `choice` step (e.g. "Email"), if any. */
   method: string | null;
   prompt: string | null;
+  /**
+   * Restart verification and re-select the current delivery method so Lexus
+   * dispatches a fresh code, returning the user to the OTP step. Available on
+   * the OTP step once credentials have been accepted.
+   */
+  resendCode: () => Promise<void>;
   session: LexusSession | null;
   signOut: () => Promise<void>;
   step: AuthenticationStep | null;
@@ -84,6 +101,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<string | null>(null);
+  // The delivery methods the account offered at the `choice` step, kept so the
+  // OTP step knows whether switching to another method is even possible.
+  const [availableMethods, setAvailableMethods] = useState<string[]>([]);
+  // The accepted credentials, held in memory (never persisted) so verification
+  // can be restarted to resend a code or switch methods without re-prompting.
+  // Cleared once authentication completes or the user signs out.
+  const [credentials, setCredentials] = useState<{
+    username: string;
+    password: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -128,6 +155,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await secureTokenStore.save(authenticated);
       setSession(authenticated);
       setNode(null);
+      // Authentication is done — drop the in-memory credentials.
+      setCredentials(null);
     } else {
       setNode(next);
     }
@@ -140,9 +169,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const current = node ?? (await startAuthentication(fetch));
         // Remember which verification method was picked so the OTP screen can
-        // name it correctly (e.g. an email code vs. an SMS code).
+        // name it correctly (e.g. an email code vs. an SMS code), along with the
+        // full set of offered methods so it knows whether switching is possible.
         if (typeof value === 'number' && classifyAuthenticationNode(current) === 'choice') {
-          setMethod(nodeChoices(current)[value] ?? null);
+          const offered = nodeChoices(current);
+          setAvailableMethods(offered);
+          setMethod(offered[value] ?? null);
         }
         await advance(await continueAuthentication(current, value, fetch));
       } catch (cause) {
@@ -172,6 +204,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (!current.tokenId && classifyAuthenticationNode(current) === 'password') {
           current = await continueAuthentication(current, password, fetch);
         }
+        // Remember the accepted credentials so verification can be restarted to
+        // resend a code or switch delivery methods without asking again.
+        setCredentials({ username, password });
         await advance(current);
       } catch (cause) {
         setError(errorMessage(cause));
@@ -182,29 +217,102 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [advance, node],
   );
 
+  // Restart the authentication tree from scratch and replay the stored
+  // credentials back to the `choice` step. Lexus models verification as a linear
+  // tree with no native "resend" or "back", so re-traversing the choice node is
+  // how a fresh code is dispatched. When `reselectMethod` is set we re-pick the
+  // current method (resend via the same channel and land back on OTP); otherwise
+  // we stop at the choice step so the user can pick a different method.
+  const restartVerification = useCallback(
+    async (reselectMethod: boolean) => {
+      if (!credentials) {
+        setError('Your sign-in session expired. Please enter your email and password again.');
+        setNode(null);
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      try {
+        let current = await startAuthentication(fetch);
+        if (classifyAuthenticationNode(current) === 'username') {
+          current = await continueAuthentication(current, credentials.username, fetch);
+        }
+        if (!current.tokenId && classifyAuthenticationNode(current) === 'password') {
+          current = await continueAuthentication(current, credentials.password, fetch);
+        }
+        // Resend: re-select the same channel so a new code is sent and we return
+        // to the OTP step. Match by label since the tree may reorder choices.
+        if (
+          reselectMethod &&
+          method &&
+          !current.tokenId &&
+          classifyAuthenticationNode(current) === 'choice'
+        ) {
+          const index = nodeChoices(current).indexOf(method);
+          if (index >= 0) {
+            current = await continueAuthentication(current, index, fetch);
+          }
+        }
+        // Landing on the choice step means the user re-picks; drop the remembered
+        // method so the OTP copy isn't stale, and refresh the offered methods.
+        if (!current.tokenId && classifyAuthenticationNode(current) === 'choice') {
+          setAvailableMethods(nodeChoices(current));
+          setMethod(null);
+        }
+        await advance(current);
+      } catch (cause) {
+        setError(errorMessage(cause));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [advance, credentials, method],
+  );
+
+  const resendCode = useCallback(() => restartVerification(true), [restartVerification]);
+  const changeMethod = useCallback(() => restartVerification(false), [restartVerification]);
+
   const signOut = useCallback(async () => {
     await secureTokenStore.clear();
     setSession(null);
     setNode(null);
     setError(null);
     setMethod(null);
+    setAvailableMethods([]);
+    setCredentials(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       busy,
+      canChangeMethod: availableMethods.length > 1,
+      changeMethod,
       choices: nodeChoices(node),
       error,
       isLoading,
       method,
       prompt: nodePrompt(node),
+      resendCode,
       session,
       signOut,
       step: node ? classifyAuthenticationNode(node) : null,
       submit,
       submitCredentials,
     }),
-    [busy, error, isLoading, method, node, session, signOut, submit, submitCredentials],
+    [
+      availableMethods,
+      busy,
+      changeMethod,
+      error,
+      isLoading,
+      method,
+      node,
+      resendCode,
+      session,
+      signOut,
+      submit,
+      submitCredentials,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
