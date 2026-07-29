@@ -1,20 +1,21 @@
 import * as Haptics from "expo-haptics";
-import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
+import { Card } from "@/components/card";
 import {
   DevSkeletonToggle,
   SHOW_DEV_SKELETON_TOGGLE,
 } from "@/components/dev-skeleton-toggle";
+import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
-import { Redacted, useRedacted } from "@/components/redacted";
+import { Redacted } from "@/components/redacted";
+import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
@@ -22,50 +23,6 @@ import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
-
-function Icon({
-  name,
-  size = 20,
-  tint,
-}: {
-  name: SFSymbol;
-  size?: number;
-  tint?: string;
-}) {
-  const redacted = useRedacted();
-  if (redacted) {
-    return (
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: colors.fill,
-        }}
-      />
-    );
-  }
-  return (
-    <Image
-      source={`sf:${name}`}
-      tintColor={tint ?? (colors.label as string)}
-      style={{ width: size, height: size }}
-      contentFit="contain"
-    />
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <ThemedText
-      type="smallBold"
-      themeColor="secondaryLabel"
-      style={styles.sectionTitle}
-    >
-      {children}
-    </ThemedText>
-  );
-}
 
 function InfoRow({
   label,
@@ -98,7 +55,6 @@ function InfoRow({
 }
 
 function SignOutButton() {
-  const theme = useTheme();
   const { signOut } = useAuth();
   const red = colors.systemRed as string;
 
@@ -117,19 +73,12 @@ function SignOutButton() {
   return (
     <Pressable onPress={handleSignOut}>
       {({ pressed }) => (
-        <View
-          style={[
-            styles.card,
-            styles.signOut,
-            { backgroundColor: theme.card },
-            pressed && styles.pressed,
-          ]}
-        >
-          <Icon name="rectangle.portrait.and.arrow.right" tint={red} />
+        <Card style={[styles.signOut, pressed && styles.pressed]}>
+          <Icon name="rectangle.portrait.and.arrow.right" size={20} tint={red} />
           <ThemedText type="smallBold" style={{ color: red }}>
             Sign Out
           </ThemedText>
-        </View>
+        </Card>
       )}
     </Pressable>
   );
@@ -218,7 +167,7 @@ export default function CarDetails() {
         <Redacted loading={loading} style={styles.group}>
           <View>
             <SectionTitle>VEHICLE</SectionTitle>
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <Card style={styles.rowCard}>
               {spec.map(([label, value], i) => (
                 <InfoRow
                   key={label}
@@ -227,36 +176,34 @@ export default function CarDetails() {
                   last={i === spec.length - 1}
                 />
               ))}
-            </View>
+            </Card>
           </View>
 
           <View>
             <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
-            <View
-              style={[styles.card, styles.grid, { backgroundColor: theme.card }]}
-            >
+            <Card style={[styles.rowCard, styles.grid]}>
               {vehicle.capabilities.map((c) => (
                 <View key={c.label} style={styles.capability}>
-                  <Icon name={c.symbol} tint={colors.systemBlue as string} />
+                  <Icon name={c.symbol} size={20} tint={colors.systemBlue as string} />
                   <ThemedText type="small" style={styles.capabilityLabel}>
                     {c.label}
                   </ThemedText>
                 </View>
               ))}
-            </View>
+            </Card>
           </View>
 
           <View>
             <SectionTitle>TRIPS</SectionTitle>
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <Card style={styles.rowCard}>
               <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
               <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
-            </View>
+            </Card>
           </View>
 
           <View>
             <SectionTitle>CONNECTED SERVICES</SectionTitle>
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <Card style={styles.rowCard}>
               {vehicle.subscriptions.map((subscription, i) => (
                 <View
                   key={subscription.name}
@@ -282,7 +229,7 @@ export default function CarDetails() {
                   </ThemedText>
                 </View>
               ))}
-            </View>
+            </Card>
           </View>
 
           <View>
@@ -306,14 +253,7 @@ const styles = StyleSheet.create({
   group: {
     gap: Spacing.three,
   },
-  sectionTitle: {
-    marginLeft: Spacing.two,
-    marginBottom: Spacing.two,
-    letterSpacing: 0.5,
-  },
-  card: {
-    borderRadius: 18,
-    borderCurve: "continuous",
+  rowCard: {
     paddingHorizontal: Spacing.three,
   },
   signOut: {

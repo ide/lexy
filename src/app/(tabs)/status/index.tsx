@@ -15,12 +15,15 @@ import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import { Card } from "@/components/card";
 import {
   DevSkeletonToggle,
   SHOW_DEV_SKELETON_TOGGLE,
 } from "@/components/dev-skeleton-toggle";
+import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
+import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleSkeleton } from "@/components/vehicle-skeleton";
 import { VehicleError } from "@/components/vehicle-state";
@@ -33,54 +36,7 @@ import {
   type Vehicle,
 } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
-import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
-
-function Icon({
-  name,
-  size = 22,
-  tint,
-}: {
-  name: SFSymbol;
-  size?: number;
-  tint?: string;
-}) {
-  return (
-    <Image
-      source={`sf:${name}`}
-      tintColor={tint ?? (colors.label as string)}
-      style={{ width: size, height: size }}
-      contentFit="contain"
-    />
-  );
-}
-
-function Card({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: object;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={[styles.card, { backgroundColor: theme.card }, style]}>
-      {children}
-    </View>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <ThemedText
-      type="smallBold"
-      themeColor="secondaryLabel"
-      style={styles.sectionTitle}
-    >
-      {children}
-    </ThemedText>
-  );
-}
 
 function Metric({
   symbol,
@@ -96,7 +52,7 @@ function Metric({
   accent?: string;
 }) {
   return (
-    <Card style={styles.metric}>
+    <Card style={[styles.cardPadding, styles.metric]}>
       <Icon name={symbol} tint={accent} />
       <View style={styles.metricValueRow}>
         <ThemedText style={styles.metricValue}>{value}</ThemedText>
@@ -184,7 +140,7 @@ function StatusLine({ status }: { status: Status }) {
 
 function CornerCard({ corner }: { corner: Corner }) {
   return (
-    <Card style={styles.cornerCard}>
+    <Card style={[styles.cardPadding, styles.cornerCard]}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
         {corner.title}
       </ThemedText>
@@ -231,7 +187,7 @@ function TireCell({
   low: boolean;
 }) {
   return (
-    <Card style={styles.cornerCard}>
+    <Card style={[styles.cardPadding, styles.cornerCard]}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
         {label}
       </ThemedText>
@@ -253,7 +209,7 @@ function TireCell({
 
 function OpeningCard({ opening }: { opening: Closure }) {
   return (
-    <Card style={styles.cornerCard}>
+    <Card style={[styles.cardPadding, styles.cornerCard]}>
       <StatusLine status={openingStatus(opening)} />
     </Card>
   );
@@ -394,7 +350,7 @@ export default function CarDashboard() {
         {!isOnline ? (
           <OfflineBanner message="No internet connection — showing last saved data" />
         ) : null}
-        <Card style={styles.hero}>
+        <Card style={[styles.cardPadding, styles.hero]}>
           <View style={styles.heroImageFrame}>
             <Image
               source={{ uri: vehicle.imageUrl }}
@@ -448,7 +404,7 @@ export default function CarDashboard() {
 
         {corners.length > 0 ? (
           <View>
-            <SectionTitle>DOORS & WINDOWS</SectionTitle>
+            <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
             <SideGrid corners={corners} />
           </View>
         ) : null}
@@ -474,7 +430,7 @@ export default function CarDashboard() {
 
         {tires.length > 0 ? (
           <View>
-            <SectionTitle>TIRE PRESSURE ({vehicle.tires!.unit})</SectionTitle>
+            <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE ({vehicle.tires!.unit})</SectionTitle>
             <View style={styles.grid}>
               <View style={styles.gridColumn}>
                 {leftTires.map((t) => (
@@ -503,7 +459,7 @@ export default function CarDashboard() {
         ) : null}
 
         <View style={styles.metricRow}>
-          <Card style={styles.halfCard}>
+          <Card style={[styles.cardPadding, styles.halfCard]}>
             <Icon name="thermometer.medium" tint={blue} />
             <ThemedText style={styles.metricValue}>
               {vehicle.climate.temperatureF}°F
@@ -517,7 +473,13 @@ export default function CarDashboard() {
             style={{ flex: 1 }}
           >
             {({ pressed }) => (
-              <Card style={[styles.halfCard, pressed && { opacity: 0.7 }]}>
+              <Card
+                style={[
+                  styles.cardPadding,
+                  styles.halfCard,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
                 <Icon name="parkingsign.circle.fill" tint={blue} />
                 <ThemedText type="smallBold">Last parked</ThemedText>
                 <ThemedText type="small" themeColor="secondaryLabel">
@@ -555,9 +517,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: Spacing.six,
   },
-  card: {
-    borderRadius: 18,
-    borderCurve: "continuous",
+  cardPadding: {
     padding: Spacing.three,
   },
   hero: {
@@ -630,11 +590,8 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontVariant: ["tabular-nums"],
   },
-  sectionTitle: {
+  sectionTitleSpacing: {
     marginTop: Spacing.one,
-    marginLeft: Spacing.two,
-    marginBottom: Spacing.two,
-    letterSpacing: 0.5,
   },
   grid: {
     flexDirection: "row",
