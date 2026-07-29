@@ -5,7 +5,6 @@ import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
@@ -197,7 +196,7 @@ export default function CarDetails() {
         {!isOnline ? (
           <OfflineBanner message="No internet connection — showing last saved data" />
         ) : null}
-        <Animated.View entering={FadeInDown.duration(300)}>
+        <View>
           <SectionTitle>VEHICLE</SectionTitle>
           <View style={[styles.card, { backgroundColor: theme.card }]}>
             {spec.map(([label, value], i) => (
@@ -209,9 +208,9 @@ export default function CarDetails() {
               />
             ))}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(300).delay(50)}>
+        <View>
           <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
           <View
             style={[styles.card, styles.grid, { backgroundColor: theme.card }]}
@@ -225,17 +224,17 @@ export default function CarDetails() {
               </View>
             ))}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(300).delay(100)}>
+        <View>
           <SectionTitle>TRIPS</SectionTitle>
           <View style={[styles.card, { backgroundColor: theme.card }]}>
             <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
             <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(300).delay(150)}>
+        <View>
           <SectionTitle>CONNECTED SERVICES</SectionTitle>
           <View style={[styles.card, { backgroundColor: theme.card }]}>
             {vehicle.subscriptions.map((subscription, i) => (
@@ -264,12 +263,12 @@ export default function CarDetails() {
               </View>
             ))}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeInDown.duration(300).delay(200)}>
+        <View>
           <SectionTitle>ACCOUNT</SectionTitle>
           <SignOutButton />
-        </Animated.View>
+        </View>
       </NativeScrollView>
     </>
   );
