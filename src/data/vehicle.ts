@@ -21,7 +21,12 @@ export type Capability = {
 export type Subscription = {
   name: string;
   status: string;
-  expires: string;
+  // Drives the status color: green when active, muted otherwise.
+  active: boolean;
+  // Drives the "Trial expires …" vs "Expires …" label.
+  trial: boolean;
+  // Formatted "Month YYYY"; absent when the service has no end date.
+  expires?: string;
 };
 
 /**
@@ -325,13 +330,15 @@ const MONTHS = [
 ];
 
 // The list carries ISO `YYYY-MM-DD` end dates; the card shows "Month YYYY".
-function formatExpiry(endDate: string | undefined): string {
+// Returns undefined when there is no parseable date, so the caller can omit the
+// expiry line entirely rather than print a placeholder.
+function formatExpiry(endDate: string | undefined): string | undefined {
   const match = endDate ? /^(\d{4})-(\d{2})-(\d{2})/.exec(endDate) : null;
   if (!match) {
-    return endDate || '—';
+    return undefined;
   }
   const month = MONTHS[Number(match[2]) - 1];
-  return month ? `${month} ${match[1]}` : (endDate as string);
+  return month ? `${month} ${match[1]}` : undefined;
 }
 
 // Server statuses are upper-case and mixed-case (ACTIVE, INACTIVE); the card
@@ -346,11 +353,16 @@ function formatStatus(status: string): string {
 // yields an empty list (the card simply shows nothing).
 function mapSubscriptions(subscriptions: unknown): Subscription[] {
   const payload = asRecord(asRecord(subscriptions).payload ?? subscriptions) as VehicleSubscriptionsPayload;
-  return summarizeSubscriptions(payload).map((service) => ({
-    name: service.name,
-    status: formatStatus(service.status),
-    expires: formatExpiry(service.endDate),
-  }));
+  return summarizeSubscriptions(payload).map((service) => {
+    const expires = formatExpiry(service.endDate);
+    return {
+      name: service.name,
+      status: formatStatus(service.status),
+      active: service.active,
+      trial: service.bucket === 'trial',
+      ...(expires ? { expires } : {}),
+    };
+  });
 }
 
 export function mapVehicle(

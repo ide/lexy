@@ -1,7 +1,10 @@
+import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
 
 import { Card } from "@/components/card";
 import {
@@ -21,6 +24,29 @@ import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
+
+// The Lexus OneApp App Store entry (bundle com.lexus.oneapp). Reliable fallback
+// when the app isn't installed.
+const LEXUS_APP_STORE_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
+// Best-effort custom scheme to jump straight into the installed app. It isn't
+// published anywhere we could verify, so we only *attempt* it — if nothing
+// handles it (app not installed, or the scheme is wrong), openURL rejects and we
+// fall back to the App Store. Worst case the user lands on the store listing,
+// never a dead end.
+const LEXUS_APP_SCHEME = "lexus://";
+
+// "Manage your subscription in the Lexus app": open the Lexus app if it's
+// installed, otherwise its App Store page.
+async function openManageSubscription() {
+  if (process.env.EXPO_OS === "ios") {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+  try {
+    await Linking.openURL(LEXUS_APP_SCHEME);
+  } catch {
+    await Linking.openURL(LEXUS_APP_STORE_URL);
+  }
+}
 
 function InfoRow({
   label,
@@ -165,39 +191,72 @@ export default function CarDetails() {
             </Card>
           </View>
 
-          {/* Connected Services is hidden while we have no real subscription
-              data to populate it. The production mapping currently returns no
-              subscriptions (see mapVehicle), so this section only renders once
-              the vehicle-subscriptions endpoint is wired up and returns rows. */}
+          {/* Connected Services renders only when the vehicle-subscriptions
+              read returned rows; an empty list keeps the section hidden. */}
           {vehicle.subscriptions.length > 0 ? (
             <View>
               <SectionTitle>CONNECTED SERVICES</SectionTitle>
               <Card style={styles.rowCard}>
-                {vehicle.subscriptions.map((subscription, i) => (
-                  <View
-                    key={subscription.name}
-                    style={[
-                      styles.serviceRow,
-                      i < vehicle.subscriptions.length - 1 && {
-                        borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: theme.separator,
-                      },
-                    ]}
-                  >
-                    <View>
-                      <ThemedText type="small">{subscription.name}</ThemedText>
-                      <ThemedText type="small" themeColor="secondaryLabel">
-                        Expires {subscription.expires}
+                {vehicle.subscriptions.map((subscription) => {
+                  // Trials read "Trial expires …"; a paid/complimentary service
+                  // reads "Expires …" only when it has an end date.
+                  const detail = subscription.expires
+                    ? `${subscription.trial ? "Trial expires" : "Expires"} ${subscription.expires}`
+                    : subscription.trial
+                      ? "Trial"
+                      : null;
+                  return (
+                    <View
+                      key={subscription.name}
+                      style={[
+                        styles.serviceRow,
+                        {
+                          borderBottomWidth: StyleSheet.hairlineWidth,
+                          borderBottomColor: theme.separator,
+                        },
+                      ]}
+                    >
+                      <View style={styles.serviceInfo}>
+                        <ThemedText type="small">{subscription.name}</ThemedText>
+                        {detail ? (
+                          <ThemedText type="small" themeColor="secondaryLabel">
+                            {detail}
+                          </ThemedText>
+                        ) : null}
+                      </View>
+                      {/* Active = green. Inactive is muted (secondary label),
+                          never red — an ended service is not an error. */}
+                      <ThemedText
+                        type="smallBold"
+                        themeColor={subscription.active ? undefined : "secondaryLabel"}
+                        style={
+                          subscription.active
+                            ? { color: colors.systemGreen }
+                            : undefined
+                        }
+                      >
+                        {subscription.status}
                       </ThemedText>
                     </View>
+                  );
+                })}
+                <Pressable
+                  accessibilityRole="link"
+                  onPress={openManageSubscription}
+                  style={styles.manageRow}
+                >
+                  {({ pressed }) => (
                     <ThemedText
-                      type="smallBold"
-                      style={{ color: colors.systemGreen }}
+                      type="linkPrimary"
+                      style={[
+                        styles.manageText,
+                        pressed && { opacity: 0.6 },
+                      ]}
                     >
-                      {subscription.status}
+                      Manage your subscription in the Lexus app
                     </ThemedText>
-                  </View>
-                ))}
+                  )}
+                </Pressable>
               </Card>
             </View>
           ) : null}
@@ -254,5 +313,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: Spacing.three,
     gap: Spacing.three,
+  },
+  serviceInfo: {
+    flexShrink: 1,
+  },
+  manageRow: {
+    paddingVertical: Spacing.three,
+    alignItems: "center",
+  },
+  manageText: {
+    textAlign: "center",
   },
 });

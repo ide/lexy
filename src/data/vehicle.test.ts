@@ -182,7 +182,10 @@ describe('mapVehicle', () => {
       { displayProductName: 'Service Connect', status: 'active', type: 'Trial', subscriptionEndDate: '2036-04-23' },
       { productName: 'Wi-Fi Connect', status: 'INACTIVE', type: 'Trial', subscriptionEndDate: '2026-08-28' },
     ],
-    complimentarySubscriptions: [],
+    // A complimentary service with no end date — the expiry line is omitted.
+    complimentarySubscriptions: [
+      { productName: 'Safety Connect', status: 'ACTIVE', type: 'Complimentary' },
+    ],
     availableSubscriptions: [{ productName: 'Music Lover', category: 'BUNDLE' }],
   };
 
@@ -228,12 +231,14 @@ describe('mapVehicle', () => {
     ]);
   });
 
-  it('flattens paid/trial/complimentary subscriptions with formatted status and expiry', () => {
+  it('flattens paid/trial/complimentary subscriptions with status, trial, and expiry', () => {
     const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
     expect(mapped.subscriptions).toEqual([
-      { name: 'Remote Connect', status: 'Active', expires: 'April 2028' },
-      { name: 'Service Connect', status: 'Active', expires: 'April 2036' },
-      { name: 'Wi-Fi Connect', status: 'Inactive', expires: 'August 2026' },
+      { name: 'Remote Connect', status: 'Active', active: true, trial: false, expires: 'April 2028' },
+      { name: 'Service Connect', status: 'Active', active: true, trial: true, expires: 'April 2036' },
+      { name: 'Wi-Fi Connect', status: 'Inactive', active: false, trial: true, expires: 'August 2026' },
+      // No end date → no `expires` key at all.
+      { name: 'Safety Connect', status: 'Active', active: true, trial: false },
     ]);
   });
 
