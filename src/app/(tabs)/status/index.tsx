@@ -11,7 +11,7 @@ import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
 
@@ -362,6 +362,9 @@ export default function CarDashboard() {
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
   const [forceSkeleton, setForceSkeleton] = useState(false);
+  // Set only while a pull-to-refresh is in flight, so its native spinner is the
+  // sole indicator during a manual refresh (see autoRefreshing below).
+  const [manualRefreshing, setManualRefreshing] = useState(false);
 
   useEffect(() => {
     // TTI marks the UI shell becoming interactive; data readiness is tracked
@@ -370,29 +373,23 @@ export default function CarDashboard() {
   }, [markInteractive]);
 
   // A background refresh (foreground/stale refetch over already-cached data)
-  // shows a small spinner in the header. The native large title can't be
-  // shimmered — react-native-screens renders it as a plain native label — so
-  // this is the loading cue that coexists with the large-title/inline collapse.
-  const refreshing = !!vehicle && isFetching;
+  // Tell a user-initiated pull-to-refresh apart from an automatic (foreground /
+  // stale) refetch: pull-to-refresh already shows the native refresh control,
+  // so only an *automatic* refetch gets our own "Updating…" cue — no double
+  // indicator, and nothing crammed into the nav bar's button slot.
+  const autoRefreshing = isFetching && !isLoading && !manualRefreshing;
 
-  // headerRight combines the refresh spinner with the dev/preview-only skeleton
-  // toggle. When neither applies it's undefined so no empty view is mounted.
-  const headerRight =
-    refreshing || SHOW_DEV_SKELETON_TOGGLE
-      ? () => (
-          <View style={styles.headerRight}>
-            {refreshing ? (
-              <ActivityIndicator size="small" color={colors.secondaryLabel as string} />
-            ) : null}
-            {SHOW_DEV_SKELETON_TOGGLE ? (
-              <DevSkeletonToggle
-                active={forceSkeleton}
-                onToggle={() => setForceSkeleton((value) => !value)}
-              />
-            ) : null}
-          </View>
-        )
-      : undefined;
+  // Affordance to hold the real loading skeleton on the real screen. Available
+  // in dev and preview builds (see SHOW_DEV_SKELETON_TOGGLE); kept out of
+  // production.
+  const headerRight = SHOW_DEV_SKELETON_TOGGLE
+    ? () => (
+        <DevSkeletonToggle
+          active={forceSkeleton}
+          onToggle={() => setForceSkeleton((value) => !value)}
+        />
+      )
+    : undefined;
 
   // A single skeleton covers every "no vehicle yet" case: the dev override, the
   // first-load fetch, and offline-before-anything-cached (with a banner). Only
@@ -442,7 +439,14 @@ export default function CarDashboard() {
       <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />
       <NativeScrollView
         onRefresh={async () => {
-          await refetch();
+          // Mark this as a manual refresh so the "Updating…" footer stays quiet
+          // and only the native pull-to-refresh spinner shows.
+          setManualRefreshing(true);
+          try {
+            await refetch();
+          } finally {
+            setManualRefreshing(false);
+          }
         }}
         contentContainerStyle={styles.content}
       >
@@ -602,10 +606,24 @@ export default function CarDashboard() {
                 )}.`}
                 timestamp={vehicle.updatedAt}
               />
-              <FooterTimeRow
-                label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
-                timestamp={dataUpdatedAt}
-              />
+              {/* During an automatic (non-pull-to-refresh) refresh, the data
+                  freshness line becomes a quiet "Updating…" — the one bit of
+                  state we actually have — then returns to the timestamp. */}
+              {autoRefreshing ? (
+                <Text
+                  modifiers={[
+                    font({ textStyle: "footnote", weight: "regular" }),
+                    foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                  ]}
+                >
+                  Updating…
+                </Text>
+              ) : (
+                <FooterTimeRow
+                  label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
+                  timestamp={dataUpdatedAt}
+                />
+              )}
             </VStack>
           </Host>
         </View>
@@ -622,11 +640,6 @@ const styles = StyleSheet.create({
   },
   cardPadding: {
     padding: Spacing.three,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
   },
   fuelCard: {
     gap: Spacing.two,
