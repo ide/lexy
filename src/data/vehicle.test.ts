@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   absoluteLocalTime,
-  hasRemoteSubscription,
-  mapSubscriptions,
   mapVehicle,
   parseVehicle,
   parseVehicleContexts,
@@ -83,50 +81,6 @@ describe('parseVehicleContexts', () => {
       ],
     };
     expect(parseVehicleContexts(body).map((c) => c.vin)).toEqual(['V2']);
-  });
-});
-
-describe('mapSubscriptions', () => {
-  it('reads a list of subscriptions from a plausible response shape', () => {
-    const response = {
-      payload: {
-        subscriptions: [
-          { productName: 'Remote Connect', subscriptionStatus: 'Active', termEndDate: 'April 2028' },
-          { name: 'Service Connect', status: 'Active', endDate: 'April 2036' },
-        ],
-      },
-    };
-    expect(mapSubscriptions(response)).toEqual([
-      { name: 'Remote Connect', status: 'Active', expires: 'April 2028' },
-      { name: 'Service Connect', status: 'Active', expires: 'April 2036' },
-    ]);
-  });
-
-  it('tolerates a bare array and fills sensible defaults', () => {
-    expect(mapSubscriptions([{ productName: 'Remote Connect' }])).toEqual([
-      { name: 'Remote Connect', status: 'Active', expires: '—' },
-    ]);
-  });
-
-  it('returns an empty list for an unrecognized or empty shape', () => {
-    expect(mapSubscriptions(null)).toEqual([]);
-    expect(mapSubscriptions({ payload: {} })).toEqual([]);
-    expect(mapSubscriptions({ payload: { subscriptions: [{ note: 'no name' }] } })).toEqual([]);
-  });
-});
-
-describe('hasRemoteSubscription', () => {
-  it('is true only for an active remote product', () => {
-    expect(
-      hasRemoteSubscription([{ name: 'Remote Connect', status: 'Active', expires: '—' }]),
-    ).toBe(true);
-    expect(
-      hasRemoteSubscription([{ name: 'Remote Connect', status: 'Expired', expires: '—' }]),
-    ).toBe(false);
-    expect(
-      hasRemoteSubscription([{ name: 'Service Connect', status: 'Active', expires: '—' }]),
-    ).toBe(false);
-    expect(hasRemoteSubscription([])).toBe(false);
   });
 });
 

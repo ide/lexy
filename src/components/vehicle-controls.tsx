@@ -15,7 +15,7 @@ import { Spacing, colors } from "@/constants/theme";
 import { queryClient } from "@/data/query-client";
 import type { VehicleContext } from "@/data/lexus-api";
 import { sendRemoteCommand, type RemoteCommand } from "@/data/remote-command";
-import { hasRemoteSubscription, type Vehicle } from "@/data/vehicle";
+import type { Vehicle } from "@/data/vehicle";
 
 type Control = {
   command: RemoteCommand;
@@ -104,8 +104,12 @@ function ControlButton({
  * preview builds via SHOW_DEV_TOOLS: the command codes are only partially
  * confirmed against Lexus's schema and the buttons actuate a real vehicle, so
  * they stay out of production until verified on a car. Each action confirms
- * first (engine start carries the enclosed-space safety warning), and the
- * whole section is disabled when the account has no active remote subscription.
+ * first (engine start carries the enclosed-space safety warning).
+ *
+ * Subscription/entitlement gating is intentionally not wired: the
+ * `vehicle-subscriptions` response shape hasn't been captured, so there's no
+ * honest way to tell whether Remote Connect is active yet. Add that gate once a
+ * real response is available.
  */
 export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   const { session } = useAuth();
@@ -115,11 +119,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
     return null;
   }
 
-  const entitled = hasRemoteSubscription(vehicle.subscriptions);
-  const subscriptionsKnown = vehicle.subscriptions.length > 0;
-  // Enable when we know the account is entitled, or when the subscription list
-  // is unknown (empty) so a dev/preview build can still exercise the commands.
-  const enabled = !busy && !!session && (entitled || !subscriptionsKnown);
+  const enabled = !busy && !!session;
 
   const run = (control: Control) => {
     if (!session) {
@@ -185,11 +185,6 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           />
         ))}
       </View>
-      {subscriptionsKnown && !entitled ? (
-        <ThemedText type="small" themeColor="secondaryLabel" style={styles.note}>
-          Requires an active Remote Connect subscription.
-        </ThemedText>
-      ) : null}
     </View>
   );
 }
@@ -210,9 +205,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.one,
     paddingVertical: Spacing.three,
-  },
-  note: {
-    marginTop: Spacing.two,
-    marginLeft: Spacing.two,
   },
 });

@@ -31,10 +31,6 @@ export const VEHICLE_CLIMATE_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/cli
 export const VEHICLE_SPEC_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v1/vehicle/vehicle-spec`;
 export const VEHICLE_TIRES_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v1/telemetry/tires/pressure`;
 
-// Connected-services subscriptions for the customer's vehicles (docs/endpoints.md,
-// "Subscriptions & Billing"). Used to know which remote services are entitled.
-export const VEHICLE_SUBSCRIPTIONS_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v3/vehicle-subscriptions`;
-
 // Remote command plane for the 21MM REST generation
 // (docs/vehicle-status-and-control.md, "Sending commands"). POST a typed
 // command; the response `returnCode` "000000" means accepted (not completed).
