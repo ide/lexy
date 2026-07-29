@@ -35,6 +35,13 @@ export const colors = {
     android: Color.android.dynamic.surfaceContainerHighest,
     default: '#E0E1E6',
   })!,
+  // The gentlest system fill — for sub-grouping surfaces inside a card where
+  // `fill` would read too heavy.
+  subtleFill: Platform.select({
+    ios: Color.ios.quaternarySystemFill,
+    android: Color.android.dynamic.surfaceContainerHigh,
+    default: '#F0F0F3',
+  })!,
   separator: Platform.select({
     ios: Color.ios.separator,
     android: Color.android.dynamic.outlineVariant,
