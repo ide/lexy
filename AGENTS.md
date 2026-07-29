@@ -22,6 +22,13 @@ user explicitly asks for it.
 - Preserve native pressed, disabled, focus, accessibility, and haptic behavior;
   do not recreate those states with JavaScript opacity changes.
 
+# Animation
+
+- Never use React Native's JS-thread `Animated` API (`Animated.Value`,
+  `Animated.timing`, `Animated.View`, etc.). Use `react-native-reanimated`
+  (shared values, `useAnimatedStyle`, `withTiming`/`withRepeat`) so animations
+  run on the UI thread.
+
 # Screenshots
 
 ALWAYS downsample phone and simulator screenshots before viewing or sharing
