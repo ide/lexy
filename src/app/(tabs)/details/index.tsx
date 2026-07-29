@@ -11,11 +11,8 @@ import { useAuth } from "@/auth/auth-context";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
-import {
-  VehicleError,
-  VehicleLoading,
-  VehiclePlaceholder,
-} from "@/components/vehicle-state";
+import { VehicleSkeleton } from "@/components/vehicle-skeleton";
+import { VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
@@ -133,13 +130,11 @@ export default function CarDetails() {
   }, [markInteractive]);
 
   if (!vehicle) {
-    // Offline with nothing cached yet: show placeholders + an offline banner
-    // instead of a spinner (which would never resolve) or a misleading error.
-    if (!isOnline) {
-      return <VehiclePlaceholder />;
-    }
-    if (isLoading) {
-      return <VehicleLoading />;
+    // One skeleton for every "no vehicle yet" case — first-load fetch and
+    // offline-before-anything-cached (with a banner). Only a settled, online,
+    // data-less result is a real error.
+    if (isLoading || !isOnline) {
+      return <VehicleSkeleton offline={!isOnline} />;
     }
     return (
       <VehicleError

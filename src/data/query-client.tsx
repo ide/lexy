@@ -4,7 +4,7 @@ import { onlineManager, QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import Storage from 'expo-sqlite/kv-store';
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       gcTime: Infinity,
