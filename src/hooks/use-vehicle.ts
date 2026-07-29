@@ -8,11 +8,12 @@ import {
   VEHICLE_DISCOVERY_ENDPOINT,
   VEHICLE_SPEC_ENDPOINT,
   VEHICLE_STATUS_ENDPOINT,
+  VEHICLE_SUBSCRIPTIONS_ENDPOINT,
   VEHICLE_TIRES_ENDPOINT,
   businessHeaders,
   vehicleHeaders,
 } from '@/data/lexus-api';
-import { mapVehicle, parseVehicle, parseVehicleContext } from '@/data/vehicle';
+import { mapVehicle, NoVehicleError, parseVehicle, parseVehicleContexts } from '@/data/vehicle';
 
 async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   const response = await fetch(url, { headers, signal });
@@ -27,6 +28,11 @@ export function useVehicle() {
   return useQuery({
     queryKey: ['vehicle'],
     enabled: session !== null,
+    // A settled "no vehicle on this account" is a definitive empty state, not a
+    // transient failure — don't burn retries on it. Everything else keeps the
+    // default two retries.
+    retry: (failureCount, error) =>
+      !(error instanceof NoVehicleError) && failureCount < 2,
     queryFn: async ({ signal }) => {
       if (!session) {
         throw new Error('Sign in to load your vehicle');
@@ -37,14 +43,25 @@ export function useVehicle() {
         // climate, spec, and tires with vehicle-scoped headers and map into the
         // UI shape.
         const discovery = await getJson(VEHICLE_DISCOVERY_ENDPOINT, businessHeaders(session), signal);
-        const scoped = vehicleHeaders(session, parseVehicleContext(discovery));
-        const [status, climate, spec, tires] = await Promise.all([
+        const contexts = parseVehicleContexts(discovery);
+        if (contexts.length === 0) {
+          throw new NoVehicleError();
+        }
+        // The first vehicle is the primary until a switcher exists; a 2+ car
+        // account still loads and works, it just shows this one for now.
+        const scoped = vehicleHeaders(session, contexts[0]);
+        const [status, climate, spec, tires, subscriptions] = await Promise.all([
           getJson(VEHICLE_STATUS_ENDPOINT, scoped, signal),
           getJson(VEHICLE_CLIMATE_ENDPOINT, scoped, signal),
           getJson(VEHICLE_SPEC_ENDPOINT, scoped, signal),
           getJson(VEHICLE_TIRES_ENDPOINT, scoped, signal).catch(() => null),
+          // Best-effort: subscriptions only enrich the Connected Services
+          // section and gate the controls; a failure must not fail the load.
+          getJson(VEHICLE_SUBSCRIPTIONS_ENDPOINT, scoped, signal).catch(() => null),
         ]);
-        const vehicle = parseVehicle(mapVehicle(discovery, status, climate, spec, tires));
+        const vehicle = parseVehicle(
+          mapVehicle(discovery, status, climate, spec, tires, subscriptions),
+        );
         Observe.logEvent('vehicle.load.completed', {
           attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
         });

@@ -23,6 +23,7 @@ export type Vehicle = {
   nickname: string;
   fullName: string;
   model: string;
+  brand: string;
   color: string;
   vin: string;
   modelCode: string;
@@ -68,6 +69,7 @@ const stringFields = [
   'nickname',
   'fullName',
   'model',
+  'brand',
   'color',
   'vin',
   'modelCode',
@@ -132,22 +134,35 @@ function firstString(record: Record<string, unknown>, keys: string[]): string | 
   return undefined;
 }
 
+/**
+ * Thrown when vehicle discovery succeeds but the account has no car enrolled.
+ * The UI treats this as a distinct empty state (guide the user to add a vehicle
+ * in the Lexus app) rather than a generic load error.
+ */
+export class NoVehicleError extends Error {
+  constructor() {
+    super('No vehicle is associated with this Lexus account.');
+    this.name = 'NoVehicleError';
+  }
+}
+
 // Discovery (`/oneapi/v2/vehicle/guid`) returns the customer's vehicles as an
-// array under `payload`; a single-vehicle account resolves to one entry.
-export function parseVehicleContext(value: unknown): VehicleContext {
+// array under `payload`. Most accounts have exactly one; return every entry
+// that carries the fields we need to scope vehicle calls, in Lexus's order.
+// The first is treated as the primary vehicle until a vehicle switcher lands.
+export function parseVehicleContexts(value: unknown): VehicleContext[] {
   const payload = isRecord(value) ? value.payload : value;
-  const vehicles = Array.isArray(payload) ? payload.filter(isRecord) : [];
-  if (vehicles.length !== 1) {
-    throw new Error(`Vehicle discovery returned ${vehicles.length} vehicles`);
+  const records = Array.isArray(payload) ? payload.filter(isRecord) : [];
+  const contexts: VehicleContext[] = [];
+  for (const record of records) {
+    const vin = firstString(record, ['vin']);
+    const brand = firstString(record, ['brand']);
+    const generation = firstString(record, ['generation']);
+    if (vin && brand && generation) {
+      contexts.push({ vin, brand, generation });
+    }
   }
-  const record = vehicles[0];
-  const vin = firstString(record, ['vin']);
-  const brand = firstString(record, ['brand']);
-  const generation = firstString(record, ['generation']);
-  if (!vin || !brand || !generation) {
-    throw new Error('Vehicle discovery response missing VIN, brand, or generation');
-  }
-  return { vin, brand, generation };
+  return contexts;
 }
 
 // ---- Production response mapping --------------------------------------------
@@ -255,12 +270,67 @@ function mapTires(tires: unknown): TirePressure | undefined {
   };
 }
 
+// Connected-services subscriptions from `/oneapi/v3/vehicle-subscriptions`. The
+// captured docs don't pin down this response shape, so the parser is defensive:
+// it accepts a list under a few plausible keys and reads each entry's name,
+// status, and expiry from the field names Lexus tends to use, skipping anything
+// nameless. An unrecognized shape yields `[]`, which simply hides the Connected
+// Services section — never a crash or a half-populated card.
+export function mapSubscriptions(value: unknown): Subscription[] {
+  const payload = asRecord(asRecord(value).payload ?? value);
+  const list = [payload.subscriptions, payload.vehicleSubscriptions, payload.products, value].find(
+    Array.isArray,
+  );
+  if (!Array.isArray(list)) {
+    return [];
+  }
+  const subscriptions: Subscription[] = [];
+  for (const entry of list) {
+    const record = asRecord(entry);
+    const name = firstString(record, [
+      'productName',
+      'displayProductName',
+      'name',
+      'productLine',
+      'serviceName',
+      'productCode',
+    ]);
+    if (!name) {
+      continue;
+    }
+    const status =
+      firstString(record, ['subscriptionStatus', 'status', 'state', 'productStatus']) ?? 'Active';
+    const expires =
+      firstString(record, [
+        'termEndDate',
+        'endDate',
+        'expirationDate',
+        'expiryDate',
+        'expiry',
+        'goodThrough',
+      ]) ?? '—';
+    subscriptions.push({ name, status, expires });
+  }
+  return subscriptions;
+}
+
+// Whether the account has an active subscription that grants remote actuation
+// (lock/unlock/engine-start) — the "Remote Connect" product family. Used to
+// gate the on-screen car controls. An empty/unknown subscription list returns
+// false; callers decide whether to treat "unknown" as blocked.
+export function hasRemoteSubscription(subscriptions: Subscription[]): boolean {
+  return subscriptions.some(
+    (s) => /remote/i.test(s.name) && /active|enrolled|on\b|valid/i.test(s.status),
+  );
+}
+
 export function mapVehicle(
   discovery: unknown,
   status: unknown,
   climate: unknown,
   spec: unknown,
   tires?: unknown,
+  subscriptions?: unknown,
 ): Vehicle {
   const list = asRecord(discovery).payload;
   const d = asRecord(Array.isArray(list) ? list[0] : undefined);
@@ -275,6 +345,7 @@ export function mapVehicle(
     nickname: str(d.nickName, str(d.modelName, 'My Lexus')),
     fullName: str(d.displayModelDescription, `${str(d.modelYear)} ${str(d.modelName)}`.trim()),
     model: str(d.modelName),
+    brand: str(d.brand, 'L'),
     color: str(d.color),
     vin: str(d.vin),
     modelCode: str(d.modelCode),
@@ -310,7 +381,7 @@ export function mapVehicle(
       { label: 'Climate', symbol: 'thermometer.medium' },
       { label: 'Location', symbol: 'location.fill' },
     ],
-    subscriptions: [],
+    subscriptions: mapSubscriptions(subscriptions),
     tires: mapTires(tires),
   };
 }

@@ -10,16 +10,16 @@ export const appTabs = [
   },
   {
     name: "details",
-    label: "Details",
+    label: "Specs",
     icon: {
       default: "list.bullet.rectangle",
       selected: "list.bullet.rectangle.fill",
     },
   },
   {
-    name: "development",
-    label: "Development",
-    icon: { default: "hammer", selected: "hammer.fill" },
+    name: "settings",
+    label: "Settings",
+    icon: { default: "gearshape", selected: "gearshape.fill" },
   },
 ] as const satisfies readonly {
   name: string;

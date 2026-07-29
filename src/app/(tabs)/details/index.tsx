@@ -1,11 +1,8 @@
-import * as Haptics from "expo-haptics";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Pressable } from "react-native-gesture-handler";
 
-import { useAuth } from "@/auth/auth-context";
 import { Card } from "@/components/card";
 import {
   DevSkeletonToggle,
@@ -17,9 +14,10 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { Redacted } from "@/components/redacted";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
-import { VehicleError } from "@/components/vehicle-state";
+import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
+import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
@@ -51,36 +49,6 @@ function InfoRow({
         {value}
       </ThemedText>
     </View>
-  );
-}
-
-function SignOutButton() {
-  const { signOut } = useAuth();
-  const red = colors.systemRed as string;
-
-  const handleSignOut = () => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    // signOut clears the stored session; the Stack.Protected guard in the root
-    // layout then swaps back to the sign-in screen. No manual navigation.
-    signOut().catch(() => {
-      // Clearing the Keychain is best-effort; if it fails the user stays
-      // signed in and can retry.
-    });
-  };
-
-  return (
-    <Pressable onPress={handleSignOut}>
-      {({ pressed }) => (
-        <Card style={[styles.signOut, pressed && styles.pressed]}>
-          <Icon name="rectangle.portrait.and.arrow.right" size={20} tint={red} />
-          <ThemedText type="smallBold" style={{ color: red }}>
-            Sign Out
-          </ThemedText>
-        </Card>
-      )}
-    </Pressable>
   );
 }
 
@@ -117,15 +85,19 @@ export default function CarDetails() {
   if (!loading && !data) {
     return (
       <>
-        <Stack.Screen options={{ title: "Details", headerRight }} />
-        <VehicleError
-          message={
-            error instanceof Error
-              ? error.message
-              : "The vehicle API did not return data."
-          }
-          retry={() => refetch()}
-        />
+        <Stack.Screen options={{ title: "Specs", headerRight }} />
+        {error instanceof NoVehicleError ? (
+          <NoVehicleState retry={() => refetch()} />
+        ) : (
+          <VehicleError
+            message={
+              error instanceof Error
+                ? error.message
+                : "The vehicle API did not return data."
+            }
+            retry={() => refetch()}
+          />
+        )}
       </>
     );
   }
@@ -193,49 +165,42 @@ export default function CarDetails() {
             </Card>
           </View>
 
-          <View>
-            <SectionTitle>TRIPS</SectionTitle>
-            <Card style={styles.rowCard}>
-              <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
-              <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
-            </Card>
-          </View>
-
-          <View>
-            <SectionTitle>CONNECTED SERVICES</SectionTitle>
-            <Card style={styles.rowCard}>
-              {vehicle.subscriptions.map((subscription, i) => (
-                <View
-                  key={subscription.name}
-                  style={[
-                    styles.serviceRow,
-                    i < vehicle.subscriptions.length - 1 && {
-                      borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: theme.separator,
-                    },
-                  ]}
-                >
-                  <View>
-                    <ThemedText type="small">{subscription.name}</ThemedText>
-                    <ThemedText type="small" themeColor="secondaryLabel">
-                      Expires {subscription.expires}
+          {/* Connected Services is hidden while we have no real subscription
+              data to populate it. The production mapping currently returns no
+              subscriptions (see mapVehicle), so this section only renders once
+              the vehicle-subscriptions endpoint is wired up and returns rows. */}
+          {vehicle.subscriptions.length > 0 ? (
+            <View>
+              <SectionTitle>CONNECTED SERVICES</SectionTitle>
+              <Card style={styles.rowCard}>
+                {vehicle.subscriptions.map((subscription, i) => (
+                  <View
+                    key={subscription.name}
+                    style={[
+                      styles.serviceRow,
+                      i < vehicle.subscriptions.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: theme.separator,
+                      },
+                    ]}
+                  >
+                    <View>
+                      <ThemedText type="small">{subscription.name}</ThemedText>
+                      <ThemedText type="small" themeColor="secondaryLabel">
+                        Expires {subscription.expires}
+                      </ThemedText>
+                    </View>
+                    <ThemedText
+                      type="smallBold"
+                      style={{ color: colors.systemGreen }}
+                    >
+                      {subscription.status}
                     </ThemedText>
                   </View>
-                  <ThemedText
-                    type="smallBold"
-                    style={{ color: colors.systemGreen }}
-                  >
-                    {subscription.status}
-                  </ThemedText>
-                </View>
-              ))}
-            </Card>
-          </View>
-
-          <View>
-            <SectionTitle>ACCOUNT</SectionTitle>
-            <SignOutButton />
-          </View>
+                ))}
+              </Card>
+            </View>
+          ) : null}
         </Redacted>
       </NativeScrollView>
     </>
@@ -255,16 +220,6 @@ const styles = StyleSheet.create({
   },
   rowCard: {
     paddingHorizontal: Spacing.three,
-  },
-  signOut: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.two,
-    paddingVertical: Spacing.three,
-  },
-  pressed: {
-    opacity: 0.6,
   },
   row: {
     flexDirection: "row",

@@ -11,7 +11,7 @@ const tabStackScreenOptions = createTabStackScreenOptions({
 export default function DetailsLayout() {
   return (
     <Stack screenOptions={tabStackScreenOptions}>
-      <Stack.Screen name="index" options={{ title: "Details" }} />
+      <Stack.Screen name="index" options={{ title: "Specs" }} />
     </Stack>
   );
 }

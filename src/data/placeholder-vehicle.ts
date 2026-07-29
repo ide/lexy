@@ -13,6 +13,7 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
   nickname: 'My Lexus',
   fullName: '2026 Lexus IS 350',
   model: 'IS 350',
+  brand: 'L',
   color: 'Cloudburst Grey',
   vin: 'DEMO0000000000000',
   modelCode: '9510',
@@ -51,10 +52,11 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
     { label: 'Climate', symbol: 'thermometer.medium' },
     { label: 'Location', symbol: 'location.fill' },
   ],
-  subscriptions: [
-    { name: 'Remote Connect', status: 'Active', expires: 'April 2028' },
-    { name: 'Service Connect', status: 'Active', expires: 'April 2036' },
-  ],
+  // Empty to match production, where the vehicle mapping returns no
+  // subscriptions yet — the Connected Services section is hidden for now, so
+  // the loading skeleton must not reserve space for it either. Restore
+  // representative rows here once vehicle-subscriptions is wired up.
+  subscriptions: [],
   tires: {
     status: 'Normal',
     unit: 'psi',

@@ -13,6 +13,13 @@ import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
@@ -25,12 +32,15 @@ import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
+import { VehicleControls } from "@/components/vehicle-controls";
 import { VehicleSkeleton } from "@/components/vehicle-skeleton";
-import { VehicleError } from "@/components/vehicle-state";
+import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
+import { fuelGauge, type FuelGauge } from "@/data/fuel";
 import {
   absoluteLocalTime,
+  NoVehicleError,
   relativeTime,
   type Closure,
   type Vehicle,
@@ -76,6 +86,111 @@ function Metric({
 const green = colors.systemGreen as string;
 const blue = colors.systemBlue as string;
 const orange = colors.systemOrange as string;
+
+/**
+ * A gentle opacity pulse used to signal a background refetch. It reuses the
+ * loading skeleton's treatment, applied here to the vehicle name so a refresh
+ * that runs over already-cached data is visible without a blocking spinner.
+ */
+function Shimmer({
+  active,
+  style,
+  children,
+}: {
+  active: boolean;
+  style?: object;
+  children: React.ReactNode;
+}) {
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (active) {
+      pulse.value = withRepeat(withTiming(0.4, { duration: 700 }), -1, true);
+    } else {
+      cancelAnimation(pulse);
+      pulse.value = withTiming(1, { duration: 200 });
+    }
+  }, [active, pulse]);
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
+}
+
+// The fuel/charge level as a bar divided into quarters, mirroring the car's
+// dashboard. The reading is an estimate, so the bar is the primary display;
+// tapping reveals the precise number (and it reads "Full" at 100%).
+function FuelBar({ gauge }: { gauge: FuelGauge }) {
+  const [showValue, setShowValue] = useState(false);
+  const reveal = gauge.full || showValue;
+  const fillColor = gauge.low ? orange : green;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => {
+        if (process.env.EXPO_OS === "ios") {
+          Haptics.selectionAsync();
+        }
+        setShowValue((value) => !value);
+      }}
+    >
+      {({ pressed }) => (
+        <Card
+          style={[styles.cardPadding, styles.fuelCard, pressed && { opacity: 0.7 }]}
+        >
+          <View style={styles.fuelHeader}>
+            <View style={styles.fuelLabel}>
+              <Icon name={gauge.symbol} size={17} tint={fillColor} />
+              <ThemedText type="smallBold" themeColor="secondaryLabel">
+                {gauge.label}
+              </ThemedText>
+            </View>
+            {reveal ? (
+              <ThemedText type="smallBold" style={{ color: fillColor }}>
+                {gauge.valueText}
+              </ThemedText>
+            ) : (
+              <ThemedText type="small" themeColor="secondaryLabel">
+                Tap for level
+              </ThemedText>
+            )}
+          </View>
+          <View style={styles.fuelSegments}>
+            {gauge.fills.map((fill, i) => (
+              <View key={`segment-${i}`} style={styles.fuelSegmentTrack}>
+                <View
+                  style={[
+                    styles.fuelSegmentFill,
+                    { width: `${fill * 100}%`, backgroundColor: fillColor },
+                  ]}
+                />
+              </View>
+            ))}
+          </View>
+        </Card>
+      )}
+    </Pressable>
+  );
+}
+
+function TripCell({ label, miles }: { label: string; miles: number }) {
+  return (
+    <Card style={[styles.cardPadding, styles.metric]}>
+      <ThemedText type="smallBold" themeColor="secondaryLabel">
+        {label}
+      </ThemedText>
+      <View style={styles.metricValueRow}>
+        <ThemedText style={styles.metricValue}>
+          {miles.toLocaleString()}
+        </ThemedText>
+        <ThemedText
+          type="small"
+          themeColor="secondaryLabel"
+          style={styles.metricUnit}
+        >
+          mi
+        </ThemedText>
+      </View>
+    </Card>
+  );
+}
 
 type Status = { text: string; color: string; symbol: SFSymbol };
 
@@ -274,6 +389,7 @@ export default function CarDashboard() {
     data: vehicle,
     error,
     isLoading,
+    isFetching,
     refetch,
     dataUpdatedAt,
   } = useVehicle();
@@ -307,7 +423,9 @@ export default function CarDashboard() {
       <>
         {/* No nickname yet, so fall back to a generic title rather than the
             tab's "Status" label, which reads oddly as a large screen title. */}
-        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
+        <Stack.Screen
+          options={{ title: "My Lexus", headerLargeTitleEnabled: false, headerRight }}
+        />
         <VehicleSkeleton offline={!vehicle && !isOnline} />
       </>
     );
@@ -316,15 +434,21 @@ export default function CarDashboard() {
   if (!vehicle) {
     return (
       <>
-        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
-        <VehicleError
-          message={
-            error instanceof Error
-              ? error.message
-              : "The vehicle API did not return data."
-          }
-          retry={() => refetch()}
+        <Stack.Screen
+          options={{ title: "My Lexus", headerLargeTitleEnabled: false, headerRight }}
         />
+        {error instanceof NoVehicleError ? (
+          <NoVehicleState retry={() => refetch()} />
+        ) : (
+          <VehicleError
+            message={
+              error instanceof Error
+                ? error.message
+                : "The vehicle API did not return data."
+            }
+            retry={() => refetch()}
+          />
+        )}
       </>
     );
   }
@@ -340,7 +464,13 @@ export default function CarDashboard() {
   const rightTires = tires.filter((t) => /right/i.test(t.label));
   return (
     <>
-      <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />
+      <Stack.Screen
+        options={{
+          title: vehicle.nickname,
+          headerLargeTitleEnabled: false,
+          headerRight,
+        }}
+      />
       <NativeScrollView
         onRefresh={async () => {
           await refetch();
@@ -350,6 +480,11 @@ export default function CarDashboard() {
         {!isOnline ? (
           <OfflineBanner message="No internet connection — showing last saved data" />
         ) : null}
+        {/* The car name lives on-screen (not just in the nav bar) so it can
+            shimmer while a background refresh runs over the cached data. */}
+        <Shimmer active={isFetching} style={styles.nameRow}>
+          <ThemedText style={styles.vehicleName}>{vehicle.nickname}</ThemedText>
+        </Shimmer>
         <Card style={[styles.cardPadding, styles.hero]}>
           <View style={styles.heroImageFrame}>
             <Image
@@ -374,20 +509,19 @@ export default function CarDashboard() {
               size={13}
               tint={lockColor}
             />
+            {/* The lock state is derived only from doors — windows and other
+                openings have no lock — so the label names doors explicitly. */}
             <ThemedText type="small" style={{ color: lockColor }}>
-              {locked ? "Locked" : "Unlocked"}
+              {locked ? "Doors locked" : "Doors unlocked"}
             </ThemedText>
           </View>
         </Card>
 
+        <VehicleControls vehicle={vehicle} />
+
+        <FuelBar gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)} />
+
         <View style={styles.metricRow}>
-          <Metric
-            symbol="fuelpump.fill"
-            value={`${vehicle.fuelPercent}`}
-            unit="%"
-            label="Fuel"
-            accent={green}
-          />
           <Metric
             symbol="road.lanes"
             value={`${vehicle.rangeMiles}`}
@@ -400,6 +534,11 @@ export default function CarDashboard() {
             unit="mi"
             label="Odometer"
           />
+        </View>
+
+        <View style={styles.metricRow}>
+          <TripCell label="Trip A" miles={vehicle.tripAMiles} />
+          <TripCell label="Trip B" miles={vehicle.tripBMiles} />
         </View>
 
         {corners.length > 0 ? (
@@ -519,6 +658,42 @@ const styles = StyleSheet.create({
   },
   cardPadding: {
     padding: Spacing.three,
+  },
+  nameRow: {
+    marginLeft: Spacing.one,
+  },
+  vehicleName: {
+    fontSize: 28,
+    fontWeight: "700",
+    lineHeight: 34,
+  },
+  fuelCard: {
+    gap: Spacing.two,
+  },
+  fuelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  fuelLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+  },
+  fuelSegments: {
+    flexDirection: "row",
+    gap: Spacing.one,
+  },
+  fuelSegmentTrack: {
+    flex: 1,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.fill,
+    overflow: "hidden",
+  },
+  fuelSegmentFill: {
+    height: "100%",
+    borderRadius: 6,
   },
   hero: {
     alignItems: "center",

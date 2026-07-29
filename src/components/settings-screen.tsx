@@ -20,15 +20,17 @@ import {
   padding,
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
-import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useObserve } from "expo-observe";
 import { useEffect } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import { useAuth } from "@/auth/auth-context";
+import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
 
-type MenuItem = {
+type DevItem = {
   icon: SFSymbol;
   tint: string;
   title: string;
@@ -36,29 +38,67 @@ type MenuItem = {
   href: string;
 };
 
-const ITEMS: MenuItem[] = [
+// The Development tab folded into Settings: these rows are only rendered when
+// SHOW_DEV_TOOLS is true (local dev + internal preview builds), never in
+// production.
+const DEV_ITEMS: DevItem[] = [
   {
     icon: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
     tint: colors.systemBlue as string,
     title: "Updates",
     subtitle: "expo-updates status, controls, and activity log.",
-    href: "/development/updates",
+    href: "/settings/updates",
   },
   {
     icon: "person.badge.key.fill",
     tint: colors.systemGreen as string,
     title: "Login Flow",
     subtitle: "Walk the sign-in screens without signing out.",
-    href: "/development/login",
+    href: "/settings/login",
   },
 ];
 
-function MenuRow({
+function SectionHeader({ children }: { children: string }) {
+  return (
+    <Text
+      modifiers={[
+        font({ textStyle: "footnote", weight: "semibold" }),
+        foregroundStyle({ type: "hierarchical", style: "secondary" }),
+        padding({ leading: Spacing.three, bottom: Spacing.one }),
+        frame({ maxWidth: Infinity, alignment: "leading" }),
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function GroupCard({ children }: { children: React.ReactNode }) {
+  return (
+    <VStack
+      spacing={0}
+      modifiers={[
+        frame({ maxWidth: Infinity }),
+        background(
+          colors.card,
+          shapes.roundedRectangle({
+            cornerRadius: 18,
+            roundedCornerStyle: "continuous",
+          }),
+        ),
+      ]}
+    >
+      {children}
+    </VStack>
+  );
+}
+
+function DevRow({
   item,
   last,
   onPress,
 }: {
-  item: MenuItem;
+  item: DevItem;
   last: boolean;
   onPress: () => void;
 }) {
@@ -110,7 +150,52 @@ function MenuRow({
   );
 }
 
-export default function DevelopmentMenuScreen() {
+function SignOutRow() {
+  const { signOut } = useAuth();
+  const red = colors.systemRed as string;
+
+  const onPress = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // signOut clears the stored session + query cache; the Stack.Protected
+    // guard in the root layout then swaps back to the sign-in screen.
+    signOut().catch(() => {
+      // Clearing the Keychain is best-effort; on failure the user stays signed
+      // in and can retry.
+    });
+  };
+
+  return (
+    <Button
+      onPress={onPress}
+      modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.two}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "center" }),
+          contentShape(shapes.rectangle()),
+          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
+        ]}
+      >
+        <Image
+          systemName="rectangle.portrait.and.arrow.right"
+          size={20}
+          color={red}
+        />
+        <Text
+          modifiers={[font({ textStyle: "body", weight: "semibold" }), foregroundStyle(red)]}
+        >
+          Sign Out
+        </Text>
+      </HStack>
+    </Button>
+  );
+}
+
+export default function SettingsScreen() {
   const router = useRouter();
   const { markInteractive } = useObserve();
 
@@ -143,39 +228,27 @@ export default function DevelopmentMenuScreen() {
             }),
           ]}
         >
-          <Text
-            modifiers={[
-              font({ textStyle: "footnote", weight: "medium" }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
-              fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-              padding({ horizontal: Spacing.two }),
-            ]}
-          >
-            Developer tools for inspecting and testing Lexy on-device.
-          </Text>
+          {SHOW_DEV_TOOLS ? (
+            <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+              <SectionHeader>DEVELOPER TOOLS</SectionHeader>
+              <GroupCard>
+                {DEV_ITEMS.map((item, index) => (
+                  <DevRow
+                    key={item.href}
+                    item={item}
+                    last={index === DEV_ITEMS.length - 1}
+                    onPress={() => open(item.href)}
+                  />
+                ))}
+              </GroupCard>
+            </VStack>
+          ) : null}
 
-          <VStack
-            spacing={0}
-            modifiers={[
-              frame({ maxWidth: Infinity }),
-              background(
-                colors.card,
-                shapes.roundedRectangle({
-                  cornerRadius: 18,
-                  roundedCornerStyle: "continuous",
-                }),
-              ),
-            ]}
-          >
-            {ITEMS.map((item, index) => (
-              <MenuRow
-                key={item.href}
-                item={item}
-                last={index === ITEMS.length - 1}
-                onPress={() => open(item.href)}
-              />
-            ))}
+          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionHeader>LEXUS ACCOUNT</SectionHeader>
+            <GroupCard>
+              <SignOutRow />
+            </GroupCard>
           </VStack>
         </VStack>
       </ScrollView>
