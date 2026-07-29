@@ -1,3 +1,4 @@
+import { useIsRestoring } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { Observe, ObserveRoot } from "expo-observe";
 import { useColorScheme } from "react-native";
@@ -18,8 +19,13 @@ Observe.configure({
 
 function RootNavigator() {
   const { session, isLoading } = useAuth();
+  // The persisted query cache (SQLite) rehydrates asynchronously. Hold the
+  // first paint until it finishes so a logged-in launch with cached data
+  // renders straight into the vehicle screen instead of flashing the loading
+  // skeleton for the restore window and then swapping in the cached data.
+  const isRestoring = useIsRestoring();
 
-  if (isLoading) {
+  if (isLoading || isRestoring) {
     return null;
   }
 
