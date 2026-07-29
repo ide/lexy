@@ -31,6 +31,17 @@ const persister = createAsyncStoragePersister({
   storage: Storage,
 });
 
+/**
+ * Wipe every cached query — both the in-memory store and the persisted SQLite
+ * blob — so no vehicle or account data survives sign-out. Called from the auth
+ * `signOut` so a signed-out (or freshly switched) account never sees the prior
+ * user's car data.
+ */
+export async function clearVehicleCache() {
+  queryClient.clear();
+  await persister.removeClient();
+}
+
 export function VehicleDataProvider({ children }: { children: React.ReactNode }) {
   return (
     <PersistQueryClientProvider

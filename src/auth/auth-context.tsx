@@ -22,6 +22,7 @@ import {
   type RequestLike,
 } from '@/auth/lexus-auth';
 import { secureTokenStore, type TokenStore } from '@/auth/token-store';
+import { clearVehicleCache } from '@/data/query-client';
 
 type AuthContextValue = {
   busy: boolean;
@@ -293,6 +294,10 @@ export function AuthProvider({
 
   const signOut = useCallback(async () => {
     await tokenStore.clear();
+    // Clear the persisted query cache too — clearing the token store alone
+    // leaves the vehicle/account data on disk, which would leak to the next
+    // signed-in user.
+    await clearVehicleCache();
     setSession(null);
     setNode(null);
     setError(null);
