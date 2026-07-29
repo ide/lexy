@@ -81,21 +81,23 @@ function FuelCard() {
   );
 }
 
-// The combined odometer card: header, big total, divider, Trip A/B columns.
+// The combined odometer card: one label + total row, divider, Trip A/B columns.
 function OdometerCard() {
   return (
     <Card style={styles.odometerCard}>
-      <Block width={100} height={20} />
-      <Block width={110} height={30} />
+      <View style={styles.rowBetween}>
+        <Block width={100} height={20} />
+        <Block width={90} height={26} />
+      </View>
       <Block height={StyleSheet.hairlineWidth} radius={0} />
       <View style={styles.row}>
         <View style={styles.tripCell}>
           <Block width={48} height={20} />
-          <Block width={72} height={24} />
+          <Block width={72} height={22} />
         </View>
         <View style={styles.tripCell}>
           <Block width={48} height={20} />
-          <Block width={72} height={24} />
+          <Block width={72} height={22} />
         </View>
       </View>
     </Card>
