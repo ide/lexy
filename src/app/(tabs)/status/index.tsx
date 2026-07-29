@@ -15,6 +15,10 @@ import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import {
+  DevSkeletonToggle,
+  SHOW_DEV_SKELETON_TOGGLE,
+} from "@/components/dev-skeleton-toggle";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
@@ -22,7 +26,6 @@ import { VehicleSkeleton } from "@/components/vehicle-skeleton";
 import { VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
-import { queryClient } from "@/data/query-client";
 import {
   absoluteLocalTime,
   relativeTime,
@@ -310,47 +313,6 @@ function FooterTimeRow({
   );
 }
 
-/**
- * Dev-only header control for exercising the real loading state on the Status
- * screen — no cloned preview, it drives the same code path production uses. Tap
- * pins the skeleton on so you can inspect it; long-press resets the vehicle
- * query, which clears the cache and refetches — the genuine cold-start path
- * (skeleton → data). Gated behind `__DEV__` by the caller so it never ships.
- */
-function DevSkeletonToggle({
-  active,
-  onToggle,
-}: {
-  active: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Toggle loading skeleton"
-      hitSlop={12}
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.selectionAsync();
-        }
-        onToggle();
-      }}
-      onLongPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
-        queryClient.resetQueries({ queryKey: ["vehicle"] });
-      }}
-    >
-      <Icon
-        name="rectangle.dashed"
-        size={20}
-        tint={active ? blue : (colors.secondaryLabel as string)}
-      />
-    </Pressable>
-  );
-}
-
 export default function CarDashboard() {
   const {
     data: vehicle,
@@ -369,9 +331,10 @@ export default function CarDashboard() {
     markInteractive();
   }, [markInteractive]);
 
-  // Dev-only affordance to hold the real loading skeleton on the real screen.
-  // `__DEV__` keeps it out of release (preview/production) bundles.
-  const headerRight = __DEV__
+  // Affordance to hold the real loading skeleton on the real screen. Available
+  // in dev and preview builds (see SHOW_DEV_SKELETON_TOGGLE); kept out of
+  // production.
+  const headerRight = SHOW_DEV_SKELETON_TOGGLE
     ? () => (
         <DevSkeletonToggle
           active={forceSkeleton}
