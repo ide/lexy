@@ -169,10 +169,10 @@ function OdometerCard({
   unit: DistanceUnit;
 }) {
   return (
-    <Card style={[styles.cardPadding, styles.odometerCard]}>
-      {/* The lifetime total is the headline, so it shares one row with the
-          label — mirroring the fuel header — and the trips sit smaller below. */}
-      <View style={styles.odometerRow}>
+    <Card style={[styles.cardPadding, styles.tripRow]}>
+      {/* Three columns — lifetime total first and largest, then the two
+          resettable trips at a smaller size. */}
+      <View style={styles.tripCell}>
         <View style={styles.odometerHeader}>
           <Icon name="gauge.with.dots.needle.67percent" size={17} />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
@@ -192,11 +192,8 @@ function OdometerCard({
           </ThemedText>
         </View>
       </View>
-      <View style={styles.tripDivider} />
-      <View style={styles.tripRow}>
-        <TripCell label="Trip A" distance={tripA} unit={unit} />
-        <TripCell label="Trip B" distance={tripB} unit={unit} />
-      </View>
+      <TripCell label="Trip A" distance={tripA} unit={unit} />
+      <TripCell label="Trip B" distance={tripB} unit={unit} />
     </Card>
   );
 }
@@ -749,31 +746,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.two,
   },
-  odometerCard: {
-    gap: Spacing.two,
-  },
-  odometerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   odometerHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.one,
   },
+  // 20pt keeps a six-digit total + unit inside an equal third-column while
+  // still outweighing the 17pt trips.
   odometerValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    lineHeight: 26,
+    lineHeight: 24,
     fontVariant: ["tabular-nums"],
   },
   odometerUnit: {
     marginBottom: 2,
-  },
-  tripDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.separator,
   },
   tripRow: {
     flexDirection: "row",
