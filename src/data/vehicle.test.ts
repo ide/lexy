@@ -75,7 +75,7 @@ describe('mapVehicle', () => {
   const discovery = {
     payload: [
       {
-        vin: 'JTHGZ1B25T5100335',
+        vin: 'JTHGZ1B20M5000000',
         nickName: '2026 IS 350',
         displayModelDescription: '2026 Lexus IS 350 4-DOOR SEDAN',
         modelName: 'IS 350 4-DOOR SEDAN',
@@ -140,7 +140,7 @@ describe('mapVehicle', () => {
 
   const tires = {
     payload: {
-      vin: 'JTHGZ1B25T5100335',
+      vin: 'JTHGZ1B20M5000000',
       tirePressureStatus: 'Good',
       flTirePressure: { value: 39, unit: 'psi', displayLowTirePressureWarning: false },
       frTirePressure: { value: 39, unit: 'psi', displayLowTirePressureWarning: false },
@@ -166,7 +166,7 @@ describe('mapVehicle', () => {
       fullName: '2026 Lexus IS 350 4-DOOR SEDAN',
       model: 'IS 350 4-DOOR SEDAN',
       color: 'Cloudburst Grey',
-      vin: 'JTHGZ1B25T5100335',
+      vin: 'JTHGZ1B20M5000000',
       modelCode: '9510',
       generation: '21MM',
       fuelType: 'Gasoline',

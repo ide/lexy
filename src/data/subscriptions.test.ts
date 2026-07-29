@@ -36,7 +36,7 @@ const SESSION: LexusSession = {
 };
 
 const VEHICLE: SubscriptionVehicle = {
-  vin: 'JTHGZ1B25T5100335',
+  vin: 'JTHGZ1B20M5000000',
   brand: 'L',
   generation: '21MM',
   region: 'US',
@@ -98,7 +98,7 @@ describe('fetchVehicleSubscriptions', () => {
     });
 
     expect(payload.trialSubscriptions).toHaveLength(3);
-    expect(capturedHeaders.VIN).toBe('JTHGZ1B25T5100335');
+    expect(capturedHeaders.VIN).toBe('JTHGZ1B20M5000000');
     expect(capturedHeaders.REGION).toBe('US');
     expect(capturedHeaders['ASI-CODE']).toBe('JG');
     expect(capturedHeaders['HW-TYPE']).toBe('211');
