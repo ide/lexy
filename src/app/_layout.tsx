@@ -62,7 +62,14 @@ function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    // Paint the root with the app's grouped background so the launch hold
+    // (RootNavigator returns null while auth loads and the cache restores) and
+    // every screen behind the transparent header share one color — matching
+    // the splash screen's backgroundColor, with no white window flashing
+    // through between the splash and the first content paint.
+    <GestureHandlerRootView
+      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
+    >
       <AuthProvider>
         <VehicleDataProvider>
           <ThemeProvider
