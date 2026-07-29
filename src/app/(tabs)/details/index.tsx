@@ -158,7 +158,7 @@ export default function CarDetails() {
           <OfflineBanner
             message={
               data
-                ? "No internet connection — showing last saved data"
+                ? "No internet connection. Showing the last seen data."
                 : "No internet connection — connect to load your vehicle"
             }
           />
