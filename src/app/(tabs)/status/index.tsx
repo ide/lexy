@@ -13,13 +13,6 @@ import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, {
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
@@ -30,6 +23,7 @@ import {
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
+import { ShimmerText } from "@/components/shimmer-text";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleControls } from "@/components/vehicle-controls";
@@ -86,33 +80,6 @@ function Metric({
 const green = colors.systemGreen as string;
 const blue = colors.systemBlue as string;
 const orange = colors.systemOrange as string;
-
-/**
- * A gentle opacity pulse used to signal a background refetch. It reuses the
- * loading skeleton's treatment, applied here to the vehicle name so a refresh
- * that runs over already-cached data is visible without a blocking spinner.
- */
-function Shimmer({
-  active,
-  style,
-  children,
-}: {
-  active: boolean;
-  style?: object;
-  children: React.ReactNode;
-}) {
-  const pulse = useSharedValue(1);
-  useEffect(() => {
-    if (active) {
-      pulse.value = withRepeat(withTiming(0.4, { duration: 700 }), -1, true);
-    } else {
-      cancelAnimation(pulse);
-      pulse.value = withTiming(1, { duration: 200 });
-    }
-  }, [active, pulse]);
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
-  return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
-}
 
 // The fuel/charge level as a bar divided into quarters, mirroring the car's
 // dashboard. The reading is an estimate, so the bar is the primary display;
@@ -480,11 +447,16 @@ export default function CarDashboard() {
         {!isOnline ? (
           <OfflineBanner message="No internet connection — showing last saved data" />
         ) : null}
-        {/* The car name lives on-screen (not just in the nav bar) so it can
-            shimmer while a background refresh runs over the cached data. */}
-        <Shimmer active={isFetching} style={styles.nameRow}>
-          <ThemedText style={styles.vehicleName}>{vehicle.nickname}</ThemedText>
-        </Shimmer>
+        {/* The car name lives on-screen (not just in the nav bar) so a light
+            band can sweep across it while a background refresh runs over the
+            cached data. */}
+        <ShimmerText
+          active={isFetching}
+          style={styles.nameRow}
+          textStyle={styles.vehicleName}
+        >
+          {vehicle.nickname}
+        </ShimmerText>
         <Card style={[styles.cardPadding, styles.hero]}>
           <View style={styles.heroImageFrame}>
             <Image
