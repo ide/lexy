@@ -12,7 +12,14 @@ import {
   businessHeaders,
   vehicleHeaders,
 } from '@/data/lexus-api';
-import { mapVehicle, NoVehicleError, parseVehicle, parseVehicleContexts } from '@/data/vehicle';
+import { fetchVehicleSubscriptions } from '@/data/subscriptions';
+import {
+  mapVehicle,
+  NoVehicleError,
+  parseSubscriptionVehicle,
+  parseVehicle,
+  parseVehicleContexts,
+} from '@/data/vehicle';
 
 async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   const response = await fetch(url, { headers, signal });
@@ -49,13 +56,22 @@ export function useVehicle() {
         // The first vehicle is the primary until a switcher exists; a 2+ car
         // account still loads and works, it just shows this one for now.
         const scoped = vehicleHeaders(session, contexts[0]);
-        const [status, climate, spec, tires] = await Promise.all([
+        // Connected-services subscriptions are non-critical: a failure (or a
+        // discovery record missing the region/ASI/hardware fields the v3 list
+        // requires) leaves the card empty rather than failing the whole load.
+        const subscriptionVehicle = parseSubscriptionVehicle(discovery);
+        const [status, climate, spec, tires, subscriptions] = await Promise.all([
           getJson(VEHICLE_STATUS_ENDPOINT, scoped, signal),
           getJson(VEHICLE_CLIMATE_ENDPOINT, scoped, signal),
           getJson(VEHICLE_SPEC_ENDPOINT, scoped, signal),
           getJson(VEHICLE_TIRES_ENDPOINT, scoped, signal).catch(() => null),
+          subscriptionVehicle
+            ? fetchVehicleSubscriptions(session, subscriptionVehicle, {
+                request: (url, init) => fetch(url, { ...init, signal }),
+              }).catch(() => null)
+            : Promise.resolve(null),
         ]);
-        const vehicle = parseVehicle(mapVehicle(discovery, status, climate, spec, tires));
+        const vehicle = parseVehicle(mapVehicle(discovery, status, climate, spec, tires, subscriptions));
         Observe.logEvent('vehicle.load.completed', {
           attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
         });
