@@ -79,9 +79,9 @@ one SwiftUI redaction has with placeholder collections.
    `PLACEHOLDER_VEHICLE` inside `<Redacted loading style={{gap}}>` within the
    existing `NativeScrollView`; drop the early-return skeleton branch and
    delete `vehicle-skeleton.tsx`.
-2. Make Status's local `Icon` redaction-aware (same 5 lines as Details), and
-   give the hero `expo-image` a redacted variant (a `colors.fill` rounded block
-   in the same `heroImageFrame`) since `imageUrl` is empty while loading.
+2. Status already uses the shared redaction-aware `Icon`; give the hero
+   `expo-image` a redacted variant (a `colors.fill` rounded block in the same
+   `heroImageFrame`) since `imageUrl` is empty while loading.
 3. The lock pill, tire cells, and status lines are all `ThemedText` + `Icon`,
    so they redact for free; the placeholder's 8 closures / 4 tires produce the
    grid shapes.
