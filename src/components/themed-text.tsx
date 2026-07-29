@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { useRedacted } from '@/components/redacted';
+import { Fonts, ThemeColor, colors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -10,6 +11,7 @@ export type ThemedTextProps = TextProps & {
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  const redacted = useRedacted();
 
   return (
     <Text
@@ -24,6 +26,11 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'linkPrimary' && styles.linkPrimary,
         type === 'code' && styles.code,
         style,
+        // Inside a `Redacted` subtree the text keeps its exact metrics (font,
+        // line height, width from the placeholder string) but draws as a
+        // neutral bar: transparent glyphs over a fill background. Placed last
+        // so it also wins over caller color overrides.
+        redacted && styles.redacted,
       ]}
       {...rest}
     />
@@ -69,5 +76,11 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.mono,
     fontWeight: Platform.select({ android: 700 }) ?? 500,
     fontSize: 12,
+  },
+  redacted: {
+    color: 'transparent',
+    backgroundColor: colors.fill,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
 });

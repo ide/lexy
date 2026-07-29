@@ -12,12 +12,13 @@ import {
   DevSkeletonToggle,
   SHOW_DEV_SKELETON_TOGGLE,
 } from "@/components/dev-skeleton-toggle";
-import { DetailsSkeleton } from "@/components/details-skeleton";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
+import { Redacted, useRedacted } from "@/components/redacted";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
+import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
@@ -31,6 +32,19 @@ function Icon({
   size?: number;
   tint?: string;
 }) {
+  const redacted = useRedacted();
+  if (redacted) {
+    return (
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: colors.fill,
+        }}
+      />
+    );
+  }
   return (
     <Image
       source={`sf:${name}`}
@@ -123,7 +137,7 @@ function SignOutButton() {
 
 export default function CarDetails() {
   const theme = useTheme();
-  const { data: vehicle, error, isLoading, refetch } = useVehicle();
+  const { data, error, isLoading, refetch } = useVehicle();
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
   const [forceSkeleton, setForceSkeleton] = useState(false);
@@ -146,27 +160,12 @@ export default function CarDetails() {
       )
     : undefined;
 
-  // A single skeleton covers every "no vehicle yet" case: the dev override, the
-  // first-load fetch, and offline-before-anything-cached (with a banner). Only
-  // a settled, online, data-less result is a real error.
-  if (forceSkeleton || (!vehicle && (isLoading || !isOnline))) {
-    return (
-      <>
-        <Stack.Screen options={{ title: "Details", headerRight }} />
-        {/* Same NativeScrollView the populated screen renders, so toggling to
-            the skeleton reconciles the scroll container in place and keeps the
-            scroll offset instead of snapping to the top. */}
-        <NativeScrollView contentContainerStyle={styles.content}>
-          {!isOnline ? (
-            <OfflineBanner message="No internet connection — connect to load your vehicle" />
-          ) : null}
-          <DetailsSkeleton />
-        </NativeScrollView>
-      </>
-    );
-  }
+  // A single redacted state covers every "no vehicle yet" case: the dev
+  // override, the first-load fetch, and offline-before-anything-cached (with a
+  // banner). Only a settled, online, data-less result is a real error.
+  const loading = forceSkeleton || (!data && (isLoading || !isOnline));
 
-  if (!vehicle) {
+  if (!loading && !data) {
     return (
       <>
         <Stack.Screen options={{ title: "Details", headerRight }} />
@@ -181,6 +180,12 @@ export default function CarDetails() {
       </>
     );
   }
+
+  // While loading, the real tree below renders placeholder data redacted into
+  // neutral bars (see `Redacted`). One tree, one scroll container: the layout
+  // cannot drift from itself, sizes are identical in both states, and toggling
+  // reconciles in place so the scroll offset is preserved.
+  const vehicle = loading ? PLACEHOLDER_VEHICLE : data!;
 
   const spec: [string, string][] = [
     ["VIN", vehicle.vin],
@@ -202,81 +207,89 @@ export default function CarDetails() {
       <Stack.Screen options={{ title: "Details", headerRight }} />
       <NativeScrollView contentContainerStyle={styles.content}>
         {!isOnline ? (
-          <OfflineBanner message="No internet connection — showing last saved data" />
+          <OfflineBanner
+            message={
+              data
+                ? "No internet connection — showing last saved data"
+                : "No internet connection — connect to load your vehicle"
+            }
+          />
         ) : null}
-        <View>
-          <SectionTitle>VEHICLE</SectionTitle>
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            {spec.map(([label, value], i) => (
-              <InfoRow
-                key={label}
-                label={label}
-                value={value}
-                last={i === spec.length - 1}
-              />
-            ))}
+        <Redacted loading={loading} style={styles.group}>
+          <View>
+            <SectionTitle>VEHICLE</SectionTitle>
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
+              {spec.map(([label, value], i) => (
+                <InfoRow
+                  key={label}
+                  label={label}
+                  value={value}
+                  last={i === spec.length - 1}
+                />
+              ))}
+            </View>
           </View>
-        </View>
 
-        <View>
-          <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
-          <View
-            style={[styles.card, styles.grid, { backgroundColor: theme.card }]}
-          >
-            {vehicle.capabilities.map((c) => (
-              <View key={c.label} style={styles.capability}>
-                <Icon name={c.symbol} tint={colors.systemBlue as string} />
-                <ThemedText type="small" style={styles.capabilityLabel}>
-                  {c.label}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View>
-          <SectionTitle>TRIPS</SectionTitle>
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
-            <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
-          </View>
-        </View>
-
-        <View>
-          <SectionTitle>CONNECTED SERVICES</SectionTitle>
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            {vehicle.subscriptions.map((subscription, i) => (
-              <View
-                key={subscription.name}
-                style={[
-                  styles.serviceRow,
-                  i < vehicle.subscriptions.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: theme.separator,
-                  },
-                ]}
-              >
-                <View>
-                  <ThemedText type="small">{subscription.name}</ThemedText>
-                  <ThemedText type="small" themeColor="secondaryLabel">
-                    Expires {subscription.expires}
+          <View>
+            <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
+            <View
+              style={[styles.card, styles.grid, { backgroundColor: theme.card }]}
+            >
+              {vehicle.capabilities.map((c) => (
+                <View key={c.label} style={styles.capability}>
+                  <Icon name={c.symbol} tint={colors.systemBlue as string} />
+                  <ThemedText type="small" style={styles.capabilityLabel}>
+                    {c.label}
                   </ThemedText>
                 </View>
-                <ThemedText
-                  type="smallBold"
-                  style={{ color: colors.systemGreen }}
-                >
-                  {subscription.status}
-                </ThemedText>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
 
-        <View>
-          <SectionTitle>ACCOUNT</SectionTitle>
-          <SignOutButton />
-        </View>
+          <View>
+            <SectionTitle>TRIPS</SectionTitle>
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
+              <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
+              <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
+            </View>
+          </View>
+
+          <View>
+            <SectionTitle>CONNECTED SERVICES</SectionTitle>
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
+              {vehicle.subscriptions.map((subscription, i) => (
+                <View
+                  key={subscription.name}
+                  style={[
+                    styles.serviceRow,
+                    i < vehicle.subscriptions.length - 1 && {
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: theme.separator,
+                    },
+                  ]}
+                >
+                  <View>
+                    <ThemedText type="small">{subscription.name}</ThemedText>
+                    <ThemedText type="small" themeColor="secondaryLabel">
+                      Expires {subscription.expires}
+                    </ThemedText>
+                  </View>
+                  <ThemedText
+                    type="smallBold"
+                    style={{ color: colors.systemGreen }}
+                  >
+                    {subscription.status}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View>
+            <SectionTitle>ACCOUNT</SectionTitle>
+            <SignOutButton />
+          </View>
+        </Redacted>
       </NativeScrollView>
     </>
   );
@@ -287,6 +300,11 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.three,
     paddingBottom: Spacing.six,
+  },
+  // The Redacted wrapper groups the sections into one child of the scroll
+  // content, so it re-applies the container's section gap inside itself.
+  group: {
+    gap: Spacing.three,
   },
   sectionTitle: {
     marginLeft: Spacing.two,
