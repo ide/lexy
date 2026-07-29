@@ -25,24 +25,25 @@ import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
 
-// The Lexus OneApp App Store entry (bundle com.lexus.oneapp). Reliable fallback
-// when the app isn't installed.
+// The Lexus OneApp App Store entry (iOS app com.lexus.oneApp). Hard fallback if
+// the universal link below can't be opened at all.
 const LEXUS_APP_STORE_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
-// Best-effort custom scheme to jump straight into the installed app. It isn't
-// published anywhere we could verify, so we only *attempt* it — if nothing
-// handles it (app not installed, or the scheme is wrong), openURL rejects and we
-// fall back to the App Store. Worst case the user lands on the store listing,
-// never a dead end.
-const LEXUS_APP_SCHEME = "lexus://";
+// Universal link on the Lexus app's associated domain. Confirmed from the app's
+// apple-app-site-association at ctlexusapp.com, which claims all paths for
+// appIDs FEL7N4H72G.com.lexus.oneApp / com.lexus.OneAppEnterprise. Opening it
+// launches the installed app directly; ctlexusapp.com is a Branch-hosted domain,
+// so when the app isn't installed it redirects to the App Store — one URL covers
+// both cases without guessing a custom scheme.
+const LEXUS_APP_LINK = "https://ctlexusapp.com/";
 
 // "Manage your subscription in the Lexus app": open the Lexus app if it's
-// installed, otherwise its App Store page.
+// installed, otherwise (via the Branch domain's redirect) its App Store page.
 async function openManageSubscription() {
   if (process.env.EXPO_OS === "ios") {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
   try {
-    await Linking.openURL(LEXUS_APP_SCHEME);
+    await Linking.openURL(LEXUS_APP_LINK);
   } catch {
     await Linking.openURL(LEXUS_APP_STORE_URL);
   }
