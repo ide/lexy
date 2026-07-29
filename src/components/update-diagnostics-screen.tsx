@@ -715,20 +715,16 @@ export default function UpdateDiagnostics() {
     perform("check", async () => {
       const result = await Updates.checkForUpdateAsync();
       if (result.isAvailable) {
-        await recordUpdateActivity([
-          {
-            id: `available:${result.manifest.id}`,
-            timestamp: Date.now(),
-            title: "Update found",
-            detail: "A manual check found a compatible update.",
-            updateId: result.manifest.id,
-          },
-        ]);
+        // The global UpdateHistoryRecorder logs the "Update found" activity
+        // when availableUpdate changes, so nothing to record here.
         return "A newer update is available to download.";
       }
       if (result.isRollBackToEmbedded) {
         return "A rollback to the embedded update is available.";
       }
+      // A successful check that finds nothing produces no expo-updates state
+      // change, so the recorder never sees it — record it here so the activity
+      // log shows that a check ran and came back empty.
       await recordUpdateActivity([
         {
           id: `check:${Date.now()}`,
@@ -762,15 +758,7 @@ export default function UpdateDiagnostics() {
     perform("download", async () => {
       const result = await Updates.fetchUpdateAsync();
       if (result.isNew) {
-        await recordUpdateActivity([
-          {
-            id: `downloaded:${result.manifest.id}`,
-            timestamp: Date.now(),
-            title: "Update downloaded",
-            detail: "Ready for the next reload or cold launch.",
-            updateId: result.manifest.id,
-          },
-        ]);
+        // The recorder logs "Update downloaded" when downloadedUpdate changes.
         return "Update downloaded. Reload now or launch it next time.";
       }
       if (result.isRollBackToEmbedded) {
