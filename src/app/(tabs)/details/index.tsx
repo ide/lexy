@@ -13,10 +13,10 @@ import {
   DevSkeletonToggle,
   SHOW_DEV_SKELETON_TOGGLE,
 } from "@/components/dev-skeleton-toggle";
+import { DetailsSkeleton } from "@/components/details-skeleton";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
-import { VehicleSkeleton } from "@/components/vehicle-skeleton";
 import { VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { useIsOnline } from "@/hooks/use-is-online";
@@ -154,7 +154,7 @@ export default function CarDetails() {
     return (
       <>
         <Stack.Screen options={{ title: "Details", headerRight }} />
-        <VehicleSkeleton offline={!vehicle && !isOnline} />
+        <DetailsSkeleton offline={!vehicle && !isOnline} />
       </>
     );
   }

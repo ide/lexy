@@ -349,7 +349,9 @@ export default function CarDashboard() {
   if (forceSkeleton || (!vehicle && (isLoading || !isOnline))) {
     return (
       <>
-        <Stack.Screen options={{ title: "Status", headerRight }} />
+        {/* No nickname yet, so fall back to a generic title rather than the
+            tab's "Status" label, which reads oddly as a large screen title. */}
+        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
         <VehicleSkeleton offline={!vehicle && !isOnline} />
       </>
     );
@@ -358,7 +360,7 @@ export default function CarDashboard() {
   if (!vehicle) {
     return (
       <>
-        <Stack.Screen options={{ title: "Status", headerRight }} />
+        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
         <VehicleError
           message={
             error instanceof Error
