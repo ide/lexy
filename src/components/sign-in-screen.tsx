@@ -17,6 +17,7 @@ import {
   animation,
   autocorrectionDisabled,
   background,
+  bold,
   buttonStyle,
   contentShape,
   controlSize,
@@ -290,8 +291,9 @@ function NewToLexusCallout() {
         >
           Don't have a Lexus account yet?
         </Text>
+        {/* One paragraph. "your" stays bold; the App Store line flows inline in
+            blue (same weight as the sentence) via nested Text concatenation. */}
         <Text
-          markdownEnabled
           modifiers={[
             font({ textStyle: "footnote", weight: "medium" }),
             foregroundStyle({ type: "hierarchical", style: "secondary" }),
@@ -299,18 +301,11 @@ function NewToLexusCallout() {
             frame({ maxWidth: Infinity, alignment: "leading" }),
           ]}
         >
-          Create **your** account and add your car in the Lexus app, then come
-          back here to sign in.
-        </Text>
-        <Text
-          modifiers={[
-            font({ textStyle: "footnote", weight: "semibold" }),
-            foregroundStyle(colors.systemBlue),
-            fixedSize({ horizontal: false, vertical: true }),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
-          Get the Lexus app from the App Store.
+          Create <Text modifiers={[bold()]}>your</Text> account and add your car
+          in the Lexus app, then come back here to sign in.{" "}
+          <Text modifiers={[foregroundStyle(colors.systemBlue)]}>
+            Get the Lexus app from the App Store.
+          </Text>
         </Text>
       </VStack>
     </Button>
@@ -524,7 +519,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
               <PrimaryButton
                 busy={busy}
                 disabled={email.trim().length === 0 || password.length === 0}
-                label="Sign in"
+                label="Sign in to Lexus"
                 onPress={signIn}
               />
             </VStack>

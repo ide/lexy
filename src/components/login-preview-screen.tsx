@@ -120,7 +120,28 @@ function ScenarioBar({
           Preview scenario
         </Text>
         <Spacer />
-        <Menu label={current.label} systemImage={current.systemImage}>
+        {/* A custom label (instead of the string form) so the menu trigger
+            matches the "Preview scenario" label's footnote size/weight — a
+            plain string label renders at the larger default menu font. */}
+        <Menu
+          label={
+            <HStack alignment="center" spacing={Spacing.one}>
+              <Image
+                systemName={current.systemImage}
+                size={14}
+                color={colors.systemBlue as string}
+              />
+              <Text
+                modifiers={[
+                  font({ textStyle: "footnote", weight: "semibold" }),
+                  foregroundStyle(colors.systemBlue),
+                ]}
+              >
+                {current.label}
+              </Text>
+            </HStack>
+          }
+        >
           {PREVIEW_SCENARIOS.map((option) => (
             <Button
               key={option.id}
