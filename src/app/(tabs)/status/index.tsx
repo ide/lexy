@@ -494,7 +494,7 @@ export default function CarDashboard() {
         contentContainerStyle={styles.content}
       >
         {!isOnline ? (
-          <OfflineBanner message="No internet connection — showing last saved data" />
+          <OfflineBanner message="No internet connection. Showing the last seen data." />
         ) : null}
         <Card style={[styles.cardPadding, styles.hero]}>
           <View style={styles.heroImageFrame}>
