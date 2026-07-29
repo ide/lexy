@@ -20,6 +20,13 @@ export default function SettingsLayout() {
           headerBackButtonDisplayMode: "minimal",
         }}
       />
+      <Stack.Screen
+        name="data-state"
+        options={{
+          title: "Data State",
+          headerBackButtonDisplayMode: "minimal",
+        }}
+      />
       {/* No header so the preview is pixel-identical to the real, headerless
           sign-in screen. Swipe from the left edge to return to the menu. */}
       <Stack.Screen name="login" options={{ headerShown: false }} />

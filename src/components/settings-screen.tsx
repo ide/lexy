@@ -56,6 +56,13 @@ const DEV_ITEMS: DevItem[] = [
     subtitle: "Walk the sign-in screens without signing out.",
     href: "/settings/login",
   },
+  {
+    icon: "square.stack.3d.up.fill",
+    tint: colors.systemOrange as string,
+    title: "Data State",
+    subtitle: "Force loading, offline, error, and empty states.",
+    href: "/settings/data-state",
+  },
 ];
 
 function SectionHeader({ children }: { children: string }) {
