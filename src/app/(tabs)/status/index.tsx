@@ -169,9 +169,10 @@ function OdometerCard({
   unit: DistanceUnit;
 }) {
   return (
-    <Card style={[styles.cardPadding, styles.tripRow]}>
-      {/* Three columns — lifetime total first and largest, then the two
-          resettable trips at a smaller size. */}
+    <Card style={[styles.cardPadding, styles.odometerCard]}>
+      {/* Lifetime total and the two resettable trips share one size; the
+          trips get their own bordered sub-group so the resettable pair reads
+          as a unit apart from the total. */}
       <View style={styles.tripCell}>
         <View style={styles.odometerHeader}>
           <Icon name="gauge.with.dots.needle.67percent" size={17} />
@@ -180,20 +181,22 @@ function OdometerCard({
           </ThemedText>
         </View>
         <View style={styles.metricValueRow}>
-          <ThemedText style={styles.odometerValue}>
+          <ThemedText style={styles.tripValue}>
             {odometer.toLocaleString()}
           </ThemedText>
           <ThemedText
             type="small"
             themeColor="secondaryLabel"
-            style={styles.odometerUnit}
+            style={styles.tripUnit}
           >
             {unit}
           </ThemedText>
         </View>
       </View>
-      <TripCell label="Trip A" distance={tripA} unit={unit} />
-      <TripCell label="Trip B" distance={tripB} unit={unit} />
+      <View style={styles.tripsGroup}>
+        <TripCell label="Trip A" distance={tripA} unit={unit} />
+        <TripCell label="Trip B" distance={tripB} unit={unit} />
+      </View>
     </Card>
   );
 }
@@ -525,8 +528,8 @@ export default function CarDashboard() {
           </View>
         </Card>
 
-        <VehicleControls vehicle={vehicle} />
-
+        {/* Status readouts stay above the REMOTE CONTROLS section title so
+            they don't read as controls. */}
         <FuelBar
           gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
           range={vehicle.range}
@@ -539,6 +542,24 @@ export default function CarDashboard() {
           tripB={vehicle.tripB}
           unit={vehicle.distanceUnit}
         />
+
+        <VehicleControls vehicle={vehicle} />
+
+        {/* The setpoint configures what a remote engine start runs, so it
+            lives with the controls rather than the status readouts. Front and
+            rear defrost toggles belong here too once the climate-settings
+            write schema is confirmed (PUT /v1/remote/route/climate-settings). */}
+        <Card style={[styles.cardPadding, styles.inlineCard]}>
+          <View style={styles.odometerHeader}>
+            <Icon name="thermometer.medium" size={17} tint={blue} />
+            <ThemedText type="smallBold" themeColor="secondaryLabel">
+              Climate setpoint
+            </ThemedText>
+          </View>
+          <ThemedText type="smallBold" style={styles.tabularNums}>
+            {vehicle.climate.temperatureF}°F
+          </ThemedText>
+        </Card>
 
         {corners.length > 0 ? (
           <View>
@@ -568,7 +589,7 @@ export default function CarDashboard() {
 
         {tires.length > 0 ? (
           <View>
-            <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE ({vehicle.tires!.unit})</SectionTitle>
+            <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
             <View style={styles.grid}>
               <View style={styles.gridColumn}>
                 {leftTires.map((t) => (
@@ -596,37 +617,27 @@ export default function CarDashboard() {
           </View>
         ) : null}
 
-        <View style={styles.metricRow}>
-          <Card style={[styles.cardPadding, styles.halfCard]}>
-            <Icon name="thermometer.medium" tint={blue} />
-            <ThemedText style={styles.metricValue}>
-              {vehicle.climate.temperatureF}°F
-            </ThemedText>
-            <ThemedText type="small" themeColor="secondaryLabel">
-              Climate setpoint
-            </ThemedText>
-          </Card>
-          <Pressable
-            onPress={() => openLastParkedInMaps(vehicle)}
-            style={{ flex: 1 }}
-          >
-            {({ pressed }) => (
-              <Card
-                style={[
-                  styles.cardPadding,
-                  styles.halfCard,
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Icon name="parkingsign.circle.fill" tint={blue} />
-                <ThemedText type="smallBold">Last parked</ThemedText>
-                <ThemedText type="small" themeColor="secondaryLabel">
-                  Open in Maps
+        <Pressable onPress={() => openLastParkedInMaps(vehicle)}>
+          {({ pressed }) => (
+            <Card
+              style={[
+                styles.cardPadding,
+                styles.inlineCard,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={styles.odometerHeader}>
+                <Icon name="parkingsign.circle.fill" size={17} tint={blue} />
+                <ThemedText type="smallBold" themeColor="secondaryLabel">
+                  Last parked
                 </ThemedText>
-              </Card>
-            )}
-          </Pressable>
-        </View>
+              </View>
+              <ThemedText type="smallBold" style={{ color: blue }}>
+                Open in Maps
+              </ThemedText>
+            </Card>
+          )}
+        </Pressable>
 
         <View style={styles.footer}>
           <Host matchContents style={styles.footerHost}>
@@ -742,8 +753,15 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.half,
     borderRadius: 100,
   },
-  metricRow: {
+  // Label-left / value-right single-row cards (climate setpoint, last parked).
+  inlineCard: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  odometerCard: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.two,
   },
   odometerHeader: {
@@ -751,16 +769,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.one,
   },
-  // 20pt keeps a six-digit total + unit inside an equal third-column while
-  // still outweighing the 17pt trips.
-  odometerValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 24,
-    fontVariant: ["tabular-nums"],
-  },
-  odometerUnit: {
-    marginBottom: 2,
+  // The resettable pair, framed apart from the lifetime total. Flexed wider
+  // than the odometer column (2:1) so both trips fit inside the border.
+  tripsGroup: {
+    flex: 2,
+    flexDirection: "row",
+    gap: Spacing.two,
+    padding: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.separator,
+    borderRadius: 12,
+    borderCurve: "continuous",
   },
   tripRow: {
     flexDirection: "row",
@@ -782,20 +801,10 @@ const styles = StyleSheet.create({
   tabularNums: {
     fontVariant: ["tabular-nums"],
   },
-  halfCard: {
-    flex: 1,
-    gap: Spacing.one,
-  },
   metricValueRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 3,
-  },
-  metricValue: {
-    fontSize: 26,
-    fontWeight: "700",
-    lineHeight: 30,
-    fontVariant: ["tabular-nums"],
   },
   metricUnit: {
     marginBottom: 4,

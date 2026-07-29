@@ -81,22 +81,35 @@ function FuelCard() {
   );
 }
 
-// The combined odometer card: Odometer | Trip A | Trip B columns.
+// The combined odometer card: odometer column, then Trip A/B in their own
+// bordered sub-group.
 function OdometerCard() {
   return (
-    <Card style={styles.row}>
+    <Card style={styles.odometerCard}>
       <View style={styles.tripCell}>
         <Block width={90} height={20} />
-        <Block width={80} height={24} />
+        <Block width={72} height={22} />
       </View>
-      <View style={styles.tripCell}>
-        <Block width={48} height={20} />
-        <Block width={64} height={22} />
+      <View style={styles.tripsGroup}>
+        <View style={styles.tripCell}>
+          <Block width={48} height={20} />
+          <Block width={64} height={22} />
+        </View>
+        <View style={styles.tripCell}>
+          <Block width={48} height={20} />
+          <Block width={64} height={22} />
+        </View>
       </View>
-      <View style={styles.tripCell}>
-        <Block width={48} height={20} />
-        <Block width={64} height={22} />
-      </View>
+    </Card>
+  );
+}
+
+// Label-left / value-right single-row cards (climate setpoint, last parked).
+function InlineCard() {
+  return (
+    <Card style={styles.rowBetween}>
+      <Block width={120} height={20} />
+      <Block width={64} height={20} />
     </Card>
   );
 }
@@ -116,16 +129,6 @@ function TireCard() {
     <Card style={styles.cornerCard}>
       <Block width="60%" height={20} />
       <Block width={52} height={28} />
-    </Card>
-  );
-}
-
-function HalfCard() {
-  return (
-    <Card style={styles.halfCard}>
-      <Block width={22} height={22} radius={11} />
-      <Block width="55%" height={30} />
-      <Block width="40%" height={20} />
     </Card>
   );
 }
@@ -182,10 +185,8 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
             </View>
           </View>
 
-          <View style={styles.row}>
-            <HalfCard />
-            <HalfCard />
-          </View>
+          <InlineCard />
+          <InlineCard />
         </Animated.View>
       </View>
     </NativeScrollView>
@@ -238,10 +239,20 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.one,
   },
-  halfCard: {
-    flex: 1,
-    gap: Spacing.one,
-    alignItems: "flex-start",
+  odometerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+  },
+  tripsGroup: {
+    flex: 2,
+    flexDirection: "row",
+    gap: Spacing.two,
+    padding: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.separator,
+    borderRadius: 12,
+    borderCurve: "continuous",
   },
   sectionTitle: {
     marginTop: Spacing.one,
