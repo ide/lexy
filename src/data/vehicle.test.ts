@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   absoluteLocalTime,
   mapVehicle,
+  parseSubscriptionVehicle,
   parseVehicle,
   parseVehicleContexts,
   relativeTime,
@@ -99,6 +100,8 @@ describe('mapVehicle', () => {
         region: 'US',
         generation: '21MM',
         brand: 'L',
+        asiCode: 'JG',
+        hwType: '211',
         fuelType: 'G',
         image: 'https://img.example/is350.png',
       },
@@ -163,8 +166,21 @@ describe('mapVehicle', () => {
     },
   };
 
+  // Unwrapped v3 vehicle-subscriptions payload (as fetchVehicleSubscriptions returns it).
+  const subscriptions = {
+    paidSubscriptions: [
+      { productName: 'Remote Connect', status: 'ACTIVE', type: 'Paid', subscriptionEndDate: '2028-04-23' },
+    ],
+    trialSubscriptions: [
+      { displayProductName: 'Service Connect', status: 'active', type: 'Trial', subscriptionEndDate: '2036-04-23' },
+      { productName: 'Wi-Fi Connect', status: 'INACTIVE', type: 'Trial', subscriptionEndDate: '2026-08-28' },
+    ],
+    complimentarySubscriptions: [],
+    availableSubscriptions: [{ productName: 'Music Lover', category: 'BUNDLE' }],
+  };
+
   it('composes the live responses into the UI vehicle shape', () => {
-    const mapped = mapVehicle(discovery, status, climate, spec, tires);
+    const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
     expect(mapped.tires).toEqual({
       status: 'Good',
       unit: 'psi',
@@ -204,8 +220,42 @@ describe('mapVehicle', () => {
     ]);
   });
 
+  it('flattens paid/trial/complimentary subscriptions with formatted status and expiry', () => {
+    const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
+    expect(mapped.subscriptions).toEqual([
+      { name: 'Remote Connect', status: 'Active', expires: 'April 2028' },
+      { name: 'Service Connect', status: 'Active', expires: 'April 2036' },
+      { name: 'Wi-Fi Connect', status: 'Inactive', expires: 'August 2026' },
+    ]);
+  });
+
+  it('leaves subscriptions empty when the read is missing or failed', () => {
+    expect(mapVehicle(discovery, status, climate, spec, tires, null).subscriptions).toEqual([]);
+    expect(mapVehicle(discovery, status, climate, spec, tires).subscriptions).toEqual([]);
+  });
+
   it('produces a value that passes parseVehicle validation', () => {
     expect(() => parseVehicle(mapVehicle(discovery, status, climate, spec))).not.toThrow();
+  });
+});
+
+describe('parseSubscriptionVehicle', () => {
+  const record = {
+    vin: 'JTHGZ1B20M5000000',
+    brand: 'L',
+    generation: '21MM',
+    region: 'US',
+    asiCode: 'JG',
+    hwType: '211',
+  };
+
+  it('pulls the region/ASI/hardware context the v3 list requires', () => {
+    expect(parseSubscriptionVehicle({ payload: [record] })).toEqual(record);
+  });
+
+  it('returns null when a required discovery field is absent', () => {
+    expect(parseSubscriptionVehicle({ payload: [{ ...record, hwType: undefined }] })).toBeNull();
+    expect(parseSubscriptionVehicle({ payload: [] })).toBeNull();
   });
 });
 

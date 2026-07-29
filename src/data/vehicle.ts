@@ -1,6 +1,11 @@
 import type { SFSymbol } from 'sf-symbols-typescript';
 
 import type { VehicleContext } from '@/data/lexus-api';
+import {
+  summarizeSubscriptions,
+  type SubscriptionVehicle,
+  type VehicleSubscriptionsPayload,
+} from './subscriptions';
 
 export type Closure = {
   label: string;
@@ -165,6 +170,31 @@ export function parseVehicleContexts(value: unknown): VehicleContext[] {
   return contexts;
 }
 
+// The v3 subscriptions list needs REGION/ASI-CODE/HW-TYPE on top of the plain
+// vehicle context, and 400s without them (docs/subscriptions.md). Those come
+// from the same discovery record. Scoped to the primary (first) vehicle, to
+// match the context the rest of the load uses; return null when the record or
+// any required field is absent so the caller can skip the optional
+// subscriptions read rather than fire a guaranteed 400.
+export function parseSubscriptionVehicle(value: unknown): SubscriptionVehicle | null {
+  const payload = isRecord(value) ? value.payload : value;
+  const vehicles = Array.isArray(payload) ? payload.filter(isRecord) : [];
+  const record = vehicles[0];
+  if (!record) {
+    return null;
+  }
+  const vin = firstString(record, ['vin']);
+  const brand = firstString(record, ['brand']);
+  const generation = firstString(record, ['generation']);
+  const region = firstString(record, ['region']);
+  const asiCode = firstString(record, ['asiCode']);
+  const hwType = firstString(record, ['hwType']);
+  if (!vin || !brand || !generation || !region || !asiCode || !hwType) {
+    return null;
+  }
+  return { vin, brand, generation, region, asiCode, hwType };
+}
+
 // ---- Production response mapping --------------------------------------------
 // Composes the live Lexus responses (discovery + status + climate + spec) into
 // the normalized Vehicle the UI renders. Field sources are noted inline; a few
@@ -270,12 +300,47 @@ function mapTires(tires: unknown): TirePressure | undefined {
   };
 }
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+// The list carries ISO `YYYY-MM-DD` end dates; the card shows "Month YYYY".
+function formatExpiry(endDate: string | undefined): string {
+  const match = endDate ? /^(\d{4})-(\d{2})-(\d{2})/.exec(endDate) : null;
+  if (!match) {
+    return endDate || '—';
+  }
+  const month = MONTHS[Number(match[2]) - 1];
+  return month ? `${month} ${match[1]}` : (endDate as string);
+}
+
+// Server statuses are upper-case and mixed-case (ACTIVE, INACTIVE); the card
+// shows a single title-cased word.
+function formatStatus(status: string): string {
+  return status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : 'Unknown';
+}
+
+// Flatten the paid/trial/complimentary buckets of a v3 vehicle-subscriptions
+// payload into the connected-services rows the Details screen renders. Accepts
+// either the unwrapped payload or a `{ payload }` envelope; missing/failed data
+// yields an empty list (the card simply shows nothing).
+function mapSubscriptions(subscriptions: unknown): Subscription[] {
+  const payload = asRecord(asRecord(subscriptions).payload ?? subscriptions) as VehicleSubscriptionsPayload;
+  return summarizeSubscriptions(payload).map((service) => ({
+    name: service.name,
+    status: formatStatus(service.status),
+    expires: formatExpiry(service.endDate),
+  }));
+}
+
 export function mapVehicle(
   discovery: unknown,
   status: unknown,
   climate: unknown,
   spec: unknown,
   tires?: unknown,
+  subscriptions?: unknown,
 ): Vehicle {
   const list = asRecord(discovery).payload;
   const d = asRecord(Array.isArray(list) ? list[0] : undefined);
@@ -326,11 +391,7 @@ export function mapVehicle(
       { label: 'Climate', symbol: 'thermometer.medium' },
       { label: 'Location', symbol: 'location.fill' },
     ],
-    // No subscription source is wired yet — the response shape for
-    // `/oneapi/v3/vehicle-subscriptions` hasn't been captured, and guessing at
-    // field names isn't useful. Left empty (so Connected Services stays hidden)
-    // until a real response is available to map precisely.
-    subscriptions: [],
+    subscriptions: mapSubscriptions(subscriptions),
     tires: mapTires(tires),
   };
 }
