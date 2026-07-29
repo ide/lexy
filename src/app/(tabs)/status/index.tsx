@@ -11,7 +11,7 @@ import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
 
@@ -23,7 +23,6 @@ import {
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
-import { ShimmerText } from "@/components/shimmer-text";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleControls } from "@/components/vehicle-controls";
@@ -370,17 +369,30 @@ export default function CarDashboard() {
     markInteractive();
   }, [markInteractive]);
 
-  // Affordance to hold the real loading skeleton on the real screen. Available
-  // in dev and preview builds (see SHOW_DEV_SKELETON_TOGGLE); kept out of
-  // production.
-  const headerRight = SHOW_DEV_SKELETON_TOGGLE
-    ? () => (
-        <DevSkeletonToggle
-          active={forceSkeleton}
-          onToggle={() => setForceSkeleton((value) => !value)}
-        />
-      )
-    : undefined;
+  // A background refresh (foreground/stale refetch over already-cached data)
+  // shows a small spinner in the header. The native large title can't be
+  // shimmered — react-native-screens renders it as a plain native label — so
+  // this is the loading cue that coexists with the large-title/inline collapse.
+  const refreshing = !!vehicle && isFetching;
+
+  // headerRight combines the refresh spinner with the dev/preview-only skeleton
+  // toggle. When neither applies it's undefined so no empty view is mounted.
+  const headerRight =
+    refreshing || SHOW_DEV_SKELETON_TOGGLE
+      ? () => (
+          <View style={styles.headerRight}>
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.secondaryLabel as string} />
+            ) : null}
+            {SHOW_DEV_SKELETON_TOGGLE ? (
+              <DevSkeletonToggle
+                active={forceSkeleton}
+                onToggle={() => setForceSkeleton((value) => !value)}
+              />
+            ) : null}
+          </View>
+        )
+      : undefined;
 
   // A single skeleton covers every "no vehicle yet" case: the dev override, the
   // first-load fetch, and offline-before-anything-cached (with a banner). Only
@@ -390,9 +402,7 @@ export default function CarDashboard() {
       <>
         {/* No nickname yet, so fall back to a generic title rather than the
             tab's "Status" label, which reads oddly as a large screen title. */}
-        <Stack.Screen
-          options={{ title: "My Lexus", headerLargeTitleEnabled: false, headerRight }}
-        />
+        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
         <VehicleSkeleton offline={!vehicle && !isOnline} />
       </>
     );
@@ -401,9 +411,7 @@ export default function CarDashboard() {
   if (!vehicle) {
     return (
       <>
-        <Stack.Screen
-          options={{ title: "My Lexus", headerLargeTitleEnabled: false, headerRight }}
-        />
+        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
         {error instanceof NoVehicleError ? (
           <NoVehicleState retry={() => refetch()} />
         ) : (
@@ -431,13 +439,7 @@ export default function CarDashboard() {
   const rightTires = tires.filter((t) => /right/i.test(t.label));
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: vehicle.nickname,
-          headerLargeTitleEnabled: false,
-          headerRight,
-        }}
-      />
+      <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />
       <NativeScrollView
         onRefresh={async () => {
           await refetch();
@@ -447,16 +449,6 @@ export default function CarDashboard() {
         {!isOnline ? (
           <OfflineBanner message="No internet connection — showing last saved data" />
         ) : null}
-        {/* The car name lives on-screen (not just in the nav bar) so a light
-            band can sweep across it while a background refresh runs over the
-            cached data. */}
-        <ShimmerText
-          active={isFetching}
-          style={styles.nameRow}
-          textStyle={styles.vehicleName}
-        >
-          {vehicle.nickname}
-        </ShimmerText>
         <Card style={[styles.cardPadding, styles.hero]}>
           <View style={styles.heroImageFrame}>
             <Image
@@ -631,13 +623,10 @@ const styles = StyleSheet.create({
   cardPadding: {
     padding: Spacing.three,
   },
-  nameRow: {
-    marginLeft: Spacing.one,
-  },
-  vehicleName: {
-    fontSize: 28,
-    fontWeight: "700",
-    lineHeight: 34,
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
   },
   fuelCard: {
     gap: Spacing.two,
