@@ -56,12 +56,16 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
   );
 }
 
+// Block heights below mirror the real Status cards element-for-element so the
+// skeleton doesn't resize when data lands: Icon default size (22), the
+// metric/tire value line-heights (30 / 28), and the shared 20pt line-height of
+// `small`/`smallBold` text. See the matching styles in the Status screen.
 function MetricCard() {
   return (
     <Card style={styles.metric}>
-      <Block width={24} height={24} radius={12} />
-      <Block width={44} height={24} />
-      <Block width={30} height={12} />
+      <Block width={22} height={22} radius={11} />
+      <Block width={48} height={30} />
+      <Block width={40} height={20} />
     </Card>
   );
 }
@@ -69,9 +73,9 @@ function MetricCard() {
 function CornerCard() {
   return (
     <Card style={styles.cornerCard}>
-      <Block width="55%" height={12} />
-      <Block width="80%" height={14} />
-      <Block width="65%" height={14} />
+      <Block width="55%" height={20} />
+      <Block width="85%" height={20} />
+      <Block width="60%" height={20} />
     </Card>
   );
 }
@@ -79,8 +83,8 @@ function CornerCard() {
 function TireCard() {
   return (
     <Card style={styles.cornerCard}>
-      <Block width="60%" height={12} />
-      <Block width={52} height={22} />
+      <Block width="60%" height={20} />
+      <Block width={52} height={28} />
     </Card>
   );
 }
@@ -88,9 +92,9 @@ function TireCard() {
 function HalfCard() {
   return (
     <Card style={styles.halfCard}>
-      <Block width={24} height={24} radius={12} />
-      <Block width="55%" height={22} />
-      <Block width="40%" height={12} />
+      <Block width={22} height={22} radius={11} />
+      <Block width="55%" height={30} />
+      <Block width="40%" height={20} />
     </Card>
   );
 }
@@ -112,8 +116,8 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
         ) : null}
         <Animated.View style={[styles.group, animatedStyle]}>
           <Card style={styles.hero}>
-            <Block height={200} radius={16} />
-            <Block width={92} height={26} radius={100} />
+            <Block height={185} radius={16} />
+            <Block width={88} height={24} radius={100} />
           </Card>
 
           <View style={styles.row}>
@@ -123,7 +127,7 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
           </View>
 
           <View>
-            <Block width={140} height={12} style={styles.sectionTitle} />
+            <Block width={140} height={16} style={styles.sectionTitle} />
             <View style={styles.grid}>
               <View style={styles.gridColumn}>
                 <CornerCard />
@@ -137,7 +141,7 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
           </View>
 
           <View>
-            <Block width={160} height={12} style={styles.sectionTitle} />
+            <Block width={160} height={16} style={styles.sectionTitle} />
             <View style={styles.grid}>
               <View style={styles.gridColumn}>
                 <TireCard />
@@ -177,8 +181,8 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: "center",
     gap: Spacing.two,
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
   },
   row: {
     flexDirection: "row",
