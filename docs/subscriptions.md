@@ -14,6 +14,20 @@ against a live account.
 Host is `onecdn.telematicsct.com`, and requests carry the standard headers from
 [README](./README.md#request-conventions) unless noted.
 
+### Where request values come from
+
+Every non-constant value on this page comes from one of three sources:
+
+| Source | Provides | Obtained from |
+|---|---|---|
+| **Session tokens** | `Authorization` bearer, customer GUID | The OAuth token exchange at sign-in. The customer GUID is the `extension_tmsguid` claim decoded from the ID token (the same value sent as the `X-GUID` header). See [authentication.md](./authentication.md#per-request-context). |
+| **Discovery record** | Per-vehicle `VIN`, `brand`, `generation`, `region`, `asiCode`, `hwType` | `GET /oneapi/v2/vehicle/guid`, the per-vehicle discovery call. Each header below names the discovery field it maps to. |
+| **The client** | `DATETIME`, `X-CORRELATIONID`, `entryPoint` | Generated per request (current time, a fresh UUID, the originating screen). |
+
+Response payloads are server-generated. Where one call's response feeds another
+call's request (for example the `accessToken` echoed into a purchase), the field
+notes say so.
+
 > **Placeholders.** Every VIN, radio ID, and subscription ID in the examples
 > below is a masked placeholder (for example `JTHXXXXXXXXXXXXXX`), not a real
 > value. Substitute the vehicle's actual discovery values at call time.
@@ -155,8 +169,8 @@ case-insensitively.** Treat a service as usable only when `status` is `ACTIVE`.
 ## GET `/oneapi/v1/radio` — SiriusXM / XM radio
 
 SiriusXM is not part of the `vehicle-subscriptions` list; it has its own card
-endpoint. This call adds two lowercase per-vehicle headers, `vin` and `brand`,
-and takes no query parameters.
+endpoint. This call adds two lowercase per-vehicle headers, `vin` and `brand`
+(both from the discovery record), and takes no query parameters.
 
 The response is a `SiriusXmResponse`:
 
@@ -195,9 +209,10 @@ The list of streaming / music entitlements provisioned to the vehicle's head uni
 above: it reflects what the head unit itself can play, not the account's
 connected-services subscriptions.
 
-This call requires the query parameter `userProfileID`, set to the customer GUID.
-Omitting it returns `SVC-0000` ("failed user profile id validation"). The
-`/oa24mm` prefix automatically adds the header `X-APIVERSION: v1`.
+This call requires the query parameter `userProfileID`, set to the customer GUID
+(the `extension_tmsguid` claim from the ID token — the same value used for
+`X-GUID`). Omitting it returns `SVC-0000` ("failed user profile id validation").
+The `/oa24mm` prefix automatically adds the header `X-APIVERSION: v1`.
 
 The response is `{ status: {...}, payload: string[] }` — a bare list of
 entitlement name/id strings. On a vehicle with no active head-unit entitlements
@@ -208,7 +223,8 @@ entitlement name/id strings. On a vehicle with no active head-unit entitlements
 ## GET `/oneapi/v4/account` — subscriber record
 
 The customer / subscriber record backing the billing and subscriber views. This
-call adds the headers `X-BRAND` and `GUID`.
+call adds the headers `X-BRAND` (per-vehicle brand from discovery) and `GUID`
+(the customer GUID from the ID token).
 
 The response `payload.customer` object carries:
 
@@ -224,32 +240,25 @@ The response `payload.customer` object carries:
 
 The calls below are documented from the client but are **not** confirmed against
 a live account, because they mutate billing state. Treat the request shapes as
-recovered contracts, not verified behavior.
+recovered contracts, not verified behavior. In every body, `vin` is the
+discovery VIN, `subscriberGuid` is the customer GUID from the ID token,
+`generation` is the discovery generation, and `subscriptionId` values come from
+the `GET /oneapi/v3/vehicle-subscriptions` response.
 
 - **`PUT /oneapi/v1/subscription/autorenew`** — toggle auto-renew. Body
   `{ vin, subscriberGuid, generation, subscriptions: [{ subscriptionId, autoRenew }] }`;
-  extra headers `X-BRAND`, `DATETIME`.
+  extra headers `X-BRAND` (discovery brand), `DATETIME` (client epoch millis).
 - **`PUT /oneapi/v1/subscription/cancel`** — cancel one or more subscriptions.
   Body `CancelSubscriptionPlusRequest` (`vin`, `subscriberGuid`, `generation`,
   `subscription.subscriptionIds[]`, `canceledReason`, and refund fields); extra
-  headers `X-BRAND`, `GUID`, `DATETIME`, `VIN`, and `att-token`. Returns a
-  `refundResponse`.
+  headers `X-BRAND`, `GUID` (customer GUID), `DATETIME`, `VIN`, and `att-token`.
+  Returns a `refundResponse`.
 - **`PUT /oneapi/v1/subscription/dataconsent`** — update data consent. Body
-  `UpdateDataConsentRequest`; extra headers `VIN`, `X-BRAND`, `X-REGION`,
-  `X-GENERATION`, `DATETIME`.
+  `UpdateDataConsentRequest`; extra headers `VIN`, `X-BRAND`, `X-REGION` and
+  `X-GENERATION` (discovery region / generation), `DATETIME`.
 - **`POST /oneapi/v1/vehicle-subscriptions`** — create or waive a purchase. Body
-  `SubscriptionPreviewDetailV2`, which echoes the `accessToken` from the `GET`
-  payload plus a package / product line item, a payment method, and consents.
+  `SubscriptionPreviewDetailV2`, which echoes the `accessToken` returned in the
+  `GET /oneapi/v3/vehicle-subscriptions` payload, plus a package / product line
+  item, a payment method, and consents.
 - **`POST /oneapi/v1/preview`** and **`POST /oneapi/v1/previewrefund`** — tax and
   refund previews. These are reads, but each requires a constructed request body.
-
----
-
-## Client implementation
-
-The typed client lives in [`src/data/subscriptions.ts`](../src/data/subscriptions.ts):
-`fetchVehicleSubscriptions`, `fetchSiriusXmRadio`, and `fetchMusicEntitlements`
-wrap the three reads above. `summarizeSubscriptions` flattens the paid, trial,
-and complimentary buckets into one normalized `ServiceState[]`, and
-`isActiveStatus` applies the case-insensitive `ACTIVE` check described in
-[§ Status vocabulary](#status-vocabulary).

@@ -1,19 +1,15 @@
 import type { LexusSession, RequestLike } from '@/auth/lexus-auth';
-import {
-  LEXUS_HOSTS,
-  businessHeaders,
-  guidFromIdToken,
-  type VehicleContext,
-} from './lexus-api';
+import { LEXUS_HOSTS, businessHeaders, type VehicleContext } from './lexus-api';
 
 // Connected-services subscription state for a vehicle: the "all services" list
-// (Remote/Safety/Service/Drive/Wi-Fi Connect) and the separate SiriusXM radio
-// card. Endpoints, headers, and response shapes recovered from the OneApp 3.4.0
-// client and verified against the live 21MM API. See docs/subscriptions.md.
+// (Remote/Safety/Service/Drive/Wi-Fi Connect), bucketed into paid/trial/
+// complimentary/available. Endpoints, headers, and response shapes recovered
+// from the OneApp 3.4.0 client and verified against the live 21MM API. See
+// docs/subscriptions.md. Head-unit music entitlements and the SiriusXM radio
+// card are part of the API but out of scope for Lexy — we surface the vehicle's
+// connected-services subscriptions only, not media playback services.
 
 export const SUBSCRIPTIONS_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v3/vehicle-subscriptions`;
-export const SIRIUSXM_RADIO_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v1/radio`;
-export const MUSIC_ENTITLEMENTS_ENDPOINT = `${LEXUS_HOSTS.rest}/oa24mm/v1/svc/subscriptions`;
 
 // The v3 list needs more per-vehicle context than a plain vehicle-scoped call:
 // region, the ASI (dealer/market) code, and the head-unit hardware type. These
@@ -80,19 +76,6 @@ export type VehicleSubscriptionsPayload = {
   isPaidEnabled?: boolean;
   isTrialEligible?: boolean;
   isBundlingEnabled?: boolean;
-};
-
-export type SiriusXmRadio = {
-  radioID?: string;
-  status?: string;
-  trialEndDate?: string;
-  expiredDate?: string;
-  cardTitle?: string;
-  cardDescription?: string;
-  detailTitle?: string;
-  detailDescription?: string;
-  linkOutUrl?: string;
-  deepLinkUrl?: string;
 };
 
 // A flattened, source-agnostic view of one service's current state.
@@ -196,39 +179,4 @@ export async function fetchVehicleSubscriptions(
     ),
   });
   return readPayload<VehicleSubscriptionsPayload>(response);
-}
-
-// GET /oneapi/v1/radio — the SiriusXM / XM radio card (separate from the list).
-export async function fetchSiriusXmRadio(
-  session: LexusSession,
-  vehicle: Pick<VehicleContext, 'vin' | 'brand'>,
-  request: RequestLike = globalThis.fetch,
-): Promise<SiriusXmRadio | undefined> {
-  const response = await request(SIRIUSXM_RADIO_ENDPOINT, {
-    method: 'GET',
-    headers: { ...businessHeaders(session), vin: vehicle.vin, brand: vehicle.brand },
-  });
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(`Lexus radio request failed (${response.status}): ${text.slice(0, 300)}`);
-  }
-  return (JSON.parse(text) as { vehicleRadio?: SiriusXmRadio }).vehicleRadio;
-}
-
-// GET /oa24mm/v1/svc/subscriptions — head-unit music/streaming entitlement
-// strings for the signed-in customer. Requires the customer GUID as userProfileID.
-export async function fetchMusicEntitlements(
-  session: LexusSession,
-  request: RequestLike = globalThis.fetch,
-): Promise<string[]> {
-  const guid = guidFromIdToken(session.idToken);
-  if (!guid) {
-    return [];
-  }
-  const url = `${MUSIC_ENTITLEMENTS_ENDPOINT}?userProfileID=${encodeURIComponent(guid)}`;
-  const response = await request(url, {
-    method: 'GET',
-    headers: { ...businessHeaders(session), 'X-APIVERSION': 'v1' },
-  });
-  return readPayload<string[]>(response);
 }
