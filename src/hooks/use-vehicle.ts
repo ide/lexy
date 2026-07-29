@@ -20,6 +20,8 @@ import {
   parseVehicle,
   parseVehicleContexts,
 } from '@/data/vehicle';
+import { overrideVehicleResult } from '@/debug/data-state';
+import { useDataStateOverride } from '@/debug/debug-overrides';
 
 async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   const response = await fetch(url, { headers, signal });
@@ -31,7 +33,8 @@ async function getJson(url: string, headers: Record<string, string>, signal?: Ab
 
 export function useVehicle() {
   const { session } = useAuth();
-  return useQuery({
+  const override = useDataStateOverride();
+  const query = useQuery({
     queryKey: ['vehicle'],
     enabled: session !== null,
     // A settled "no vehicle on this account" is a definitive empty state, not a
@@ -90,4 +93,7 @@ export function useVehicle() {
       }
     },
   });
+  // In dev/preview, a Data State override rewrites the result so the screens can
+  // preview each state; in production it is always 'live' and returns as-is.
+  return overrideVehicleResult(query, override);
 }

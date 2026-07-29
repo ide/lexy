@@ -1,6 +1,9 @@
 import { onlineManager } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 
+import { overrideIsOnline } from '@/debug/data-state';
+import { useDataStateOverride } from '@/debug/debug-overrides';
+
 /**
  * Tracks whether the device currently has a usable internet connection.
  *
@@ -10,9 +13,12 @@ import { useSyncExternalStore } from 'react';
  * when this returns `false`, the vehicle query is paused, and vice versa.
  */
 export function useIsOnline(): boolean {
-  return useSyncExternalStore(
+  const real = useSyncExternalStore(
     (onChange) => onlineManager.subscribe(onChange),
     () => onlineManager.isOnline(),
     () => true,
   );
+  // In dev/preview a Data State override can force offline/online to preview the
+  // banners; in production this is always 'live' and returns the real state.
+  return overrideIsOnline(real, useDataStateOverride());
 }
