@@ -85,27 +85,24 @@ function FuelBar({
                 {gauge.label}
               </ThemedText>
             </View>
+            {/* Only the fuel reading takes the gauge color; the separator and
+                range stay in the default label color. */}
             <View style={styles.fuelValueRow}>
               {reveal ? (
                 <ThemedText
                   type="smallBold"
                   style={[styles.tabularNums, { color: fillColor }]}
                 >
-                  {gauge.valueText} · {rangeText}
+                  {gauge.valueText}
                 </ThemedText>
               ) : (
-                <>
-                  <ThemedText type="small" themeColor="secondaryLabel">
-                    {"Tap for level · "}
-                  </ThemedText>
-                  <ThemedText
-                    type="smallBold"
-                    style={[styles.tabularNums, { color: fillColor }]}
-                  >
-                    {rangeText}
-                  </ThemedText>
-                </>
+                <ThemedText type="small" themeColor="secondaryLabel">
+                  Tap for level
+                </ThemedText>
               )}
+              <ThemedText type="smallBold" style={styles.tabularNums}>
+                {` · ${rangeText}`}
+              </ThemedText>
             </View>
           </View>
           <View style={styles.fuelSegments}>
