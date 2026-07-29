@@ -9,7 +9,6 @@ import {
   VStack,
 } from "@expo/ui/swift-ui";
 import {
-  background,
   buttonStyle,
   controlSize,
   fixedSize,
@@ -90,16 +89,23 @@ function ScenarioBar({
     PREVIEW_SCENARIOS[0];
 
   return (
-    <Host matchContents style={{ paddingTop: insets.top }}>
-      <HStack
-        alignment="center"
-        spacing={Spacing.two}
-        modifiers={[
-          padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-          background(colors.card),
-        ]}
-      >
+    // The login route hides the navigation header, so this dev bar owns the top
+    // of the screen. A plain RN View owns the status-bar inset and the card
+    // background — both reliable in RN — so the fill covers the whole safe-area
+    // strip and the SwiftUI row sits cleanly below the notch. (An RN
+    // `paddingTop` on the Host itself is dropped for a `matchContents` host, and
+    // baking the inset into the HStack's SwiftUI padding made `matchContents`
+    // mis-measure and clip the row — hence letting RN handle the inset.)
+    <View style={{ paddingTop: insets.top, backgroundColor: colors.card as string }}>
+      <Host matchContents>
+        <HStack
+          alignment="center"
+          spacing={Spacing.two}
+          modifiers={[
+            padding({ horizontal: Spacing.three, vertical: Spacing.two }),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
         <Image
           systemName="wrench.and.screwdriver.fill"
           size={14}
@@ -124,8 +130,9 @@ function ScenarioBar({
             />
           ))}
         </Menu>
-      </HStack>
-    </Host>
+        </HStack>
+      </Host>
+    </View>
   );
 }
 

@@ -151,39 +151,44 @@ function Hero({
 }) {
   return (
     <VStack
-      spacing={Spacing.two}
-      modifiers={[frame({ maxWidth: Infinity, alignment: "center" })]}
+      alignment="leading"
+      spacing={Spacing.three}
+      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
     >
-      <ZStack
-        modifiers={[
-          frame({ width: 72, height: 72 }),
-          background(
-            colors.card,
-            shapes.roundedRectangle({
-              cornerRadius: 22,
-              roundedCornerStyle: "continuous",
-            }),
-          ),
-        ]}
-      >
-        <Image systemName={icon} size={30} color={colors.systemBlue as string} />
-      </ZStack>
-      <Text
-        modifiers={[
-          font({ textStyle: "title2", weight: "bold" }),
-          multilineTextAlignment("center"),
-          padding({ top: Spacing.two }),
-        ]}
-      >
-        {title}
-      </Text>
+      <HStack alignment="center" spacing={Spacing.three}>
+        <ZStack
+          modifiers={[
+            frame({ width: 56, height: 56 }),
+            background(
+              colors.card,
+              shapes.roundedRectangle({
+                cornerRadius: 18,
+                roundedCornerStyle: "continuous",
+              }),
+            ),
+          ]}
+        >
+          <Image
+            systemName={icon}
+            size={26}
+            color={colors.systemBlue as string}
+          />
+        </ZStack>
+        <Text
+          modifiers={[
+            font({ textStyle: "title", weight: "bold" }),
+            fixedSize({ horizontal: false, vertical: true }),
+          ]}
+        >
+          {title}
+        </Text>
+      </HStack>
       <Text
         modifiers={[
           font({ textStyle: "subheadline", weight: "medium" }),
           foregroundStyle({ type: "hierarchical", style: "secondary" }),
-          multilineTextAlignment("center"),
           fixedSize({ horizontal: false, vertical: true }),
-          frame({ maxWidth: Infinity }),
+          frame({ maxWidth: Infinity, alignment: "leading" }),
         ]}
       >
         {subtitle}
@@ -205,7 +210,6 @@ function PrimaryButton({
 }) {
   return (
     <Button
-      label={busy ? `${label}…` : label}
       onPress={onPress}
       modifiers={[
         buttonStyle("borderedProminent"),
@@ -214,7 +218,21 @@ function PrimaryButton({
         disabledModifier(disabled),
         frame({ maxWidth: Infinity }),
       ]}
-    />
+    >
+      {/* A full-width *label* is what stretches a bordered button edge to edge;
+          `frame(maxWidth: Infinity)` on the Button alone leaves it hugging its
+          text and centered in the column. */}
+      <Text
+        modifiers={[
+          font({ textStyle: "body", weight: "semibold" }),
+          foregroundStyle("white"),
+          frame({ maxWidth: Infinity }),
+          padding({ vertical: Spacing.one }),
+        ]}
+      >
+        {busy ? `${label}…` : label}
+      </Text>
+    </Button>
   );
 }
 
@@ -248,9 +266,9 @@ function NewToLexusCallout() {
       onPress={openLexusApp}
       modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
     >
-      <HStack
-        alignment="center"
-        spacing={Spacing.three}
+      <VStack
+        alignment="leading"
+        spacing={Spacing.two}
         modifiers={[
           frame({ maxWidth: Infinity, alignment: "leading" }),
           contentShape(shapes.rectangle()),
@@ -264,33 +282,37 @@ function NewToLexusCallout() {
           ),
         ]}
       >
-        <Image systemName="apple.logo" size={22} color={colors.label as string} />
-        <VStack
-          alignment="leading"
-          spacing={Spacing.half}
-          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        <Text
+          modifiers={[
+            font({ textStyle: "footnote", weight: "bold" }),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
         >
-          <Text modifiers={[font({ textStyle: "footnote", weight: "bold" })]}>
-            New to Lexus?
-          </Text>
-          <Text
-            modifiers={[
-              font({ textStyle: "footnote", weight: "medium" }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
-              fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-            ]}
-          >
-            Create an account and add your car in the Lexus app, then come back
-            here to sign in.
-          </Text>
-        </VStack>
-        <Image
-          systemName="arrow.up.forward"
-          size={14}
-          color={colors.systemBlue as string}
-        />
-      </HStack>
+          Don't have a Lexus account yet?
+        </Text>
+        <Text
+          markdownEnabled
+          modifiers={[
+            font({ textStyle: "footnote", weight: "medium" }),
+            foregroundStyle({ type: "hierarchical", style: "secondary" }),
+            fixedSize({ horizontal: false, vertical: true }),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          Create **your** account and add your car in the Lexus app, then come
+          back here to sign in.
+        </Text>
+        <Text
+          modifiers={[
+            font({ textStyle: "footnote", weight: "semibold" }),
+            foregroundStyle(colors.systemBlue),
+            fixedSize({ horizontal: false, vertical: true }),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          Get the Lexus app from the App Store.
+        </Text>
+      </VStack>
     </Button>
   );
 }
@@ -415,10 +437,10 @@ export function SignInView({ controller }: { controller: SignInController }) {
       ? { icon: "lock.shield.fill" as SFSymbol, title: "Verify it's you" }
       : screen === "otp"
         ? { icon: otp.icon, title: otp.title }
-        : { icon: "key.fill" as SFSymbol, title: "Sign in to Lexus" };
+        : { icon: "key.fill" as SFSymbol, title: "Sign in" };
   const subtitle =
     screen === "credentials"
-      ? "Sign in with the Lexus account you created in the Lexus app."
+      ? "Sign in with your Lexus account."
       : screen === "choice"
         ? (prompt ?? "Choose how you'd like to receive your verification code.")
         : (prompt ?? otp.subtitle);
@@ -495,9 +517,13 @@ export function SignInView({ controller }: { controller: SignInController }) {
                   ]}
                 />
               </VStack>
+              {/* Only the empty-field state dims the button. While `busy` the
+                  button stays prominent (the `signIn` handler already guards
+                  against a double submit) so tapping it doesn't flicker the
+                  fill from vibrant blue to disabled grey and back. */}
               <PrimaryButton
                 busy={busy}
-                disabled={busy || email.trim().length === 0 || password.length === 0}
+                disabled={email.trim().length === 0 || password.length === 0}
                 label="Sign in"
                 onPress={signIn}
               />
@@ -584,8 +610,8 @@ export function SignInView({ controller }: { controller: SignInController }) {
               padding({ top: Spacing.two, horizontal: Spacing.two }),
             ]}
           >
-            Your password and verification code are sent directly to Lexus. Lexy never stores
-            them, and the app does not collect any information about you.
+            Your password and verification code are sent directly to Lexus. Lexy
+            never stores them nor collects your information.
           </Text>
         </VStack>
       </ScrollView>
