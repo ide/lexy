@@ -270,67 +270,12 @@ function mapTires(tires: unknown): TirePressure | undefined {
   };
 }
 
-// Connected-services subscriptions from `/oneapi/v3/vehicle-subscriptions`. The
-// captured docs don't pin down this response shape, so the parser is defensive:
-// it accepts a list under a few plausible keys and reads each entry's name,
-// status, and expiry from the field names Lexus tends to use, skipping anything
-// nameless. An unrecognized shape yields `[]`, which simply hides the Connected
-// Services section — never a crash or a half-populated card.
-export function mapSubscriptions(value: unknown): Subscription[] {
-  const payload = asRecord(asRecord(value).payload ?? value);
-  const list = [payload.subscriptions, payload.vehicleSubscriptions, payload.products, value].find(
-    Array.isArray,
-  );
-  if (!Array.isArray(list)) {
-    return [];
-  }
-  const subscriptions: Subscription[] = [];
-  for (const entry of list) {
-    const record = asRecord(entry);
-    const name = firstString(record, [
-      'productName',
-      'displayProductName',
-      'name',
-      'productLine',
-      'serviceName',
-      'productCode',
-    ]);
-    if (!name) {
-      continue;
-    }
-    const status =
-      firstString(record, ['subscriptionStatus', 'status', 'state', 'productStatus']) ?? 'Active';
-    const expires =
-      firstString(record, [
-        'termEndDate',
-        'endDate',
-        'expirationDate',
-        'expiryDate',
-        'expiry',
-        'goodThrough',
-      ]) ?? '—';
-    subscriptions.push({ name, status, expires });
-  }
-  return subscriptions;
-}
-
-// Whether the account has an active subscription that grants remote actuation
-// (lock/unlock/engine-start) — the "Remote Connect" product family. Used to
-// gate the on-screen car controls. An empty/unknown subscription list returns
-// false; callers decide whether to treat "unknown" as blocked.
-export function hasRemoteSubscription(subscriptions: Subscription[]): boolean {
-  return subscriptions.some(
-    (s) => /remote/i.test(s.name) && /active|enrolled|on\b|valid/i.test(s.status),
-  );
-}
-
 export function mapVehicle(
   discovery: unknown,
   status: unknown,
   climate: unknown,
   spec: unknown,
   tires?: unknown,
-  subscriptions?: unknown,
 ): Vehicle {
   const list = asRecord(discovery).payload;
   const d = asRecord(Array.isArray(list) ? list[0] : undefined);
@@ -381,7 +326,11 @@ export function mapVehicle(
       { label: 'Climate', symbol: 'thermometer.medium' },
       { label: 'Location', symbol: 'location.fill' },
     ],
-    subscriptions: mapSubscriptions(subscriptions),
+    // No subscription source is wired yet — the response shape for
+    // `/oneapi/v3/vehicle-subscriptions` hasn't been captured, and guessing at
+    // field names isn't useful. Left empty (so Connected Services stays hidden)
+    // until a real response is available to map precisely.
+    subscriptions: [],
     tires: mapTires(tires),
   };
 }
