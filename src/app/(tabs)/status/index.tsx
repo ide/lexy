@@ -170,23 +170,27 @@ function OdometerCard({
 }) {
   return (
     <Card style={[styles.cardPadding, styles.odometerCard]}>
-      <View style={styles.odometerHeader}>
-        <Icon name="gauge.with.dots.needle.67percent" size={17} />
-        <ThemedText type="smallBold" themeColor="secondaryLabel">
-          Odometer
-        </ThemedText>
-      </View>
-      <View style={styles.metricValueRow}>
-        <ThemedText style={styles.metricValue}>
-          {odometer.toLocaleString()}
-        </ThemedText>
-        <ThemedText
-          type="small"
-          themeColor="secondaryLabel"
-          style={styles.metricUnit}
-        >
-          {unit}
-        </ThemedText>
+      {/* The lifetime total is the headline, so it shares one row with the
+          label — mirroring the fuel header — and the trips sit smaller below. */}
+      <View style={styles.odometerRow}>
+        <View style={styles.odometerHeader}>
+          <Icon name="gauge.with.dots.needle.67percent" size={17} />
+          <ThemedText type="smallBold" themeColor="secondaryLabel">
+            Odometer
+          </ThemedText>
+        </View>
+        <View style={styles.metricValueRow}>
+          <ThemedText style={styles.odometerValue}>
+            {odometer.toLocaleString()}
+          </ThemedText>
+          <ThemedText
+            type="small"
+            themeColor="secondaryLabel"
+            style={styles.odometerUnit}
+          >
+            {unit}
+          </ThemedText>
+        </View>
       </View>
       <View style={styles.tripDivider} />
       <View style={styles.tripRow}>
@@ -748,10 +752,24 @@ const styles = StyleSheet.create({
   odometerCard: {
     gap: Spacing.two,
   },
+  odometerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   odometerHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.one,
+  },
+  odometerValue: {
+    fontSize: 22,
+    fontWeight: "700",
+    lineHeight: 26,
+    fontVariant: ["tabular-nums"],
+  },
+  odometerUnit: {
+    marginBottom: 2,
   },
   tripDivider: {
     height: StyleSheet.hairlineWidth,
@@ -766,9 +784,9 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   tripValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 24,
+    fontSize: 17,
+    fontWeight: "600",
+    lineHeight: 22,
     fontVariant: ["tabular-nums"],
   },
   tripUnit: {
