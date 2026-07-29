@@ -53,11 +53,15 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
     { label: 'Climate', symbol: 'thermometer.medium' },
     { label: 'Location', symbol: 'location.fill' },
   ],
-  // Empty to match production, where the vehicle mapping returns no
-  // subscriptions yet — the Connected Services section is hidden for now, so
-  // the loading skeleton must not reserve space for it either. Restore
-  // representative rows here once vehicle-subscriptions is wired up.
-  subscriptions: [],
+  // Representative rows so the Connected Services skeleton reserves the right
+  // space during first load. Values are never readable (they draw as redacted
+  // bars) — only their lengths and count matter, so keep them the shape of a
+  // typical connected-services response: a couple of active services, one on a
+  // trial term.
+  subscriptions: [
+    { name: 'Remote Connect', status: 'Active', active: true, trial: false, expires: 'April 2028' },
+    { name: 'Service Connect', status: 'Active', active: true, trial: true, expires: 'April 2036' },
+  ],
   tires: {
     status: 'Normal',
     unit: 'psi',
