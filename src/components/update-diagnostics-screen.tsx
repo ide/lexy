@@ -742,6 +742,22 @@ export default function UpdateDiagnostics() {
       return "You are already running the latest compatible update.";
     });
 
+  // Pull-to-refresh asks the server for a newer update in addition to reloading
+  // the local logs/activity. check() runs through perform(), which records the
+  // outcome, refreshes the event lists, and fires the success haptic, so the
+  // pull spinner stays up until the server check resolves.
+  const pullToRefresh = useCallback(async () => {
+    if (isRefreshingEventsRef.current) {
+      return;
+    }
+    isRefreshingEventsRef.current = true;
+    try {
+      await check();
+    } finally {
+      isRefreshingEventsRef.current = false;
+    }
+  }, [check]);
+
   const download = () =>
     perform("download", async () => {
       const result = await Updates.fetchUpdateAsync();
@@ -807,7 +823,7 @@ export default function UpdateDiagnostics() {
       seedColor={colors.systemBlue}
       style={{ flex: 1, backgroundColor: colors.groupedBackground }}
     >
-      <SwiftUIScrollView modifiers={[refreshable(refreshEventLists)]}>
+      <SwiftUIScrollView modifiers={[refreshable(pullToRefresh)]}>
         <VStack
           alignment="leading"
           spacing={Spacing.four}
