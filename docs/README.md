@@ -12,6 +12,7 @@ shared Toyota/Lexus telematics infrastructure.
 | [endpoints.md](./endpoints.md) | All 285 REST endpoints, grouped by function |
 | [authentication.md](./authentication.md) | Identity provider, OAuth + PKCE, tokens, PIN, session headers |
 | [vehicle-status-and-control.md](./vehicle-status-and-control.md) | Vehicle status model (REST + GraphQL), remote commands, command codes, climate, capability matrix |
+| [subscriptions.md](./subscriptions.md) | Connected-services subscription state — the all-services list, SiriusXM/XM radio, music entitlements, and manage/cancel calls |
 
 Source data (machine-readable) lives in the `data/` folder:
 `lexus-3.4.0-rest-endpoints.csv`, `lexus-3.4.0-graphql-operations.csv`,
