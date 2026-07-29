@@ -8,15 +8,15 @@ const tabStackScreenOptions = createTabStackScreenOptions({
   groupedBackground: colors.groupedBackground as string,
 });
 
-export default function DevelopmentLayout() {
+export default function SettingsLayout() {
   return (
     <Stack screenOptions={tabStackScreenOptions}>
-      <Stack.Screen name="index" options={{ title: "Development" }} />
+      <Stack.Screen name="index" options={{ title: "Settings" }} />
       <Stack.Screen
         name="updates"
         options={{
           title: "Updates",
-          // "Development" is a long back-title, so show just the chevron.
+          // "Settings" is a long back-title, so show just the chevron.
           headerBackButtonDisplayMode: "minimal",
         }}
       />

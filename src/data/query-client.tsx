@@ -1,8 +1,9 @@
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { onlineManager, QueryClient } from '@tanstack/react-query';
+import { focusManager, onlineManager, QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import * as Network from 'expo-network';
 import Storage from 'expo-sqlite/kv-store';
+import { AppState, type AppStateStatus } from 'react-native';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,6 +13,19 @@ export const queryClient = new QueryClient({
       staleTime: 60 * 1000,
     },
   },
+});
+
+// Refetch on foreground: React Query's `refetchOnWindowFocus` is a no-op in
+// React Native until the focus manager is wired to AppState. With this in
+// place, returning to the app re-runs any query that has gone stale
+// (staleTime is 60s) in the background — cached vehicle data stays on screen
+// while the refresh runs, so opening the app after a while quietly refreshes.
+focusManager.setEventListener((handleFocus) => {
+  const onChange = (state: AppStateStatus) => {
+    handleFocus(state === 'active');
+  };
+  const subscription = AppState.addEventListener('change', onChange);
+  return () => subscription.remove();
 });
 
 onlineManager.setEventListener((setOnline) => {

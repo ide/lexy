@@ -1,17 +1,14 @@
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import * as Updates from "expo-updates";
 import { Pressable } from "react-native-gesture-handler";
 
+import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { colors } from "@/constants/theme";
 import { queryClient } from "@/data/query-client";
 
-// The skeleton toggle should be reachable in local dev AND in internal preview
-// builds (which run as release, so `__DEV__` is false), but never in production.
-// `Updates.channel` is set by the EAS build profile — "preview" for preview
-// builds, "production" for production — and is null in dev/Expo Go.
-export const SHOW_DEV_SKELETON_TOGGLE =
-  __DEV__ || Updates.channel === "preview";
+// The skeleton toggle rides the shared dev-tools gate: reachable in local dev
+// and internal preview builds, never in production.
+export const SHOW_DEV_SKELETON_TOGGLE = SHOW_DEV_TOOLS;
 
 const blue = colors.systemBlue as string;
 
