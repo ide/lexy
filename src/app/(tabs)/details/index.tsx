@@ -153,7 +153,15 @@ export default function CarDetails() {
     return (
       <>
         <Stack.Screen options={{ title: "Details", headerRight }} />
-        <DetailsSkeleton offline={!vehicle && !isOnline} />
+        {/* Same NativeScrollView the populated screen renders, so toggling to
+            the skeleton reconciles the scroll container in place and keeps the
+            scroll offset instead of snapping to the top. */}
+        <NativeScrollView contentContainerStyle={styles.content}>
+          {!isOnline ? (
+            <OfflineBanner message="No internet connection — connect to load your vehicle" />
+          ) : null}
+          <DetailsSkeleton />
+        </NativeScrollView>
       </>
     );
   }
