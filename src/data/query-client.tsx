@@ -5,6 +5,8 @@ import * as Network from 'expo-network';
 import Storage from 'expo-sqlite/kv-store';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import { CACHE_VERSION, createValidatingPersister } from '@/data/persisted-cache';
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -40,10 +42,15 @@ onlineManager.setEventListener((setOnline) => {
   return () => subscription.remove();
 });
 
-const persister = createAsyncStoragePersister({
-  key: 'lexy-query-cache',
-  storage: Storage,
-});
+// Re-validate persisted queries on restore (drop any `['vehicle']` blob an
+// older build wrote in an incompatible shape) on top of the raw SQLite-backed
+// persister. See persisted-cache.ts.
+const persister = createValidatingPersister(
+  createAsyncStoragePersister({
+    key: 'lexy-query-cache',
+    storage: Storage,
+  }),
+);
 
 /**
  * Wipe every cached query — both the in-memory store and the persisted SQLite
@@ -58,12 +65,12 @@ export async function clearVehicleCache() {
 
 export function VehicleDataProvider({ children }: { children: React.ReactNode }) {
   return (
-    // The buster invalidates persisted entries whenever the cached Vehicle
-    // shape changes, so an old cache is refetched rather than rendered with
-    // missing fields. v2: distance fields renamed + distanceUnit added.
+    // The buster (CACHE_VERSION) invalidates persisted entries whenever the
+    // cached Vehicle shape changes, so an old cache is refetched rather than
+    // rendered with missing fields. See persisted-cache.ts for when to bump it.
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ buster: 'vehicle-v2', maxAge: Infinity, persister }}>
+      persistOptions={{ buster: CACHE_VERSION, maxAge: Infinity, persister }}>
       {children}
     </PersistQueryClientProvider>
   );
