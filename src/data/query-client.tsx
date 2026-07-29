@@ -1,7 +1,7 @@
-import NetInfo from '@react-native-community/netinfo';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { onlineManager, QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import * as Network from 'expo-network';
 import Storage from 'expo-sqlite/kv-store';
 
 export const queryClient = new QueryClient({
@@ -14,11 +14,17 @@ export const queryClient = new QueryClient({
   },
 });
 
-onlineManager.setEventListener((setOnline) =>
-  NetInfo.addEventListener((state) => {
+onlineManager.setEventListener((setOnline) => {
+  const apply = (state: Network.NetworkState) => {
     setOnline(state.isConnected === true && state.isInternetReachable !== false);
-  }),
-);
+  };
+  // `addNetworkStateListener` only fires on change, so seed the current state on
+  // subscribe to match the immediate-emit behavior the online manager expects
+  // (otherwise an app launched offline would look online until the next change).
+  Network.getNetworkStateAsync().then(apply).catch(() => {});
+  const subscription = Network.addNetworkStateListener(apply);
+  return () => subscription.remove();
+});
 
 const persister = createAsyncStoragePersister({
   key: 'lexy-query-cache',
