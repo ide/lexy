@@ -973,7 +973,7 @@ export default function UpdateDiagnostics() {
             >
               This is the actionable update state Expo exposes: what is running,
               what is ready on this device, and what the server has offered.
-              Older cached bundles are managed internally and are not enumerable
+              Older downloaded updates are managed internally and are not enumerable
               from app code.
             </SwiftUIText>
           </VStack>
