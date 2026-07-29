@@ -29,11 +29,12 @@ const vehicle = {
   manufacturedDate: '2024-12-01',
   updatedAt: '2026-07-24T17:03:10Z',
   fuelPercent: 75,
-  rangeMiles: 250,
-  odometerMiles: 12_345,
+  distanceUnit: 'mi',
+  range: 250,
+  odometer: 12_345,
   cautionCount: 0,
-  tripAMiles: 10.2,
-  tripBMiles: 20.4,
+  tripA: 10.2,
+  tripB: 20.4,
   location: { latitude: 37.5, longitude: -122.2 },
   climate: { temperatureF: 72, minF: 65, maxF: 85 },
   closures: [{ label: 'Driver Door', state: 'Closed', locked: true }],
@@ -48,6 +49,12 @@ describe('parseVehicle', () => {
 
   it('rejects malformed responses instead of caching them', () => {
     expect(() => parseVehicle({ ...vehicle, location: null })).toThrow('Invalid vehicle response');
+  });
+
+  it('rejects a distance unit outside mi/km', () => {
+    expect(() => parseVehicle({ ...vehicle, distanceUnit: 'Mile' })).toThrow(
+      'Invalid vehicle response',
+    );
   });
 });
 
@@ -206,10 +213,11 @@ describe('mapVehicle', () => {
       headUnit: 'Lexus Multimedia (21MM)',
       inServiceDate: 'April 23, 2026',
       fuelPercent: 100,
-      rangeMiles: 281,
-      odometerMiles: 735,
-      tripAMiles: 272.1,
-      tripBMiles: 735.1,
+      distanceUnit: 'mi',
+      range: 281,
+      odometer: 735,
+      tripA: 272.1,
+      tripB: 735.1,
       location: { latitude: 37.41144, longitude: -122.12686 },
       climate: { temperatureF: 71, minF: 65, maxF: 85 },
     });
@@ -236,6 +244,19 @@ describe('mapVehicle', () => {
 
   it('produces a value that passes parseVehicle validation', () => {
     expect(() => parseVehicle(mapVehicle(discovery, status, climate, spec))).not.toThrow();
+  });
+
+  it('takes the distance unit from telemetry, defaulting to miles', () => {
+    const metricStatus = structuredClone(status);
+    metricStatus.payload.status.telemetry.rage.unit = 'Kilometer';
+    expect(mapVehicle(discovery, metricStatus, climate, spec).distanceUnit).toBe('km');
+
+    const unitless = structuredClone(status);
+    // @ts-expect-error -- exercise telemetry that omits the unit entirely
+    delete unitless.payload.status.telemetry.rage.unit;
+    // @ts-expect-error
+    delete unitless.payload.status.telemetry.odo.unit;
+    expect(mapVehicle(discovery, unitless, climate, spec).distanceUnit).toBe('mi');
   });
 });
 

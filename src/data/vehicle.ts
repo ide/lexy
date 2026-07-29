@@ -24,6 +24,15 @@ export type Subscription = {
   expires: string;
 };
 
+/**
+ * The unit every distance field (`range`, `odometer`, `tripA`, `tripB`) is
+ * expressed in. The car decides: telemetry reports each distance as
+ * `{ value, unit }` with values already converted to the unit configured on
+ * the vehicle, so the app displays what the wire says rather than guessing
+ * from the device locale — the numbers always match the in-car dashboard.
+ */
+export type DistanceUnit = 'mi' | 'km';
+
 export type Vehicle = {
   nickname: string;
   fullName: string;
@@ -44,11 +53,12 @@ export type Vehicle = {
   manufacturedDate: string;
   updatedAt: string;
   fuelPercent: number;
-  rangeMiles: number;
-  odometerMiles: number;
+  distanceUnit: DistanceUnit;
+  range: number;
+  odometer: number;
   cautionCount: number;
-  tripAMiles: number;
-  tripBMiles: number;
+  tripA: number;
+  tripB: number;
   location: {
     latitude: number;
     longitude: number;
@@ -93,11 +103,11 @@ const stringFields = [
 
 const numberFields = [
   'fuelPercent',
-  'rangeMiles',
-  'odometerMiles',
+  'range',
+  'odometer',
   'cautionCount',
-  'tripAMiles',
-  'tripBMiles',
+  'tripA',
+  'tripB',
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -113,6 +123,7 @@ export function parseVehicle(value: unknown): Vehicle {
     !isRecord(value) ||
     !stringFields.every((field) => typeof value[field] === 'string') ||
     !numberFields.every((field) => hasNumber(value, field)) ||
+    (value.distanceUnit !== 'mi' && value.distanceUnit !== 'km') ||
     !isRecord(value.location) ||
     !hasNumber(value.location, 'latitude') ||
     !hasNumber(value.location, 'longitude') ||
@@ -271,7 +282,15 @@ function mapClosures(vehicleStatus: unknown[]): Closure[] {
   return closures;
 }
 
-function tripMiles(vehicleStatus: unknown[], sectionName: string): number {
+// The wire spells the unit out ("Mile"/"Miles" or "Kilometer"/"Km" depending on
+// the vehicle's region and head-unit setting); normalize to the two-letter
+// display unit and default to miles when telemetry omits it.
+function mapDistanceUnit(telemetry: Record<string, unknown>): DistanceUnit {
+  const unit = str(asRecord(telemetry.rage).unit, str(asRecord(telemetry.odo).unit));
+  return /k/i.test(unit) ? 'km' : 'mi';
+}
+
+function tripDistance(vehicleStatus: unknown[], sectionName: string): number {
   const trips = vehicleStatus.map(asRecord).find((c) => c.category === 'Trip Details');
   const sections = Array.isArray(trips?.sections) ? trips.sections : [];
   const section = sections.map(asRecord).find((s) => s.section === sectionName);
@@ -371,13 +390,14 @@ export function mapVehicle(
     manufacturedDate: specValue(spec, 'Order Date') || '—',
     updatedAt: str(st.occurrenceDate, new Date().toISOString()),
     fuelPercent: Math.round(num(asRecord(telemetry.fugage).value)),
+    distanceUnit: mapDistanceUnit(telemetry),
     // The live 21MM REST telemetry key is `rage` (not the `range` the docs list);
     // reading `range` returns 0 in production, so trust the wire, not the docs.
-    rangeMiles: Math.round(num(asRecord(telemetry.rage).value)),
-    odometerMiles: Math.round(num(asRecord(telemetry.odo).value)),
+    range: Math.round(num(asRecord(telemetry.rage).value)),
+    odometer: Math.round(num(asRecord(telemetry.odo).value)),
     cautionCount: num(st.cautionOverallCount),
-    tripAMiles: tripMiles(vehicleStatus, 'Trip A'),
-    tripBMiles: tripMiles(vehicleStatus, 'Trip B'),
+    tripA: tripDistance(vehicleStatus, 'Trip A'),
+    tripB: tripDistance(vehicleStatus, 'Trip B'),
     location: { latitude: num(st.latitude), longitude: num(st.longitude) },
     climate: {
       temperatureF: num(c.temperature),
