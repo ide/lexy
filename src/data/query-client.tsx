@@ -58,9 +58,12 @@ export async function clearVehicleCache() {
 
 export function VehicleDataProvider({ children }: { children: React.ReactNode }) {
   return (
+    // The buster invalidates persisted entries whenever the cached Vehicle
+    // shape changes, so an old cache is refetched rather than rendered with
+    // missing fields. v2: distance fields renamed + distanceUnit added.
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ buster: 'vehicle-v1', maxAge: Infinity, persister }}>
+      persistOptions={{ buster: 'vehicle-v2', maxAge: Infinity, persister }}>
       {children}
     </PersistQueryClientProvider>
   );

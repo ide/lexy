@@ -15,8 +15,9 @@ import { useTheme } from "@/hooks/use-theme";
 /**
  * Placeholder shown on the Status screen whenever there is no vehicle to draw
  * yet — the first-load fetch, or offline before anything has cached. It mirrors
- * the real dashboard layout (hero, metric row, doors/windows grid, tire grid,
- * climate row) with neutral fill blocks so the shape is visible immediately
+ * the real dashboard layout (hero, fuel bar, odometer + trips card,
+ * doors/windows grid, tire grid, climate row) with neutral fill blocks so the
+ * shape is visible immediately
  * rather than a centered spinner.
  *
  * The real cards are React Native views hosted inside @expo/ui's ScrollView, so
@@ -60,12 +61,43 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
 // skeleton doesn't resize when data lands: Icon default size (22), the
 // metric/tire value line-heights (30 / 28), and the shared 20pt line-height of
 // `small`/`smallBold` text. See the matching styles in the Status screen.
-function MetricCard() {
+
+// The fuel card: header line (label left, level + range right) over the
+// four-segment gauge. The segment tracks are the real card's empty state
+// (colors.fill), so they double as their own placeholder.
+function FuelCard() {
   return (
-    <Card style={styles.metric}>
-      <Block width={22} height={22} radius={11} />
-      <Block width={48} height={30} />
-      <Block width={40} height={20} />
+    <Card style={styles.fuelCard}>
+      <View style={styles.rowBetween}>
+        <Block width={64} height={20} />
+        <Block width={120} height={20} />
+      </View>
+      <View style={styles.fuelSegments}>
+        {Array.from({ length: 4 }, (_, i) => (
+          <View key={`segment-${i}`} style={styles.fuelSegment} />
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+// The combined odometer card: header, big total, divider, Trip A/B columns.
+function OdometerCard() {
+  return (
+    <Card style={styles.odometerCard}>
+      <Block width={100} height={20} />
+      <Block width={110} height={30} />
+      <Block height={StyleSheet.hairlineWidth} radius={0} />
+      <View style={styles.row}>
+        <View style={styles.tripCell}>
+          <Block width={48} height={20} />
+          <Block width={72} height={24} />
+        </View>
+        <View style={styles.tripCell}>
+          <Block width={48} height={20} />
+          <Block width={72} height={24} />
+        </View>
+      </View>
     </Card>
   );
 }
@@ -120,11 +152,8 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
             <Block width={88} height={24} radius={100} />
           </Card>
 
-          <View style={styles.row}>
-            <MetricCard />
-            <MetricCard />
-            <MetricCard />
-          </View>
+          <FuelCard />
+          <OdometerCard />
 
           <View>
             <Block width={140} height={16} style={styles.sectionTitle} />
@@ -188,10 +217,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.two,
   },
-  metric: {
+  rowBetween: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  fuelCard: {
+    gap: Spacing.two,
+  },
+  fuelSegments: {
+    flexDirection: "row",
+    gap: Spacing.one,
+  },
+  fuelSegment: {
+    flex: 1,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.fill,
+  },
+  odometerCard: {
+    gap: Spacing.two,
+  },
+  tripCell: {
     flex: 1,
     gap: Spacing.one,
-    alignItems: "flex-start",
   },
   halfCard: {
     flex: 1,

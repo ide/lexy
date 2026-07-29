@@ -36,45 +36,11 @@ import {
   NoVehicleError,
   relativeTime,
   type Closure,
+  type DistanceUnit,
   type Vehicle,
 } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
-
-function Metric({
-  symbol,
-  value,
-  unit,
-  label,
-  accent,
-}: {
-  symbol: SFSymbol;
-  value: string;
-  unit?: string;
-  label: string;
-  accent?: string;
-}) {
-  return (
-    <Card style={[styles.cardPadding, styles.metric]}>
-      <Icon name={symbol} tint={accent} />
-      <View style={styles.metricValueRow}>
-        <ThemedText style={styles.metricValue}>{value}</ThemedText>
-        {unit ? (
-          <ThemedText
-            type="small"
-            themeColor="secondaryLabel"
-            style={styles.metricUnit}
-          >
-            {unit}
-          </ThemedText>
-        ) : null}
-      </View>
-      <ThemedText type="small" themeColor="secondaryLabel">
-        {label}
-      </ThemedText>
-    </Card>
-  );
-}
 
 const green = colors.systemGreen as string;
 const blue = colors.systemBlue as string;
@@ -82,11 +48,22 @@ const orange = colors.systemOrange as string;
 
 // The fuel/charge level as a bar divided into quarters, mirroring the car's
 // dashboard. The reading is an estimate, so the bar is the primary display;
-// tapping reveals the precise number (and it reads "Full" at 100%).
-function FuelBar({ gauge }: { gauge: FuelGauge }) {
+// tapping reveals the precise number (and it reads "Full" at 100%). Range
+// rides next to the reading ("Full · 277 mi") — it is the actionable half of
+// the fuel story, so it stays visible whether or not the level is revealed.
+function FuelBar({
+  gauge,
+  range,
+  unit,
+}: {
+  gauge: FuelGauge;
+  range: number;
+  unit: DistanceUnit;
+}) {
   const [showValue, setShowValue] = useState(false);
   const reveal = gauge.full || showValue;
   const fillColor = gauge.low ? orange : green;
+  const rangeText = `${range.toLocaleString()} ${unit}`;
   return (
     <Pressable
       accessibilityRole="button"
@@ -108,15 +85,28 @@ function FuelBar({ gauge }: { gauge: FuelGauge }) {
                 {gauge.label}
               </ThemedText>
             </View>
-            {reveal ? (
-              <ThemedText type="smallBold" style={{ color: fillColor }}>
-                {gauge.valueText}
-              </ThemedText>
-            ) : (
-              <ThemedText type="small" themeColor="secondaryLabel">
-                Tap for level
-              </ThemedText>
-            )}
+            <View style={styles.fuelValueRow}>
+              {reveal ? (
+                <ThemedText
+                  type="smallBold"
+                  style={[styles.tabularNums, { color: fillColor }]}
+                >
+                  {gauge.valueText} · {rangeText}
+                </ThemedText>
+              ) : (
+                <>
+                  <ThemedText type="small" themeColor="secondaryLabel">
+                    {"Tap for level · "}
+                  </ThemedText>
+                  <ThemedText
+                    type="smallBold"
+                    style={[styles.tabularNums, { color: fillColor }]}
+                  >
+                    {rangeText}
+                  </ThemedText>
+                </>
+              )}
+            </View>
           </View>
           <View style={styles.fuelSegments}>
             {gauge.fills.map((fill, i) => (
@@ -136,23 +126,75 @@ function FuelBar({ gauge }: { gauge: FuelGauge }) {
   );
 }
 
-function TripCell({ label, miles }: { label: string; miles: number }) {
+function TripCell({
+  label,
+  distance,
+  unit,
+}: {
+  label: string;
+  distance: number;
+  unit: DistanceUnit;
+}) {
   return (
-    <Card style={[styles.cardPadding, styles.metric]}>
+    <View style={styles.tripCell}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
         {label}
       </ThemedText>
       <View style={styles.metricValueRow}>
+        <ThemedText style={styles.tripValue}>
+          {/* Trips arrive with dashboard precision (e.g. 272.1) — keep the
+              tenths instead of rounding them away. */}
+          {distance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+        </ThemedText>
+        <ThemedText
+          type="small"
+          themeColor="secondaryLabel"
+          style={styles.tripUnit}
+        >
+          {unit}
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
+// Odometer and trip meters are one instrument cluster in the car, so they share
+// one card: lifetime total on top, resettable Trip A/B beneath a divider.
+function OdometerCard({
+  odometer,
+  tripA,
+  tripB,
+  unit,
+}: {
+  odometer: number;
+  tripA: number;
+  tripB: number;
+  unit: DistanceUnit;
+}) {
+  return (
+    <Card style={[styles.cardPadding, styles.odometerCard]}>
+      <View style={styles.odometerHeader}>
+        <Icon name="gauge.with.dots.needle.67percent" size={17} />
+        <ThemedText type="smallBold" themeColor="secondaryLabel">
+          Odometer
+        </ThemedText>
+      </View>
+      <View style={styles.metricValueRow}>
         <ThemedText style={styles.metricValue}>
-          {miles.toLocaleString()}
+          {odometer.toLocaleString()}
         </ThemedText>
         <ThemedText
           type="small"
           themeColor="secondaryLabel"
           style={styles.metricUnit}
         >
-          mi
+          {unit}
         </ThemedText>
+      </View>
+      <View style={styles.tripDivider} />
+      <View style={styles.tripRow}>
+        <TripCell label="Trip A" distance={tripA} unit={unit} />
+        <TripCell label="Trip B" distance={tripB} unit={unit} />
       </View>
     </Card>
   );
@@ -487,27 +529,18 @@ export default function CarDashboard() {
 
         <VehicleControls vehicle={vehicle} />
 
-        <FuelBar gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)} />
+        <FuelBar
+          gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
+          range={vehicle.range}
+          unit={vehicle.distanceUnit}
+        />
 
-        <View style={styles.metricRow}>
-          <Metric
-            symbol="road.lanes"
-            value={`${vehicle.rangeMiles}`}
-            unit="mi"
-            label="Range"
-          />
-          <Metric
-            symbol="gauge.with.dots.needle.67percent"
-            value={vehicle.odometerMiles.toLocaleString()}
-            unit="mi"
-            label="Odometer"
-          />
-        </View>
-
-        <View style={styles.metricRow}>
-          <TripCell label="Trip A" miles={vehicle.tripAMiles} />
-          <TripCell label="Trip B" miles={vehicle.tripBMiles} />
-        </View>
+        <OdometerCard
+          odometer={vehicle.odometer}
+          tripA={vehicle.tripA}
+          tripB={vehicle.tripB}
+          unit={vehicle.distanceUnit}
+        />
 
         {corners.length > 0 ? (
           <View>
@@ -654,6 +687,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.one,
   },
+  fuelValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   fuelSegments: {
     flexDirection: "row",
     gap: Spacing.one,
@@ -711,9 +748,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.two,
   },
-  metric: {
+  odometerCard: {
+    gap: Spacing.two,
+  },
+  odometerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+  },
+  tripDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.separator,
+  },
+  tripRow: {
+    flexDirection: "row",
+    gap: Spacing.two,
+  },
+  tripCell: {
     flex: 1,
     gap: Spacing.one,
+  },
+  tripValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 24,
+    fontVariant: ["tabular-nums"],
+  },
+  tripUnit: {
+    marginBottom: 1,
+  },
+  tabularNums: {
+    fontVariant: ["tabular-nums"],
   },
   halfCard: {
     flex: 1,
