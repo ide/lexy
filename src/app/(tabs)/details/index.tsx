@@ -1,13 +1,18 @@
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
-import { useEffect } from "react";
+import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
+import {
+  DevSkeletonToggle,
+  SHOW_DEV_SKELETON_TOGGLE,
+} from "@/components/dev-skeleton-toggle";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ThemedText } from "@/components/themed-text";
@@ -122,6 +127,7 @@ export default function CarDetails() {
   const { data: vehicle, error, isLoading, refetch } = useVehicle();
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
+  const [forceSkeleton, setForceSkeleton] = useState(false);
 
   useEffect(() => {
     // TTI marks the UI shell becoming interactive; data readiness is tracked
@@ -129,22 +135,43 @@ export default function CarDetails() {
     markInteractive();
   }, [markInteractive]);
 
-  if (!vehicle) {
-    // One skeleton for every "no vehicle yet" case — first-load fetch and
-    // offline-before-anything-cached (with a banner). Only a settled, online,
-    // data-less result is a real error.
-    if (isLoading || !isOnline) {
-      return <VehicleSkeleton offline={!isOnline} />;
-    }
+  // Affordance to hold the real loading skeleton on the real screen. Available
+  // in dev and preview builds (see SHOW_DEV_SKELETON_TOGGLE); kept out of
+  // production.
+  const headerRight = SHOW_DEV_SKELETON_TOGGLE
+    ? () => (
+        <DevSkeletonToggle
+          active={forceSkeleton}
+          onToggle={() => setForceSkeleton((value) => !value)}
+        />
+      )
+    : undefined;
+
+  // A single skeleton covers every "no vehicle yet" case: the dev override, the
+  // first-load fetch, and offline-before-anything-cached (with a banner). Only
+  // a settled, online, data-less result is a real error.
+  if (forceSkeleton || (!vehicle && (isLoading || !isOnline))) {
     return (
-      <VehicleError
-        message={
-          error instanceof Error
-            ? error.message
-            : "The vehicle API did not return data."
-        }
-        retry={() => refetch()}
-      />
+      <>
+        <Stack.Screen options={{ title: "Details", headerRight }} />
+        <VehicleSkeleton offline={!vehicle && !isOnline} />
+      </>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <>
+        <Stack.Screen options={{ title: "Details", headerRight }} />
+        <VehicleError
+          message={
+            error instanceof Error
+              ? error.message
+              : "The vehicle API did not return data."
+          }
+          retry={() => refetch()}
+        />
+      </>
     );
   }
 
@@ -164,84 +191,87 @@ export default function CarDetails() {
   ];
 
   return (
-    <NativeScrollView contentContainerStyle={styles.content}>
-      {!isOnline ? (
-        <OfflineBanner message="No internet connection — showing last saved data" />
-      ) : null}
-      <Animated.View entering={FadeInDown.duration(300)}>
-        <SectionTitle>VEHICLE</SectionTitle>
-        <View style={[styles.card, { backgroundColor: theme.card }]}>
-          {spec.map(([label, value], i) => (
-            <InfoRow
-              key={label}
-              label={label}
-              value={value}
-              last={i === spec.length - 1}
-            />
-          ))}
-        </View>
-      </Animated.View>
+    <>
+      <Stack.Screen options={{ title: "Details", headerRight }} />
+      <NativeScrollView contentContainerStyle={styles.content}>
+        {!isOnline ? (
+          <OfflineBanner message="No internet connection — showing last saved data" />
+        ) : null}
+        <Animated.View entering={FadeInDown.duration(300)}>
+          <SectionTitle>VEHICLE</SectionTitle>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
+            {spec.map(([label, value], i) => (
+              <InfoRow
+                key={label}
+                label={label}
+                value={value}
+                last={i === spec.length - 1}
+              />
+            ))}
+          </View>
+        </Animated.View>
 
-      <Animated.View entering={FadeInDown.duration(300).delay(50)}>
-        <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
-        <View
-          style={[styles.card, styles.grid, { backgroundColor: theme.card }]}
-        >
-          {vehicle.capabilities.map((c) => (
-            <View key={c.label} style={styles.capability}>
-              <Icon name={c.symbol} tint={colors.systemBlue as string} />
-              <ThemedText type="small" style={styles.capabilityLabel}>
-                {c.label}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.duration(300).delay(100)}>
-        <SectionTitle>TRIPS</SectionTitle>
-        <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
-          <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
-        </View>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.duration(300).delay(150)}>
-        <SectionTitle>CONNECTED SERVICES</SectionTitle>
-        <View style={[styles.card, { backgroundColor: theme.card }]}>
-          {vehicle.subscriptions.map((subscription, i) => (
-            <View
-              key={subscription.name}
-              style={[
-                styles.serviceRow,
-                i < vehicle.subscriptions.length - 1 && {
-                  borderBottomWidth: StyleSheet.hairlineWidth,
-                  borderBottomColor: theme.separator,
-                },
-              ]}
-            >
-              <View>
-                <ThemedText type="small">{subscription.name}</ThemedText>
-                <ThemedText type="small" themeColor="secondaryLabel">
-                  Expires {subscription.expires}
+        <Animated.View entering={FadeInDown.duration(300).delay(50)}>
+          <SectionTitle>REMOTE CAPABILITIES</SectionTitle>
+          <View
+            style={[styles.card, styles.grid, { backgroundColor: theme.card }]}
+          >
+            {vehicle.capabilities.map((c) => (
+              <View key={c.label} style={styles.capability}>
+                <Icon name={c.symbol} tint={colors.systemBlue as string} />
+                <ThemedText type="small" style={styles.capabilityLabel}>
+                  {c.label}
                 </ThemedText>
               </View>
-              <ThemedText
-                type="smallBold"
-                style={{ color: colors.systemGreen }}
-              >
-                {subscription.status}
-              </ThemedText>
-            </View>
-          ))}
-        </View>
-      </Animated.View>
+            ))}
+          </View>
+        </Animated.View>
 
-      <Animated.View entering={FadeInDown.duration(300).delay(200)}>
-        <SectionTitle>ACCOUNT</SectionTitle>
-        <SignOutButton />
-      </Animated.View>
-    </NativeScrollView>
+        <Animated.View entering={FadeInDown.duration(300).delay(100)}>
+          <SectionTitle>TRIPS</SectionTitle>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <InfoRow label="Trip A" value={`${vehicle.tripAMiles} mi`} />
+            <InfoRow label="Trip B" value={`${vehicle.tripBMiles} mi`} last />
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(300).delay(150)}>
+          <SectionTitle>CONNECTED SERVICES</SectionTitle>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
+            {vehicle.subscriptions.map((subscription, i) => (
+              <View
+                key={subscription.name}
+                style={[
+                  styles.serviceRow,
+                  i < vehicle.subscriptions.length - 1 && {
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: theme.separator,
+                  },
+                ]}
+              >
+                <View>
+                  <ThemedText type="small">{subscription.name}</ThemedText>
+                  <ThemedText type="small" themeColor="secondaryLabel">
+                    Expires {subscription.expires}
+                  </ThemedText>
+                </View>
+                <ThemedText
+                  type="smallBold"
+                  style={{ color: colors.systemGreen }}
+                >
+                  {subscription.status}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(300).delay(200)}>
+          <SectionTitle>ACCOUNT</SectionTitle>
+          <SignOutButton />
+        </Animated.View>
+      </NativeScrollView>
+    </>
   );
 }
 
