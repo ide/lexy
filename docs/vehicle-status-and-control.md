@@ -34,6 +34,39 @@ Companion reads:
 | `POST` | `/v1/remote/route/wake` | Wake the telematics unit before work |
 | `GET` | `/oneapi/v2/legacy/remote/status` | Legacy status |
 
+### REST — `GET|PUT /v1/remote/route/climate-settings`
+
+The remote-start climate configuration (what a remote engine start runs — these
+settings configure, they do not actuate). Captured live from a 21MM IS 350
+(2026-07-29); the response envelope is `{ payload, status, timestamp }` where
+`payload` is:
+
+```json
+{
+  "temperature": 71, "temperatureUnit": "F", "minTemp": 65, "maxTemp": 85,
+  "tempInterval": 1, "settingsOn": true,
+  "extendedRuntime": { "available": false, "enabled": false },
+  "acOperations": [
+    { "categoryName": "defrost", "categoryDisplayName": "Defrost", "available": true,
+      "acParameters": [
+        { "name": "frontDefrost", "displayName": "Front Defrost", "iconUrl": "…",
+          "available": true, "enabled": false },
+        { "name": "rearDefrost", "displayName": "Rear Defrost", "iconUrl": "…",
+          "available": true, "enabled": false } ] },
+    { "categoryName": "seatHeat", "available": false },
+    { "categoryName": "seatVent", "available": false },
+    { "categoryName": "steeringHeaterCat", "available": false }
+  ]
+}
+```
+
+Writes are a `PUT` to the same route with the **bare settings object** as the
+JSON body (no `payload` envelope) — round-trip exactly what the GET returned
+with the `enabled` flags you want changed. Verified live: the PUT returns 200
+and a subsequent GET reflects the new flags. Gate UI on the per-category and
+per-parameter `available` flags (seat heat/vent/steering-wheel heat exist in
+the schema but are unavailable on this vehicle).
+
 ### GraphQL — `GetVehicleStatus(vin)`
 
 The 24MM plane returns a normalized, deeply-nested state tree in one query:

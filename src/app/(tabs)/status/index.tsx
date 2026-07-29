@@ -11,7 +11,7 @@ import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
 
@@ -39,6 +39,8 @@ import {
   type DistanceUnit,
   type Vehicle,
 } from "@/data/vehicle";
+import type { AcParameter } from "@/data/climate-settings";
+import { useClimateSettings } from "@/hooks/use-climate-settings";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
 
@@ -143,11 +145,7 @@ function TripCell({
               tenths instead of rounding them away. */}
           {distance.toLocaleString(undefined, { maximumFractionDigits: 1 })}
         </ThemedText>
-        <ThemedText
-          type="small"
-          themeColor="secondaryLabel"
-          style={styles.tripUnit}
-        >
+        <ThemedText type="small" themeColor="secondaryLabel">
           {unit}
         </ThemedText>
       </View>
@@ -156,7 +154,7 @@ function TripCell({
 }
 
 // Odometer and trip meters are one instrument cluster in the car, so they share
-// one card: lifetime total on top, resettable Trip A/B beneath a divider.
+// one card: lifetime total beside the resettable Trip A/B pair.
 function OdometerCard({
   odometer,
   tripA,
@@ -171,8 +169,8 @@ function OdometerCard({
   return (
     <Card style={[styles.cardPadding, styles.odometerCard]}>
       {/* Lifetime total and the two resettable trips share one size; the
-          trips get their own bordered sub-group so the resettable pair reads
-          as a unit apart from the total. */}
+          trips sit on a gentle fill so the resettable pair reads as a unit
+          apart from the total. */}
       <View style={styles.tripCell}>
         <View style={styles.odometerHeader}>
           <Icon name="gauge.with.dots.needle.67percent" size={17} />
@@ -184,11 +182,7 @@ function OdometerCard({
           <ThemedText style={styles.tripValue}>
             {odometer.toLocaleString()}
           </ThemedText>
-          <ThemedText
-            type="small"
-            themeColor="secondaryLabel"
-            style={styles.tripUnit}
-          >
+          <ThemedText type="small" themeColor="secondaryLabel">
             {unit}
           </ThemedText>
         </View>
@@ -335,6 +329,113 @@ function OpeningCard({ opening }: { opening: Closure }) {
   return (
     <Card style={[styles.cardPadding, styles.cornerCard]}>
       <StatusLine status={openingStatus(opening)} />
+    </Card>
+  );
+}
+
+function DefrostToggle({
+  label,
+  symbol,
+  parameter,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  symbol: SFSymbol;
+  parameter?: AcParameter;
+  disabled: boolean;
+  onToggle: (enabled: boolean) => void;
+}) {
+  if (!parameter) {
+    return null;
+  }
+  const active = parameter.enabled;
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: active, disabled }}
+      disabled={disabled}
+      onPress={() => {
+        if (process.env.EXPO_OS === "ios") {
+          Haptics.selectionAsync();
+        }
+        onToggle(!active);
+      }}
+      style={styles.defrostToggle}
+    >
+      {({ pressed }) => (
+        <View
+          style={[
+            styles.defrostChip,
+            active && styles.defrostChipOn,
+            (pressed || disabled) && { opacity: 0.6 },
+          ]}
+        >
+          <Icon
+            name={symbol}
+            size={17}
+            tint={active ? blue : (colors.secondaryLabel as string)}
+          />
+          <ThemedText
+            type="smallBold"
+            themeColor={active ? undefined : "secondaryLabel"}
+            style={active && { color: blue }}
+          >
+            {label}
+          </ThemedText>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// The remote-start climate configuration: what temperature the cabin heads for
+// and whether the defrosters run. These are settings the car applies on the
+// next remote start — not live actuation — which is why the card sits with the
+// controls.
+function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
+  const { defrost, setDefrost, saving, error } = useClimateSettings(vehicle);
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert(
+        "Couldn't save defrost setting",
+        error instanceof Error ? error.message : "The vehicle API rejected the change.",
+      );
+    }
+  }, [error]);
+
+  return (
+    <Card style={[styles.cardPadding, styles.climateCard]}>
+      <View style={styles.inlineRow}>
+        <View style={styles.odometerHeader}>
+          <Icon name="thermometer.medium" size={17} tint={blue} />
+          <ThemedText type="smallBold" themeColor="secondaryLabel">
+            Climate setpoint
+          </ThemedText>
+        </View>
+        <ThemedText type="smallBold" style={styles.tabularNums}>
+          {vehicle.climate.temperatureF}°F
+        </ThemedText>
+      </View>
+      {defrost.front || defrost.rear ? (
+        <View style={styles.defrostRow}>
+          <DefrostToggle
+            label="Front defrost"
+            symbol="windshield.front.and.heat.waves"
+            parameter={defrost.front}
+            disabled={saving}
+            onToggle={(enabled) => setDefrost("frontDefrost", enabled)}
+          />
+          <DefrostToggle
+            label="Rear defrost"
+            symbol="windshield.rear.and.heat.waves"
+            parameter={defrost.rear}
+            disabled={saving}
+            onToggle={(enabled) => setDefrost("rearDefrost", enabled)}
+          />
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -545,21 +646,7 @@ export default function CarDashboard() {
 
         <VehicleControls vehicle={vehicle} />
 
-        {/* The setpoint configures what a remote engine start runs, so it
-            lives with the controls rather than the status readouts. Front and
-            rear defrost toggles belong here too once the climate-settings
-            write schema is confirmed (PUT /v1/remote/route/climate-settings). */}
-        <Card style={[styles.cardPadding, styles.inlineCard]}>
-          <View style={styles.odometerHeader}>
-            <Icon name="thermometer.medium" size={17} tint={blue} />
-            <ThemedText type="smallBold" themeColor="secondaryLabel">
-              Climate setpoint
-            </ThemedText>
-          </View>
-          <ThemedText type="smallBold" style={styles.tabularNums}>
-            {vehicle.climate.temperatureF}°F
-          </ThemedText>
-        </Card>
+        <ClimateCard vehicle={vehicle} />
 
         {corners.length > 0 ? (
           <View>
@@ -759,6 +846,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  // Same row shape as inlineCard, for rows inside a multi-row card.
+  inlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  climateCard: {
+    gap: Spacing.two,
+  },
+  defrostRow: {
+    flexDirection: "row",
+    gap: Spacing.two,
+  },
+  defrostToggle: {
+    flex: 1,
+  },
+  defrostChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.one,
+    paddingVertical: Spacing.two,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    backgroundColor: colors.subtleFill,
+  },
+  defrostChipOn: {
+    backgroundColor: "rgba(0,122,255,0.15)",
+  },
   odometerCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -769,15 +885,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.one,
   },
-  // The resettable pair, framed apart from the lifetime total. Flexed wider
-  // than the odometer column (2:1) so both trips fit inside the border.
+  // The resettable pair, set apart from the lifetime total by the gentlest
+  // system fill. Flexed wider than the odometer column (2:1) so both trips
+  // fit inside the inset.
   tripsGroup: {
     flex: 2,
     flexDirection: "row",
     gap: Spacing.two,
-    padding: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.separator,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    backgroundColor: colors.subtleFill,
     borderRadius: 12,
     borderCurve: "continuous",
   },
@@ -794,9 +911,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 22,
     fontVariant: ["tabular-nums"],
-  },
-  tripUnit: {
-    marginBottom: 1,
   },
   tabularNums: {
     fontVariant: ["tabular-nums"],
