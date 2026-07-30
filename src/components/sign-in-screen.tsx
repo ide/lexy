@@ -7,6 +7,7 @@ import {
   ScrollView,
   SecureField,
   type SecureFieldRef,
+  type TextFieldRef,
   Text,
   TextField,
   VStack,
@@ -370,7 +371,28 @@ export function SignInView({ controller }: { controller: SignInController }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const emailRef = useRef<TextFieldRef>(null);
   const passwordRef = useRef<SecureFieldRef>(null);
+  const codeRef = useRef<TextFieldRef>(null);
+
+  /**
+   * Resign whichever field is focused before a submit that can end the flow.
+   *
+   * A successful sign-in flips the root navigator's auth guard, which unmounts
+   * this screen — and its Host — while its field is still first responder. The
+   * keyboard goes away with the view, but nothing ever resigns it, so the
+   * scene's keyboard safe area is never walked back to zero and every host
+   * created afterwards (each tab's scroll view) inherits the leftover inset.
+   * Resigning first ends the keyboard the ordinary way.
+   *
+   * React Native's `Keyboard.dismiss()` cannot do this: it blurs the currently
+   * focused *RN* TextInput, and these fields are SwiftUI.
+   */
+  const dismissKeyboard = () => {
+    emailRef.current?.blur();
+    passwordRef.current?.blur();
+    codeRef.current?.blur();
+  };
 
   useEffect(() => {
     markInteractive();
@@ -387,6 +409,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
       return;
     }
     tapImpact();
+    dismissKeyboard();
     submitCredentials(email.trim(), password);
   };
 
@@ -403,6 +426,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
       return;
     }
     tapImpact();
+    dismissKeyboard();
     submit(code.trim());
   };
 
@@ -480,6 +504,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
                 ]}
               >
                 <TextField
+                  ref={emailRef}
                   placeholder="Email address"
                   autoFocus
                   onTextChange={setEmail}
@@ -548,6 +573,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
           {screen === "otp" ? (
             <VStack spacing={Spacing.three} modifiers={[frame({ maxWidth: Infinity })]}>
               <TextField
+                ref={codeRef}
                 placeholder={otp.placeholder}
                 autoFocus
                 onTextChange={setCode}
