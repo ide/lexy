@@ -155,7 +155,11 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
           </Card>
 
           <FuelCard />
-          <OdometerCard />
+
+          <View>
+            <Block width={110} height={16} style={styles.sectionTitle} />
+            <OdometerCard />
+          </View>
 
           <View>
             <Block width={140} height={16} style={styles.sectionTitle} />
