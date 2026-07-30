@@ -29,6 +29,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 import { useAuth } from "@/auth/auth-context";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
+import { useMapsProvider } from "@/hooks/use-maps-provider";
 
 type DevItem = {
   icon: SFSymbol;
@@ -157,6 +158,92 @@ function DevRow({
   );
 }
 
+// Choose which navigation app the car-location map hands off to. The trailing
+// value tracks the resolved provider; tapping opens the chooser (installed apps
+// only). When no maps app is installed the row reads "Unavailable" and taps
+// explain how to fix it.
+function MapsProviderRow() {
+  const { resolved, saved, promptChoice } = useMapsProvider();
+
+  const none = resolved?.kind === "none";
+  // What to show on the right: the deliberate saved choice, else the
+  // auto-resolved single app, else "Not set" (multiple installed, none chosen).
+  const value = none
+    ? "Unavailable"
+    : saved
+      ? saved.name
+      : resolved?.kind === "ready"
+        ? resolved.provider.name
+        : "Not set";
+  const subtitle = none
+    ? "Install Apple Maps, Google Maps, or Waze to open your car's location."
+    : "The app used to open your car's location for directions.";
+
+  const onPress = () => {
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.selectionAsync();
+    }
+    // promptChoice presents the chooser, or explains when nothing is installed.
+    promptChoice();
+  };
+
+  return (
+    <Button
+      onPress={onPress}
+      modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.three}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          contentShape(shapes.rectangle()),
+          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
+        ]}
+      >
+        <Image
+          systemName="map.fill"
+          size={22}
+          color={colors.systemBlue as string}
+        />
+        <VStack
+          alignment="leading"
+          spacing={Spacing.half}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        >
+          <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>
+            Maps app
+          </Text>
+          <Text
+            modifiers={[
+              font({ textStyle: "footnote", weight: "medium" }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+              fixedSize({ horizontal: false, vertical: true }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+            ]}
+          >
+            {subtitle}
+          </Text>
+        </VStack>
+        <Spacer />
+        <Text
+          modifiers={[
+            font({ textStyle: "body", weight: "regular" }),
+            foregroundStyle({ type: "hierarchical", style: "secondary" }),
+          ]}
+        >
+          {value}
+        </Text>
+        <Image
+          systemName="chevron.right"
+          size={14}
+          color={colors.secondaryLabel as string}
+        />
+      </HStack>
+    </Button>
+  );
+}
+
 function SignOutRow() {
   const { signOut } = useAuth();
   const red = colors.systemRed as string;
@@ -250,6 +337,13 @@ export default function SettingsScreen() {
               </GroupCard>
             </VStack>
           ) : null}
+
+          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionHeader>MAPS</SectionHeader>
+            <GroupCard>
+              <MapsProviderRow />
+            </GroupCard>
+          </VStack>
 
           <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
             <SectionHeader>LEXUS ACCOUNT</SectionHeader>

@@ -8,10 +8,29 @@ const tabStackScreenOptions = createTabStackScreenOptions({
   groupedBackground: colors.groupedBackground as string,
 });
 
+// Anchor the stack to `index` so the map sheet (a formSheet) keeps the Status
+// screen behind it, including when the route is deep-linked.
+export const unstable_settings = {
+  anchor: "index",
+};
+
 export default function StatusLayout() {
   return (
     <Stack screenOptions={tabStackScreenOptions}>
       <Stack.Screen name="index" options={{ title: "Status" }} />
+      {/* The car-location map, presented as a draggable bottom sheet and opened
+          via peek & pop from the "Last parked" card on the Status screen. */}
+      <Stack.Screen
+        name="map"
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.5, 1],
+          sheetInitialDetentIndex: 1,
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 24,
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
