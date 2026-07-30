@@ -9,7 +9,12 @@ import {
 
 export type Closure = {
   label: string;
-  state: 'Closed' | 'Open';
+  /**
+   * Open/closed position. The status feed sometimes reports only the lock for
+   * a closure (a sparse snapshot after driving, for example), so position is
+   * optional — absent means unknown, not closed.
+   */
+  state?: 'Closed' | 'Open';
   locked?: boolean;
 };
 
@@ -272,12 +277,18 @@ function mapClosures(vehicleStatus: unknown[]): Closure[] {
     for (const section of sections) {
       const sec = asRecord(section);
       const values = Array.isArray(sec.values) ? sec.values.map(asRecord) : [];
-      const position = str(values[0]?.value);
-      if (position !== 'Open' && position !== 'Closed') {
+      // A section can carry a position, a lock, or both — sparse snapshots
+      // (e.g. right after driving) often report only "Locked" for a door.
+      // Keep whatever is known; drop only sections that say nothing.
+      const position = values.find((v) => v.value === 'Open' || v.value === 'Closed');
+      const lock = values.find((v) => v.value === 'Locked' || v.value === 'Unlocked');
+      if (!position && !lock) {
         continue;
       }
-      const lock = values.find((v) => v.value === 'Locked' || v.value === 'Unlocked');
-      const closure: Closure = { label: `${prefix}${str(sec.section)}`.trim(), state: position };
+      const closure: Closure = { label: `${prefix}${str(sec.section)}`.trim() };
+      if (position) {
+        closure.state = position.value as 'Open' | 'Closed';
+      }
       if (lock) {
         closure.locked = lock.value === 'Locked';
       }
