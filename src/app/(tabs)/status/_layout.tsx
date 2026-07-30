@@ -16,17 +16,17 @@ export const unstable_settings = {
   anchor: "index",
 };
 
-// The sheet's native header dismiss control: the standard grey circular xmark
-// Apple uses to close a presented sheet.
+// The sheet's dismiss control: a bare `xmark` glyph in the label colour — the
+// standard "close a presented screen" bar button, no circle or background.
 function SheetCloseButton() {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Close"
-      hitSlop={12}
+      hitSlop={16}
       onPress={() => router.back()}
     >
-      <Icon name="xmark.circle.fill" size={26} tint={colors.secondaryLabel as string} />
+      <Icon name="xmark" size={19} tint={colors.label as string} />
     </Pressable>
   );
 }
