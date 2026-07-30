@@ -60,8 +60,13 @@ export function CarLocationMap({
           : []
       }
       uiSettings={{
-        // The map is a compact glanceable view, not a full navigation surface;
-        // hide the scale bar and pitch toggle to keep it clean.
+        // The map is a compact glanceable view, not a full navigation surface:
+        // hide every built-in control so nothing floats over the corners. The
+        // my-location button is the one Apple draws in the top-right; the car
+        // marker already fixes the frame on the parked spot, so locating the
+        // user (which we don't track here) would do nothing useful.
+        compassEnabled: false,
+        myLocationButtonEnabled: false,
         scaleBarEnabled: false,
         togglePitchEnabled: false,
       }}

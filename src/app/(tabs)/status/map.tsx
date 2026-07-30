@@ -1,7 +1,7 @@
-import { Button, Host, Text } from "@expo/ui/swift-ui";
+import { Button, Host, Image, Text } from "@expo/ui/swift-ui";
 import { buttonStyle, controlSize, font, frame } from "@expo/ui/swift-ui/modifiers";
 import { useObserve } from "expo-observe";
-import { Link } from "expo-router";
+import { router } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -49,24 +49,33 @@ export default function CarLocationSheet() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={styles.title}>{vehicle.nickname}</ThemedText>
-        {parkingAddress ? (
-          <ThemedText style={styles.address}>{parkingAddress}</ThemedText>
-        ) : null}
-        <ThemedText type="small" themeColor="secondaryLabel">
-          {`Last parked · location as of ${relativeTime(vehicle.updatedAt)}`}
-        </ThemedText>
+        <View style={styles.headerText}>
+          <ThemedText style={styles.title}>Last Parked</ThemedText>
+          {parkingAddress ? (
+            <ThemedText style={styles.address}>{parkingAddress}</ThemedText>
+          ) : null}
+          <ThemedText type="small" themeColor="secondaryLabel">
+            {`Location as of ${relativeTime(vehicle.updatedAt)}`}
+          </ThemedText>
+        </View>
+        <Host style={styles.closeHost} matchContents>
+          <Button onPress={() => router.back()} modifiers={[buttonStyle("plain")]}>
+            <Image
+              systemName="xmark.circle.fill"
+              size={28}
+              color={colors.secondaryLabel as string}
+            />
+          </Button>
+        </Host>
       </View>
 
-      <Link.AppleZoomTarget>
-        <View style={styles.mapFrame}>
-          <CarLocationMap
-            latitude={latitude}
-            longitude={longitude}
-            label={vehicle.nickname}
-          />
-        </View>
-      </Link.AppleZoomTarget>
+      <View style={styles.mapFrame}>
+        <CarLocationMap
+          latitude={latitude}
+          longitude={longitude}
+          label={vehicle.nickname}
+        />
+      </View>
 
       <View
         style={[
@@ -103,10 +112,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.three,
     paddingBottom: Spacing.two,
+  },
+  headerText: {
+    flex: 1,
     gap: Spacing.half,
+  },
+  // Sized to the 28pt SF Symbol so the plain button hugs the glyph in the
+  // top-right corner instead of stretching across the row.
+  closeHost: {
+    width: 28,
+    height: 28,
   },
   title: {
     fontSize: 22,

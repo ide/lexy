@@ -15,6 +15,7 @@ import {
   padding,
 } from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
+import { GlassView } from "expo-glass-effect";
 import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
 import { Link, Stack } from "expo-router";
@@ -684,11 +685,6 @@ export default function CarDashboard() {
     );
   }
 
-  const lockStates = vehicle.closures
-    .map((closure) => closure.locked)
-    .filter((locked): locked is boolean => locked !== undefined);
-  const locked = lockStates.length > 0 && lockStates.every(Boolean);
-  const lockColor = locked ? green : orange;
   const { corners, openings: allOpenings } = groupClosures(vehicle.closures);
   // Openings (moonroof/trunk/hood) only have a position to report, so a sparse
   // snapshot entry without one has nothing to show.
@@ -755,21 +751,19 @@ export default function CarDashboard() {
             accessibilityHint="Opens your car's last parked location"
           >
             <Card style={styles.hero}>
-              <Link.AppleZoom>
-                <View
-                  pointerEvents="none"
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                  style={styles.heroMap}
-                >
-                  <CarLocationMap
-                    latitude={vehicle.location.latitude}
-                    longitude={vehicle.location.longitude}
-                    label={vehicle.nickname}
-                    showMarker={false}
-                  />
-                </View>
-              </Link.AppleZoom>
+              <View
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={styles.heroMap}
+              >
+                <CarLocationMap
+                  latitude={vehicle.location.latitude}
+                  longitude={vehicle.location.longitude}
+                  label={vehicle.nickname}
+                  showMarker={false}
+                />
+              </View>
               <View pointerEvents="none" style={styles.heroMapVeil} />
               <View pointerEvents="none" style={styles.heroImageFrame}>
                 <Image
@@ -780,28 +774,11 @@ export default function CarDashboard() {
                 />
               </View>
               <View pointerEvents="none" style={styles.heroActions}>
-                <View
-                  style={[
-                    styles.pill,
-                    {
-                      backgroundColor: locked
-                        ? "rgba(52,199,89,0.15)"
-                        : "rgba(255,149,0,0.15)",
-                    },
-                  ]}
+                <GlassView
+                  glassEffectStyle="regular"
+                  tintColor={blue}
+                  style={styles.lastParkedButton}
                 >
-                  <Icon
-                    name={locked ? "lock.fill" : "lock.open.fill"}
-                    size={13}
-                    tint={lockColor}
-                  />
-                  {/* The lock state is derived only from doors — windows and other
-                      openings have no lock — so the label names doors explicitly. */}
-                  <ThemedText type="small" style={{ color: lockColor }}>
-                    {locked ? "Doors locked" : "Doors unlocked"}
-                  </ThemedText>
-                </View>
-                <View style={styles.lastParkedButton}>
                   <Icon name="map.fill" size={14} tint={blue} />
                   <View style={styles.lastParkedCopy}>
                     <ThemedText type="smallBold" style={{ color: blue }}>
@@ -814,7 +791,7 @@ export default function CarDashboard() {
                       {parkingAddress ?? `Updated ${relativeTime(vehicle.updatedAt)}`}
                     </ThemedText>
                   </View>
-                </View>
+                </GlassView>
               </View>
             </Card>
           </Pressable>
@@ -1026,7 +1003,7 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     gap: Spacing.two,
   },
   lastParkedButton: {
@@ -1037,7 +1014,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
     borderRadius: 100,
-    backgroundColor: "rgba(0,122,255,0.15)",
+    // Clip the Liquid Glass tint to the pill; the blue comes from the glass
+    // `tintColor`, not a translucent fill, so there's no background here.
+    overflow: "hidden",
   },
   lastParkedCopy: {
     flexShrink: 1,
@@ -1046,14 +1025,6 @@ const styles = StyleSheet.create({
     color: colors.secondaryLabel,
     fontSize: 12,
     lineHeight: 16,
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: 100,
   },
   // Same row shape as inlineCard, for rows inside a multi-row card.
   inlineRow: {
