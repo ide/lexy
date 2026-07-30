@@ -1136,13 +1136,17 @@ const styles = StyleSheet.create({
   climateHeader: {
     gap: Spacing.one,
   },
-  // The switch's slot, shared by the live Toggle's host and its placeholder: a
-  // UIKit switch is always 51x31, so pinning the box keeps the two identical
-  // and spares the host a measure pass. The trailing inset keeps the switch
-  // off the card's edge, which a control needs more than a line of text does.
+  // The switch's slot, shared by the live Toggle's host and its placeholder, so
+  // pinning the box keeps the two identical and spares the host a measure pass.
+  // 69x28 is what the Toggle actually draws, measured on device — not the 51x31
+  // a UIKit switch uses, which this had assumed: at 51 wide the control was
+  // overflowing its own host, so the placeholder sat 9pt inside where the
+  // switch really was. It holds that size at every Dynamic Type setting
+  // (checked up to XXXL). The trailing inset keeps the switch off the card's
+  // edge, which a control needs more than a line of text does.
   climateSwitch: {
-    width: 51,
-    height: 31,
+    width: 69,
+    height: 28,
     marginRight: Spacing.two,
     backgroundColor: "transparent",
   },
@@ -1166,13 +1170,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.fill,
   },
-  // The switch's own box, filled: it inherits the 51x31 above, so the
-  // placeholder and the live control occupy exactly the same space. At 31pt it
-  // also stays distinct from the 20pt text bars around it — including the
-  // temperature readout directly below it, which a wider, skinnier pill
-  // twinned.
+  // The switch's own box, filled: it inherits the 69x28 above, so the
+  // placeholder and the live control occupy exactly the same space.
   switchPlaceholder: {
-    borderRadius: 15.5,
+    borderRadius: 14,
     backgroundColor: colors.fill,
   },
   // Widest plausible readout ("29.5°C") reserves its slot so the slider
