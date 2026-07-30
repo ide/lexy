@@ -29,13 +29,17 @@ user explicitly asks for it.
   (shared values, `useAnimatedStyle`, `withTiming`/`withRepeat`) so animations
   run on the UI thread.
 
-# Screenshots
+# Verification
 
-ALWAYS downsample phone and simulator screenshots before viewing or sharing
-them. Device screenshots come out at native pixel resolution (2x–3x the point
-size, depending on the source device's DPI); scale them down to roughly 1x
-point resolution. Exact scaling doesn't matter — close is fine. For example,
-with `sips`:
+- Verify the app with a local iOS development build, not Expo Go. Lexy uses
+  native modules and Apple targets that Expo Go does not include.
+- Prefer text and logs when inspecting or verifying behavior.
+- If a screenshot is necessary, downsample it to roughly 1x point resolution
+  or lower before viewing or sharing it. Device screenshots are normally 2x–3x.
+- If higher resolution is truly necessary, crop to the smallest relevant region
+  before analyzing it rather than viewing the full-resolution screen.
+
+For example, downsample a 3x phone screenshot with `sips`:
 
 ```sh
 # 3x device (e.g. iPhone Pro): scale width to 1/3 of the pixel width
