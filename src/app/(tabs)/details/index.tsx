@@ -161,10 +161,10 @@ export default function CarDetails() {
       <NativeScrollView contentContainerStyle={styles.content}>
         {!isOnline ? (
           <OfflineBanner
-            message={
+            detail={
               data
-                ? "No internet connection. Showing the last seen data."
-                : "No internet connection — connect to load your vehicle"
+                ? "Showing the latest data we saved."
+                : "Reconnect to load your vehicle."
             }
           />
         ) : null}
