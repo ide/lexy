@@ -1,6 +1,7 @@
-import { Button, Host, Popover, Text, VStack } from "@expo/ui/swift-ui";
+import { Button, Host, Popover, Slider, Text, Toggle, VStack } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
+  disabled,
   font,
   foregroundStyle,
   padding,
@@ -10,7 +11,7 @@ import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -40,7 +41,11 @@ import {
   type Vehicle,
 } from "@/data/vehicle";
 import type { AcParameter } from "@/data/climate-settings";
-import { useClimateSettings } from "@/hooks/use-climate-settings";
+import { queryClient } from "@/data/query-client";
+import {
+  CLIMATE_SETTINGS_QUERY_KEY,
+  useClimateSettings,
+} from "@/hooks/use-climate-settings";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
 
@@ -389,21 +394,38 @@ function DefrostToggle({
   );
 }
 
-// The remote-start climate configuration: what temperature the cabin heads for
-// and whether the defrosters run. These are settings the car applies on the
-// next remote start — not live actuation — which is why the card sits with the
-// controls.
+// The remote-start climate configuration: whether climate runs at all, what
+// temperature the cabin heads for, and whether the defrosters run. These are
+// settings the car applies on the next remote start — not live actuation —
+// which is why the card sits with the controls.
 function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
-  const { defrost, setDefrost, saving, error } = useClimateSettings(vehicle);
+  const { settings, defrost, setDefrost, setTemperature, setSettingsOn, saving, error } =
+    useClimateSettings(vehicle);
+  // The setpoint mid-drag, shown in the readout before the PUT commits on
+  // release. A ref backs the commit so onEditingChanged never sees a stale
+  // value.
+  const [draftTemperature, setDraftTemperature] = useState<number | null>(null);
+  const draftRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (error) {
       Alert.alert(
-        "Couldn't save defrost setting",
+        "Couldn't save climate settings",
         error instanceof Error ? error.message : "The vehicle API rejected the change.",
       );
     }
   }, [error]);
+
+  const on = settings?.settingsOn ?? true;
+  // The wire reports the setpoint range in the car's configured unit (°F cars:
+  // 65–85 in 1° steps; metric cars report their own °C range), so the slider
+  // adapts without any conversion.
+  const showSlider =
+    settings !== undefined &&
+    typeof settings.minTemp === "number" &&
+    typeof settings.maxTemp === "number";
+  const temperature = draftTemperature ?? settings?.temperature ?? vehicle.climate.temperatureF;
+  const unit = `°${settings?.temperatureUnit ?? "F"}`;
 
   return (
     <Card style={[styles.cardPadding, styles.climateCard]}>
@@ -411,27 +433,66 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
         <View style={styles.odometerHeader}>
           <Icon name="thermometer.medium" size={17} tint={blue} />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
-            Climate setpoint
+            Climate
           </ThemedText>
         </View>
-        <ThemedText type="smallBold" style={styles.tabularNums}>
-          {vehicle.climate.temperatureF}°F
-        </ThemedText>
+        {settings ? (
+          // Master switch: with climate off, a remote start runs no
+          // climate at all, so the setpoint and defrost rows dim.
+          <Host matchContents style={styles.climateSwitchHost}>
+            <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
+          </Host>
+        ) : (
+          <ThemedText type="smallBold" style={styles.tabularNums}>
+            {vehicle.climate.temperatureF}
+            {unit}
+          </ThemedText>
+        )}
       </View>
+      {showSlider ? (
+        <View style={[styles.sliderRow, !on && styles.climateOff]}>
+          {/* A SwiftUI Slider has no intrinsic width, so the host gets an
+              explicit flex + height instead of matchContents. */}
+          <Host style={styles.slider}>
+            <Slider
+              min={settings.minTemp}
+              max={settings.maxTemp}
+              step={settings.tempInterval ?? 1}
+              value={settings.temperature}
+              onValueChange={(value) => {
+                draftRef.current = value;
+                setDraftTemperature(value);
+              }}
+              onEditingChanged={(editing) => {
+                if (!editing && draftRef.current !== null) {
+                  setTemperature(draftRef.current);
+                  draftRef.current = null;
+                  setDraftTemperature(null);
+                }
+              }}
+              modifiers={[disabled(!on || saving)]}
+            />
+          </Host>
+          <ThemedText type="smallBold" style={[styles.tabularNums, styles.temperatureReadout]}>
+            {temperature.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+            {unit}
+          </ThemedText>
+        </View>
+      ) : null}
       {defrost.front || defrost.rear ? (
-        <View style={styles.defrostRow}>
+        <View style={[styles.defrostRow, !on && styles.climateOff]}>
           <DefrostToggle
             label="Front defrost"
             symbol="windshield.front.and.heat.waves"
             parameter={defrost.front}
-            disabled={saving}
+            disabled={saving || !on}
             onToggle={(enabled) => setDefrost("frontDefrost", enabled)}
           />
           <DefrostToggle
             label="Rear defrost"
             symbol="windshield.rear.and.heat.waves"
             parameter={defrost.rear}
-            disabled={saving}
+            disabled={saving || !on}
             onToggle={(enabled) => setDefrost("rearDefrost", enabled)}
           />
         </View>
@@ -587,7 +648,13 @@ export default function CarDashboard() {
           // and only the native pull-to-refresh spinner shows.
           setManualRefreshing(true);
           try {
-            await refetch();
+            // Climate settings live in their own query and can change out from
+            // under us (the official Lexus app edits the same settings), so a
+            // manual refresh re-reads them alongside the vehicle.
+            await Promise.all([
+              refetch(),
+              queryClient.refetchQueries({ queryKey: CLIMATE_SETTINGS_QUERY_KEY }),
+            ]);
           } finally {
             setManualRefreshing(false);
           }
@@ -854,6 +921,30 @@ const styles = StyleSheet.create({
   },
   climateCard: {
     gap: Spacing.two,
+  },
+  climateSwitchHost: {
+    backgroundColor: "transparent",
+  },
+  // Dim (but keep visible) the setpoint and defrost rows while the master
+  // switch is off — the native controls are also disabled.
+  climateOff: {
+    opacity: 0.4,
+  },
+  sliderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.three,
+  },
+  slider: {
+    flex: 1,
+    height: 28,
+    backgroundColor: "transparent",
+  },
+  // Widest plausible readout ("29.5°C") reserves its slot so the slider
+  // doesn't resize as the number changes width.
+  temperatureReadout: {
+    minWidth: 52,
+    textAlign: "right",
   },
   defrostRow: {
     flexDirection: "row",

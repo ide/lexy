@@ -32,6 +32,13 @@ export type AcOperation = {
 // server sent (index signature) rather than only the ones the UI reads.
 export type ClimateSettings = {
   temperature: number;
+  /** "F" or "C" — the unit the vehicle is configured for. */
+  temperatureUnit?: string;
+  minTemp?: number;
+  maxTemp?: number;
+  /** Setpoint granularity (1 for °F; metric cars use 0.5° steps). */
+  tempInterval?: number;
+  /** Master switch — false means remote start runs no climate at all. */
   settingsOn: boolean;
   acOperations?: AcOperation[];
   [key: string]: unknown;
@@ -71,6 +78,16 @@ export function defrostParameters(settings: ClimateSettings): {
     return match?.available ? match : undefined;
   };
   return { front: parameter('frontDefrost'), rear: parameter('rearDefrost') };
+}
+
+/** A copy of the settings with a new temperature setpoint. */
+export function withTemperature(settings: ClimateSettings, value: number): ClimateSettings {
+  return { ...settings, temperature: value };
+}
+
+/** A copy of the settings with the master climate switch set. */
+export function withSettingsOn(settings: ClimateSettings, enabled: boolean): ClimateSettings {
+  return { ...settings, settingsOn: enabled };
 }
 
 /**
