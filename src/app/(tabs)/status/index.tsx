@@ -26,7 +26,11 @@ import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
@@ -510,11 +514,15 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
 
   const on = settings?.settingsOn ?? true;
   // Master switch off dims (and disables) the setpoint and defrost rows; the
-  // fade is animated so the optimistic flip doesn't pop.
-  const dimStyle = useAnimatedStyle(
-    () => ({ opacity: withTiming(on ? 1 : 0.4, { duration: 250 }) }),
-    [on],
-  );
+  // fade is animated so the optimistic flip doesn't pop. The shared value
+  // starts at the state we already know, so a card that opens with climate
+  // already off draws dim on its first frame instead of rendering enabled and
+  // fading a beat later — only later changes animate.
+  const dim = useSharedValue(on ? 1 : 0.4);
+  useEffect(() => {
+    dim.value = withTiming(on ? 1 : 0.4, { duration: 250 });
+  }, [dim, on]);
+  const dimStyle = useAnimatedStyle(() => ({ opacity: dim.value }));
   // The wire reports the setpoint range in the car's configured unit (°F cars:
   // 65–85 in 1° steps; metric cars report their own °C range), so the slider
   // adapts without any conversion.
@@ -538,11 +546,15 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
           {settings ? (
             // SwiftUI's `redacted` leaves a Toggle fully drawn (verified on
             // device: a live blue switch in the skeleton), so the placeholder
-            // stands in for it instead. A UIKit switch is a fixed 51x31.
+            // stands in for it instead. Both take the same fixed 51x31 box a
+            // UIKit switch always occupies, so they can't differ in size —
+            // and the host doesn't have to measure its content, which is what
+            // made the real switch land right of its slot for a frame before
+            // snapping back.
             isRedacted ? (
-              <View style={styles.switchPlaceholder} />
+              <View style={[styles.climateSwitch, styles.switchPlaceholder]} />
             ) : (
-              <Host matchContents style={styles.climateSwitchHost}>
+              <Host style={styles.climateSwitch}>
                 <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
               </Host>
             )
@@ -618,76 +630,70 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
 }
 
 // The hero: the parked-location map behind the vehicle render, with the button
-// that opens the full map. While redacted the map and the car give way to one
-// neutral block — placeholder data has no image URL, and the map would
-// otherwise fly to null island — and the button, being genuine SwiftUI, takes
-// SwiftUI's own redaction modifier.
+// that opens the full map. The map draws in both states — it is the card, and a
+// grey rectangle in its place reads as a broken image rather than a loading
+// one. Only the car render and the button stand down while redacted.
 function HeroCard({ vehicle }: { vehicle: Vehicle }) {
   const isRedacted = useRedacted();
   return (
     <Card style={styles.hero}>
-      {isRedacted ? (
-        <View style={[styles.heroImageFrame, styles.heroPlaceholder]} />
-      ) : (
-        <>
-          <View
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={styles.heroMap}
-          >
-            <CarLocationMap
-              latitude={vehicle.location.latitude}
-              longitude={vehicle.location.longitude}
-              label={vehicle.nickname}
-              showMarker={false}
-            />
-          </View>
-          <View pointerEvents="none" style={styles.heroMapVeil} />
-          <View pointerEvents="none" style={styles.heroImageFrame}>
-            <Image
-              source={{ uri: vehicle.imageUrl }}
-              style={styles.heroImage}
-              contentFit="contain"
-              transition={200}
-            />
-          </View>
-        </>
-      )}
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.heroMap}
+      >
+        <CarLocationMap
+          latitude={vehicle.location.latitude}
+          longitude={vehicle.location.longitude}
+          label={vehicle.nickname}
+          showMarker={false}
+        />
+      </View>
+      <View pointerEvents="none" style={styles.heroMapVeil} />
+      {/* The frame keeps its height while redacted so nothing below it moves;
+          the car itself is simply absent, the same as a vehicle whose render
+          the CDN hasn't given us. */}
+      <View pointerEvents="none" style={styles.heroImageFrame}>
+        {isRedacted ? null : (
+          <Image
+            source={{ uri: vehicle.imageUrl }}
+            style={styles.heroImage}
+            contentFit="contain"
+            transition={200}
+          />
+        )}
+      </View>
       {/* Only this button opens the map — the map behind the car is a
           non-interactive backdrop. */}
       <View style={styles.heroActions}>
-        <Host matchContents>
-          <Button
-            onPress={() => {
-              if (process.env.EXPO_OS === "ios") {
-                Haptics.selectionAsync();
-              }
-              router.push("/status/map");
-            }}
-            modifiers={[
-              buttonStyle("glass"),
-              tint(blue),
-              controlSize("large"),
-              ...(isRedacted ? [redacted(), disabled(true)] : []),
-            ]}
-          >
-            <HStack spacing={Spacing.one}>
-              {/* Placeholder redaction masks a label's image into a solid
-                  rounded rect in the image's own color, so a blue glyph
-                  becomes a blue square. Feeding it the neutral fill keeps the
-                  redacted button all one grey. */}
-              <SFImage
-                systemName="map.fill"
-                size={15}
-                color={isRedacted ? (colors.fill as string) : blue}
-              />
-              <Text modifiers={[font({ textStyle: "subheadline", weight: "semibold" })]}>
-                Last parked
-              </Text>
-            </HStack>
-          </Button>
-        </Host>
+        {isRedacted ? (
+          // A flat pill, not the redacted glass button: SwiftUI redacts only
+          // the label, so the real control left its glass shell and a small
+          // grey bar floating inside a much taller frame. Measured from the
+          // live button (147.67x48 for this label at `controlSize("large")`);
+          // re-measure if the label or control size changes.
+          <View style={styles.heroActionPlaceholder} />
+        ) : (
+          <Host matchContents>
+            <Button
+              onPress={() => {
+                if (process.env.EXPO_OS === "ios") {
+                  Haptics.selectionAsync();
+                }
+                router.push("/status/map");
+              }}
+              modifiers={[buttonStyle("glass"), tint(blue), controlSize("large")]}
+            >
+              <HStack spacing={Spacing.one}>
+                <SFImage systemName="map.fill" size={15} color={blue} />
+                <Text modifiers={[font({ textStyle: "subheadline", weight: "semibold" })]}>
+                  Last parked
+                </Text>
+              </HStack>
+            </Button>
+          </Host>
+        )}
       </View>
     </Card>
   );
@@ -1080,11 +1086,11 @@ const styles = StyleSheet.create({
     width: "110%",
     aspectRatio: 700 / 631,
   },
-  // The redacted stand-in for the map + car render: the same frame, filled.
-  heroPlaceholder: {
+  heroActionPlaceholder: {
+    width: 148,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.fill,
-    borderRadius: 16,
-    borderCurve: "continuous",
   },
   heroActions: {
     width: "100%",
@@ -1106,7 +1112,12 @@ const styles = StyleSheet.create({
   climateHeader: {
     gap: Spacing.one,
   },
-  climateSwitchHost: {
+  // The switch's slot, shared by the live Toggle's host and its placeholder: a
+  // UIKit switch is always 51x31, so pinning the box keeps the two identical
+  // and spares the host a measure pass.
+  climateSwitch: {
+    width: 51,
+    height: 31,
     backgroundColor: "transparent",
   },
   sliderRow: {
@@ -1130,10 +1141,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fill,
   },
   switchPlaceholder: {
-    width: 51,
-    height: 31,
-    borderRadius: 16,
-    borderCurve: "continuous",
+    borderRadius: 15.5,
     backgroundColor: colors.fill,
   },
   // Widest plausible readout ("29.5°C") reserves its slot so the slider
