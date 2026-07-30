@@ -35,6 +35,7 @@ import {
   shapes,
   textSelection,
   tint,
+  truncationMode,
 } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
@@ -271,11 +272,15 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
             spacing={Spacing.two}
             modifiers={[frame({ maxWidth: Infinity })]}
           >
+            {/* The title yields first: it can wrap, so it is the child that
+                should give up width when the two together don't fit. Giving it
+                priority over a `fixedSize` badge instead pushed the row wider
+                than the screen, which made the whole scroll view pan
+                sideways. */}
             <SwiftUIText
               modifiers={[
                 font({ textStyle: "footnote", weight: "bold" }),
                 lineLimit(2),
-                layoutPriority(1),
               ]}
             >
               {copy.title}
@@ -289,7 +294,10 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
                   weight: "medium",
                 }),
                 foregroundStyle(accent),
-                fixedSize(),
+                // One line and first claim on width, but still truncatable —
+                // `fixedSize` here could not be compressed at any text size.
+                lineLimit(1),
+                layoutPriority(1),
                 padding({ horizontal: Spacing.two, vertical: Spacing.one }),
                 background(
                   colors.fill,
@@ -421,12 +429,14 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
             modifiers={[frame({ maxWidth: Infinity })]}
           >
             <SwiftUIImage systemName="circle.fill" size={8} color={accent} />
+            {/* Same ordering as the known-update card: the title truncates so
+                the level and time — which cannot wrap — always fit. */}
             <SwiftUIText
               modifiers={[
                 font({ textStyle: "subheadline", weight: "semibold" }),
                 foregroundStyle(colors.label),
                 lineLimit(1),
-                layoutPriority(1),
+                truncationMode("tail"),
               ]}
             >
               {description.title}
@@ -440,7 +450,8 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
                     weight: "semibold",
                   }),
                   foregroundStyle(colors.systemOrange),
-                  fixedSize(),
+                  lineLimit(1),
+                  layoutPriority(1),
                 ]}
               >
                 {entry.level.toUpperCase()}
@@ -452,7 +463,8 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
                 font({ textStyle: "caption" }),
                 foregroundStyle(colors.secondaryLabel),
                 monospacedDigit(),
-                fixedSize(),
+                lineLimit(1),
+                layoutPriority(1),
               ]}
             >
               {new Date(entry.timestamp).toLocaleTimeString([], {
@@ -1131,7 +1143,6 @@ export default function UpdateDiagnostics() {
                                   type: "hierarchical",
                                   style: "primary",
                                 }),
-                            layoutPriority(1),
                           ]}
                         >
                           {entry.title}
@@ -1145,7 +1156,8 @@ export default function UpdateDiagnostics() {
                               style: "secondary",
                             }),
                             monospacedDigit(),
-                            fixedSize(),
+                            lineLimit(1),
+                            layoutPriority(1),
                           ]}
                         >
                           {new Date(entry.timestamp).toLocaleTimeString([], {
