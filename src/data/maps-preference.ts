@@ -13,17 +13,39 @@ import {
 // label on first paint without a loading flash.
 const STORAGE_KEY = "maps-provider";
 
-export function readSavedMapsProviderId(): MapsProviderId | null {
+let savedMapsProviderId = readStoredMapsProviderId();
+const mapsProviderListeners = new Set<() => void>();
+
+function readStoredMapsProviderId(): MapsProviderId | null {
   const value = Storage.getItemSync(STORAGE_KEY);
   return isMapsProviderId(value) ? value : null;
 }
 
+export function getSavedMapsProviderIdSnapshot(): MapsProviderId | null {
+  return savedMapsProviderId;
+}
+
+export function subscribeToMapsProvider(listener: () => void): () => void {
+  mapsProviderListeners.add(listener);
+  return () => mapsProviderListeners.delete(listener);
+}
+
+function publishMapsProviderId(id: MapsProviderId | null): void {
+  if (savedMapsProviderId === id) {
+    return;
+  }
+  savedMapsProviderId = id;
+  mapsProviderListeners.forEach((listener) => listener());
+}
+
 export function saveMapsProviderId(id: MapsProviderId): void {
   Storage.setItemSync(STORAGE_KEY, id);
+  publishMapsProviderId(id);
 }
 
 export function clearSavedMapsProviderId(): void {
   Storage.removeItemSync(STORAGE_KEY);
+  publishMapsProviderId(null);
 }
 
 /**
