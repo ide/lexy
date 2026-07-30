@@ -51,7 +51,11 @@ export function useClimateSettings(vehicle: Vehicle) {
     },
   });
 
+  // Writes are optimistic: the cache takes the new settings immediately (the
+  // controls never lock up or snap back while the PUT is in flight) and rolls
+  // back only if the server rejects the change.
   const mutation = useMutation({
+    mutationKey: CLIMATE_SETTINGS_QUERY_KEY,
     mutationFn: async (updated: ClimateSettings) => {
       if (!session) {
         throw new Error('Sign in to change climate settings');
@@ -75,8 +79,24 @@ export function useClimateSettings(vehicle: Vehicle) {
       const confirmed = confirm.ok ? parseClimateSettings(await confirm.json()) : null;
       return confirmed ?? updated;
     },
+    onMutate: async (updated: ClimateSettings) => {
+      await queryClient.cancelQueries({ queryKey: CLIMATE_SETTINGS_QUERY_KEY });
+      const previous = queryClient.getQueryData<ClimateSettings>(CLIMATE_SETTINGS_QUERY_KEY);
+      queryClient.setQueryData(CLIMATE_SETTINGS_QUERY_KEY, updated);
+      return { previous };
+    },
+    onError: (_error, _updated, onMutateResult) => {
+      if (onMutateResult?.previous) {
+        queryClient.setQueryData(CLIMATE_SETTINGS_QUERY_KEY, onMutateResult.previous);
+      }
+    },
     onSuccess: (settings) => {
-      queryClient.setQueryData(CLIMATE_SETTINGS_QUERY_KEY, settings);
+      // Reconcile with the server-confirmed state — but only when this is the
+      // last write in flight, so a slow confirm can't clobber a newer
+      // optimistic change.
+      if (queryClient.isMutating({ mutationKey: CLIMATE_SETTINGS_QUERY_KEY }) === 1) {
+        queryClient.setQueryData(CLIMATE_SETTINGS_QUERY_KEY, settings);
+      }
     },
   });
 

@@ -14,6 +14,7 @@ import { Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
@@ -54,10 +55,9 @@ const blue = colors.systemBlue as string;
 const orange = colors.systemOrange as string;
 
 // The fuel/charge level as a bar divided into quarters, mirroring the car's
-// dashboard. The reading is an estimate, so the bar is the primary display;
-// tapping reveals the precise number (and it reads "Full" at 100%). Range
-// rides next to the reading ("Full · 277 mi") — it is the actionable half of
-// the fuel story, so it stays visible whether or not the level is revealed.
+// dashboard, with the precise reading and range beside it ("62% · 277 mi",
+// "Full" at 100%). Range is the actionable half of the fuel story, so only
+// the level takes the gauge color.
 function FuelBar({
   gauge,
   range,
@@ -67,66 +67,42 @@ function FuelBar({
   range: number;
   unit: DistanceUnit;
 }) {
-  const [showValue, setShowValue] = useState(false);
-  const reveal = gauge.full || showValue;
   const fillColor = gauge.low ? orange : green;
   const rangeText = `${range.toLocaleString()} ${unit}`;
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.selectionAsync();
-        }
-        setShowValue((value) => !value);
-      }}
-    >
-      {({ pressed }) => (
-        <Card
-          style={[styles.cardPadding, styles.fuelCard, pressed && { opacity: 0.7 }]}
-        >
-          <View style={styles.fuelHeader}>
-            <View style={styles.fuelLabel}>
-              <Icon name={gauge.symbol} size={17} tint={fillColor} />
-              <ThemedText type="smallBold" themeColor="secondaryLabel">
-                {gauge.label}
-              </ThemedText>
-            </View>
-            {/* Only the fuel reading takes the gauge color; the separator and
-                range stay in the default label color. */}
-            <View style={styles.fuelValueRow}>
-              {reveal ? (
-                <ThemedText
-                  type="smallBold"
-                  style={[styles.tabularNums, { color: fillColor }]}
-                >
-                  {gauge.valueText}
-                </ThemedText>
-              ) : (
-                <ThemedText type="small" themeColor="secondaryLabel">
-                  Tap for level
-                </ThemedText>
-              )}
-              <ThemedText type="smallBold" style={styles.tabularNums}>
-                {` · ${rangeText}`}
-              </ThemedText>
-            </View>
+    <Card style={[styles.cardPadding, styles.fuelCard]}>
+      <View style={styles.fuelHeader}>
+        <View style={styles.fuelLabel}>
+          <Icon name={gauge.symbol} size={17} tint={fillColor} />
+          <ThemedText type="smallBold" themeColor="secondaryLabel">
+            {gauge.label}
+          </ThemedText>
+        </View>
+        <View style={styles.fuelValueRow}>
+          <ThemedText
+            type="smallBold"
+            style={[styles.tabularNums, { color: fillColor }]}
+          >
+            {gauge.valueText}
+          </ThemedText>
+          <ThemedText type="smallBold" style={styles.tabularNums}>
+            {` · ${rangeText}`}
+          </ThemedText>
+        </View>
+      </View>
+      <View style={styles.fuelSegments}>
+        {gauge.fills.map((fill, i) => (
+          <View key={`segment-${i}`} style={styles.fuelSegmentTrack}>
+            <View
+              style={[
+                styles.fuelSegmentFill,
+                { width: `${fill * 100}%`, backgroundColor: fillColor },
+              ]}
+            />
           </View>
-          <View style={styles.fuelSegments}>
-            {gauge.fills.map((fill, i) => (
-              <View key={`segment-${i}`} style={styles.fuelSegmentTrack}>
-                <View
-                  style={[
-                    styles.fuelSegmentFill,
-                    { width: `${fill * 100}%`, backgroundColor: fillColor },
-                  ]}
-                />
-              </View>
-            ))}
-          </View>
-        </Card>
-      )}
-    </Pressable>
+        ))}
+      </View>
+    </Card>
   );
 }
 
@@ -209,9 +185,15 @@ function doorStatus(door: Closure): Status {
   if (door.locked === false) {
     return { text: "Door unlocked", color: orange, symbol: "lock.open.fill" };
   }
-  return { text: "Door locked", color: green, symbol: "lock.fill" };
+  if (door.locked === true) {
+    return { text: "Door locked", color: green, symbol: "lock.fill" };
+  }
+  // Position known (closed) but no lock reading.
+  return { text: "Door closed", color: green, symbol: "checkmark.circle.fill" };
 }
 
+// Windows carry only a position, so one without a state has nothing to say —
+// callers skip it rather than render a guess.
 function windowStatus(window: Closure, side: Side): Status {
   // The `car.window.left`/`right` glyphs read reversed against our driver-left /
   // passenger-right columns, so the sides are intentionally swapped here.
@@ -268,10 +250,11 @@ function CornerCard({ corner }: { corner: Corner }) {
         {corner.title}
       </ThemedText>
       <View style={styles.cornerStates}>
-        {corner.door ? (
+        {corner.door && (corner.door.state || corner.door.locked !== undefined) ? (
           <StatusLine status={doorStatus(corner.door)} />
         ) : null}
-        {corner.window ? (
+        {/* A window with no position reading has nothing to report. */}
+        {corner.window?.state ? (
           <StatusLine status={windowStatus(corner.window, corner.side)} />
         ) : null}
       </View>
@@ -397,9 +380,11 @@ function DefrostToggle({
 // The remote-start climate configuration: whether climate runs at all, what
 // temperature the cabin heads for, and whether the defrosters run. These are
 // settings the car applies on the next remote start — not live actuation —
-// which is why the card sits with the controls.
+// which is why the card sits with the controls. Writes are optimistic (see
+// useClimateSettings), so the controls respond instantly and never lock up
+// while a save is in flight.
 function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
-  const { settings, defrost, setDefrost, setTemperature, setSettingsOn, saving, error } =
+  const { settings, defrost, setDefrost, setTemperature, setSettingsOn, error } =
     useClimateSettings(vehicle);
   // The setpoint mid-drag, shown in the readout before the PUT commits on
   // release. A ref backs the commit so onEditingChanged never sees a stale
@@ -417,6 +402,12 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
   }, [error]);
 
   const on = settings?.settingsOn ?? true;
+  // Master switch off dims (and disables) the setpoint and defrost rows; the
+  // fade is animated so the optimistic flip doesn't pop.
+  const dimStyle = useAnimatedStyle(
+    () => ({ opacity: withTiming(on ? 1 : 0.4, { duration: 250 }) }),
+    [on],
+  );
   // The wire reports the setpoint range in the car's configured unit (°F cars:
   // 65–85 in 1° steps; metric cars report their own °C range), so the slider
   // adapts without any conversion.
@@ -429,28 +420,31 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
 
   return (
     <Card style={[styles.cardPadding, styles.climateCard]}>
-      <View style={styles.inlineRow}>
-        <View style={styles.odometerHeader}>
-          <Icon name="thermometer.medium" size={17} tint={blue} />
-          <ThemedText type="smallBold" themeColor="secondaryLabel">
-            Climate
-          </ThemedText>
+      <View style={styles.climateHeader}>
+        <View style={styles.inlineRow}>
+          <View style={styles.odometerHeader}>
+            <Icon name="thermometer.medium" size={17} tint={blue} />
+            <ThemedText type="smallBold" themeColor="secondaryLabel">
+              Remote Start Climate
+            </ThemedText>
+          </View>
+          {settings ? (
+            <Host matchContents style={styles.climateSwitchHost}>
+              <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
+            </Host>
+          ) : (
+            <ThemedText type="smallBold" style={styles.tabularNums}>
+              {vehicle.climate.temperatureF}
+              {unit}
+            </ThemedText>
+          )}
         </View>
-        {settings ? (
-          // Master switch: with climate off, a remote start runs no
-          // climate at all, so the setpoint and defrost rows dim.
-          <Host matchContents style={styles.climateSwitchHost}>
-            <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
-          </Host>
-        ) : (
-          <ThemedText type="smallBold" style={styles.tabularNums}>
-            {vehicle.climate.temperatureF}
-            {unit}
-          </ThemedText>
-        )}
+        <ThemedText type="small" themeColor="secondaryLabel">
+          Climate settings to use when you start your car remotely.
+        </ThemedText>
       </View>
       {showSlider ? (
-        <View style={[styles.sliderRow, !on && styles.climateOff]}>
+        <Animated.View style={[styles.sliderRow, dimStyle]}>
           {/* A SwiftUI Slider has no intrinsic width, so the host gets an
               explicit flex + height instead of matchContents. */}
           <Host style={styles.slider}>
@@ -470,32 +464,32 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
                   setDraftTemperature(null);
                 }
               }}
-              modifiers={[disabled(!on || saving)]}
+              modifiers={[disabled(!on)]}
             />
           </Host>
           <ThemedText type="smallBold" style={[styles.tabularNums, styles.temperatureReadout]}>
             {temperature.toLocaleString(undefined, { maximumFractionDigits: 1 })}
             {unit}
           </ThemedText>
-        </View>
+        </Animated.View>
       ) : null}
       {defrost.front || defrost.rear ? (
-        <View style={[styles.defrostRow, !on && styles.climateOff]}>
+        <Animated.View style={[styles.defrostRow, dimStyle]}>
           <DefrostToggle
             label="Front defrost"
             symbol="windshield.front.and.heat.waves"
             parameter={defrost.front}
-            disabled={saving || !on}
+            disabled={!on}
             onToggle={(enabled) => setDefrost("frontDefrost", enabled)}
           />
           <DefrostToggle
             label="Rear defrost"
             symbol="windshield.rear.and.heat.waves"
             parameter={defrost.rear}
-            disabled={saving || !on}
+            disabled={!on}
             onToggle={(enabled) => setDefrost("rearDefrost", enabled)}
           />
-        </View>
+        </Animated.View>
       ) : null}
     </Card>
   );
@@ -635,7 +629,10 @@ export default function CarDashboard() {
     .filter((locked): locked is boolean => locked !== undefined);
   const locked = lockStates.length > 0 && lockStates.every(Boolean);
   const lockColor = locked ? green : orange;
-  const { corners, openings } = groupClosures(vehicle.closures);
+  const { corners, openings: allOpenings } = groupClosures(vehicle.closures);
+  // Openings (moonroof/trunk/hood) only have a position to report, so a sparse
+  // snapshot entry without one has nothing to show.
+  const openings = allOpenings.filter((opening) => opening.state);
   const tires = vehicle.tires?.positions ?? [];
   const leftTires = tires.filter((t) => /left/i.test(t.label));
   const rightTires = tires.filter((t) => /right/i.test(t.label));
@@ -919,16 +916,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  // Generous gaps between the header, slider, and defrost rows so each tap
+  // target is comfortably distinct.
   climateCard: {
-    gap: Spacing.two,
+    gap: Spacing.three,
+  },
+  climateHeader: {
+    gap: Spacing.one,
   },
   climateSwitchHost: {
     backgroundColor: "transparent",
-  },
-  // Dim (but keep visible) the setpoint and defrost rows while the master
-  // switch is off — the native controls are also disabled.
-  climateOff: {
-    opacity: 0.4,
   },
   sliderRow: {
     flexDirection: "row",

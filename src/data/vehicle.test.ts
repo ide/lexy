@@ -251,6 +251,31 @@ describe('mapVehicle', () => {
     expect(() => parseVehicle(mapVehicle(discovery, status, climate, spec))).not.toThrow();
   });
 
+  it('keeps lock-only closures from sparse status snapshots', () => {
+    // Captured live 2026-07-29: after driving, most sections report only the
+    // lock with no Open/Closed position (and windows vanish entirely).
+    const sparse = structuredClone(status);
+    sparse.payload.status.vehicleStatus = [
+      {
+        category: 'Driver Side',
+        sections: [
+          { section: 'Door', values: [{ value: 'Closed', status: 0 }, { value: 'Locked', status: 0 }] },
+          { section: 'Rear Door', values: [{ value: 'Locked', status: 0 }] },
+        ],
+      },
+      {
+        category: 'Passenger Side',
+        sections: [{ section: 'Door', values: [{ value: 'Locked', status: 0 }] }],
+      },
+      { category: 'Other', sections: [{ section: 'Trunk', values: [] }] },
+    ] as typeof status.payload.status.vehicleStatus;
+    expect(mapVehicle(discovery, sparse, climate, spec).closures).toEqual([
+      { label: 'Driver Door', state: 'Closed', locked: true },
+      { label: 'Driver Rear Door', locked: true },
+      { label: 'Passenger Door', locked: true },
+    ]);
+  });
+
   it('takes the distance unit from telemetry, defaulting to miles', () => {
     const metricStatus = structuredClone(status);
     metricStatus.payload.status.telemetry.rage.unit = 'Kilometer';

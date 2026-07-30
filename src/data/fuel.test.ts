@@ -33,12 +33,11 @@ describe('isElectric', () => {
 });
 
 describe('fuelGauge', () => {
-  it('labels combustion vehicles Fuel and shows the percentage on tap', () => {
+  it('labels combustion vehicles Fuel with the percentage readout', () => {
     const gauge = fuelGauge('Gasoline', 72);
     expect(gauge.label).toBe('Fuel');
     expect(gauge.symbol).toBe('fuelpump.fill');
     expect(gauge.valueText).toBe('72%');
-    expect(gauge.full).toBe(false);
     expect(gauge.low).toBe(false);
   });
 
@@ -49,9 +48,7 @@ describe('fuelGauge', () => {
   });
 
   it('reads Full at 100%', () => {
-    const gauge = fuelGauge('Gasoline', 100);
-    expect(gauge.full).toBe(true);
-    expect(gauge.valueText).toBe('Full');
+    expect(fuelGauge('Gasoline', 100).valueText).toBe('Full');
   });
 
   it('flags a low level at or below 15%', () => {

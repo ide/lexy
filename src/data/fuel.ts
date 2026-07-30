@@ -34,10 +34,8 @@ export type FuelGauge = {
   /** Section label — "Fuel" for combustion/hybrid, "Charge" for EVs. */
   label: string;
   symbol: SFSymbol;
-  /** The precise readout shown on tap (or always, at 100%). */
+  /** The precise readout ("Full" at 100%). */
   valueText: string;
-  /** True at 100% — the bar reads "Full" without needing a tap. */
-  full: boolean;
   /** Low level — the bar is tinted as a warning. */
   low: boolean;
   fills: number[];
@@ -51,12 +49,10 @@ export type FuelGauge = {
 export function fuelGauge(fuelType: string, percent: number): FuelGauge {
   const p = Math.round(clampPercent(percent));
   const electric = isElectric(fuelType);
-  const full = p >= 100;
   return {
     label: electric ? 'Charge' : 'Fuel',
     symbol: electric ? 'bolt.fill' : 'fuelpump.fill',
-    valueText: full ? 'Full' : `${p}%`,
-    full,
+    valueText: p >= 100 ? 'Full' : `${p}%`,
     low: p <= 15,
     fills: fuelSegmentFills(p),
   };

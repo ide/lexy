@@ -34,7 +34,12 @@ const LEXUS_APP_STORE_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
 // launches the installed app directly; ctlexusapp.com is a Branch-hosted domain,
 // so when the app isn't installed it redirects to the App Store — one URL covers
 // both cases without guessing a custom scheme.
-const LEXUS_APP_LINK = "https://ctlexusapp.com/";
+//
+// The "/shop" path targets the Lexus app's Shop tab (where subscriptions are
+// managed) on a best-effort basis: every path opens the app per the AASA, and
+// Branch routes recognized paths deeper — worst case an unrecognized path
+// lands on the app's home, same as the bare domain.
+const LEXUS_APP_LINK = "https://ctlexusapp.com/shop";
 
 // "Manage your subscription in the Lexus app": open the Lexus app if it's
 // installed, otherwise (via the Branch domain's redirect) its App Store page.
@@ -254,7 +259,7 @@ export default function CarDetails() {
                         pressed && { opacity: 0.6 },
                       ]}
                     >
-                      Manage your subscription in the Lexus app
+                      Manage your subscriptions in the Lexus app
                     </ThemedText>
                   )}
                 </Pressable>
@@ -299,8 +304,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     gap: Spacing.three,
   },
+  // Two even columns: each cell takes half the row (grow from an equal basis)
+  // so the second column starts at the true midline.
   capability: {
-    width: "43%",
+    flexBasis: "40%",
+    flexGrow: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.two,
