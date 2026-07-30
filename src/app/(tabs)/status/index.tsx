@@ -8,16 +8,16 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
-import { Stack } from "expo-router";
+import { Link, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
+import { CarLocationMap } from "@/components/car-location-map";
 import {
   DevSkeletonToggle,
   SHOW_DEV_SKELETON_TOGGLE,
@@ -495,19 +495,6 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
   );
 }
 
-function openLastParkedInMaps(vehicle: Vehicle) {
-  if (process.env.EXPO_OS === "ios") {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-  const { latitude, longitude } = vehicle.location;
-  const label = encodeURIComponent(vehicle.nickname);
-  const url =
-    process.env.EXPO_OS === "android"
-      ? `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`
-      : `https://maps.apple.com/?ll=${latitude},${longitude}&q=${label}`;
-  Linking.openURL(url);
-}
-
 // A non-bold footer line whose tap reveals the precise local timestamp in a
 // native SwiftUI popover — a tooltip anchored to the sentence itself.
 function FooterTimeRow({
@@ -560,6 +547,7 @@ export default function CarDashboard() {
   } = useVehicle();
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
+  const { width } = useWindowDimensions();
   const [forceSkeleton, setForceSkeleton] = useState(false);
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
   // sole indicator during a manual refresh (see autoRefreshing below).
@@ -768,13 +756,17 @@ export default function CarDashboard() {
           </View>
         ) : null}
 
-        <Pressable onPress={() => openLastParkedInMaps(vehicle)}>
-          {({ pressed }) => (
+        {/* Peek & pop: long-press previews the live map; tapping (the card or
+            the peek) pops open the map sheet. Link.Trigger (without asChild)
+            wraps the card in a native Text, so an inline View won't stretch —
+            pin the card to the content width to keep it full-bleed. */}
+        <Link href="/status/map">
+          <Link.Trigger>
             <Card
               style={[
                 styles.cardPadding,
                 styles.inlineCard,
-                pressed && { opacity: 0.7 },
+                { width: width - Spacing.three * 2 },
               ]}
             >
               <View style={styles.odometerHeader}>
@@ -783,12 +775,22 @@ export default function CarDashboard() {
                   Last parked
                 </ThemedText>
               </View>
-              <ThemedText type="smallBold" style={{ color: blue }}>
-                Open in Maps
-              </ThemedText>
+              <View style={styles.lastParkedAction}>
+                <ThemedText type="smallBold" style={{ color: blue }}>
+                  View map
+                </ThemedText>
+                <Icon name="chevron.right" size={12} tint={blue} />
+              </View>
             </Card>
-          )}
-        </Pressable>
+          </Link.Trigger>
+          <Link.Preview style={{ width: width - Spacing.three * 2, height: 260 }}>
+            <CarLocationMap
+              latitude={vehicle.location.latitude}
+              longitude={vehicle.location.longitude}
+              label={vehicle.nickname}
+            />
+          </Link.Preview>
+        </Link>
 
         <View style={styles.footer}>
           <Host matchContents style={styles.footerHost}>
@@ -909,6 +911,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  // Trailing "View map ›" affordance on the Last parked card.
+  lastParkedAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.half,
   },
   // Same row shape as inlineCard, for rows inside a multi-row card.
   inlineRow: {

@@ -18,7 +18,8 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "app.ide.lexy",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["maps", "comgooglemaps", "waze"]
       }
     },
     "android": {
@@ -68,7 +69,8 @@
         }
       ],
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-maps"
     ],
     "experiments": {
       "typedRoutes": true,
