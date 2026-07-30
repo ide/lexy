@@ -1,14 +1,21 @@
 import { useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ActionSheetIOS, Alert } from "react-native";
 
 import {
   clearSavedMapsProviderId,
   detectInstalledMapsProviders,
-  readSavedMapsProviderId,
+  getSavedMapsProviderIdSnapshot,
   saveMapsProviderId,
+  subscribeToMapsProvider,
 } from "@/data/maps-preference";
 import {
   getMapsProvider,
@@ -75,8 +82,10 @@ function open(provider: MapsProvider, target: MapsTarget) {
 
 export function useMapsProvider(): UseMapsProvider {
   const [installedIds, setInstalledIds] = useState<MapsProviderId[] | null>(null);
-  const [savedId, setSavedId] = useState<MapsProviderId | null>(() =>
-    readSavedMapsProviderId(),
+  const savedId = useSyncExternalStore(
+    subscribeToMapsProvider,
+    getSavedMapsProviderIdSnapshot,
+    getSavedMapsProviderIdSnapshot,
   );
 
   const probe = useCallback(() => {
@@ -111,18 +120,15 @@ export function useMapsProvider(): UseMapsProvider {
   useEffect(() => {
     if (resolved?.staleSaved) {
       clearSavedMapsProviderId();
-      setSavedId(null);
     }
   }, [resolved?.staleSaved]);
 
   const choose = useCallback((id: MapsProviderId) => {
     saveMapsProviderId(id);
-    setSavedId(id);
   }, []);
 
   const clear = useCallback(() => {
     clearSavedMapsProviderId();
-    setSavedId(null);
   }, []);
 
   const explainNoApps = useCallback(() => {
