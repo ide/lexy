@@ -670,12 +670,16 @@ function HeroCard({ vehicle }: { vehicle: Vehicle }) {
         {isRedacted ? (
           // A flat pill, not the redacted glass button: SwiftUI redacts only
           // the label, so the real control left its glass shell and a small
-          // grey bar floating inside a much taller frame. Measured from the
-          // live button (147.67x48 for this label at `controlSize("large")`);
-          // re-measure if the label or control size changes.
-          <View style={styles.heroActionPlaceholder} />
+          // grey bar floating inside a much taller frame.
+          <View style={[styles.heroAction, styles.heroActionPlaceholder]} />
         ) : (
-          <Host matchContents>
+          // Pinned rather than `matchContents`: a measuring host reports a
+          // zero-size box on its first layout pass, which collapsed this row
+          // for a frame on the way out of the skeleton — taking the card's
+          // height (and the map filling it) with it, and leaving the button
+          // without a box to sit in. 147.67x48 measured from the live button;
+          // re-measure if the label or control size changes.
+          <Host style={styles.heroAction}>
             <Button
               onPress={() => {
                 if (process.env.EXPO_OS === "ios") {
@@ -1086,9 +1090,13 @@ const styles = StyleSheet.create({
     width: "110%",
     aspectRatio: 700 / 631,
   },
-  heroActionPlaceholder: {
+  // The button's slot, shared by the live button's host and its placeholder.
+  heroAction: {
     width: 148,
     height: 48,
+    backgroundColor: "transparent",
+  },
+  heroActionPlaceholder: {
     borderRadius: 24,
     backgroundColor: colors.fill,
   },
@@ -1114,10 +1122,12 @@ const styles = StyleSheet.create({
   },
   // The switch's slot, shared by the live Toggle's host and its placeholder: a
   // UIKit switch is always 51x31, so pinning the box keeps the two identical
-  // and spares the host a measure pass.
+  // and spares the host a measure pass. The trailing inset keeps the switch
+  // off the card's edge, which a control needs more than a line of text does.
   climateSwitch: {
     width: 51,
     height: 31,
+    marginRight: Spacing.two,
     backgroundColor: "transparent",
   },
   sliderRow: {
