@@ -23,6 +23,12 @@ export type Closure = {
    */
   stateAt?: string;
   lockedAt?: string;
+  /**
+   * True when `locked` is a client-side optimistic prediction from a just-issued
+   * lock/unlock command, not yet confirmed by a server reading (see
+   * closure-state.ts). The UI shows these as pending ("Locking…"/"Unlocking…").
+   */
+  lockedOptimistic?: boolean;
 };
 
 export type Capability = {

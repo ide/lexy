@@ -40,12 +40,23 @@ export function commandBody(command: RemoteCommand): {
 /**
  * A command response indicates *acceptance* (not completion) when its
  * `returnCode` is "000000". Confirm actual completion by polling status.
+ *
+ * The REST plane wraps responses in a `{ payload, status, timestamp }` envelope
+ * (see docs/vehicle-status-and-control.md and the `.payload` unwrapping in
+ * climate-settings.ts / vehicle.ts), so `returnCode` arrives under `payload`.
+ * Accept either the enveloped shape or a bare object — the GraphQL plane
+ * returns `returnCode` at the top level.
  */
 export function isCommandAccepted(response: unknown): boolean {
   if (typeof response !== 'object' || response === null) {
     return false;
   }
-  return (response as Record<string, unknown>).returnCode === REMOTE_COMMAND_ACCEPTED;
+  const envelope = response as Record<string, unknown>;
+  const payload =
+    typeof envelope.payload === 'object' && envelope.payload !== null
+      ? (envelope.payload as Record<string, unknown>)
+      : envelope;
+  return payload.returnCode === REMOTE_COMMAND_ACCEPTED;
 }
 
 /**

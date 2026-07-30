@@ -18,6 +18,12 @@ export type FieldRecord<T> = {
   value: T;
   /** Server occurrenceDate of the snapshot this value came from. */
   at: string;
+  /**
+   * True while this is a client-side optimistic prediction (from a just-accepted
+   * lock/unlock command) awaiting a server reading that confirms or corrects it.
+   * See applyOptimisticLock and the reconciliation in foldLocked.
+   */
+  optimistic?: boolean;
 };
 
 export type ClosureRecord = {
@@ -57,6 +63,30 @@ function isAtLeastAsRecent(incoming: string, held: string | undefined): boolean 
 
 const emptyStore = (vin: string): ClosureStore => ({ vin, closures: {}, seq: 0 });
 
+// Fold a real server lock reading over what we hold. A held *optimistic*
+// prediction is confirmed (its flag cleared) by any reading that agrees, and
+// corrected by a reading strictly newer than the prediction's stamp. A stale
+// reading that merely disagrees — its occurrenceDate predates the command we
+// optimistically applied — is ignored, so a non-waking GET returning the car's
+// pre-command state can't flicker the lock back. A non-optimistic value follows
+// the usual newest-wins rule.
+function foldLocked(
+  held: FieldRecord<boolean> | undefined,
+  incoming: boolean,
+  at: string,
+): FieldRecord<boolean> {
+  if (!held) {
+    return { value: incoming, at };
+  }
+  if (held.optimistic) {
+    if (held.value === incoming || parseTime(at) > parseTime(held.at)) {
+      return { value: incoming, at };
+    }
+    return held;
+  }
+  return isAtLeastAsRecent(at, held.at) ? { value: incoming, at } : held;
+}
+
 /**
  * Fold one status observation into the store: for each closure it reports,
  * overwrite a field only when the observation is newer than the stored one.
@@ -80,13 +110,39 @@ export function applyObservation(
     if (closure.state !== undefined && isAtLeastAsRecent(at, record.state?.at)) {
       record.state = { value: closure.state, at };
     }
-    if (closure.locked !== undefined && isAtLeastAsRecent(at, record.locked?.at)) {
-      record.locked = { value: closure.locked, at };
+    if (closure.locked !== undefined) {
+      record.locked = foldLocked(record.locked, closure.locked, at);
     }
     closures[closure.label] = record;
   }
 
   return { vin, closures, seq };
+}
+
+/**
+ * Optimistically set the lock state of every door to the value a just-accepted
+ * lock/unlock command should produce — flagged optimistic and stamped `at` (the
+ * client's send time, ISO). A "door" is any closure that already carries a lock
+ * reading; closures without one are left untouched, since we only predict what
+ * we can name. The next server reading reconciles each prediction via the fold
+ * in applyObservation (confirm / correct / ignore-if-stale). A different VIN
+ * resets the store.
+ */
+export function applyOptimisticLock(
+  store: ClosureStore | null,
+  vin: string,
+  locked: boolean,
+  at: string,
+): ClosureStore {
+  const base = store && store.vin === vin ? store : emptyStore(vin);
+  const closures: Record<string, ClosureRecord> = {};
+  for (const [label, record] of Object.entries(base.closures)) {
+    closures[label] =
+      record.locked !== undefined
+        ? { ...record, locked: { value: locked, at, optimistic: true } }
+        : record;
+  }
+  return { vin, closures, seq: base.seq };
 }
 
 /**
@@ -109,6 +165,9 @@ export function readClosures(store: ClosureStore | null): Closure[] {
       if (record.locked) {
         closure.locked = record.locked.value;
         closure.lockedAt = record.locked.at;
+        if (record.locked.optimistic) {
+          closure.lockedOptimistic = true;
+        }
       }
       return closure;
     });

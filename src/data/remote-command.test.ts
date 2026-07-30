@@ -32,6 +32,14 @@ describe('isCommandAccepted', () => {
     expect(isCommandAccepted({})).toBe(false);
     expect(isCommandAccepted(null)).toBe(false);
   });
+
+  it('unwraps the REST { payload } envelope', () => {
+    expect(
+      isCommandAccepted({ payload: { returnCode: REMOTE_COMMAND_ACCEPTED }, status: {} }),
+    ).toBe(true);
+    expect(isCommandAccepted({ payload: { returnCode: '000001' } })).toBe(false);
+    expect(isCommandAccepted({ payload: {} })).toBe(false);
+  });
 });
 
 describe('sendRemoteCommand', () => {
@@ -48,6 +56,16 @@ describe('sendRemoteCommand', () => {
     const [, init] = fetchImpl.mock.calls[0];
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({ command: 'door-lock', autoFixPopup: false });
+  });
+
+  it('resolves when acceptance arrives inside the REST payload envelope', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ payload: { returnCode: REMOTE_COMMAND_ACCEPTED }, status: {} }),
+    });
+    await expect(
+      sendRemoteCommand(session, context, 'door-lock', fetchImpl as never),
+    ).resolves.toBeUndefined();
   });
 
   it('throws on a non-ok transport response', async () => {
