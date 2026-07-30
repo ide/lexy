@@ -19,7 +19,7 @@ export default function StatusLayout() {
     <Stack screenOptions={tabStackScreenOptions}>
       <Stack.Screen name="index" options={{ title: "Status" }} />
       {/* The car-location map, presented as a draggable bottom sheet and opened
-          via peek & pop from the "Last parked" card on the Status screen. */}
+          by tapping the "Last parked" hero card on the Status screen. */}
       <Stack.Screen
         name="map"
         options={{

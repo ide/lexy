@@ -121,6 +121,15 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
 
   const enabled = !busy && !!session;
 
+  // Doors are the only closures with a lock, so the section-title indicator is
+  // "Locked" only when every known door reports locked. Mirrors the summary
+  // that used to sit on the hero card.
+  const lockStates = vehicle.closures
+    .map((closure) => closure.locked)
+    .filter((value): value is boolean => value !== undefined);
+  const locked = lockStates.length > 0 && lockStates.every(Boolean);
+  const lockColor = locked ? green : orange;
+
   const run = (control: Control) => {
     if (!session) {
       return;
@@ -174,7 +183,19 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
 
   return (
     <View>
-      <SectionTitle style={styles.title}>REMOTE CONTROLS</SectionTitle>
+      <View style={styles.titleRow}>
+        <SectionTitle style={styles.title}>REMOTE CONTROLS</SectionTitle>
+        <View style={styles.lockStatus}>
+          <Icon
+            name={locked ? "lock.fill" : "lock.open.fill"}
+            size={13}
+            tint={lockColor}
+          />
+          <ThemedText type="smallBold" style={{ color: lockColor }}>
+            {locked ? "Locked" : "Unlocked"}
+          </ThemedText>
+        </View>
+      </View>
       <View style={styles.row}>
         {CONTROLS.map((control) => (
           <ControlButton
@@ -192,6 +213,21 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
 const styles = StyleSheet.create({
   title: {
     marginTop: Spacing.one,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  // Mirrors the SectionTitle's own margins (left/bottom Spacing.two, top
+  // Spacing.one) so the lock status lines up with the title baseline.
+  lockStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    marginTop: Spacing.one,
+    marginBottom: Spacing.two,
+    marginRight: Spacing.two,
   },
   row: {
     flexDirection: "row",
