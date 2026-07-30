@@ -146,7 +146,7 @@ export function VehicleSkeleton({ offline = false }: { offline?: boolean }) {
     <NativeScrollView showsIndicators={false}>
       <View style={styles.content}>
         {offline ? (
-          <OfflineBanner message="No internet connection — connect to load your vehicle" />
+          <OfflineBanner detail="Reconnect to load your vehicle." />
         ) : null}
         <Animated.View style={[styles.group, animatedStyle]}>
           <Card style={styles.hero}>
