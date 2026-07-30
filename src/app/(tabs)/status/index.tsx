@@ -186,9 +186,13 @@ function OdometerCard({
           apart from the total. */}
       <View style={styles.tripCell}>
         <View style={styles.odometerHeader}>
-          <Icon name="gauge.with.dots.needle.67percent" size={17} />
+          <Icon
+            name="gauge.with.dots.needle.67percent"
+            size={17}
+            tint={colors.secondaryLabel as string}
+          />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
-            Odometer
+            Total
           </ThemedText>
         </View>
         <View style={styles.metricValueRow}>
@@ -838,12 +842,15 @@ export default function CarDashboard() {
         {/* Mileage bridges immediate access/security state and longer-term
             running condition (tire pressure) without competing with the
             location/fuel summary at the top. */}
-        <OdometerCard
-          odometer={vehicle.odometer}
-          tripA={vehicle.tripA}
-          tripB={vehicle.tripB}
-          unit={vehicle.distanceUnit}
-        />
+        <View>
+          <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
+          <OdometerCard
+            odometer={vehicle.odometer}
+            tripA={vehicle.tripA}
+            tripB={vehicle.tripB}
+            unit={vehicle.distanceUnit}
+          />
+        </View>
 
         {tires.length > 0 ? (
           <View>
