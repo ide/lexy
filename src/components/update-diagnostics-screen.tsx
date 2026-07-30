@@ -25,7 +25,6 @@ import {
   font,
   foregroundStyle,
   frame,
-  ignoreSafeArea,
   layoutPriority,
   lineLimit,
   monospacedDigit,
@@ -824,14 +823,7 @@ export default function UpdateDiagnostics() {
       seedColor={colors.systemBlue}
       style={{ flex: 1, backgroundColor: colors.groupedBackground }}
     >
-      {/* No text input lives here, so the keyboard safe area can only leave
-          dead space at the bottom once sign-in has raised the keyboard. */}
-      <SwiftUIScrollView
-        modifiers={[
-          ignoreSafeArea({ regions: "keyboard", edges: "bottom" }),
-          refreshable(pullToRefresh),
-        ]}
-      >
+      <SwiftUIScrollView modifiers={[refreshable(pullToRefresh)]}>
         <VStack
           alignment="leading"
           spacing={Spacing.four}
