@@ -10,7 +10,6 @@ import { Icon } from "@/components/icon";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/auth/auth-context";
-import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
 import { queryClient } from "@/data/query-client";
 import type { VehicleContext } from "@/data/lexus-api";
@@ -100,11 +99,10 @@ function ControlButton({
 }
 
 /**
- * On-screen remote controls (lock / unlock / engine start). Gated to dev and
- * preview builds via SHOW_DEV_TOOLS: the command codes are only partially
- * confirmed against Lexus's schema and the buttons actuate a real vehicle, so
- * they stay out of production until verified on a car. Each action confirms
- * first (engine start carries the enclosed-space safety warning).
+ * On-screen remote controls (lock / unlock / engine start). Always rendered,
+ * including in production. Note the command codes are only partially confirmed
+ * against Lexus's schema and the buttons actuate a real vehicle, so each action
+ * confirms first (engine start carries the enclosed-space safety warning).
  *
  * Subscription/entitlement gating is intentionally not wired: the
  * `vehicle-subscriptions` response shape hasn't been captured, so there's no
@@ -114,10 +112,6 @@ function ControlButton({
 export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   const { session } = useAuth();
   const [busy, setBusy] = useState(false);
-
-  if (!SHOW_DEV_TOOLS) {
-    return null;
-  }
 
   const enabled = !busy && !!session;
 
