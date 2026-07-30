@@ -1170,9 +1170,15 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.fill,
   },
-  // The switch's own box, filled: it inherits the 69x28 above, so the
-  // placeholder and the live control occupy exactly the same space.
+  // The switch as it is actually *drawn*, which is not the box it is laid out
+  // in: the Toggle reports a 69pt frame but paints a 63pt track inside it, and
+  // not centred — the track's trailing edge lands 22pt inside the card, where
+  // the frame's is 24pt. Both numbers come from measuring the pixels of a
+  // device screenshot, so the pill covers the switch rather than its slot.
+  // The height needs no correction; the track fills the frame's 28pt.
   switchPlaceholder: {
+    width: 63,
+    marginRight: Spacing.two - 2,
     borderRadius: 14,
     backgroundColor: colors.fill,
   },
