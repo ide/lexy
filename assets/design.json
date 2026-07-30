@@ -1,0 +1,423 @@
+{
+  "canvas": {
+    "size": 1024,
+    "color_space": "sRGB"
+  },
+  "enclosure": {
+    "note": "Matched-render only; never baked into layer SVGs. The reference bakes its own rounded-square enclosure, so the flattened matched render reproduces it for comparison.",
+    "inset": 10,
+    "corner_radius": 244,
+    "outside_color": "#040404"
+  },
+  "background": {
+    "base_color": "#040405",
+    "vignette": {
+      "comment": "Least-squares fit to 686 background samples; rmse 2.58 luma. Near-linear falloff from far off-canvas top-left.",
+      "center": [
+        -145,
+        -550
+      ],
+      "radius": 1531,
+      "amp_luma": 53.5,
+      "gamma": 1.1,
+      "overlay_rgb": [
+        242,
+        243,
+        247
+      ]
+    },
+    "edge_highlight": {
+      "comment": "Bright rim line centered ~15.5px inside the canvas edge; peak ~+100 luma at top, ~+58 at sides",
+      "center_inset": 15.5,
+      "stroke_width": 3.5,
+      "blur": 1.2,
+      "top_opacity": 0.42,
+      "bottom_opacity": 0.05
+    }
+  },
+  "ring": {
+    "center": [
+      520.1,
+      534.8
+    ],
+    "centerline_radius": 358.4,
+    "thickness": 25.8,
+    "comment": "Measured: circle fit residual std 0.45px over 265 edge midpoints. Dial angles are degrees clockwise from 12 o'clock.",
+    "metal_gradient_stops": [
+      {
+        "h": 0.0,
+        "value": 246
+      },
+      {
+        "h": 0.146,
+        "value": 236
+      },
+      {
+        "h": 0.25,
+        "value": 199
+      },
+      {
+        "h": 0.37,
+        "value": 177
+      },
+      {
+        "h": 0.5,
+        "value": 144
+      },
+      {
+        "h": 0.63,
+        "value": 121
+      },
+      {
+        "h": 0.75,
+        "value": 80
+      },
+      {
+        "h": 0.854,
+        "value": 48
+      },
+      {
+        "h": 0.933,
+        "value": 20
+      },
+      {
+        "h": 1.0,
+        "value": 4
+      }
+    ],
+    "metal_arc": {
+      "start": 193.0,
+      "end": 389.9
+    },
+    "highlight_arc": {
+      "start": 300.0,
+      "end": 378.0,
+      "opacity": 0.35,
+      "blur": 5.0
+    },
+    "shadow": {
+      "offset": [
+        4,
+        9
+      ],
+      "blur": 10.0,
+      "width_extra": 8.0,
+      "top_opacity": 0.1,
+      "bottom_opacity": 0.32
+    }
+  },
+  "red_arcs": {
+    "bright": {
+      "start": 30.1,
+      "end": 89.5,
+      "stops": [
+        {
+          "t": 0.0,
+          "rgb": [
+            240,
+            58,
+            66
+          ]
+        },
+        {
+          "t": 0.25,
+          "rgb": [
+            251,
+            42,
+            49
+          ]
+        },
+        {
+          "t": 0.5,
+          "rgb": [
+            240,
+            16,
+            21
+          ]
+        },
+        {
+          "t": 0.75,
+          "rgb": [
+            222,
+            10,
+            13
+          ]
+        },
+        {
+          "t": 0.9,
+          "rgb": [
+            200,
+            7,
+            9
+          ]
+        },
+        {
+          "t": 1.0,
+          "rgb": [
+            190,
+            6,
+            8
+          ]
+        }
+      ]
+    },
+    "dark": {
+      "start": 90.8,
+      "end": 140.0,
+      "stops": [
+        {
+          "t": 0.0,
+          "rgb": [
+            90,
+            15,
+            16
+          ],
+          "opacity": 1.0
+        },
+        {
+          "t": 0.3,
+          "rgb": [
+            52,
+            20,
+            21
+          ],
+          "opacity": 1.0
+        },
+        {
+          "t": 0.6,
+          "rgb": [
+            34,
+            17,
+            18
+          ],
+          "opacity": 0.9
+        },
+        {
+          "t": 1.0,
+          "rgb": [
+            16,
+            11,
+            12
+          ],
+          "opacity": 0.3
+        }
+      ]
+    }
+  },
+  "glyph": {
+    "comment": "Rounded polygon; vertices are intersections of the measured edge lines, radius = corner rounding. Traced from reference, not a font.",
+    "vertices": [
+      {
+        "point": [
+          509.4,
+          363.8
+        ],
+        "radius": 14,
+        "label": "cap top-left"
+      },
+      {
+        "point": [
+          600.9,
+          366.0
+        ],
+        "radius": 5,
+        "label": "cap top-right"
+      },
+      {
+        "point": [
+          428.4,
+          638.5
+        ],
+        "radius": 12,
+        "label": "inner corner",
+        "concave": true
+      },
+      {
+        "point": [
+          753.0,
+          638.5
+        ],
+        "radius": 4,
+        "label": "foot top-right"
+      },
+      {
+        "point": [
+          695.6,
+          690.0
+        ],
+        "radius": 5,
+        "label": "terminal bottom"
+      },
+      {
+        "point": [
+          309.1,
+          690.0
+        ],
+        "radius": 48,
+        "label": "heel bottom-left"
+      }
+    ],
+    "edge_order": [
+      "cap: top-left -> top-right",
+      "right diagonal: top-right -> inner corner (x = 832.6 - 0.633*y)",
+      "foot top: inner corner -> foot top-right (y = 638.5)",
+      "terminal: foot top-right -> terminal bottom",
+      "foot bottom: terminal bottom -> heel (y = 690)",
+      "left diagonal: heel -> cap top-left (x = 732.8 - 0.614*y)"
+    ],
+    "bbox_measured": [
+      332,
+      364,
+      752,
+      690
+    ],
+    "metal_gradient_stops": [
+      {
+        "h": 0.0,
+        "rgb": [
+          250,
+          250,
+          251
+        ]
+      },
+      {
+        "h": 0.2,
+        "rgb": [
+          240,
+          240,
+          241
+        ]
+      },
+      {
+        "h": 0.45,
+        "rgb": [
+          220,
+          220,
+          222
+        ]
+      },
+      {
+        "h": 0.72,
+        "rgb": [
+          183,
+          183,
+          185
+        ]
+      },
+      {
+        "h": 0.83,
+        "rgb": [
+          169,
+          169,
+          171
+        ]
+      },
+      {
+        "h": 0.86,
+        "rgb": [
+          139,
+          139,
+          142
+        ]
+      },
+      {
+        "h": 1.0,
+        "rgb": [
+          142,
+          142,
+          145
+        ]
+      }
+    ],
+    "shadow": {
+      "offset": [
+        6,
+        8
+      ],
+      "blur": 8.0,
+      "opacity": 0.3,
+      "contact": {
+        "y": 693.5,
+        "x_range": [
+          408,
+          688
+        ],
+        "width": 4.5,
+        "opacity": 0.95,
+        "blur": 2.0
+      }
+    },
+    "highlight": {
+      "top_edge_opacity": 0.55,
+      "top_edge_width": 2.5,
+      "foot_specular": {
+        "y": 643.0,
+        "x_range": [
+          446,
+          752
+        ],
+        "width": 4.5,
+        "opacity": 0.62
+      },
+      "bottom_bevel": {
+        "y": 685.5,
+        "x_range": [
+          362,
+          690
+        ],
+        "width": 3.2,
+        "opacity": 0.12
+      },
+      "bottom_edge_shade": {
+        "y": 689.3,
+        "x_range": [
+          355,
+          694
+        ],
+        "width": 2.2,
+        "opacity": 0.3
+      }
+    }
+  },
+  "measured_reference": {
+    "ring_center_fit": {
+      "center": [
+        520.1,
+        534.8
+      ],
+      "radius": 358.4,
+      "residual_std_px": 0.45
+    },
+    "silver_arc_visible": [
+      218.5,
+      389.5
+    ],
+    "red_bright_measured": [
+      30.5,
+      90.0
+    ],
+    "red_dark_measured": [
+      91.0,
+      117.5
+    ],
+    "red_dark_fade_tail_end": 130.0,
+    "glyph_bbox": [
+      332,
+      364,
+      752,
+      690
+    ],
+    "glyph_centroid": [
+      497.9,
+      573.9
+    ],
+    "glyph_area_px": 45092,
+    "enclosure_corner_fit": {
+      "center": [
+        256.4,
+        244.1
+      ],
+      "radius": 235.2
+    }
+  }
+}

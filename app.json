@@ -15,7 +15,7 @@
       "url": "https://u.expo.dev/50920011-b780-458b-9aaa-e305a424af77"
     },
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/icon-composer/Lexy.icon",
       "bundleIdentifier": "app.ide.lexy",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
