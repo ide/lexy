@@ -4,6 +4,8 @@ import {
   defrostParameters,
   parseClimateSettings,
   withDefrost,
+  withSettingsOn,
+  withTemperature,
   type ClimateSettings,
 } from './climate-settings';
 
@@ -70,6 +72,22 @@ describe('defrostParameters', () => {
     copy.acOperations![0].acParameters[1].available = false;
     expect(defrostParameters(copy).rear).toBeUndefined();
     expect(defrostParameters(copy).front).toBeDefined();
+  });
+});
+
+describe('withTemperature / withSettingsOn', () => {
+  it('changes one field and preserves the rest for the PUT round-trip', () => {
+    const warmer = withTemperature(settings, 74);
+    expect(warmer.temperature).toBe(74);
+    expect(warmer.acOperations).toEqual(settings.acOperations);
+
+    const off = withSettingsOn(settings, false);
+    expect(off.settingsOn).toBe(false);
+    expect(off.temperature).toBe(71);
+
+    // Source untouched.
+    expect(settings.temperature).toBe(71);
+    expect(settings.settingsOn).toBe(true);
   });
 });
 
