@@ -9,6 +9,7 @@ import {
   VStack,
 } from "@expo/ui/swift-ui";
 import {
+  background,
   buttonStyle,
   controlSize,
   fixedSize,
@@ -17,6 +18,7 @@ import {
   frame,
   multilineTextAlignment,
   padding,
+  shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useMemo, useState } from "react";
@@ -61,160 +63,189 @@ export default function LoginPreviewScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.groupedBackground as string }}>
-      <ScenarioBar scenario={scenario} onSelect={selectScenario} />
-      <View style={{ flex: 1 }}>
-        <AuthProvider
-          key={`${scenario}:${runId}`}
-          fetch={fetchImpl}
-          tokenStore={tokenStore}
-        >
-          <PreviewBody onRestart={() => setRunId((n) => n + 1)} />
-        </AuthProvider>
-      </View>
-    </View>
+    <AuthProvider
+      key={`${scenario}:${runId}`}
+      fetch={fetchImpl}
+      tokenStore={tokenStore}
+    >
+      <PreviewBody
+        scenario={scenario}
+        onSelect={selectScenario}
+        onRestart={() => setRunId((n) => n + 1)}
+      />
+    </AuthProvider>
   );
 }
 
-function ScenarioBar({
+// The scenario picker row — pure SwiftUI content, hosted differently per mode
+// (see PreviewBody).
+function ScenarioRow({
   scenario,
   onSelect,
 }: {
   scenario: PreviewScenario;
   onSelect: (id: PreviewScenario) => void;
 }) {
-  const insets = useSafeAreaInsets();
   const current =
     PREVIEW_SCENARIOS.find((option) => option.id === scenario) ??
     PREVIEW_SCENARIOS[0];
-
   return (
-    // The login route hides the navigation header, so this dev bar owns the top
-    // of the screen. A plain RN View owns the status-bar inset and the card
-    // background — both reliable in RN — so the fill covers the whole safe-area
-    // strip and the SwiftUI row sits cleanly below the notch. (An RN
-    // `paddingTop` on the Host itself is dropped for a `matchContents` host, and
-    // baking the inset into the HStack's SwiftUI padding made `matchContents`
-    // mis-measure and clip the row — hence letting RN handle the inset.)
-    <View style={{ paddingTop: insets.top, backgroundColor: colors.card as string }}>
-      <Host matchContents>
-        <HStack
-          alignment="center"
-          spacing={Spacing.two}
-          modifiers={[
-            padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
-        <Image
-          systemName="wrench.and.screwdriver.fill"
-          size={14}
-          color={colors.secondaryLabel as string}
-        />
-        <Text
-          modifiers={[
-            font({ textStyle: "footnote", weight: "semibold" }),
-            foregroundStyle({ type: "hierarchical", style: "secondary" }),
-          ]}
-        >
-          Preview scenario
-        </Text>
-        <Spacer />
-        {/* A custom label (instead of the string form) so the menu trigger
-            matches the "Preview scenario" label's footnote size/weight — a
-            plain string label renders at the larger default menu font. */}
-        <Menu
-          label={
-            <HStack alignment="center" spacing={Spacing.one}>
-              <Image
-                systemName={current.systemImage}
-                size={14}
-                color={colors.systemBlue as string}
-              />
-              <Text
-                modifiers={[
-                  font({ textStyle: "footnote", weight: "semibold" }),
-                  foregroundStyle(colors.systemBlue),
-                ]}
-              >
-                {current.label}
-              </Text>
-            </HStack>
-          }
-        >
-          {PREVIEW_SCENARIOS.map((option) => (
-            <Button
-              key={option.id}
-              label={option.label}
-              systemImage={option.systemImage}
-              onPress={() => onSelect(option.id)}
+    <HStack
+      alignment="center"
+      spacing={Spacing.two}
+      modifiers={[
+        padding({ horizontal: Spacing.three, vertical: Spacing.two }),
+        frame({ maxWidth: Infinity, alignment: "leading" }),
+      ]}
+    >
+      <Image
+        systemName="wrench.and.screwdriver.fill"
+        size={14}
+        color={colors.secondaryLabel as string}
+      />
+      <Text
+        modifiers={[
+          font({ textStyle: "footnote", weight: "semibold" }),
+          foregroundStyle({ type: "hierarchical", style: "secondary" }),
+        ]}
+      >
+        Preview scenario
+      </Text>
+      <Spacer />
+      {/* A custom label (instead of the string form) so the menu trigger
+          matches the "Preview scenario" label's footnote size/weight — a
+          plain string label renders at the larger default menu font. */}
+      <Menu
+        label={
+          <HStack alignment="center" spacing={Spacing.one}>
+            <Image
+              systemName={current.systemImage}
+              size={14}
+              color={colors.systemBlue as string}
             />
-          ))}
-        </Menu>
-        </HStack>
-      </Host>
-    </View>
+            <Text
+              modifiers={[
+                font({ textStyle: "footnote", weight: "semibold" }),
+                foregroundStyle(colors.systemBlue),
+              ]}
+            >
+              {current.label}
+            </Text>
+          </HStack>
+        }
+      >
+        {PREVIEW_SCENARIOS.map((option) => (
+          <Button
+            key={option.id}
+            label={option.label}
+            systemImage={option.systemImage}
+            onPress={() => onSelect(option.id)}
+          />
+        ))}
+      </Menu>
+    </HStack>
   );
 }
 
-function PreviewBody({ onRestart }: { onRestart: () => void }) {
+function PreviewBody({
+  scenario,
+  onSelect,
+  onRestart,
+}: {
+  scenario: PreviewScenario;
+  onSelect: (id: PreviewScenario) => void;
+  onRestart: () => void;
+}) {
   const { session } = useAuth();
-  if (session) {
-    return <PreviewSuccessCard onRestart={onRestart} />;
-  }
-  // The exact production sign-in screen, wired to the isolated preview provider.
-  return <SignInScreen />;
-}
+  const insets = useSafeAreaInsets();
 
-function PreviewSuccessCard({ onRestart }: { onRestart: () => void }) {
+  if (session) {
+    // Success state: the entire screen — scenario bar and result card — is one
+    // SwiftUI tree in a single Host.
+    return (
+      <Host style={{ flex: 1, backgroundColor: colors.groupedBackground }}>
+        <VStack
+          spacing={0}
+          modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity })]}
+        >
+          <VStack
+            spacing={0}
+            modifiers={[
+              frame({ maxWidth: Infinity }),
+              background(colors.card, shapes.rectangle()),
+            ]}
+          >
+            <ScenarioRow scenario={scenario} onSelect={onSelect} />
+          </VStack>
+          <Spacer />
+          <VStack
+            spacing={Spacing.three}
+            modifiers={[
+              frame({ maxWidth: Infinity }),
+              padding({ horizontal: Spacing.four }),
+            ]}
+          >
+            <Image
+              systemName={"checkmark.seal.fill" as SFSymbol}
+              size={56}
+              color={colors.systemGreen as string}
+            />
+            <Text
+              modifiers={[
+                font({ textStyle: "title2", weight: "bold" }),
+                multilineTextAlignment("center"),
+              ]}
+            >
+              Signed in — preview only
+            </Text>
+            <Text
+              modifiers={[
+                font({ textStyle: "subheadline", weight: "medium" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                multilineTextAlignment("center"),
+                fixedSize({ horizontal: false, vertical: true }),
+                frame({ maxWidth: Infinity }),
+              ]}
+            >
+              This ran the real sign-in flow against a mock Lexus backend. Your
+              actual session was never touched and no real login happened.
+            </Text>
+            <Button
+              label="Run the flow again"
+              onPress={onRestart}
+              modifiers={[
+                buttonStyle("borderedProminent"),
+                controlSize("large"),
+                tint(colors.systemBlue),
+                padding({ top: Spacing.two }),
+              ]}
+            />
+          </VStack>
+          <Spacer />
+        </VStack>
+      </Host>
+    );
+  }
+
+  // Sign-in flow: the exact production SignInScreen (which brings its own
+  // Host) renders below the bar, so the bar needs its own matchContents Host.
+  // The login route hides the navigation header, so this dev bar owns the top
+  // of the screen. A plain RN View owns the status-bar inset and the card
+  // background — both reliable in RN — so the fill covers the whole safe-area
+  // strip and the SwiftUI row sits cleanly below the notch. (An RN
+  // `paddingTop` on the Host itself is dropped for a `matchContents` host, and
+  // baking the inset into the HStack's SwiftUI padding made `matchContents`
+  // mis-measure and clip the row — hence letting RN handle the inset.)
   return (
-    <Host
-      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
-      matchContents={false}
-    >
-      <VStack
-        spacing={Spacing.three}
-        modifiers={[
-          frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: "center" }),
-          padding({ horizontal: Spacing.four }),
-        ]}
-      >
-        <Image
-          systemName={"checkmark.seal.fill" as SFSymbol}
-          size={56}
-          color={colors.systemGreen as string}
-        />
-        <Text
-          modifiers={[
-            font({ textStyle: "title2", weight: "bold" }),
-            multilineTextAlignment("center"),
-          ]}
-        >
-          Signed in — preview only
-        </Text>
-        <Text
-          modifiers={[
-            font({ textStyle: "subheadline", weight: "medium" }),
-            foregroundStyle({ type: "hierarchical", style: "secondary" }),
-            multilineTextAlignment("center"),
-            fixedSize({ horizontal: false, vertical: true }),
-            frame({ maxWidth: Infinity }),
-          ]}
-        >
-          This ran the real sign-in flow against a mock Lexus backend. Your actual
-          session was never touched and no real login happened.
-        </Text>
-        <Button
-          label="Run the flow again"
-          onPress={onRestart}
-          modifiers={[
-            buttonStyle("borderedProminent"),
-            controlSize("large"),
-            tint(colors.systemBlue),
-            padding({ top: Spacing.two }),
-          ]}
-        />
-      </VStack>
-    </Host>
+    <View style={{ flex: 1, backgroundColor: colors.groupedBackground as string }}>
+      <View style={{ paddingTop: insets.top, backgroundColor: colors.card as string }}>
+        <Host matchContents>
+          <ScenarioRow scenario={scenario} onSelect={onSelect} />
+        </Host>
+      </View>
+      <View style={{ flex: 1 }}>
+        <SignInScreen />
+      </View>
+    </View>
   );
 }

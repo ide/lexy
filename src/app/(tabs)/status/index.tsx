@@ -32,7 +32,7 @@ import { VehicleSkeleton } from "@/components/vehicle-skeleton";
 import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
-import { fuelGauge, type FuelGauge } from "@/data/fuel";
+import { fuelGauge, type FuelGauge, type FuelLevel } from "@/data/fuel";
 import {
   absoluteLocalTime,
   NoVehicleError,
@@ -54,6 +54,16 @@ const green = colors.systemGreen as string;
 const blue = colors.systemBlue as string;
 const orange = colors.systemOrange as string;
 
+// Gauge tint by level: green rewards a full tank, a healthy level stays
+// neutral, and the warning colors escalate as it drains.
+const FUEL_COLORS: Record<FuelLevel, string> = {
+  full: green,
+  high: colors.label as string,
+  medium: colors.systemYellow as string,
+  low: orange,
+  critical: colors.systemRed as string,
+};
+
 // The fuel/charge level as a bar divided into quarters, mirroring the car's
 // dashboard, with the precise reading and range beside it ("62% · 277 mi",
 // "Full" at 100%). Range is the actionable half of the fuel story, so only
@@ -67,7 +77,7 @@ function FuelBar({
   range: number;
   unit: DistanceUnit;
 }) {
-  const fillColor = gauge.low ? orange : green;
+  const fillColor = FUEL_COLORS[gauge.level];
   const rangeText = `${range.toLocaleString()} ${unit}`;
   return (
     <Card style={[styles.cardPadding, styles.fuelCard]}>
@@ -440,7 +450,7 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
           )}
         </View>
         <ThemedText type="small" themeColor="secondaryLabel">
-          Climate settings to use when you start your car remotely.
+          Settings for when you start your car remotely.
         </ThemedText>
       </View>
       {showSlider ? (
