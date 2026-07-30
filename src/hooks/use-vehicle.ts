@@ -12,6 +12,8 @@ import {
   businessHeaders,
   vehicleHeaders,
 } from '@/data/lexus-api';
+import { appendObservation, mergeClosures } from '@/data/closure-log';
+import { loadClosureLog, saveClosureLog } from '@/data/closure-log-store';
 import { fetchVehicleSubscriptions } from '@/data/subscriptions';
 import {
   mapVehicle,
@@ -74,7 +76,17 @@ export function useVehicle() {
               }).catch(() => null)
             : Promise.resolve(null),
         ]);
-        const vehicle = parseVehicle(mapVehicle(discovery, status, climate, spec, tires, subscriptions));
+        const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
+        // The status feed alternates between full and sparse snapshots (see
+        // closure-log.ts). Fold this observation into the persisted record and
+        // render the merged view, so a lock-only snapshot after a drive doesn't
+        // blank out the doors/windows grid.
+        const log = appendObservation(await loadClosureLog(), mapped.vin, {
+          occurredAt: mapped.updatedAt,
+          closures: mapped.closures,
+        });
+        await saveClosureLog(log);
+        const vehicle = parseVehicle({ ...mapped, closures: mergeClosures(log) });
         Observe.logEvent('vehicle.load.completed', {
           attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
         });

@@ -54,7 +54,7 @@ const green = colors.systemGreen as string;
 const blue = colors.systemBlue as string;
 const orange = colors.systemOrange as string;
 
-// Gauge tint by level: green rewards a full tank, a healthy level stays
+// Readout tint by level: green rewards a full tank, a healthy level stays
 // neutral, and the warning colors escalate as it drains.
 const FUEL_COLORS: Record<FuelLevel, string> = {
   full: green,
@@ -62,6 +62,13 @@ const FUEL_COLORS: Record<FuelLevel, string> = {
   medium: colors.systemYellow as string,
   low: orange,
   critical: colors.systemRed as string,
+};
+
+// The bar (and icon) stay green at any healthy level — only the warning
+// tiers recolor them. The neutral tint above is just for the text readout.
+const FUEL_BAR_COLORS: Record<FuelLevel, string> = {
+  ...FUEL_COLORS,
+  high: green,
 };
 
 // The fuel/charge level as a bar divided into quarters, mirroring the car's
@@ -77,13 +84,14 @@ function FuelBar({
   range: number;
   unit: DistanceUnit;
 }) {
-  const fillColor = FUEL_COLORS[gauge.level];
+  const barColor = FUEL_BAR_COLORS[gauge.level];
+  const valueColor = FUEL_COLORS[gauge.level];
   const rangeText = `${range.toLocaleString()} ${unit}`;
   return (
     <Card style={[styles.cardPadding, styles.fuelCard]}>
       <View style={styles.fuelHeader}>
         <View style={styles.fuelLabel}>
-          <Icon name={gauge.symbol} size={17} tint={fillColor} />
+          <Icon name={gauge.symbol} size={17} tint={barColor} />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
             {gauge.label}
           </ThemedText>
@@ -91,7 +99,7 @@ function FuelBar({
         <View style={styles.fuelValueRow}>
           <ThemedText
             type="smallBold"
-            style={[styles.tabularNums, { color: fillColor }]}
+            style={[styles.tabularNums, { color: valueColor }]}
           >
             {gauge.valueText}
           </ThemedText>
@@ -106,7 +114,7 @@ function FuelBar({
             <View
               style={[
                 styles.fuelSegmentFill,
-                { width: `${fill * 100}%`, backgroundColor: fillColor },
+                { width: `${fill * 100}%`, backgroundColor: barColor },
               ]}
             />
           </View>
@@ -766,11 +774,13 @@ export default function CarDashboard() {
         <Link href="/status/map">
           <Link.Trigger>
             <Card
-              style={[
+              // Flattened because Link.Trigger renders its child through a
+              // Slot HOC that throws (dev-only) on array styles.
+              style={StyleSheet.flatten([
                 styles.cardPadding,
                 styles.inlineCard,
                 { width: width - Spacing.three * 2 },
-              ]}
+              ])}
             >
               <View style={styles.odometerHeader}>
                 <Icon name="parkingsign.circle.fill" size={17} tint={blue} />

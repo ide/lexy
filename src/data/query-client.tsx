@@ -5,6 +5,7 @@ import * as Network from 'expo-network';
 import Storage from 'expo-sqlite/kv-store';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import { clearClosureLog } from '@/data/closure-log-store';
 import { CACHE_VERSION, createValidatingPersister } from '@/data/persisted-cache';
 
 export const queryClient = new QueryClient({
@@ -61,6 +62,9 @@ const persister = createValidatingPersister(
 export async function clearVehicleCache() {
   queryClient.clear();
   await persister.removeClient();
+  // The closure observation log lives outside the query cache but is vehicle
+  // data all the same.
+  await clearClosureLog();
 }
 
 export function VehicleDataProvider({ children }: { children: React.ReactNode }) {

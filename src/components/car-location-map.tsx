@@ -37,7 +37,10 @@ export function CarLocationMap({
 
   return (
     <AppleMaps.View
-      style={[styles.map, style]}
+      // Flattened because AppleMaps.View renders through a Slot host that
+      // rejects array styles (dev-mode "array of styles to a child of <Slot>"
+      // render error).
+      style={StyleSheet.flatten([styles.map, style])}
       cameraPosition={{
         coordinates: { latitude, longitude },
         zoom: DEFAULT_ZOOM,
