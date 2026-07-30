@@ -286,28 +286,35 @@ function oldestStale(freshAt: string, ats: (string | undefined)[]): string | nul
   return oldest;
 }
 
-// A muted "As of …" line shown when a card's reading is older than the latest
-// snapshot, so stale state isn't presented as current.
+// A single muted line shown when some closures are older than the latest
+// snapshot (e.g. windows after a drive), so stale state isn't presented as
+// current. "Some" because the doors that a lock event refreshed stay current.
 function StaleNote({ at }: { at: string }) {
   return (
     <View style={styles.staleNote}>
-      <Icon name="clock.arrow.circlepath" size={11} tint={colors.secondaryLabel as string} />
+      <Icon name="clock.arrow.circlepath" size={12} tint={colors.secondaryLabel as string} />
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.staleText}>
-        As of {relativeTime(at)}
+        Some readings as of {relativeTime(at)}
       </ThemedText>
     </View>
   );
 }
 
-function CornerCard({ corner, freshAt }: { corner: Corner; freshAt: string }) {
+// The field timestamps a corner actually displays — fed to the section's
+// single staleness note rather than one note per card.
+function cornerShownAts(corner: Corner): (string | undefined)[] {
+  const showDoor = corner.door && (corner.door.state || corner.door.locked !== undefined);
+  return [
+    showDoor ? corner.door?.stateAt : undefined,
+    showDoor ? corner.door?.lockedAt : undefined,
+    corner.window?.state ? corner.window.stateAt : undefined,
+  ];
+}
+
+function CornerCard({ corner }: { corner: Corner }) {
   const showDoor =
     corner.door && (corner.door.state || corner.door.locked !== undefined);
   const showWindow = Boolean(corner.window?.state);
-  const staleAt = oldestStale(freshAt, [
-    showDoor ? corner.door?.stateAt : undefined,
-    showDoor ? corner.door?.lockedAt : undefined,
-    showWindow ? corner.window?.stateAt : undefined,
-  ]);
   return (
     <Card style={[styles.cardPadding, styles.cornerCard]}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
@@ -320,24 +327,23 @@ function CornerCard({ corner, freshAt }: { corner: Corner; freshAt: string }) {
           <StatusLine status={windowStatus(corner.window!, corner.side)} />
         ) : null}
       </View>
-      {staleAt ? <StaleNote at={staleAt} /> : null}
     </Card>
   );
 }
 
-function SideGrid({ corners, freshAt }: { corners: Corner[]; freshAt: string }) {
+function SideGrid({ corners }: { corners: Corner[] }) {
   const driver = corners.filter((c) => c.side === "driver");
   const passenger = corners.filter((c) => c.side === "passenger");
   return (
     <View style={styles.grid}>
       <View style={styles.gridColumn}>
         {driver.map((c) => (
-          <CornerCard key={c.key} corner={c} freshAt={freshAt} />
+          <CornerCard key={c.key} corner={c} />
         ))}
       </View>
       <View style={styles.gridColumn}>
         {passenger.map((c) => (
-          <CornerCard key={c.key} corner={c} freshAt={freshAt} />
+          <CornerCard key={c.key} corner={c} />
         ))}
       </View>
     </View>
@@ -376,12 +382,10 @@ function TireCell({
   );
 }
 
-function OpeningCard({ opening, freshAt }: { opening: Closure; freshAt: string }) {
-  const staleAt = oldestStale(freshAt, [opening.stateAt]);
+function OpeningCard({ opening }: { opening: Closure }) {
   return (
     <Card style={[styles.cardPadding, styles.cornerCard]}>
       <StatusLine status={openingStatus(opening)} />
-      {staleAt ? <StaleNote at={staleAt} /> : null}
     </Card>
   );
 }
@@ -680,6 +684,13 @@ export default function CarDashboard() {
   // Openings (moonroof/trunk/hood) only have a position to report, so a sparse
   // snapshot entry without one has nothing to show.
   const openings = allOpenings.filter((opening) => opening.state);
+  // One staleness note for the whole closures area (a sparse snapshot leaves
+  // every window/opening stale at the same time, so per-card notes would just
+  // repeat). The oldest reading that predates the latest snapshot drives it.
+  const closuresStaleAt = oldestStale(vehicle.updatedAt, [
+    ...corners.flatMap(cornerShownAts),
+    ...openings.map((opening) => opening.stateAt),
+  ]);
   const tires = vehicle.tires?.positions ?? [];
   const leftTires = tires.filter((t) => /left/i.test(t.label));
   const rightTires = tires.filter((t) => /right/i.test(t.label));
@@ -774,7 +785,7 @@ export default function CarDashboard() {
         {corners.length > 0 ? (
           <View>
             <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
-            <SideGrid corners={corners} freshAt={vehicle.updatedAt} />
+            <SideGrid corners={corners} />
           </View>
         ) : null}
 
@@ -784,18 +795,22 @@ export default function CarDashboard() {
               {openings
                 .filter((_, i) => i % 2 === 0)
                 .map((o) => (
-                  <OpeningCard key={o.label} opening={o} freshAt={vehicle.updatedAt} />
+                  <OpeningCard key={o.label} opening={o} />
                 ))}
             </View>
             <View style={styles.gridColumn}>
               {openings
                 .filter((_, i) => i % 2 === 1)
                 .map((o) => (
-                  <OpeningCard key={o.label} opening={o} freshAt={vehicle.updatedAt} />
+                  <OpeningCard key={o.label} opening={o} />
                 ))}
             </View>
           </View>
         ) : null}
+
+        {/* A single note for the closures area — some readings weren't in the
+            latest snapshot (e.g. windows after a drive). */}
+        {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
 
         {tires.length > 0 ? (
           <View>
@@ -1123,12 +1138,13 @@ const styles = StyleSheet.create({
   staleNote: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.half,
-    marginTop: Spacing.half,
+    justifyContent: "center",
+    gap: Spacing.one,
+    marginTop: -Spacing.one,
   },
   staleText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
   footer: {
     alignItems: "center",
