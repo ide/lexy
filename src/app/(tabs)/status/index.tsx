@@ -609,14 +609,7 @@ export default function CarDashboard() {
         {error instanceof NoVehicleError ? (
           <NoVehicleState retry={() => refetch()} />
         ) : (
-          <VehicleError
-            message={
-              error instanceof Error
-                ? error.message
-                : "The vehicle API did not return data."
-            }
-            retry={() => refetch()}
-          />
+          <VehicleError retry={() => refetch()} />
         )}
       </>
     );
