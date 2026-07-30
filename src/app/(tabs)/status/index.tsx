@@ -514,15 +514,23 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
   }, [error]);
 
   const on = settings?.settingsOn ?? true;
-  // Master switch off dims (and disables) the setpoint and defrost rows; the
-  // fade is animated so the optimistic flip doesn't pop. The shared value
-  // starts at the state we already know, so a card that opens with climate
-  // already off draws dim on its first frame instead of rendering enabled and
-  // fading a beat later — only later changes animate.
+  // Master switch off dims (and disables) the setpoint and defrost rows. The
+  // fade belongs to changes the user makes — an optimistic flip shouldn't pop —
+  // but a reading arriving is not a change: the first real settings, including
+  // the ones that replace the skeleton's stand-in, land without animating, so a
+  // car whose climate is off never shows its controls enabled and then dims
+  // them. Everything after that fades.
+  const hasRealSettings = !isRedacted && settings !== undefined;
   const dim = useSharedValue(on ? 1 : 0.4);
+  const wasReal = useRef(false);
   useEffect(() => {
-    dim.value = withTiming(on ? 1 : 0.4, { duration: 250 });
-  }, [dim, on]);
+    dim.value = wasReal.current
+      ? withTiming(on ? 1 : 0.4, { duration: 250 })
+      : on
+        ? 1
+        : 0.4;
+    wasReal.current = hasRealSettings;
+  }, [dim, hasRealSettings, on]);
   const dimStyle = useAnimatedStyle(() => ({ opacity: dim.value }));
   // The wire reports the setpoint range in the car's configured unit (°F cars:
   // 65–85 in 1° steps; metric cars report their own °C range), so the slider
