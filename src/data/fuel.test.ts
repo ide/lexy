@@ -38,7 +38,7 @@ describe('fuelGauge', () => {
     expect(gauge.label).toBe('Fuel');
     expect(gauge.symbol).toBe('fuelpump.fill');
     expect(gauge.valueText).toBe('72%');
-    expect(gauge.low).toBe(false);
+    expect(gauge.level).toBe('high');
   });
 
   it('labels EVs Charge with a bolt', () => {
@@ -49,11 +49,18 @@ describe('fuelGauge', () => {
 
   it('reads Full at 100%', () => {
     expect(fuelGauge('Gasoline', 100).valueText).toBe('Full');
+    expect(fuelGauge('Gasoline', 100).level).toBe('full');
   });
 
-  it('flags a low level at or below 15%', () => {
-    expect(fuelGauge('Gasoline', 15).low).toBe(true);
-    expect(fuelGauge('Gasoline', 16).low).toBe(false);
+  it('escalates the warning tier as the tank drains', () => {
+    expect(fuelGauge('Gasoline', 99).level).toBe('high');
+    expect(fuelGauge('Gasoline', 26).level).toBe('high');
+    expect(fuelGauge('Gasoline', 25).level).toBe('medium');
+    expect(fuelGauge('Gasoline', 16).level).toBe('medium');
+    expect(fuelGauge('Gasoline', 15).level).toBe('low');
+    expect(fuelGauge('Gasoline', 6).level).toBe('low');
+    expect(fuelGauge('Gasoline', 5).level).toBe('critical');
+    expect(fuelGauge('Gasoline', 0).level).toBe('critical');
   });
 
   it('rounds the displayed percentage', () => {

@@ -30,21 +30,42 @@ export function isElectric(fuelType: string): boolean {
   return /electric/i.test(fuelType);
 }
 
+/**
+ * Color tier for the gauge: full reads green as a reward, a healthy level
+ * stays neutral, and the warning colors escalate as the tank drains
+ * (yellow ≤25%, orange ≤15%, red ≤5%).
+ */
+export type FuelLevel = 'full' | 'high' | 'medium' | 'low' | 'critical';
+
 export type FuelGauge = {
   /** Section label — "Fuel" for combustion/hybrid, "Charge" for EVs. */
   label: string;
   symbol: SFSymbol;
   /** The precise readout ("Full" at 100%). */
   valueText: string;
-  /** Low level — the bar is tinted as a warning. */
-  low: boolean;
+  level: FuelLevel;
   fills: number[];
 };
 
+function fuelLevel(percent: number): FuelLevel {
+  if (percent >= 100) {
+    return 'full';
+  }
+  if (percent > 25) {
+    return 'high';
+  }
+  if (percent > 15) {
+    return 'medium';
+  }
+  if (percent > 5) {
+    return 'low';
+  }
+  return 'critical';
+}
+
 /**
  * Everything the Status screen needs to draw the fuel/charge bar. EVs read
- * "Charge"; a full tank/battery reads "Full"; anything at or below 15% is
- * flagged low so the bar can warn.
+ * "Charge"; a full tank/battery reads "Full".
  */
 export function fuelGauge(fuelType: string, percent: number): FuelGauge {
   const p = Math.round(clampPercent(percent));
@@ -53,7 +74,7 @@ export function fuelGauge(fuelType: string, percent: number): FuelGauge {
     label: electric ? 'Charge' : 'Fuel',
     symbol: electric ? 'bolt.fill' : 'fuelpump.fill',
     valueText: p >= 100 ? 'Full' : `${p}%`,
-    low: p <= 15,
+    level: fuelLevel(p),
     fills: fuelSegmentFills(p),
   };
 }

@@ -17,6 +17,7 @@ import {
   font,
   foregroundStyle,
   frame,
+  opacity,
   padding,
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
@@ -114,13 +115,14 @@ function OptionRow({
             </Text>
           </VStack>
           <Spacer />
-          {selected ? (
-            <Image
-              systemName="checkmark"
-              size={16}
-              color={colors.systemBlue as string}
-            />
-          ) : null}
+          {/* Always in the layout (hidden via opacity when unselected) so
+              choosing an option doesn't reflow the row text. */}
+          <Image
+            systemName="checkmark"
+            size={16}
+            color={colors.systemBlue as string}
+            modifiers={[opacity(selected ? 1 : 0)]}
+          />
         </HStack>
       </Button>
       {last ? null : <Divider modifiers={[padding({ leading: Spacing.six })]} />}
