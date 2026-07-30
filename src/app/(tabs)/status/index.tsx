@@ -763,18 +763,44 @@ export default function CarDashboard() {
           </View>
         </Card>
 
-        {/* Status readouts stay above the REMOTE CONTROLS section title so
-            they don't read as controls. */}
+        {/* Peek & pop: long-press previews the live map; tapping (the card or
+            the peek) opens the map sheet. `asChild` forwards the link behavior
+            to a real pressable instead of letting Link wrap this View card in
+            its default Text, whose inline line box clips rounded card edges. */}
+        <Link href="/status/map" asChild>
+          <Link.Trigger>
+            <Pressable style={{ width: width - Spacing.three * 2 }}>
+              <Card style={[styles.cardPadding, styles.inlineCard]}>
+                <View style={styles.odometerHeader}>
+                  <Icon name="parkingsign.circle.fill" size={17} tint={blue} />
+                  <ThemedText type="smallBold" themeColor="secondaryLabel">
+                    Last parked
+                  </ThemedText>
+                </View>
+                <View style={styles.lastParkedAction}>
+                  <ThemedText type="smallBold" style={{ color: blue }}>
+                    View map
+                  </ThemedText>
+                  <Icon name="chevron.right" size={12} tint={blue} />
+                </View>
+              </Card>
+            </Pressable>
+          </Link.Trigger>
+          <Link.Preview style={{ width: width - Spacing.three * 2, height: 260 }}>
+            <CarLocationMap
+              latitude={vehicle.location.latitude}
+              longitude={vehicle.location.longitude}
+              label={vehicle.nickname}
+            />
+          </Link.Preview>
+        </Link>
+
+        {/* Summary readouts stay above the REMOTE CONTROLS section title so
+            they don't read as controls. Location comes first, then the energy
+            and range available to leave that location. */}
         <FuelBar
           gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
           range={vehicle.range}
-          unit={vehicle.distanceUnit}
-        />
-
-        <OdometerCard
-          odometer={vehicle.odometer}
-          tripA={vehicle.tripA}
-          tripB={vehicle.tripB}
           unit={vehicle.distanceUnit}
         />
 
@@ -812,6 +838,16 @@ export default function CarDashboard() {
             latest snapshot (e.g. windows after a drive). */}
         {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
 
+        {/* Mileage bridges immediate access/security state and longer-term
+            running condition (tire pressure) without competing with the
+            location/fuel summary at the top. */}
+        <OdometerCard
+          odometer={vehicle.odometer}
+          tripA={vehicle.tripA}
+          tripB={vehicle.tripB}
+          unit={vehicle.distanceUnit}
+        />
+
         {tires.length > 0 ? (
           <View>
             <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
@@ -841,44 +877,6 @@ export default function CarDashboard() {
             </View>
           </View>
         ) : null}
-
-        {/* Peek & pop: long-press previews the live map; tapping (the card or
-            the peek) pops open the map sheet. Link.Trigger (without asChild)
-            wraps the card in a native Text, so an inline View won't stretch —
-            pin the card to the content width to keep it full-bleed. */}
-        <Link href="/status/map">
-          <Link.Trigger>
-            <Card
-              // Flattened because Link.Trigger renders its child through a
-              // Slot HOC that throws (dev-only) on array styles.
-              style={StyleSheet.flatten([
-                styles.cardPadding,
-                styles.inlineCard,
-                { width: width - Spacing.three * 2 },
-              ])}
-            >
-              <View style={styles.odometerHeader}>
-                <Icon name="parkingsign.circle.fill" size={17} tint={blue} />
-                <ThemedText type="smallBold" themeColor="secondaryLabel">
-                  Last parked
-                </ThemedText>
-              </View>
-              <View style={styles.lastParkedAction}>
-                <ThemedText type="smallBold" style={{ color: blue }}>
-                  View map
-                </ThemedText>
-                <Icon name="chevron.right" size={12} tint={blue} />
-              </View>
-            </Card>
-          </Link.Trigger>
-          <Link.Preview style={{ width: width - Spacing.three * 2, height: 260 }}>
-            <CarLocationMap
-              latitude={vehicle.location.latitude}
-              longitude={vehicle.location.longitude}
-              label={vehicle.nickname}
-            />
-          </Link.Preview>
-        </Link>
 
         <View style={styles.footer}>
           <Host matchContents style={styles.footerHost}>
