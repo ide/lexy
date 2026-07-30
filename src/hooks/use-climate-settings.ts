@@ -117,7 +117,13 @@ export function useClimateSettings(
     }
   };
 
-  const settings = placeholder ? PLACEHOLDER_CLIMATE_SETTINGS : query.data;
+  // Standing in for a skeleton still prefers a real reading when the cache
+  // already holds one: the query is off, but the persisted cache is the honest
+  // answer, so the card can show its true state (a climate switch that is off,
+  // and the dimmed rows that go with it) instead of the stand-in's defaults.
+  const settings = placeholder
+    ? (query.data ?? PLACEHOLDER_CLIMATE_SETTINGS)
+    : query.data;
 
   return {
     settings,
