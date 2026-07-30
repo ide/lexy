@@ -12,6 +12,8 @@ import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/auth/auth-context";
 import { Spacing, colors } from "@/constants/theme";
 import { queryClient } from "@/data/query-client";
+import { applyOptimisticLock, readClosures } from "@/data/closure-state";
+import { loadClosureStore, saveClosureStore } from "@/data/closure-state-store";
 import type { VehicleContext } from "@/data/lexus-api";
 import { sendRemoteCommand, type RemoteCommand } from "@/data/remote-command";
 import type { Vehicle } from "@/data/vehicle";
@@ -138,12 +140,34 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     sendRemoteCommand(session, context, control.command, expoFetch)
-      .then(() => {
+      .then(async () => {
         if (process.env.EXPO_OS === "ios") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        // Acceptance, not completion — give the vehicle a moment to actuate,
-        // then re-read status so the screen reflects the change.
+        // Acceptance, not completion. For lock/unlock, optimistically fold the
+        // predicted lock state into the closure store — flagged optimistic so
+        // the screen shows it as pending — and push it into the cache for an
+        // instant reflection. (Engine start changes no closure, so there's
+        // nothing to predict there.)
+        if (control.command === "door-lock" || control.command === "door-unlock") {
+          const store = applyOptimisticLock(
+            await loadClosureStore(),
+            vehicle.vin,
+            control.command === "door-lock",
+            new Date().toISOString(),
+          );
+          await saveClosureStore(store);
+          const closures = readClosures(store);
+          queryClient.setQueryData<Vehicle>(["vehicle"], (old) =>
+            old ? { ...old, closures } : old,
+          );
+        }
+        // Reconcile with the server via a non-waking status read: the plain
+        // vehicle refetch GETs status without priming the telematics unit, and
+        // the fold merges its (possibly partial, possibly stale) payload without
+        // clobbering the optimistic value. A second pass a few seconds later
+        // catches late propagation.
+        queryClient.invalidateQueries({ queryKey: ["vehicle"] });
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["vehicle"] });
         }, 5000);

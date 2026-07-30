@@ -215,10 +215,18 @@ function doorStatus(door: Closure): Status {
     return { text: "Door open", color: orange, symbol: "lock.open.fill" };
   }
   if (door.locked === false) {
-    return { text: "Door unlocked", color: orange, symbol: "lock.open.fill" };
+    return {
+      text: door.lockedOptimistic ? "Unlocking…" : "Door unlocked",
+      color: orange,
+      symbol: "lock.open.fill",
+    };
   }
   if (door.locked === true) {
-    return { text: "Door locked", color: green, symbol: "lock.fill" };
+    return {
+      text: door.lockedOptimistic ? "Locking…" : "Door locked",
+      color: green,
+      symbol: "lock.fill",
+    };
   }
   // Position known (closed) but no lock reading.
   return { text: "Door closed", color: green, symbol: "checkmark.circle.fill" };
