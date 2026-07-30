@@ -158,10 +158,10 @@ function DevRow({
   );
 }
 
-// Choose which navigation app the car-location map hands off to. The trailing
-// value tracks the resolved provider; tapping opens the chooser (installed apps
-// only). When no maps app is installed the row reads "Unavailable" and taps
-// explain how to fix it.
+// Choose which navigation app the car-location map hands off to. The resolved
+// provider sits below the row title instead of in a trailing column, preserving
+// the full width for long app names and Dynamic Type. When no maps app is
+// installed the row reads "Unavailable" and taps explain how to fix it.
 function MapsProviderRow() {
   const { resolved, saved, promptChoice } = useMapsProvider();
 
@@ -175,10 +175,6 @@ function MapsProviderRow() {
       : resolved?.kind === "ready"
         ? resolved.provider.name
         : "Not set";
-  const subtitle = none
-    ? "Install Apple Maps, Google Maps, or Waze to open your car's location."
-    : "The app used to open your car's location for directions.";
-
   const onPress = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.selectionAsync();
@@ -222,18 +218,10 @@ function MapsProviderRow() {
               frame({ maxWidth: Infinity, alignment: "leading" }),
             ]}
           >
-            {subtitle}
+            {value}
           </Text>
         </VStack>
         <Spacer />
-        <Text
-          modifiers={[
-            font({ textStyle: "body", weight: "regular" }),
-            foregroundStyle({ type: "hierarchical", style: "secondary" }),
-          ]}
-        >
-          {value}
-        </Text>
         <Image
           systemName="chevron.right"
           size={14}
@@ -343,6 +331,19 @@ export default function SettingsScreen() {
             <GroupCard>
               <MapsProviderRow />
             </GroupCard>
+            <Text
+              modifiers={[
+                font({ textStyle: "footnote", weight: "regular" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                padding({
+                  top: Spacing.two,
+                  horizontal: Spacing.three,
+                }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+              ]}
+            >
+              The app used to open your car&apos;s location for directions.
+            </Text>
           </VStack>
 
           <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>

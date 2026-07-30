@@ -13,6 +13,7 @@ import {
   background,
   buttonStyle,
   contentShape,
+  disabled,
   fixedSize,
   font,
   foregroundStyle,
@@ -32,6 +33,7 @@ import {
   useDebugOverrides,
   type DataStateOption,
 } from "@/debug/debug-overrides";
+import { useMapsProvider } from "@/hooks/use-maps-provider";
 
 function SectionHeader({ children }: { children: string }) {
   return (
@@ -130,9 +132,69 @@ function OptionRow({
   );
 }
 
+function ClearMapsProviderRow({
+  savedName,
+  onClear,
+}: {
+  savedName: string | null;
+  onClear: () => void;
+}) {
+  return (
+    <Button
+      onPress={onClear}
+      modifiers={[
+        buttonStyle("plain"),
+        disabled(savedName === null),
+        frame({ maxWidth: Infinity }),
+      ]}
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.three}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          contentShape(shapes.rectangle()),
+          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
+        ]}
+      >
+        <Image
+          systemName="trash.fill"
+          size={22}
+          color={colors.systemRed as string}
+        />
+        <VStack
+          alignment="leading"
+          spacing={Spacing.half}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        >
+          <Text
+            modifiers={[
+              font({ textStyle: "body", weight: "semibold" }),
+              foregroundStyle(colors.systemRed),
+            ]}
+          >
+            Clear Maps provider
+          </Text>
+          <Text
+            modifiers={[
+              font({ textStyle: "footnote", weight: "medium" }),
+              foregroundStyle({ type: "hierarchical", style: "secondary" }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+            ]}
+          >
+            {savedName ? `Currently ${savedName}` : "No saved provider"}
+          </Text>
+        </VStack>
+      </HStack>
+    </Button>
+  );
+}
+
 export default function DataStateScreen() {
   const { markInteractive } = useObserve();
   const { dataState, setDataState } = useDebugOverrides();
+  const { saved: savedMapsProvider, clear: clearMapsProvider } =
+    useMapsProvider();
 
   useEffect(() => {
     markInteractive();
@@ -145,6 +207,16 @@ export default function DataStateScreen() {
     setDataState(key);
   };
 
+  const clearProvider = () => {
+    if (!savedMapsProvider) {
+      return;
+    }
+    if (process.env.EXPO_OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    clearMapsProvider();
+  };
+
   return (
     <Host
       seedColor={colors.systemBlue}
@@ -153,7 +225,7 @@ export default function DataStateScreen() {
       <ScrollView>
         <VStack
           alignment="leading"
-          spacing={Spacing.two}
+          spacing={Spacing.four}
           modifiers={[
             frame({ maxWidth: Infinity, alignment: "leading" }),
             padding({
@@ -163,31 +235,64 @@ export default function DataStateScreen() {
             }),
           ]}
         >
-          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-            <SectionHeader>DATA STATE</SectionHeader>
-            <GroupCard>
-              {DATA_STATE_OPTIONS.map((option, index) => (
-                <OptionRow
-                  key={option.key}
-                  option={option}
-                  selected={option.key === dataState}
-                  last={index === DATA_STATE_OPTIONS.length - 1}
-                  onPress={() => select(option.key)}
-                />
-              ))}
-            </GroupCard>
-          </VStack>
-          <Text
-            modifiers={[
-              font({ textStyle: "footnote", weight: "regular" }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
-              padding({ horizontal: Spacing.three }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-            ]}
+          <VStack
+            alignment="leading"
+            spacing={Spacing.two}
+            modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
-            Overrides the Status and Details tabs so you can preview each data
-            state. Resets to Live when the app reloads.
-          </Text>
+            <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+              <SectionHeader>DATA STATE</SectionHeader>
+              <GroupCard>
+                {DATA_STATE_OPTIONS.map((option, index) => (
+                  <OptionRow
+                    key={option.key}
+                    option={option}
+                    selected={option.key === dataState}
+                    last={index === DATA_STATE_OPTIONS.length - 1}
+                    onPress={() => select(option.key)}
+                  />
+                ))}
+              </GroupCard>
+            </VStack>
+            <Text
+              modifiers={[
+                font({ textStyle: "footnote", weight: "regular" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                padding({ horizontal: Spacing.three }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+              ]}
+            >
+              Overrides the Status and Details tabs so you can preview each data
+              state. Resets to Live when the app reloads.
+            </Text>
+          </VStack>
+
+          <VStack
+            alignment="leading"
+            spacing={Spacing.two}
+            modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+          >
+            <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+              <SectionHeader>PERSISTED STATE</SectionHeader>
+              <GroupCard>
+                <ClearMapsProviderRow
+                  savedName={savedMapsProvider?.name ?? null}
+                  onClear={clearProvider}
+                />
+              </GroupCard>
+            </VStack>
+            <Text
+              modifiers={[
+                font({ textStyle: "footnote", weight: "regular" }),
+                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                padding({ horizontal: Spacing.three }),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+              ]}
+            >
+              Forgets the navigation app selected in Settings. The next map
+              handoff will resolve or ask again.
+            </Text>
+          </VStack>
         </VStack>
       </ScrollView>
     </Host>
