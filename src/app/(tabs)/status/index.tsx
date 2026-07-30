@@ -16,6 +16,7 @@ import {
   font,
   foregroundStyle,
   padding,
+  redacted,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
@@ -37,10 +38,10 @@ import {
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
+import { Redacted, useRedacted } from "@/components/redacted";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleControls } from "@/components/vehicle-controls";
-import { VehicleSkeleton } from "@/components/vehicle-skeleton";
 import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
@@ -54,6 +55,7 @@ import {
   type Vehicle,
 } from "@/data/vehicle";
 import type { AcParameter } from "@/data/climate-settings";
+import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { queryClient } from "@/data/query-client";
 import { refreshVehicleStatus } from "@/data/refresh-status-sender";
 import {
@@ -98,7 +100,14 @@ function FuelBar({
   range: number;
   unit: DistanceUnit;
 }) {
-  const barColor = FUEL_BAR_COLORS[gauge.level];
+  // The segment fills are plain colored views rather than text or icons, so
+  // redaction has to reach them explicitly: filling them with the track color
+  // leaves the gauge as its own empty tracks instead of a placeholder screen
+  // reporting a confident full tank.
+  const isRedacted = useRedacted();
+  const barColor = isRedacted
+    ? (colors.fill as string)
+    : FUEL_BAR_COLORS[gauge.level];
   const valueColor = FUEL_COLORS[gauge.level];
   const rangeText = `${range.toLocaleString()} ${unit}`;
   return (
@@ -477,8 +486,13 @@ function DefrostToggle({
 // useClimateSettings), so the controls respond instantly and never lock up
 // while a save is in flight.
 function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
+  // The switch and slider are SwiftUI, so neither the RN redaction context nor
+  // SwiftUI's own `redacted` modifier neutralizes them (the modifier leaves
+  // both controls fully drawn — verified on device). While redacted they give
+  // way to plain placeholders in the same slots.
+  const isRedacted = useRedacted();
   const { settings, defrost, setDefrost, setTemperature, setSettingsOn, error } =
-    useClimateSettings(vehicle);
+    useClimateSettings(vehicle, { placeholder: isRedacted });
   // The setpoint mid-drag, shown in the readout before the PUT commits on
   // release. A ref backs the commit so onEditingChanged never sees a stale
   // value.
@@ -522,9 +536,16 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
             </ThemedText>
           </View>
           {settings ? (
-            <Host matchContents style={styles.climateSwitchHost}>
-              <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
-            </Host>
+            // SwiftUI's `redacted` leaves a Toggle fully drawn (verified on
+            // device: a live blue switch in the skeleton), so the placeholder
+            // stands in for it instead. A UIKit switch is a fixed 51x31.
+            isRedacted ? (
+              <View style={styles.switchPlaceholder} />
+            ) : (
+              <Host matchContents style={styles.climateSwitchHost}>
+                <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
+              </Host>
+            )
           ) : (
             <ThemedText type="smallBold" style={styles.tabularNums}>
               {vehicle.climate.temperatureF}
@@ -538,28 +559,36 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
       </View>
       {showSlider ? (
         <Animated.View style={[styles.sliderRow, dimStyle]}>
-          {/* A SwiftUI Slider has no intrinsic width, so the host gets an
-              explicit flex + height instead of matchContents. */}
-          <Host style={styles.slider}>
-            <Slider
-              min={settings.minTemp}
-              max={settings.maxTemp}
-              step={settings.tempInterval ?? 1}
-              value={settings.temperature}
-              onValueChange={(value) => {
-                draftRef.current = value;
-                setDraftTemperature(value);
-              }}
-              onEditingChanged={(editing) => {
-                if (!editing && draftRef.current !== null) {
-                  setTemperature(draftRef.current);
-                  draftRef.current = null;
-                  setDraftTemperature(null);
-                }
-              }}
-              modifiers={[disabled(!on)]}
-            />
-          </Host>
+          {/* Redaction leaves a Slider drawn too (a live blue track), so the
+              skeleton shows the bare track in the same 28pt slot. */}
+          {isRedacted ? (
+            <View style={[styles.slider, styles.sliderPlaceholder]}>
+              <View style={styles.sliderPlaceholderTrack} />
+            </View>
+          ) : (
+            // A SwiftUI Slider has no intrinsic width, so the host gets an
+            // explicit flex + height instead of matchContents.
+            <Host style={styles.slider}>
+              <Slider
+                min={settings.minTemp}
+                max={settings.maxTemp}
+                step={settings.tempInterval ?? 1}
+                value={settings.temperature}
+                onValueChange={(value) => {
+                  draftRef.current = value;
+                  setDraftTemperature(value);
+                }}
+                onEditingChanged={(editing) => {
+                  if (!editing && draftRef.current !== null) {
+                    setTemperature(draftRef.current);
+                    draftRef.current = null;
+                    setDraftTemperature(null);
+                  }
+                }}
+                modifiers={[disabled(!on)]}
+              />
+            </Host>
+          )}
           <ThemedText type="smallBold" style={[styles.tabularNums, styles.temperatureReadout]}>
             {temperature.toLocaleString(undefined, { maximumFractionDigits: 1 })}
             {unit}
@@ -584,6 +613,82 @@ function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
           />
         </Animated.View>
       ) : null}
+    </Card>
+  );
+}
+
+// The hero: the parked-location map behind the vehicle render, with the button
+// that opens the full map. While redacted the map and the car give way to one
+// neutral block — placeholder data has no image URL, and the map would
+// otherwise fly to null island — and the button, being genuine SwiftUI, takes
+// SwiftUI's own redaction modifier.
+function HeroCard({ vehicle }: { vehicle: Vehicle }) {
+  const isRedacted = useRedacted();
+  return (
+    <Card style={styles.hero}>
+      {isRedacted ? (
+        <View style={[styles.heroImageFrame, styles.heroPlaceholder]} />
+      ) : (
+        <>
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={styles.heroMap}
+          >
+            <CarLocationMap
+              latitude={vehicle.location.latitude}
+              longitude={vehicle.location.longitude}
+              label={vehicle.nickname}
+              showMarker={false}
+            />
+          </View>
+          <View pointerEvents="none" style={styles.heroMapVeil} />
+          <View pointerEvents="none" style={styles.heroImageFrame}>
+            <Image
+              source={{ uri: vehicle.imageUrl }}
+              style={styles.heroImage}
+              contentFit="contain"
+              transition={200}
+            />
+          </View>
+        </>
+      )}
+      {/* Only this button opens the map — the map behind the car is a
+          non-interactive backdrop. */}
+      <View style={styles.heroActions}>
+        <Host matchContents>
+          <Button
+            onPress={() => {
+              if (process.env.EXPO_OS === "ios") {
+                Haptics.selectionAsync();
+              }
+              router.push("/status/map");
+            }}
+            modifiers={[
+              buttonStyle("glass"),
+              tint(blue),
+              controlSize("large"),
+              ...(isRedacted ? [redacted(), disabled(true)] : []),
+            ]}
+          >
+            <HStack spacing={Spacing.one}>
+              {/* Placeholder redaction masks a label's image into a solid
+                  rounded rect in the image's own color, so a blue glyph
+                  becomes a blue square. Feeding it the neutral fill keeps the
+                  redacted button all one grey. */}
+              <SFImage
+                systemName="map.fill"
+                size={15}
+                color={isRedacted ? (colors.fill as string) : blue}
+              />
+              <Text modifiers={[font({ textStyle: "subheadline", weight: "semibold" })]}>
+                Last parked
+              </Text>
+            </HStack>
+          </Button>
+        </Host>
+      </View>
     </Card>
   );
 }
@@ -630,14 +735,8 @@ function FooterTimeRow({
 }
 
 export default function CarDashboard() {
-  const {
-    data: vehicle,
-    error,
-    isLoading,
-    isFetching,
-    refetch,
-    dataUpdatedAt,
-  } = useVehicle();
+  const { data, error, isLoading, isFetching, refetch, dataUpdatedAt } =
+    useVehicle();
   const { markInteractive } = useObserve();
   const { session } = useAuth();
   const isOnline = useIsOnline();
@@ -671,21 +770,12 @@ export default function CarDashboard() {
       )
     : undefined;
 
-  // A single skeleton covers every "no vehicle yet" case: the dev override, the
-  // first-load fetch, and offline-before-anything-cached (with a banner). Only
-  // a settled, online, data-less result is a real error.
-  if (forceSkeleton || (!vehicle && (isLoading || !isOnline))) {
-    return (
-      <>
-        {/* No nickname yet, so fall back to a generic title rather than the
-            tab's "Status" label, which reads oddly as a large screen title. */}
-        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
-        <VehicleSkeleton offline={!vehicle && !isOnline} />
-      </>
-    );
-  }
+  // A single redacted state covers every "no vehicle yet" case: the dev
+  // override, the first-load fetch, and offline-before-anything-cached (with a
+  // banner). Only a settled, online, data-less result is a real error.
+  const loading = forceSkeleton || (!data && (isLoading || !isOnline));
 
-  if (!vehicle) {
+  if (!loading && !data) {
     return (
       <>
         <Stack.Screen options={{ title: "My Lexus", headerRight }} />
@@ -697,6 +787,12 @@ export default function CarDashboard() {
       </>
     );
   }
+
+  // While loading, the real tree below renders placeholder data redacted into
+  // neutral bars (see `Redacted`). One tree, one scroll container: the layout
+  // cannot drift from itself, sizes are identical in both states, and toggling
+  // reconciles in place so the scroll offset is preserved.
+  const vehicle = loading ? PLACEHOLDER_VEHICLE : data!;
 
   const { corners, openings: allOpenings } = groupClosures(vehicle.closures);
   // Openings (moonroof/trunk/hood) only have a position to report, so a sparse
@@ -714,6 +810,10 @@ export default function CarDashboard() {
   const rightTires = tires.filter((t) => /right/i.test(t.label));
   return (
     <>
+      {/* The title is native chrome outside the redacted tree, so it reads the
+          placeholder's nickname while loading — "My Lexus", the generic
+          fallback, rather than the tab's "Status" label, which reads oddly as a
+          large screen title. */}
       <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />
       <NativeScrollView
         onRefresh={async () => {
@@ -726,11 +826,14 @@ export default function CarDashboard() {
             // That makes the server-side status current, so the refetch's GET
             // returns complete state instead of the last sparse push. If it's
             // rate-limited or fails, the refetch below still runs.
-            if (session) {
+            //
+            // Read the context off `data`, never the placeholder: pulling on
+            // the skeleton must not address a VIN that isn't a car.
+            if (session && data) {
               await refreshVehicleStatus(session, {
-                vin: vehicle.vin,
-                brand: vehicle.brand,
-                generation: vehicle.generation,
+                vin: data.vin,
+                brand: data.brand,
+                generation: data.generation,
               });
             }
             // Climate settings live in their own query and can change out from
@@ -747,171 +850,142 @@ export default function CarDashboard() {
         contentContainerStyle={styles.content}
       >
         {!isOnline ? (
-          <OfflineBanner detail="Showing the latest data we saved." />
+          <OfflineBanner
+            detail={
+              data
+                ? "Showing the latest data we saved."
+                : "Reconnect to load your vehicle."
+            }
+          />
         ) : null}
-        <Card style={styles.hero}>
-          <View
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            style={styles.heroMap}
-          >
-            <CarLocationMap
-              latitude={vehicle.location.latitude}
-              longitude={vehicle.location.longitude}
-              label={vehicle.nickname}
-              showMarker={false}
-            />
-          </View>
-          <View pointerEvents="none" style={styles.heroMapVeil} />
-          <View pointerEvents="none" style={styles.heroImageFrame}>
-            <Image
-              source={{ uri: vehicle.imageUrl }}
-              style={styles.heroImage}
-              contentFit="contain"
-              transition={200}
-            />
-          </View>
-          {/* Only this button opens the map — the map behind the car is a
-              non-interactive backdrop. */}
-          <View style={styles.heroActions}>
-            <Host matchContents>
-              <Button
-                onPress={() => {
-                  if (process.env.EXPO_OS === "ios") {
-                    Haptics.selectionAsync();
-                  }
-                  router.push("/status/map");
-                }}
-                modifiers={[buttonStyle("glass"), tint(blue), controlSize("large")]}
-              >
-                <HStack spacing={Spacing.one}>
-                  <SFImage systemName="map.fill" size={15} color={blue} />
-                  <Text modifiers={[font({ textStyle: "subheadline", weight: "semibold" })]}>
-                    Last parked
-                  </Text>
-                </HStack>
-              </Button>
-            </Host>
-          </View>
-        </Card>
+        <Redacted loading={loading} style={styles.group}>
+          <HeroCard vehicle={vehicle} />
 
-        {/* Summary readouts stay above the REMOTE CONTROLS section title so
-            they don't read as controls. Location comes first, then the energy
-            and range available to leave that location. */}
-        <FuelBar
-          gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
-          range={vehicle.range}
-          unit={vehicle.distanceUnit}
-        />
-
-        <VehicleControls vehicle={vehicle} />
-
-        <ClimateCard vehicle={vehicle} />
-
-        {corners.length > 0 ? (
-          <View>
-            <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
-            <SideGrid corners={corners} />
-          </View>
-        ) : null}
-
-        {openings.length > 0 ? (
-          <View style={styles.grid}>
-            <View style={styles.gridColumn}>
-              {openings
-                .filter((_, i) => i % 2 === 0)
-                .map((o) => (
-                  <OpeningCard key={o.label} opening={o} />
-                ))}
-            </View>
-            <View style={styles.gridColumn}>
-              {openings
-                .filter((_, i) => i % 2 === 1)
-                .map((o) => (
-                  <OpeningCard key={o.label} opening={o} />
-                ))}
-            </View>
-          </View>
-        ) : null}
-
-        {/* A single note for the closures area — some readings weren't in the
-            latest snapshot (e.g. windows after a drive). */}
-        {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
-
-        {/* Mileage bridges immediate access/security state and longer-term
-            running condition (tire pressure) without competing with the
-            location/fuel summary at the top. */}
-        <View>
-          <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
-          <OdometerCard
-            odometer={vehicle.odometer}
-            tripA={vehicle.tripA}
-            tripB={vehicle.tripB}
+          {/* Summary readouts stay above the REMOTE CONTROLS section title so
+              they don't read as controls. Location comes first, then the energy
+              and range available to leave that location. */}
+          <FuelBar
+            gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
+            range={vehicle.range}
             unit={vehicle.distanceUnit}
           />
-        </View>
 
-        {tires.length > 0 ? (
-          <View>
-            <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
+          <VehicleControls vehicle={vehicle} />
+
+          <ClimateCard vehicle={vehicle} />
+
+          {corners.length > 0 ? (
+            <View>
+              <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
+              <SideGrid corners={corners} />
+            </View>
+          ) : null}
+
+          {openings.length > 0 ? (
             <View style={styles.grid}>
               <View style={styles.gridColumn}>
-                {leftTires.map((t) => (
-                  <TireCell
-                    key={t.label}
-                    label={t.label}
-                    value={t.value}
-                    unit={vehicle.tires!.unit}
-                    low={t.low}
-                  />
-                ))}
+                {openings
+                  .filter((_, i) => i % 2 === 0)
+                  .map((o) => (
+                    <OpeningCard key={o.label} opening={o} />
+                  ))}
               </View>
               <View style={styles.gridColumn}>
-                {rightTires.map((t) => (
-                  <TireCell
-                    key={t.label}
-                    label={t.label}
-                    value={t.value}
-                    unit={vehicle.tires!.unit}
-                    low={t.low}
-                  />
-                ))}
+                {openings
+                  .filter((_, i) => i % 2 === 1)
+                  .map((o) => (
+                    <OpeningCard key={o.label} opening={o} />
+                  ))}
               </View>
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        <View style={styles.footer}>
-          <Host matchContents style={styles.footerHost}>
-            <VStack alignment="center" spacing={Spacing.half}>
-              <FooterTimeRow
-                label={`Vehicle last synced with Lexus ${relativeTime(
-                  vehicle.updatedAt,
-                )}.`}
-                timestamp={vehicle.updatedAt}
-              />
-              {/* During an automatic (non-pull-to-refresh) refresh, the data
-                  freshness line becomes a quiet "Updating…" — the one bit of
-                  state we actually have — then returns to the timestamp. */}
-              {autoRefreshing ? (
-                <Text
-                  modifiers={[
-                    font({ textStyle: "footnote", weight: "regular" }),
-                    foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                  ]}
-                >
-                  Updating…
-                </Text>
-              ) : (
+          {/* A single note for the closures area — some readings weren't in the
+              latest snapshot (e.g. windows after a drive). */}
+          {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
+
+          {/* Mileage bridges immediate access/security state and longer-term
+              running condition (tire pressure) without competing with the
+              location/fuel summary at the top. */}
+          <View>
+            <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
+            <OdometerCard
+              odometer={vehicle.odometer}
+              tripA={vehicle.tripA}
+              tripB={vehicle.tripB}
+              unit={vehicle.distanceUnit}
+            />
+          </View>
+
+          {tires.length > 0 ? (
+            <View>
+              <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
+              <View style={styles.grid}>
+                <View style={styles.gridColumn}>
+                  {leftTires.map((t) => (
+                    <TireCell
+                      key={t.label}
+                      label={t.label}
+                      value={t.value}
+                      unit={vehicle.tires!.unit}
+                      low={t.low}
+                    />
+                  ))}
+                </View>
+                <View style={styles.gridColumn}>
+                  {rightTires.map((t) => (
+                    <TireCell
+                      key={t.label}
+                      label={t.label}
+                      value={t.value}
+                      unit={vehicle.tires!.unit}
+                      low={t.low}
+                    />
+                  ))}
+                </View>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.footer}>
+            <Host matchContents style={styles.footerHost}>
+              {/* The footer is genuine SwiftUI, so it takes the real
+                  `redacted` modifier rather than the RN redaction context —
+                  which also spares it from rendering the placeholder's
+                  timestamps as readable sentences. */}
+              <VStack
+                alignment="center"
+                spacing={Spacing.half}
+                modifiers={loading ? [redacted()] : undefined}
+              >
                 <FooterTimeRow
-                  label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
-                  timestamp={dataUpdatedAt}
+                  label={`Vehicle last synced with Lexus ${relativeTime(
+                    vehicle.updatedAt,
+                  )}.`}
+                  timestamp={vehicle.updatedAt}
                 />
-              )}
-            </VStack>
-          </Host>
-        </View>
+                {/* During an automatic (non-pull-to-refresh) refresh, the data
+                    freshness line becomes a quiet "Updating…" — the one bit of
+                    state we actually have — then returns to the timestamp. */}
+                {autoRefreshing ? (
+                  <Text
+                    modifiers={[
+                      font({ textStyle: "footnote", weight: "regular" }),
+                      foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                    ]}
+                  >
+                    Updating…
+                  </Text>
+                ) : (
+                  <FooterTimeRow
+                    label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
+                    timestamp={dataUpdatedAt}
+                  />
+                )}
+              </VStack>
+            </Host>
+          </View>
+        </Redacted>
       </NativeScrollView>
     </>
   );
@@ -922,6 +996,11 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.three,
     paddingBottom: Spacing.six,
+  },
+  // The Redacted wrapper groups the sections into one child of the scroll
+  // content, so it re-applies the container's section gap inside itself.
+  group: {
+    gap: Spacing.three,
   },
   cardPadding: {
     padding: Spacing.three,
@@ -1001,6 +1080,12 @@ const styles = StyleSheet.create({
     width: "110%",
     aspectRatio: 700 / 631,
   },
+  // The redacted stand-in for the map + car render: the same frame, filled.
+  heroPlaceholder: {
+    backgroundColor: colors.fill,
+    borderRadius: 16,
+    borderCurve: "continuous",
+  },
   heroActions: {
     width: "100%",
     flexDirection: "row",
@@ -1033,6 +1118,23 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 28,
     backgroundColor: "transparent",
+  },
+  // The redacted stand-ins for the two SwiftUI controls, sized from the same
+  // styles as the real ones (the switch's 51x31 is UIKit's fixed metric).
+  sliderPlaceholder: {
+    justifyContent: "center",
+  },
+  sliderPlaceholderTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.fill,
+  },
+  switchPlaceholder: {
+    width: 51,
+    height: 31,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    backgroundColor: colors.fill,
   },
   // Widest plausible readout ("29.5°C") reserves its slot so the slider
   // doesn't resize as the number changes width.

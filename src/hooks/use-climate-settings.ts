@@ -12,6 +12,7 @@ import {
   type DefrostName,
 } from '@/data/climate-settings';
 import { VEHICLE_CLIMATE_ENDPOINT, vehicleHeaders } from '@/data/lexus-api';
+import { PLACEHOLDER_CLIMATE_SETTINGS } from '@/data/placeholder-vehicle';
 import type { Vehicle } from '@/data/vehicle';
 
 export const CLIMATE_SETTINGS_QUERY_KEY = ['climate-settings'] as const;
@@ -25,7 +26,15 @@ export const CLIMATE_SETTINGS_QUERY_KEY = ['climate-settings'] as const;
  * the dashboard's pull-to-refresh refetches this key explicitly (settings can
  * change out from under us via the official Lexus app).
  */
-export function useClimateSettings(vehicle: Vehicle) {
+export function useClimateSettings(
+  vehicle: Vehicle,
+  /**
+   * Set while the caller is rendering `PLACEHOLDER_VEHICLE` as a redacted
+   * skeleton: the read is skipped (its headers would carry a VIN that isn't a
+   * car) and stand-in settings are returned so the card keeps its real shape.
+   */
+  { placeholder = false }: { placeholder?: boolean } = {},
+) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   // The vehicle-scoped headers need VIN + brand + generation, all of which the
@@ -34,7 +43,7 @@ export function useClimateSettings(vehicle: Vehicle) {
 
   const query = useQuery({
     queryKey: CLIMATE_SETTINGS_QUERY_KEY,
-    enabled: session !== null,
+    enabled: session !== null && !placeholder,
     queryFn: async ({ signal }): Promise<ClimateSettings> => {
       const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
         headers: vehicleHeaders(session!, context),
@@ -100,15 +109,19 @@ export function useClimateSettings(vehicle: Vehicle) {
     },
   });
 
+  // Writes read from `query.data`, never the placeholder, so a control that
+  // somehow fires while redacted can't PUT stand-in settings to a real car.
   const change = (update: (settings: ClimateSettings) => ClimateSettings) => {
     if (query.data) {
       mutation.mutate(update(query.data));
     }
   };
 
+  const settings = placeholder ? PLACEHOLDER_CLIMATE_SETTINGS : query.data;
+
   return {
-    settings: query.data,
-    defrost: query.data ? defrostParameters(query.data) : {},
+    settings,
+    defrost: settings ? defrostParameters(settings) : {},
     setDefrost: (name: DefrostName, enabled: boolean) =>
       change((settings) => withDefrost(settings, name, enabled)),
     setTemperature: (value: number) => change((settings) => withTemperature(settings, value)),

@@ -1,3 +1,4 @@
+import type { ClimateSettings } from '@/data/climate-settings';
 import type { Vehicle } from '@/data/vehicle';
 
 /**
@@ -46,6 +47,13 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
     { label: 'Front passenger window', state: 'Closed' },
     { label: 'Rear driver window', state: 'Closed' },
     { label: 'Rear passenger window', state: 'Closed' },
+    // A status snapshot reports the hood, moonroof, and trunk alongside the
+    // doors and windows (docs/vehicle-status-and-control.md), and the Status
+    // screen gives them their own grid below the corners — so the placeholder
+    // carries all three to reserve that grid's height.
+    { label: 'Moonroof', state: 'Closed' },
+    { label: 'Trunk', state: 'Closed' },
+    { label: 'Hood', state: 'Closed' },
   ],
   capabilities: [
     { label: 'Lock & unlock', symbol: 'lock.fill' },
@@ -72,4 +80,44 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
       { label: 'Rear right', value: 35, low: false },
     ],
   },
+};
+
+/**
+ * Stand-in remote-start climate settings, for the same reason: the climate read
+ * is skipped while the screen is redacted (its headers would carry the
+ * placeholder VIN), and without settings the card would collapse to its header
+ * and then grow when the real ones land. The `available` flags are what decide
+ * whether the slider and defrost rows render at all, so they are all on — the
+ * full-height shape of a car that supports them.
+ */
+export const PLACEHOLDER_CLIMATE_SETTINGS: ClimateSettings = {
+  temperature: 72,
+  temperatureUnit: 'F',
+  minTemp: 65,
+  maxTemp: 85,
+  tempInterval: 1,
+  settingsOn: true,
+  acOperations: [
+    {
+      categoryName: 'defrost',
+      categoryDisplayName: 'Defrost',
+      available: true,
+      acParameters: [
+        {
+          name: 'frontDefrost',
+          displayName: 'Front Defrost',
+          iconUrl: null,
+          available: true,
+          enabled: false,
+        },
+        {
+          name: 'rearDefrost',
+          displayName: 'Rear Defrost',
+          iconUrl: null,
+          available: true,
+          enabled: false,
+        },
+      ],
+    },
+  ],
 };
