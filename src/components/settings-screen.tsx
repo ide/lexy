@@ -17,6 +17,7 @@ import {
   font,
   foregroundStyle,
   frame,
+  ignoreSafeArea,
   padding,
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
@@ -297,7 +298,11 @@ export default function SettingsScreen() {
       seedColor={colors.systemBlue}
       style={{ flex: 1, backgroundColor: colors.groupedBackground }}
     >
-      <ScrollView>
+      {/* No text input lives here, so the keyboard safe area can only leave
+          dead space at the bottom once sign-in has raised the keyboard. */}
+      <ScrollView
+        modifiers={[ignoreSafeArea({ regions: "keyboard", edges: "bottom" })]}
+      >
         <VStack
           alignment="leading"
           spacing={Spacing.four}
