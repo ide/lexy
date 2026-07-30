@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs><linearGradient id="redbright" gradientUnits="userSpaceOnUse" x1="699.8" y1="224.7" x2="878.5" y2="531.7"><stop offset="0.0" stop-color="rgb(240,58,66)" stop-opacity="1.0"/><stop offset="0.25" stop-color="rgb(251,42,49)" stop-opacity="1.0"/><stop offset="0.5" stop-color="rgb(240,16,21)" stop-opacity="1.0"/><stop offset="0.75" stop-color="rgb(222,10,13)" stop-opacity="1.0"/><stop offset="0.9" stop-color="rgb(200,7,9)" stop-opacity="1.0"/><stop offset="1.0" stop-color="rgb(190,6,8)" stop-opacity="1.0"/></linearGradient></defs>
+<path d="M 699.84 224.73 A 358.40 358.40 0 0 1 878.49 531.67" fill="none" stroke="url(#redbright)" stroke-width="25.8" stroke-linecap="butt"/>
+</svg>

@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs><linearGradient id="gmetal" gradientUnits="userSpaceOnUse" x1="0" y1="364" x2="0" y2="690"><stop offset="0.0" stop-color="rgb(250,250,251)"/><stop offset="0.2" stop-color="rgb(240,240,241)"/><stop offset="0.45" stop-color="rgb(220,220,222)"/><stop offset="0.72" stop-color="rgb(183,183,185)"/><stop offset="0.83" stop-color="rgb(169,169,171)"/><stop offset="0.86" stop-color="rgb(139,139,142)"/><stop offset="1.0" stop-color="rgb(142,142,145)"/></linearGradient></defs>
+<path d="M 505.19 370.66 A 14.00 14.00 0 0 1 517.45 363.99 L 592.07 365.79 A 5.00 5.00 0 0 1 596.18 373.46 L 440.06 620.08 A 12.00 12.00 0 0 0 450.20 638.50 L 742.55 638.50 A 4.00 4.00 0 0 1 745.22 645.48 L 697.02 688.72 A 5.00 5.00 0 0 1 693.69 690.00 L 394.90 690.00 A 48.00 48.00 0 0 1 354.00 616.88 Z" fill="url(#gmetal)"/>
+</svg>
