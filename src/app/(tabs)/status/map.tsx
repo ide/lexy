@@ -1,6 +1,7 @@
 import { Button, Host, Text } from "@expo/ui/swift-ui";
 import { buttonStyle, controlSize, font, frame } from "@expo/ui/swift-ui/modifiers";
 import { useObserve } from "expo-observe";
+import { Link } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,10 +11,12 @@ import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import { relativeTime } from "@/data/vehicle";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
+import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
 
 export default function CarLocationSheet() {
   const { data: vehicle } = useVehicle();
+  const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { resolved, openInMaps } = useMapsProvider();
   const { markInteractive } = useObserve();
   const insets = useSafeAreaInsets();
@@ -47,18 +50,23 @@ export default function CarLocationSheet() {
     <View style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.title}>{vehicle.nickname}</ThemedText>
+        {parkingAddress ? (
+          <ThemedText style={styles.address}>{parkingAddress}</ThemedText>
+        ) : null}
         <ThemedText type="small" themeColor="secondaryLabel">
           {`Last parked · location as of ${relativeTime(vehicle.updatedAt)}`}
         </ThemedText>
       </View>
 
-      <View style={styles.mapFrame}>
-        <CarLocationMap
-          latitude={latitude}
-          longitude={longitude}
-          label={vehicle.nickname}
-        />
-      </View>
+      <Link.AppleZoomTarget>
+        <View style={styles.mapFrame}>
+          <CarLocationMap
+            latitude={latitude}
+            longitude={longitude}
+            label={vehicle.nickname}
+          />
+        </View>
+      </Link.AppleZoomTarget>
 
       <View
         style={[
@@ -104,6 +112,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     lineHeight: 28,
+  },
+  address: {
+    fontSize: 17,
+    fontWeight: "600",
+    lineHeight: 22,
   },
   // The map is inset from the sheet's rounded corners (title above, button bar
   // below) and clipped so its own square corners never poke past the sheet.

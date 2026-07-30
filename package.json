@@ -17,6 +17,7 @@
     "expo-haptics": "~57.0.1",
     "expo-image": "~57.0.1",
     "expo-linking": "~57.0.4",
+    "expo-location": "~57.0.7",
     "expo-maps": "~57.0.1",
     "expo-network": "~57.0.1",
     "expo-observe": "~57.0.9",
