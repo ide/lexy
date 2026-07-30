@@ -15,6 +15,7 @@ import {
   disabled,
   font,
   foregroundStyle,
+  frame,
   padding,
   redacted,
   tint,
@@ -858,6 +859,49 @@ export default function CarDashboard() {
           }
         }}
         contentContainerStyle={styles.content}
+        // The sync lines are SwiftUI, so they ride in the scroll view's own
+        // footer slot rather than a `Host` of their own inside the RN content
+        // — one less SwiftUI island to measure and lay out. Being genuine
+        // SwiftUI, they take the real `redacted` modifier while loading, which
+        // also spares them from rendering the placeholder's timestamps as
+        // readable sentences; `disabled` keeps the popovers shut, the job the
+        // redacted wrapper's `pointerEvents` used to do here.
+        nativeFooter={
+          <VStack
+            alignment="center"
+            spacing={Spacing.half}
+            modifiers={[
+              frame({ maxWidth: Infinity }),
+              padding({ top: Spacing.four, bottom: Spacing.six }),
+              ...(loading ? [redacted(), disabled(true)] : []),
+            ]}
+          >
+            <FooterTimeRow
+              label={`Vehicle last synced with Lexus ${relativeTime(
+                vehicle.updatedAt,
+              )}.`}
+              timestamp={vehicle.updatedAt}
+            />
+            {/* During an automatic (non-pull-to-refresh) refresh, the data
+                freshness line becomes a quiet "Updating…" — the one bit of
+                state we actually have — then returns to the timestamp. */}
+            {autoRefreshing ? (
+              <Text
+                modifiers={[
+                  font({ textStyle: "footnote", weight: "regular" }),
+                  foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                ]}
+              >
+                Updating…
+              </Text>
+            ) : (
+              <FooterTimeRow
+                label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
+                timestamp={dataUpdatedAt}
+              />
+            )}
+          </VStack>
+        }
       >
         {!isOnline ? (
           <OfflineBanner
@@ -957,44 +1001,6 @@ export default function CarDashboard() {
             </View>
           ) : null}
 
-          <View style={styles.footer}>
-            <Host matchContents style={styles.footerHost}>
-              {/* The footer is genuine SwiftUI, so it takes the real
-                  `redacted` modifier rather than the RN redaction context —
-                  which also spares it from rendering the placeholder's
-                  timestamps as readable sentences. */}
-              <VStack
-                alignment="center"
-                spacing={Spacing.half}
-                modifiers={loading ? [redacted()] : undefined}
-              >
-                <FooterTimeRow
-                  label={`Vehicle last synced with Lexus ${relativeTime(
-                    vehicle.updatedAt,
-                  )}.`}
-                  timestamp={vehicle.updatedAt}
-                />
-                {/* During an automatic (non-pull-to-refresh) refresh, the data
-                    freshness line becomes a quiet "Updating…" — the one bit of
-                    state we actually have — then returns to the timestamp. */}
-                {autoRefreshing ? (
-                  <Text
-                    modifiers={[
-                      font({ textStyle: "footnote", weight: "regular" }),
-                      foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                    ]}
-                  >
-                    Updating…
-                  </Text>
-                ) : (
-                  <FooterTimeRow
-                    label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
-                    timestamp={dataUpdatedAt}
-                  />
-                )}
-              </VStack>
-            </Host>
-          </View>
         </Redacted>
       </NativeScrollView>
     </>
@@ -1005,7 +1011,9 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.three,
     gap: Spacing.three,
-    paddingBottom: Spacing.six,
+    // The native footer below the RN content carries the bottom spacing now,
+    // including the room the floating tab bar needs.
+    paddingBottom: 0,
   },
   // The Redacted wrapper groups the sections into one child of the scroll
   // content, so it re-applies the container's section gap inside itself.
@@ -1266,13 +1274,5 @@ const styles = StyleSheet.create({
   staleText: {
     fontSize: 13,
     lineHeight: 18,
-  },
-  footer: {
-    alignItems: "center",
-    marginTop: Spacing.two,
-    gap: Spacing.half,
-  },
-  footerHost: {
-    backgroundColor: "transparent",
   },
 });
