@@ -18,11 +18,13 @@ export function CarLocationMap({
   latitude,
   longitude,
   label,
+  showMarker = true,
   style,
 }: {
   latitude: number;
   longitude: number;
   label: string;
+  showMarker?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   if (Platform.OS !== "ios") {
@@ -45,14 +47,18 @@ export function CarLocationMap({
         coordinates: { latitude, longitude },
         zoom: DEFAULT_ZOOM,
       }}
-      markers={[
-        {
-          coordinates: { latitude, longitude },
-          title: label,
-          systemImage: "car.fill",
-          tintColor: colors.systemBlue as string,
-        },
-      ]}
+      markers={
+        showMarker
+          ? [
+              {
+                coordinates: { latitude, longitude },
+                title: label,
+                systemImage: "car.fill",
+                tintColor: colors.systemBlue as string,
+              },
+            ]
+          : []
+      }
       uiSettings={{
         // The map is a compact glanceable view, not a full navigation surface;
         // hide the scale bar and pitch toggle to keep it clean.

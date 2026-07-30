@@ -1,4 +1,12 @@
-import { Button, Host, Popover, Slider, Text, Toggle, VStack } from "@expo/ui/swift-ui";
+import {
+  Button,
+  Host,
+  Popover,
+  Slider,
+  Text,
+  Toggle,
+  VStack,
+} from "@expo/ui/swift-ui";
 import {
   buttonStyle,
   disabled,
@@ -11,7 +19,7 @@ import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
 import { Link, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -49,6 +57,7 @@ import {
   useClimateSettings,
 } from "@/hooks/use-climate-settings";
 import { useIsOnline } from "@/hooks/use-is-online";
+import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
 import { useAuth } from "@/auth/auth-context";
 
@@ -614,10 +623,10 @@ export default function CarDashboard() {
     refetch,
     dataUpdatedAt,
   } = useVehicle();
+  const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { markInteractive } = useObserve();
   const { session } = useAuth();
   const isOnline = useIsOnline();
-  const { width } = useWindowDimensions();
   const [forceSkeleton, setForceSkeleton] = useState(false);
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
   // sole indicator during a manual refresh (see autoRefreshing below).
@@ -731,68 +740,84 @@ export default function CarDashboard() {
         {!isOnline ? (
           <OfflineBanner detail="Showing the latest data we saved." />
         ) : null}
-        <Card style={[styles.cardPadding, styles.hero]}>
-          <View style={styles.heroImageFrame}>
-            <Image
-              source={{ uri: vehicle.imageUrl }}
-              style={styles.heroImage}
-              contentFit="contain"
-              transition={200}
-            />
-          </View>
-          <View
-            style={[
-              styles.pill,
-              {
-                backgroundColor: locked
-                  ? "rgba(52,199,89,0.15)"
-                  : "rgba(255,149,0,0.15)",
-              },
-            ]}
+        <Link
+          href="/status/map"
+          asChild
+          onPress={() => {
+            if (process.env.EXPO_OS === "ios") {
+              Haptics.selectionAsync();
+            }
+          }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Last parked"
+            accessibilityHint="Opens your car's last parked location"
           >
-            <Icon
-              name={locked ? "lock.fill" : "lock.open.fill"}
-              size={13}
-              tint={lockColor}
-            />
-            {/* The lock state is derived only from doors — windows and other
-                openings have no lock — so the label names doors explicitly. */}
-            <ThemedText type="small" style={{ color: lockColor }}>
-              {locked ? "Doors locked" : "Doors unlocked"}
-            </ThemedText>
-          </View>
-        </Card>
-
-        {/* Peek & pop: long-press previews the live map; tapping (the card or
-            the peek) opens the map sheet. `asChild` forwards the link behavior
-            to a real pressable instead of letting Link wrap this View card in
-            its default Text, whose inline line box clips rounded card edges. */}
-        <Link href="/status/map" asChild>
-          <Link.Trigger>
-            <Pressable style={{ width: width - Spacing.three * 2 }}>
-              <Card style={[styles.cardPadding, styles.inlineCard]}>
-                <View style={styles.odometerHeader}>
-                  <Icon name="parkingsign.circle.fill" size={17} tint={blue} />
-                  <ThemedText type="smallBold" themeColor="secondaryLabel">
-                    Last parked
+            <Card style={styles.hero}>
+              <Link.AppleZoom>
+                <View
+                  pointerEvents="none"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={styles.heroMap}
+                >
+                  <CarLocationMap
+                    latitude={vehicle.location.latitude}
+                    longitude={vehicle.location.longitude}
+                    label={vehicle.nickname}
+                    showMarker={false}
+                  />
+                </View>
+              </Link.AppleZoom>
+              <View pointerEvents="none" style={styles.heroMapVeil} />
+              <View pointerEvents="none" style={styles.heroImageFrame}>
+                <Image
+                  source={{ uri: vehicle.imageUrl }}
+                  style={styles.heroImage}
+                  contentFit="contain"
+                  transition={200}
+                />
+              </View>
+              <View pointerEvents="none" style={styles.heroActions}>
+                <View
+                  style={[
+                    styles.pill,
+                    {
+                      backgroundColor: locked
+                        ? "rgba(52,199,89,0.15)"
+                        : "rgba(255,149,0,0.15)",
+                    },
+                  ]}
+                >
+                  <Icon
+                    name={locked ? "lock.fill" : "lock.open.fill"}
+                    size={13}
+                    tint={lockColor}
+                  />
+                  {/* The lock state is derived only from doors — windows and other
+                      openings have no lock — so the label names doors explicitly. */}
+                  <ThemedText type="small" style={{ color: lockColor }}>
+                    {locked ? "Doors locked" : "Doors unlocked"}
                   </ThemedText>
                 </View>
-                <View style={styles.lastParkedAction}>
-                  <ThemedText type="smallBold" style={{ color: blue }}>
-                    View map
-                  </ThemedText>
-                  <Icon name="chevron.right" size={12} tint={blue} />
+                <View style={styles.lastParkedButton}>
+                  <Icon name="map.fill" size={14} tint={blue} />
+                  <View style={styles.lastParkedCopy}>
+                    <ThemedText type="smallBold" style={{ color: blue }}>
+                      Last parked
+                    </ThemedText>
+                    <ThemedText
+                      numberOfLines={1}
+                      style={styles.lastParkedAddress}
+                    >
+                      {parkingAddress ?? `Updated ${relativeTime(vehicle.updatedAt)}`}
+                    </ThemedText>
+                  </View>
                 </View>
-              </Card>
-            </Pressable>
-          </Link.Trigger>
-          <Link.Preview style={{ width: width - Spacing.three * 2, height: 260 }}>
-            <CarLocationMap
-              latitude={vehicle.location.latitude}
-              longitude={vehicle.location.longitude}
-              label={vehicle.nickname}
-            />
-          </Link.Preview>
+              </View>
+            </Card>
+          </Pressable>
         </Link>
 
         {/* Summary readouts stay above the REMOTE CONTROLS section title so
@@ -945,20 +970,33 @@ const styles = StyleSheet.create({
   },
   fuelSegmentTrack: {
     flex: 1,
-    height: 12,
-    borderRadius: 6,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: colors.fill,
     overflow: "hidden",
   },
   fuelSegmentFill: {
     height: "100%",
-    borderRadius: 6,
+    borderRadius: 4,
   },
   hero: {
+    position: "relative",
+    overflow: "hidden",
     alignItems: "center",
     gap: Spacing.two,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.three,
+    paddingHorizontal: Spacing.three,
+  },
+  heroMap: {
+    position: "absolute",
+    inset: 0,
+    opacity: 0.48,
+  },
+  heroMapVeil: {
+    position: "absolute",
+    inset: 0,
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
   // The Lexus vehicle render (from the telematics CDN) is a 700x631 PNG whose
   // car only occupies the middle ~46% of the height: it ships with ~26%
@@ -984,6 +1022,31 @@ const styles = StyleSheet.create({
     width: "110%",
     aspectRatio: 700 / 631,
   },
+  heroActions: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.two,
+  },
+  lastParkedButton: {
+    flexShrink: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    borderRadius: 100,
+    backgroundColor: "rgba(0,122,255,0.15)",
+  },
+  lastParkedCopy: {
+    flexShrink: 1,
+  },
+  lastParkedAddress: {
+    color: colors.secondaryLabel,
+    fontSize: 12,
+    lineHeight: 16,
+  },
   pill: {
     flexDirection: "row",
     alignItems: "center",
@@ -991,18 +1054,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
     borderRadius: 100,
-  },
-  // Label-left / value-right single-row cards (climate setpoint, last parked).
-  inlineCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  // Trailing "View map ›" affordance on the Last parked card.
-  lastParkedAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.half,
   },
   // Same row shape as inlineCard, for rows inside a multi-row card.
   inlineRow: {

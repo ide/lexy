@@ -17,3 +17,4 @@ minimumReleaseAgeExclude:
   - expo-system-ui@57.0.2
   - expo-updates@57.0.11
   - expo-widgets@57.0.7
+  - expo-location@57.0.7
