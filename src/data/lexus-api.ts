@@ -25,6 +25,13 @@ export const VEHICLE_DISCOVERY_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v2/vehicle
 // (docs/vehicle-status-and-control.md, "Reading status").
 export const VEHICLE_STATUS_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/status`;
 
+// Ask the vehicle to push fresh, complete state (wakes the telematics unit).
+// The plain status GET only echoes the car's last message, which is sparse
+// after a drive; POSTing here makes the car report everything again. The
+// official app POSTs `{ autoFixPopup: false }` and treats the response as the
+// new full snapshot (docs/vehicle-status-and-control.md).
+export const VEHICLE_REFRESH_STATUS_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/refresh-status`;
+
 // Climate setpoint + min/max, and per-VIN vehicle specification (grade,
 // transmission, drivetrain, in-service date).
 export const VEHICLE_CLIMATE_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/climate-settings`;

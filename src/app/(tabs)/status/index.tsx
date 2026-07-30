@@ -43,12 +43,14 @@ import {
 } from "@/data/vehicle";
 import type { AcParameter } from "@/data/climate-settings";
 import { queryClient } from "@/data/query-client";
+import { refreshVehicleStatus } from "@/data/refresh-status-sender";
 import {
   CLIMATE_SETTINGS_QUERY_KEY,
   useClimateSettings,
 } from "@/hooks/use-climate-settings";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
+import { useAuth } from "@/auth/auth-context";
 
 const green = colors.systemGreen as string;
 const blue = colors.systemBlue as string;
@@ -261,38 +263,81 @@ function StatusLine({ status }: { status: Status }) {
   );
 }
 
-function CornerCard({ corner }: { corner: Corner }) {
+// Of the given field timestamps, the oldest one that predates the latest
+// snapshot (`freshAt`) — i.e. a reading the most recent status didn't refresh.
+// Null when everything shown is as fresh as the latest snapshot.
+function oldestStale(freshAt: string, ats: (string | undefined)[]): string | null {
+  const fresh = new Date(freshAt).getTime();
+  if (!Number.isFinite(fresh)) {
+    return null;
+  }
+  let oldest: string | null = null;
+  for (const at of ats) {
+    if (!at) {
+      continue;
+    }
+    const time = new Date(at).getTime();
+    if (Number.isFinite(time) && time < fresh) {
+      if (oldest === null || time < new Date(oldest).getTime()) {
+        oldest = at;
+      }
+    }
+  }
+  return oldest;
+}
+
+// A muted "As of …" line shown when a card's reading is older than the latest
+// snapshot, so stale state isn't presented as current.
+function StaleNote({ at }: { at: string }) {
+  return (
+    <View style={styles.staleNote}>
+      <Icon name="clock.arrow.circlepath" size={11} tint={colors.secondaryLabel as string} />
+      <ThemedText type="small" themeColor="secondaryLabel" style={styles.staleText}>
+        As of {relativeTime(at)}
+      </ThemedText>
+    </View>
+  );
+}
+
+function CornerCard({ corner, freshAt }: { corner: Corner; freshAt: string }) {
+  const showDoor =
+    corner.door && (corner.door.state || corner.door.locked !== undefined);
+  const showWindow = Boolean(corner.window?.state);
+  const staleAt = oldestStale(freshAt, [
+    showDoor ? corner.door?.stateAt : undefined,
+    showDoor ? corner.door?.lockedAt : undefined,
+    showWindow ? corner.window?.stateAt : undefined,
+  ]);
   return (
     <Card style={[styles.cardPadding, styles.cornerCard]}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
         {corner.title}
       </ThemedText>
       <View style={styles.cornerStates}>
-        {corner.door && (corner.door.state || corner.door.locked !== undefined) ? (
-          <StatusLine status={doorStatus(corner.door)} />
-        ) : null}
+        {showDoor ? <StatusLine status={doorStatus(corner.door!)} /> : null}
         {/* A window with no position reading has nothing to report. */}
-        {corner.window?.state ? (
-          <StatusLine status={windowStatus(corner.window, corner.side)} />
+        {showWindow ? (
+          <StatusLine status={windowStatus(corner.window!, corner.side)} />
         ) : null}
       </View>
+      {staleAt ? <StaleNote at={staleAt} /> : null}
     </Card>
   );
 }
 
-function SideGrid({ corners }: { corners: Corner[] }) {
+function SideGrid({ corners, freshAt }: { corners: Corner[]; freshAt: string }) {
   const driver = corners.filter((c) => c.side === "driver");
   const passenger = corners.filter((c) => c.side === "passenger");
   return (
     <View style={styles.grid}>
       <View style={styles.gridColumn}>
         {driver.map((c) => (
-          <CornerCard key={c.key} corner={c} />
+          <CornerCard key={c.key} corner={c} freshAt={freshAt} />
         ))}
       </View>
       <View style={styles.gridColumn}>
         {passenger.map((c) => (
-          <CornerCard key={c.key} corner={c} />
+          <CornerCard key={c.key} corner={c} freshAt={freshAt} />
         ))}
       </View>
     </View>
@@ -331,10 +376,12 @@ function TireCell({
   );
 }
 
-function OpeningCard({ opening }: { opening: Closure }) {
+function OpeningCard({ opening, freshAt }: { opening: Closure; freshAt: string }) {
+  const staleAt = oldestStale(freshAt, [opening.stateAt]);
   return (
     <Card style={[styles.cardPadding, styles.cornerCard]}>
       <StatusLine status={openingStatus(opening)} />
+      {staleAt ? <StaleNote at={staleAt} /> : null}
     </Card>
   );
 }
@@ -564,6 +611,7 @@ export default function CarDashboard() {
     dataUpdatedAt,
   } = useVehicle();
   const { markInteractive } = useObserve();
+  const { session } = useAuth();
   const isOnline = useIsOnline();
   const { width } = useWindowDimensions();
   const [forceSkeleton, setForceSkeleton] = useState(false);
@@ -644,6 +692,18 @@ export default function CarDashboard() {
           // and only the native pull-to-refresh spinner shows.
           setManualRefreshing(true);
           try {
+            // A pull is explicit user intent, so prime a fresh full snapshot
+            // from the car first (rate-limited — it wakes the telematics unit).
+            // That makes the server-side status current, so the refetch's GET
+            // returns complete state instead of the last sparse push. If it's
+            // rate-limited or fails, the refetch below still runs.
+            if (session) {
+              await refreshVehicleStatus(session, {
+                vin: vehicle.vin,
+                brand: vehicle.brand,
+                generation: vehicle.generation,
+              });
+            }
             // Climate settings live in their own query and can change out from
             // under us (the official Lexus app edits the same settings), so a
             // manual refresh re-reads them alongside the vehicle.
@@ -714,7 +774,7 @@ export default function CarDashboard() {
         {corners.length > 0 ? (
           <View>
             <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
-            <SideGrid corners={corners} />
+            <SideGrid corners={corners} freshAt={vehicle.updatedAt} />
           </View>
         ) : null}
 
@@ -724,14 +784,14 @@ export default function CarDashboard() {
               {openings
                 .filter((_, i) => i % 2 === 0)
                 .map((o) => (
-                  <OpeningCard key={o.label} opening={o} />
+                  <OpeningCard key={o.label} opening={o} freshAt={vehicle.updatedAt} />
                 ))}
             </View>
             <View style={styles.gridColumn}>
               {openings
                 .filter((_, i) => i % 2 === 1)
                 .map((o) => (
-                  <OpeningCard key={o.label} opening={o} />
+                  <OpeningCard key={o.label} opening={o} freshAt={vehicle.updatedAt} />
                 ))}
             </View>
           </View>
@@ -1059,6 +1119,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.one,
+  },
+  staleNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.half,
+    marginTop: Spacing.half,
+  },
+  staleText: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   footer: {
     alignItems: "center",

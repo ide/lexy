@@ -12,8 +12,8 @@ import {
   businessHeaders,
   vehicleHeaders,
 } from '@/data/lexus-api';
-import { appendObservation, mergeClosures } from '@/data/closure-log';
-import { loadClosureLog, saveClosureLog } from '@/data/closure-log-store';
+import { applyObservation, readClosures } from '@/data/closure-state';
+import { loadClosureStore, saveClosureStore } from '@/data/closure-state-store';
 import { fetchVehicleSubscriptions } from '@/data/subscriptions';
 import {
   mapVehicle,
@@ -78,15 +78,16 @@ export function useVehicle() {
         ]);
         const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
         // The status feed alternates between full and sparse snapshots (see
-        // closure-log.ts). Fold this observation into the persisted record and
-        // render the merged view, so a lock-only snapshot after a drive doesn't
-        // blank out the doors/windows grid.
-        const log = appendObservation(await loadClosureLog(), mapped.vin, {
+        // closure-state.ts). Fold this observation into the persisted
+        // last-known-state store and render the materialized view, so a
+        // lock-only snapshot after a drive doesn't blank out the doors/windows
+        // grid — and each field keeps the time it was last observed.
+        const store = applyObservation(await loadClosureStore(), mapped.vin, {
           occurredAt: mapped.updatedAt,
           closures: mapped.closures,
         });
-        await saveClosureLog(log);
-        const vehicle = parseVehicle({ ...mapped, closures: mergeClosures(log) });
+        await saveClosureStore(store);
+        const vehicle = parseVehicle({ ...mapped, closures: readClosures(store) });
         Observe.logEvent('vehicle.load.completed', {
           attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
         });

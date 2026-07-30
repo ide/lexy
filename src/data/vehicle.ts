@@ -16,6 +16,13 @@ export type Closure = {
    */
   state?: 'Closed' | 'Open';
   locked?: boolean;
+  /**
+   * When each field was last observed (server occurrenceDate). Populated by the
+   * closure store (closure-state.ts) so the UI can flag a reading that the
+   * latest snapshot didn't refresh. Absent on freshly-mapped closures.
+   */
+  stateAt?: string;
+  lockedAt?: string;
 };
 
 export type Capability = {
