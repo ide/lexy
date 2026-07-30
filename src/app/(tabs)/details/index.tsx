@@ -1,5 +1,3 @@
-import * as Haptics from "expo-haptics";
-import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
@@ -19,40 +17,12 @@ import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
+import { openLexusApp } from "@/data/lexus-app";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
-
-// The Lexus OneApp App Store entry (iOS app com.lexus.oneApp). Hard fallback if
-// the universal link below can't be opened at all.
-const LEXUS_APP_STORE_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
-// Universal link on the Lexus app's associated domain. Confirmed from the app's
-// apple-app-site-association at ctlexusapp.com, which claims all paths for
-// appIDs FEL7N4H72G.com.lexus.oneApp / com.lexus.OneAppEnterprise. Opening it
-// launches the installed app directly; ctlexusapp.com is a Branch-hosted domain,
-// so when the app isn't installed it redirects to the App Store — one URL covers
-// both cases without guessing a custom scheme.
-//
-// The "/shop" path targets the Lexus app's Shop tab (where subscriptions are
-// managed) on a best-effort basis: every path opens the app per the AASA, and
-// Branch routes recognized paths deeper — worst case an unrecognized path
-// lands on the app's home, same as the bare domain.
-const LEXUS_APP_LINK = "https://ctlexusapp.com/shop";
-
-// "Manage your subscription in the Lexus app": open the Lexus app if it's
-// installed, otherwise (via the Branch domain's redirect) its App Store page.
-async function openManageSubscription() {
-  if (process.env.EXPO_OS === "ios") {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-  try {
-    await Linking.openURL(LEXUS_APP_LINK);
-  } catch {
-    await Linking.openURL(LEXUS_APP_STORE_URL);
-  }
-}
 
 function InfoRow({
   label,
@@ -121,14 +91,7 @@ export default function CarDetails() {
         {error instanceof NoVehicleError ? (
           <NoVehicleState retry={() => refetch()} />
         ) : (
-          <VehicleError
-            message={
-              error instanceof Error
-                ? error.message
-                : "The vehicle API did not return data."
-            }
-            retry={() => refetch()}
-          />
+          <VehicleError retry={() => refetch()} />
         )}
       </>
     );
@@ -248,7 +211,7 @@ export default function CarDetails() {
                 })}
                 <Pressable
                   accessibilityRole="link"
-                  onPress={openManageSubscription}
+                  onPress={() => openLexusApp("/shop")}
                   style={styles.manageRow}
                 >
                   {({ pressed }) => (
