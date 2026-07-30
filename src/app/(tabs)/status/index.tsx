@@ -1,6 +1,8 @@
 import {
   Button,
+  HStack,
   Host,
+  Image as SFImage,
   Popover,
   Slider,
   Text,
@@ -9,16 +11,17 @@ import {
 } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
+  controlSize,
   disabled,
   font,
   foregroundStyle,
   padding,
+  tint,
 } from "@expo/ui/swift-ui/modifiers";
 import * as Haptics from "expo-haptics";
-import { GlassView } from "expo-glass-effect";
 import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
-import { Link, Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
@@ -58,7 +61,6 @@ import {
   useClimateSettings,
 } from "@/hooks/use-climate-settings";
 import { useIsOnline } from "@/hooks/use-is-online";
-import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
 import { useAuth } from "@/auth/auth-context";
 
@@ -624,7 +626,6 @@ export default function CarDashboard() {
     refetch,
     dataUpdatedAt,
   } = useVehicle();
-  const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { markInteractive } = useObserve();
   const { session } = useAuth();
   const isOnline = useIsOnline();
@@ -736,66 +737,52 @@ export default function CarDashboard() {
         {!isOnline ? (
           <OfflineBanner detail="Showing the latest data we saved." />
         ) : null}
-        <Link
-          href="/status/map"
-          asChild
-          onPress={() => {
-            if (process.env.EXPO_OS === "ios") {
-              Haptics.selectionAsync();
-            }
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Last parked"
-            accessibilityHint="Opens your car's last parked location"
+        <Card style={styles.hero}>
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={styles.heroMap}
           >
-            <Card style={styles.hero}>
-              <View
-                pointerEvents="none"
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                style={styles.heroMap}
+            <CarLocationMap
+              latitude={vehicle.location.latitude}
+              longitude={vehicle.location.longitude}
+              label={vehicle.nickname}
+              showMarker={false}
+            />
+          </View>
+          <View pointerEvents="none" style={styles.heroMapVeil} />
+          <View pointerEvents="none" style={styles.heroImageFrame}>
+            <Image
+              source={{ uri: vehicle.imageUrl }}
+              style={styles.heroImage}
+              contentFit="contain"
+              transition={200}
+            />
+          </View>
+          {/* Only this button opens the map — the map behind the car is a
+              non-interactive backdrop. */}
+          <View style={styles.heroActions}>
+            <Host matchContents>
+              <Button
+                onPress={() => {
+                  if (process.env.EXPO_OS === "ios") {
+                    Haptics.selectionAsync();
+                  }
+                  router.push("/status/map");
+                }}
+                modifiers={[buttonStyle("glass"), tint(blue), controlSize("large")]}
               >
-                <CarLocationMap
-                  latitude={vehicle.location.latitude}
-                  longitude={vehicle.location.longitude}
-                  label={vehicle.nickname}
-                  showMarker={false}
-                />
-              </View>
-              <View pointerEvents="none" style={styles.heroMapVeil} />
-              <View pointerEvents="none" style={styles.heroImageFrame}>
-                <Image
-                  source={{ uri: vehicle.imageUrl }}
-                  style={styles.heroImage}
-                  contentFit="contain"
-                  transition={200}
-                />
-              </View>
-              <View pointerEvents="none" style={styles.heroActions}>
-                <GlassView
-                  glassEffectStyle="regular"
-                  tintColor={blue}
-                  style={styles.lastParkedButton}
-                >
-                  <Icon name="map.fill" size={14} tint={blue} />
-                  <View style={styles.lastParkedCopy}>
-                    <ThemedText type="smallBold" style={{ color: blue }}>
-                      Last parked
-                    </ThemedText>
-                    <ThemedText
-                      numberOfLines={1}
-                      style={styles.lastParkedAddress}
-                    >
-                      {parkingAddress ?? `Updated ${relativeTime(vehicle.updatedAt)}`}
-                    </ThemedText>
-                  </View>
-                </GlassView>
-              </View>
-            </Card>
-          </Pressable>
-        </Link>
+                <HStack spacing={Spacing.one}>
+                  <SFImage systemName="map.fill" size={15} color={blue} />
+                  <Text modifiers={[font({ textStyle: "subheadline", weight: "semibold" })]}>
+                    Last parked
+                  </Text>
+                </HStack>
+              </Button>
+            </Host>
+          </View>
+        </Card>
 
         {/* Summary readouts stay above the REMOTE CONTROLS section title so
             they don't read as controls. Location comes first, then the energy
@@ -1003,28 +990,7 @@ const styles = StyleSheet.create({
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
-    gap: Spacing.two,
-  },
-  lastParkedButton: {
-    flexShrink: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    borderRadius: 100,
-    // Clip the Liquid Glass tint to the pill; the blue comes from the glass
-    // `tintColor`, not a translucent fill, so there's no background here.
-    overflow: "hidden",
-  },
-  lastParkedCopy: {
-    flexShrink: 1,
-  },
-  lastParkedAddress: {
-    color: colors.secondaryLabel,
-    fontSize: 12,
-    lineHeight: 16,
+    justifyContent: "flex-end",
   },
   // Same row shape as inlineCard, for rows inside a multi-row card.
   inlineRow: {
