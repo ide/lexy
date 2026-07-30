@@ -1158,8 +1158,15 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.fill,
   },
+  // Longer and skinnier than the switch it stands in for, so it reads as a
+  // placeholder bar rather than a switch drawn in grey. The vertical margins
+  // make up the difference, holding the row at the switch's 31pt height so the
+  // card is the same height in both states.
   switchPlaceholder: {
-    borderRadius: 15.5,
+    width: 58,
+    height: 22,
+    marginVertical: 4.5,
+    borderRadius: 11,
     backgroundColor: colors.fill,
   },
   // Widest plausible readout ("29.5°C") reserves its slot so the slider
