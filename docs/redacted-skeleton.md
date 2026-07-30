@@ -1,7 +1,8 @@
 # Single-tree redacted skeletons
 
-Status: **prototype live on Details**; Status screen still uses the hand-built
-`vehicle-skeleton.tsx` pending sign-off on a full rollout.
+Status: **live on Details and Status**. Both hand-built skeleton files are gone
+(`details-skeleton.tsx`, `vehicle-skeleton.tsx`); every screen renders one tree
+in two modes.
 
 ## The problem
 
@@ -71,26 +72,50 @@ subscriptions; the placeholder uses 4 and 2. Wrong guesses change section
 heights when data lands — same limitation the old skeletons had, and the same
 one SwiftUI redaction has with placeholder collections.
 
-## Rolling out to Status (not yet done)
+## Status: the same recipe, plus what a live screen needed
 
-`status/index.tsx` + `vehicle-skeleton.tsx` would follow the same recipe:
+Status followed the Details recipe — `loading` computed the same way, the real
+tree fed `PLACEHOLDER_VEHICLE` inside `<Redacted loading style={styles.group}>`,
+the early-return branch dropped, the offline banner left outside the wrapper so
+it neither pulses nor redacts, and the "My Lexus" fallback title preserved (it
+is the placeholder's own nickname, and the nav bar sits outside the redacted
+tree anyway).
 
-1. Compute `loading` as Details does; render the real tree with
-   `PLACEHOLDER_VEHICLE` inside `<Redacted loading style={{gap}}>` within the
-   existing `NativeScrollView`; drop the early-return skeleton branch and
-   delete `vehicle-skeleton.tsx`.
-2. Status already uses the shared redaction-aware `Icon`; give the hero
-   `expo-image` a redacted variant (a `colors.fill` rounded block in the same
-   `heroImageFrame`) since `imageUrl` is empty while loading.
-3. The lock pill, tire cells, and status lines are all `ThemedText` + `Icon`,
-   so they redact for free; the placeholder's 8 closures / 4 tires produce the
-   grid shapes.
-4. Keep the "My Lexus" title fallback while `!data`, keep `onRefresh`, and keep
-   the native SwiftUI footer out of the redacted RN wrapper — either hide it
-   while loading (current skeleton has no footer) or apply the real
-   `redacted("placeholder")` modifier to it, which *does* work there since the
-   footer is genuine SwiftUI.
-5. The offline banner stays outside `<Redacted>` so it never pulses or redacts.
+Four things Details didn't have to deal with:
 
-Estimated cost: comparable to the Details change (~1 focused edit of the screen
-file plus placeholder tweaks); no new primitives needed.
+- **SwiftUI islands don't take RN redaction — and native redaction only covers
+  labels.** The hero's "Last parked" glass button, the climate switch and
+  slider, and the footer's popover rows are genuine SwiftUI inside `Host`s, so
+  `useRedacted()` can't style them. The real `redacted()` modifier does apply
+  within a host, and it is enough for the button and the footer (text becomes
+  grey bars). It is *not* enough for controls: a redacted `Toggle` still draws a
+  live blue switch and a redacted `Slider` still draws its filled track, so
+  those two are swapped for plain RN placeholders in the same slots while
+  loading. Redaction also doesn't disable anything — the button takes
+  `disabled(true)` alongside it.
+
+  One more wrinkle: placeholder redaction masks a label's *image* into a solid
+  rounded rect in the image's own color, so the button's blue `map.fill` glyph
+  came out a blue square. It gets the neutral fill color while redacted.
+- **Placeholder data must not address a real API.** The climate settings read is
+  vehicle-scoped through its headers, so `useClimateSettings` takes a
+  `placeholder` flag that disables the query and returns
+  `PLACEHOLDER_CLIMATE_SETTINGS` instead; writes still read from `query.data`,
+  so they no-op while redacted. Pull-to-refresh likewise primes the telematics
+  unit from `data`, never from the placeholder.
+- **A collapsed card is worse than a wrong one.** Without stand-in settings the
+  climate card would render its header alone and then grow by ~110pt when the
+  real settings landed — the `available` flags decide whether the slider and
+  defrost rows exist at all, so the placeholder turns them on.
+- **The hero, and anything else drawn in raw color.** The map and car render
+  give way to a single `colors.fill` block in the same `heroImageFrame`, since
+  `imageUrl` is empty on placeholder data and the map would otherwise animate to
+  null island. The fuel gauge needed the same treatment for a different reason:
+  its segment fills are plain colored views, not text or icons, so an unmodified
+  skeleton reported a confident green full tank. They take the track color while
+  redacted, leaving the gauge as its own empty tracks.
+
+The placeholder's closures now carry a moonroof, trunk, and hood alongside the
+eight doors and windows, because a real snapshot reports them
+(docs/vehicle-status-and-control.md) and they get their own grid below the
+corners. Same class of guess as the capability/subscription counts above.
