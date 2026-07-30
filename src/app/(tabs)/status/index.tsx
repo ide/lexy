@@ -1166,15 +1166,13 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: colors.fill,
   },
-  // Longer and skinnier than the switch it stands in for, so it reads as a
-  // placeholder bar rather than a switch drawn in grey. The vertical margins
-  // make up the difference, holding the row at the switch's 31pt height so the
-  // card is the same height in both states.
+  // The switch's own box, filled: it inherits the 51x31 above, so the
+  // placeholder and the live control occupy exactly the same space. At 31pt it
+  // also stays distinct from the 20pt text bars around it — including the
+  // temperature readout directly below it, which a wider, skinnier pill
+  // twinned.
   switchPlaceholder: {
-    width: 58,
-    height: 22,
-    marginVertical: 4.5,
-    borderRadius: 11,
+    borderRadius: 15.5,
     backgroundColor: colors.fill,
   },
   // Widest plausible readout ("29.5°C") reserves its slot so the slider
