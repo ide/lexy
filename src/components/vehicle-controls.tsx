@@ -125,6 +125,9 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
     .filter((value): value is boolean => value !== undefined);
   const locked = lockStates.length > 0 && lockStates.every(Boolean);
   const lockColor = locked ? green : orange;
+  // Pending while any door still shows an unconfirmed optimistic prediction
+  // from a just-issued lock/unlock command (see closure-state.ts).
+  const lockPending = vehicle.closures.some((closure) => closure.lockedOptimistic);
 
   const run = (control: Control) => {
     if (!session) {
@@ -210,7 +213,13 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
             tint={lockColor}
           />
           <ThemedText type="smallBold" style={{ color: lockColor }}>
-            {locked ? "Locked" : "Unlocked"}
+            {lockPending
+              ? locked
+                ? "Locking…"
+                : "Unlocking…"
+              : locked
+                ? "Locked"
+                : "Unlocked"}
           </ThemedText>
         </View>
       </View>
