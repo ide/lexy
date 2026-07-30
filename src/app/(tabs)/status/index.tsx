@@ -203,10 +203,18 @@ function doorStatus(door: Closure): Status {
     return { text: "Door open", color: orange, symbol: "lock.open.fill" };
   }
   if (door.locked === false) {
-    return { text: "Door unlocked", color: orange, symbol: "lock.open.fill" };
+    return {
+      text: door.lockedOptimistic ? "Unlocking…" : "Door unlocked",
+      color: orange,
+      symbol: "lock.open.fill",
+    };
   }
   if (door.locked === true) {
-    return { text: "Door locked", color: green, symbol: "lock.fill" };
+    return {
+      text: door.lockedOptimistic ? "Locking…" : "Door locked",
+      color: green,
+      symbol: "lock.fill",
+    };
   }
   // Position known (closed) but no lock reading.
   return { text: "Door closed", color: green, symbol: "checkmark.circle.fill" };
@@ -680,6 +688,9 @@ export default function CarDashboard() {
     .filter((locked): locked is boolean => locked !== undefined);
   const locked = lockStates.length > 0 && lockStates.every(Boolean);
   const lockColor = locked ? green : orange;
+  // A lock reading is pending while any door still shows an unconfirmed
+  // optimistic prediction from a just-issued lock/unlock command.
+  const lockPending = vehicle.closures.some((closure) => closure.lockedOptimistic);
   const { corners, openings: allOpenings } = groupClosures(vehicle.closures);
   // Openings (moonroof/trunk/hood) only have a position to report, so a sparse
   // snapshot entry without one has nothing to show.
@@ -758,7 +769,13 @@ export default function CarDashboard() {
             {/* The lock state is derived only from doors — windows and other
                 openings have no lock — so the label names doors explicitly. */}
             <ThemedText type="small" style={{ color: lockColor }}>
-              {locked ? "Doors locked" : "Doors unlocked"}
+              {lockPending
+                ? locked
+                  ? "Locking…"
+                  : "Unlocking…"
+                : locked
+                  ? "Doors locked"
+                  : "Doors unlocked"}
             </ThemedText>
           </View>
         </Card>
