@@ -7,6 +7,7 @@ import {
   lineLimit,
   opacity,
   redacted as redactedModifier,
+  unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -168,14 +169,23 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
               >
                 <ZStack>
                   {/* The tint at full strength would shout; a translucent wash
-                      of the same color keeps the icon the loudest element. */}
+                      of the same color keeps the icon the loudest element.
+                      While redacted the badge is exempted from the redaction
+                      it sits under — placeholder redaction masks an image into
+                      a rounded rect in its own color, which turned the circle
+                      into a tinted square — and drawn as the neutral fill
+                      circle the RN `Icon` uses, so the skeleton keeps the
+                      badge's shape without claiming a verdict. */}
                   <Image
                     systemName="circle.fill"
                     size={36}
-                    color={badgeTint}
-                    modifiers={[opacity(0.15)]}
+                    color={redacted ? colors.fill : badgeTint}
+                    modifiers={redacted ? [unredacted()] : [opacity(0.15)]}
                   />
-                  <Image systemName={summary.symbol} size={18} color={badgeTint} />
+                  {/* No glyph inside it: the symbol is the verdict. */}
+                  {redacted ? null : (
+                    <Image systemName={summary.symbol} size={18} color={badgeTint} />
+                  )}
                 </ZStack>
                 <VStack alignment="leading" spacing={Spacing.half}>
                   <Text
