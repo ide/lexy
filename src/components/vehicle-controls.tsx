@@ -136,12 +136,9 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       .then(async () => {
         haptic("success");
         // Acceptance, not completion; the optimistic fold and the reconciling
-        // refetches live in remote-command-effects.ts.
+        // refetches live in remote-command-effects.ts. No success alert: the
+        // section title already shows the pending state ("Locking…").
         await reflectAcceptedCommand(vehicle.vin, control.command);
-        Alert.alert(
-          "Command sent",
-          `Lexy asked your vehicle to ${control.actionLabel.toLowerCase()}. It can take a moment to complete.`,
-        );
       })
       .catch((error: unknown) => {
         haptic("error");
