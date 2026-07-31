@@ -13,7 +13,6 @@ import {
   classifyAuthenticationNode,
   continueAuthentication,
   exchangeSsoToken,
-  LexusAuthError,
   startAuthentication,
   type AuthenticationNode,
   type AuthenticationStep,
@@ -21,6 +20,7 @@ import {
   type RequestLike,
 } from "@/auth/lexus-auth";
 import { createSessionManager, SessionInvalidError } from "@/auth/session-manager";
+import { signInErrorMessage } from "@/auth/sign-in-error";
 import { secureTokenStore, type TokenStore } from "@/auth/token-store";
 import { clearVehicleCache } from "@/data/query-client";
 
@@ -97,13 +97,6 @@ function nodeChoices(node: AuthenticationNode | null): string[] {
     : [];
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof LexusAuthError || error instanceof Error) {
-    return error.message;
-  }
-  return "Lexus sign-in failed. Please try again.";
-}
-
 /**
  * The Lexus network and storage dependencies. Production uses the real Expo
  * `fetch` and Keychain-backed token store (the defaults); the Development tab's
@@ -153,7 +146,7 @@ export function AuthProvider({
           await tokenStore.clear();
           await clearVehicleCache();
           setSession(null);
-          setError(new SessionInvalidError().message);
+          setError(signInErrorMessage(new SessionInvalidError(), "restore"));
         },
       }),
     [fetch, tokenStore],
@@ -191,7 +184,7 @@ export function AuthProvider({
       .catch((cause) => {
         // A rejected grant already set its own message via onInvalid.
         if (active && !(cause instanceof SessionInvalidError)) {
-          setError(errorMessage(cause));
+          setError(signInErrorMessage(cause, "restore"));
         }
       })
       .finally(() => {
@@ -238,7 +231,8 @@ export function AuthProvider({
         }
         await advance(await continueAuthentication(current, value, fetch));
       } catch (cause) {
-        setError(errorMessage(cause));
+        // A numeric answer picks a delivery method; a string answers the code.
+        setError(signInErrorMessage(cause, typeof value === "number" ? "choice" : "otp"));
       } finally {
         setBusy(false);
       }
@@ -269,7 +263,7 @@ export function AuthProvider({
         setCredentials({ username, password });
         await advance(current);
       } catch (cause) {
-        setError(errorMessage(cause));
+        setError(signInErrorMessage(cause, "credentials"));
       } finally {
         setBusy(false);
       }
@@ -286,7 +280,10 @@ export function AuthProvider({
   const restartVerification = useCallback(
     async (reselectMethod: boolean) => {
       if (!credentials) {
-        setError("Your sign-in session expired. Please enter your email and password again.");
+        setError(
+          "Your sign-in session expired, so a new code can't be requested " +
+            "automatically. Enter your email and password again to start over.",
+        );
         setNode(null);
         return;
       }
@@ -321,7 +318,7 @@ export function AuthProvider({
         }
         await advance(current);
       } catch (cause) {
-        setError(errorMessage(cause));
+        setError(signInErrorMessage(cause, "resend"));
       } finally {
         setBusy(false);
       }
