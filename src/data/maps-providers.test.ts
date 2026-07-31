@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeMapsProviderChoice,
   getMapsProvider,
   isMapsProviderId,
   resolveMapsProvider,
@@ -110,5 +111,43 @@ describe("resolveMapsProvider", () => {
       remembered: false,
       staleSaved: false,
     });
+  });
+});
+
+describe("describeMapsProviderChoice", () => {
+  it("reads Unavailable when no maps app is installed", () => {
+    expect(
+      describeMapsProviderChoice({ kind: "none", staleSaved: false }, null),
+    ).toBe("Unavailable");
+  });
+
+  it("prefers the deliberate saved choice", () => {
+    expect(
+      describeMapsProviderChoice(
+        resolveMapsProvider("waze", ["apple", "waze"]),
+        getMapsProvider("waze"),
+      ),
+    ).toBe("Waze");
+  });
+
+  it("falls back to the auto-resolved single app", () => {
+    expect(
+      describeMapsProviderChoice(resolveMapsProvider(null, ["apple"]), null),
+    ).toBe("Apple Maps");
+  });
+
+  it("reads Not set with several apps and no saved choice", () => {
+    expect(
+      describeMapsProviderChoice(
+        resolveMapsProvider(null, ["apple", "google"]),
+        null,
+      ),
+    ).toBe("Not set");
+  });
+
+  it("reads the saved name even before the first probe resolves", () => {
+    expect(describeMapsProviderChoice(null, getMapsProvider("google"))).toBe(
+      "Google Maps",
+    );
   });
 });

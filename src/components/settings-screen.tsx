@@ -1,42 +1,41 @@
 import {
   Button,
-  Divider,
   Host,
   HStack,
   Image,
   ScrollView,
-  Spacer,
   Text,
   VStack,
 } from "@expo/ui/swift-ui";
 import {
-  background,
   buttonStyle,
   contentShape,
-  fixedSize,
   font,
   foregroundStyle,
   frame,
   padding,
   shapes,
 } from "@expo/ui/swift-ui/modifiers";
-import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useObserve } from "expo-observe";
 import { useEffect } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
+import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
+import { RowChevron, SettingsRow } from "@/components/swift-ui/settings-row";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
+import { describeMapsProviderChoice } from "@/data/maps-providers";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
+import { haptic } from "@/utils/haptics";
 
 type DevItem = {
   icon: SFSymbol;
   tint: string;
   title: string;
   subtitle: string;
-  href: string;
+  href: Href;
 };
 
 // The Development tab folded into Settings: these rows are only rendered when
@@ -66,98 +65,6 @@ const DEV_ITEMS: DevItem[] = [
   },
 ];
 
-function SectionHeader({ children }: { children: string }) {
-  return (
-    <Text
-      modifiers={[
-        font({ textStyle: "footnote", weight: "semibold" }),
-        foregroundStyle({ type: "hierarchical", style: "secondary" }),
-        padding({ leading: Spacing.three, bottom: Spacing.one }),
-        frame({ maxWidth: Infinity, alignment: "leading" }),
-      ]}
-    >
-      {children}
-    </Text>
-  );
-}
-
-function GroupCard({ children }: { children: React.ReactNode }) {
-  return (
-    <VStack
-      spacing={0}
-      modifiers={[
-        frame({ maxWidth: Infinity }),
-        background(
-          colors.card,
-          shapes.roundedRectangle({
-            cornerRadius: 18,
-            roundedCornerStyle: "continuous",
-          }),
-        ),
-      ]}
-    >
-      {children}
-    </VStack>
-  );
-}
-
-function DevRow({
-  item,
-  last,
-  onPress,
-}: {
-  item: DevItem;
-  last: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-      <Button
-        onPress={onPress}
-        modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
-      >
-        <HStack
-          alignment="center"
-          spacing={Spacing.three}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            contentShape(shapes.rectangle()),
-            padding({ horizontal: Spacing.three, vertical: Spacing.three }),
-          ]}
-        >
-          <Image systemName={item.icon} size={22} color={item.tint} />
-          <VStack
-            alignment="leading"
-            spacing={Spacing.half}
-            modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-          >
-            <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>
-              {item.title}
-            </Text>
-            <Text
-              modifiers={[
-                font({ textStyle: "footnote", weight: "medium" }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                fixedSize({ horizontal: false, vertical: true }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-              ]}
-            >
-              {item.subtitle}
-            </Text>
-          </VStack>
-          <Spacer />
-          <Image
-            systemName="chevron.right"
-            size={14}
-            color={colors.secondaryLabel}
-          />
-        </HStack>
-      </Button>
-      {last ? null : <Divider modifiers={[padding({ leading: Spacing.six })]} />}
-    </VStack>
-  );
-}
-
 // Choose which navigation app the car-location map hands off to. The resolved
 // provider sits below the row title instead of in a trailing column, preserving
 // the full width for long app names and Dynamic Type. When no maps app is
@@ -165,70 +72,20 @@ function DevRow({
 function MapsProviderRow() {
   const { resolved, saved, promptChoice } = useMapsProvider();
 
-  const none = resolved?.kind === "none";
-  // What to show on the right: the deliberate saved choice, else the
-  // auto-resolved single app, else "Not set" (multiple installed, none chosen).
-  const value = none
-    ? "Unavailable"
-    : saved
-      ? saved.name
-      : resolved?.kind === "ready"
-        ? resolved.provider.name
-        : "Not set";
-  const onPress = () => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.selectionAsync();
-    }
-    // promptChoice presents the chooser, or explains when nothing is installed.
-    promptChoice();
-  };
-
   return (
-    <Button
-      onPress={onPress}
-      modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
-    >
-      <HStack
-        alignment="center"
-        spacing={Spacing.three}
-        modifiers={[
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-          contentShape(shapes.rectangle()),
-          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
-        ]}
-      >
-        <Image
-          systemName="map.fill"
-          size={22}
-          color={colors.systemBlue}
-        />
-        <VStack
-          alignment="leading"
-          spacing={Spacing.half}
-          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-        >
-          <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>
-            Maps app
-          </Text>
-          <Text
-            modifiers={[
-              font({ textStyle: "footnote", weight: "medium" }),
-              foregroundStyle({ type: "hierarchical", style: "secondary" }),
-              fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-            ]}
-          >
-            {value}
-          </Text>
-        </VStack>
-        <Spacer />
-        <Image
-          systemName="chevron.right"
-          size={14}
-          color={colors.secondaryLabel}
-        />
-      </HStack>
-    </Button>
+    <SettingsRow
+      icon="map.fill"
+      tint={colors.systemBlue}
+      title="Maps app"
+      subtitle={describeMapsProviderChoice(resolved, saved)}
+      accessory=<RowChevron />
+      onPress={() => {
+        haptic("selection");
+        // promptChoice presents the chooser, or explains when nothing is
+        // installed.
+        promptChoice();
+      }}
+    />
   );
 }
 
@@ -237,9 +94,7 @@ function SignOutRow() {
   const red = colors.systemRed;
 
   const onPress = () => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    haptic("impact-medium");
     // signOut clears the stored session + query cache; the Stack.Protected
     // guard in the root layout then swaps back to the sign-in screen.
     signOut().catch(() => {
@@ -285,11 +140,9 @@ export default function SettingsScreen() {
     markInteractive();
   }, [markInteractive]);
 
-  const open = (href: string) => {
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.selectionAsync();
-    }
-    router.push(href as never);
+  const open = (href: Href) => {
+    haptic("selection");
+    router.push(href);
   };
 
   return (
@@ -315,9 +168,13 @@ export default function SettingsScreen() {
               <SectionHeader>DEVELOPER TOOLS</SectionHeader>
               <GroupCard>
                 {DEV_ITEMS.map((item, index) => (
-                  <DevRow
-                    key={item.href}
-                    item={item}
+                  <SettingsRow
+                    key={item.title}
+                    icon={item.icon}
+                    tint={item.tint}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    accessory=<RowChevron />
                     last={index === DEV_ITEMS.length - 1}
                     onPress={() => open(item.href)}
                   />

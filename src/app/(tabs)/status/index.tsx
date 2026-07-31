@@ -20,7 +20,6 @@ import {
   redacted,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useObserve } from "expo-observe";
 import { router, Stack } from "expo-router";
@@ -68,6 +67,7 @@ import {
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
 import { useAuth } from "@/auth/auth-context";
+import { haptic } from "@/utils/haptics";
 
 const green = colors.systemGreen;
 const blue = colors.systemBlue;
@@ -449,9 +449,7 @@ function DefrostToggle({
       accessibilityState={{ checked: active, disabled }}
       disabled={disabled}
       onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.selectionAsync();
-        }
+        haptic("selection");
         onToggle(!active);
       }}
       style={styles.defrostToggle}
@@ -690,9 +688,7 @@ function HeroCard({ vehicle }: { vehicle: Vehicle }) {
           <Host style={styles.heroAction}>
             <Button
               onPress={() => {
-                if (process.env.EXPO_OS === "ios") {
-                  Haptics.selectionAsync();
-                }
+                haptic("selection");
                 router.push("/status/map");
               }}
               modifiers={[buttonStyle("glass"), tint(blue), controlSize("large")]}
