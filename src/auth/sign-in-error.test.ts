@@ -80,7 +80,7 @@ describe("signInErrorMessage", () => {
 
   it("explains throttling and server errors as temporary", () => {
     const throttled = new LexusAuthError("Too many requests", "http_error", 429);
-    expect(signInErrorMessage(throttled, "credentials")).toContain("wait a few minutes");
+    expect(signInErrorMessage(throttled, "credentials")).toContain("Wait a few minutes");
     const server = new LexusAuthError("Server error", "http_error", 500);
     const message = signInErrorMessage(server, "otp");
     expect(message).toContain("on its end");
