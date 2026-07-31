@@ -1,3 +1,5 @@
+import type { SFSymbol } from 'sf-symbols-typescript';
+
 type RunningUpdate = {
   updateId?: string;
   createdAt?: Date;
@@ -200,4 +202,100 @@ export function buildUpdateEntries({
   }
 
   return entries;
+}
+
+export type UpdateSystemState = {
+  isRestarting: boolean;
+  isDownloading: boolean;
+  isChecking: boolean;
+  isUpdatePending: boolean;
+  isUpdateAvailable: boolean;
+  downloadProgress?: number;
+  lastCheckForUpdateTimeSinceRestart?: Date;
+};
+
+// Semantic tone rather than a color so this module stays theme-free; the
+// screen maps good → green, busy → blue, attention → orange.
+export type UpdateStatusTone = 'good' | 'busy' | 'attention';
+
+export type UpdateStatus = {
+  icon: SFSymbol;
+  title: string;
+  detail: string;
+  tone: UpdateStatusTone;
+};
+
+/** The headline status card copy for the update diagnostics screen. */
+export function describeUpdateStatus(
+  enabled: boolean,
+  state: UpdateSystemState,
+): UpdateStatus {
+  if (!enabled) {
+    return {
+      icon: 'exclamationmark.triangle.fill',
+      title: 'Updates disabled',
+      detail: 'This build is not configured to use expo-updates.',
+      tone: 'attention',
+    };
+  }
+  if (state.isRestarting) {
+    return {
+      icon: 'arrow.clockwise',
+      title: 'Reloading',
+      detail: 'Switching to the newest downloaded update.',
+      tone: 'busy',
+    };
+  }
+  if (state.isDownloading) {
+    return {
+      icon: 'arrow.down.circle.fill',
+      title: `Downloading ${Math.round((state.downloadProgress ?? 0) * 100)}%`,
+      detail: 'The update will be ready to launch when the download completes.',
+      tone: 'busy',
+    };
+  }
+  if (state.isChecking) {
+    return {
+      icon: 'magnifyingglass',
+      title: 'Checking for updates',
+      detail: 'Contacting the update server for this channel and runtime.',
+      tone: 'busy',
+    };
+  }
+  if (state.isUpdatePending) {
+    return {
+      icon: 'arrow.down.circle.fill',
+      title: 'Update ready',
+      detail: 'Downloaded and scheduled for the next reload or cold launch.',
+      tone: 'good',
+    };
+  }
+  if (state.isUpdateAvailable) {
+    return {
+      icon: 'sparkles',
+      title: 'Update available',
+      detail: 'A compatible update is available but has not been downloaded.',
+      tone: 'attention',
+    };
+  }
+  return {
+    icon: 'checkmark.circle.fill',
+    title: 'Running normally',
+    detail: state.lastCheckForUpdateTimeSinceRestart
+      ? 'No newer compatible update was found at the last check.'
+      : 'Use Check Now to ask the update server for the latest version.',
+    tone: 'good',
+  };
+}
+
+export function formatUpdateDate(
+  value: Date | undefined,
+  fallback = 'Not reported',
+): string {
+  return value
+    ? value.toLocaleString([], {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    : fallback;
 }

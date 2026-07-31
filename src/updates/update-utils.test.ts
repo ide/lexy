@@ -4,6 +4,8 @@ import {
   buildUpdateEntries,
   describeKnownUpdate,
   describeNativeLog,
+  describeUpdateStatus,
+  formatUpdateDate,
   mergeUpdateActivity,
   resolveLastCheck,
   shortUpdateId,
@@ -158,5 +160,77 @@ describe('describeKnownUpdate', () => {
       title: 'Downloaded update',
       detail: 'Stored on this device. Reload to activate it.',
     });
+  });
+});
+
+describe('describeUpdateStatus', () => {
+  const IDLE = {
+    isRestarting: false,
+    isDownloading: false,
+    isChecking: false,
+    isUpdatePending: false,
+    isUpdateAvailable: false,
+  };
+
+  it('flags a build without expo-updates before anything else', () => {
+    expect(describeUpdateStatus(false, { ...IDLE, isDownloading: true }).title).toBe(
+      'Updates disabled',
+    );
+  });
+
+  it('orders in-flight states restart > download > check', () => {
+    expect(
+      describeUpdateStatus(true, {
+        ...IDLE,
+        isRestarting: true,
+        isDownloading: true,
+        isChecking: true,
+      }).title,
+    ).toBe('Reloading');
+    expect(
+      describeUpdateStatus(true, {
+        ...IDLE,
+        isDownloading: true,
+        downloadProgress: 0.42,
+      }).title,
+    ).toBe('Downloading 42%');
+    expect(describeUpdateStatus(true, { ...IDLE, isChecking: true }).tone).toBe('busy');
+  });
+
+  it('prefers a pending download over a merely available update', () => {
+    const status = describeUpdateStatus(true, {
+      ...IDLE,
+      isUpdatePending: true,
+      isUpdateAvailable: true,
+    });
+    expect(status.title).toBe('Update ready');
+    expect(status.tone).toBe('good');
+  });
+
+  it('describes an available update as needing attention', () => {
+    expect(
+      describeUpdateStatus(true, { ...IDLE, isUpdateAvailable: true }).tone,
+    ).toBe('attention');
+  });
+
+  it('varies the normal detail by whether a check has run since restart', () => {
+    expect(describeUpdateStatus(true, IDLE).detail).toContain('Use Check Now');
+    expect(
+      describeUpdateStatus(true, {
+        ...IDLE,
+        lastCheckForUpdateTimeSinceRestart: new Date(),
+      }).detail,
+    ).toContain('No newer compatible update');
+  });
+});
+
+describe('formatUpdateDate', () => {
+  it('falls back for missing dates', () => {
+    expect(formatUpdateDate(undefined)).toBe('Not reported');
+    expect(formatUpdateDate(undefined, 'Never')).toBe('Never');
+  });
+
+  it('formats a date as medium date + short time', () => {
+    expect(formatUpdateDate(new Date('2026-07-30T12:34:00'))).toMatch(/2026/);
   });
 });
