@@ -24,6 +24,12 @@ export type FieldRecord<T> = {
    * See applyOptimisticLock and the reconciliation in foldLocked.
    */
   optimistic?: boolean;
+  /**
+   * The last real server reading an optimistic prediction is standing in for.
+   * A prediction the vehicle never confirms expires back to this rather than
+   * to another guess — see expireOptimisticLocks. Absent on settled values.
+   */
+  previous?: { value: T; at: string };
 };
 
 export type ClosureRecord = {
@@ -120,6 +126,16 @@ export function applyObservation(
 }
 
 /**
+ * How long an unconfirmed prediction may stand before it expires back to the
+ * last real reading. The in-app reconciliation (remote-command-effects.ts) runs
+ * well inside this and expires its own prediction the moment it gives up; this
+ * is the backstop for a prediction that outlived the run that made it — the app
+ * was backgrounded mid-reconcile, or killed and relaunched — so a guess can
+ * never be rendered as state indefinitely.
+ */
+export const OPTIMISTIC_LOCK_MAX_AGE_MS = 90 * 1000;
+
+/**
  * Optimistically set the lock state of every door to the value a just-accepted
  * lock/unlock command should produce — flagged optimistic and stamped `at` (the
  * client's send time, ISO). A "door" is any closure that already carries a lock
@@ -127,6 +143,9 @@ export function applyObservation(
  * we can name. The next server reading reconciles each prediction via the fold
  * in applyObservation (confirm / correct / ignore-if-stale). A different VIN
  * resets the store.
+ *
+ * The reading the prediction displaces is kept as `previous`, so a command the
+ * vehicle never confirms can fall back to the last thing it actually told us.
  */
 export function applyOptimisticLock(
   store: ClosureStore | null,
@@ -137,10 +156,18 @@ export function applyOptimisticLock(
   const base = store && store.vin === vin ? store : emptyStore(vin);
   const closures: Record<string, ClosureRecord> = {};
   for (const [label, record] of Object.entries(base.closures)) {
-    closures[label] =
-      record.locked !== undefined
-        ? { ...record, locked: { value: locked, at, optimistic: true } }
-        : record;
+    const held = record.locked;
+    if (held === undefined) {
+      closures[label] = record;
+      continue;
+    }
+    // A second command issued before the first settles keeps the original
+    // server reading as the fallback — never the earlier prediction.
+    const previous = held.optimistic ? held.previous : { value: held.value, at: held.at };
+    closures[label] = {
+      ...record,
+      locked: { value: locked, at, optimistic: true, ...(previous ? { previous } : {}) },
+    };
   }
   return { vin, closures, seq: base.seq };
 }
@@ -148,6 +175,46 @@ export function applyOptimisticLock(
 /** Whether any closure still carries an unconfirmed optimistic lock prediction. */
 export function hasOptimisticLock(store: ClosureStore | null): boolean {
   return Object.values(store?.closures ?? {}).some((record) => record.locked?.optimistic);
+}
+
+/**
+ * Drop every optimistic lock prediction stamped at least `maxAgeMs` before
+ * `now`, restoring the reading it displaced (or leaving the closure's lock
+ * unknown, if there was none). The vehicle accepting a command is not the
+ * vehicle performing it — a lock the car refuses (an open door, say) is simply
+ * never reported back, and the fold has no newer reading to correct the
+ * prediction with, so without an expiry "Locking…" stands until the car
+ * happens to push a fresh snapshot.
+ *
+ * Returns the store unchanged (same reference) when nothing expired, so callers
+ * can tell a no-op from a revert. An unparseable stamp counts as expired.
+ */
+export function expireOptimisticLocks(
+  store: ClosureStore | null,
+  now: number = Date.now(),
+  maxAgeMs: number = OPTIMISTIC_LOCK_MAX_AGE_MS,
+): ClosureStore | null {
+  if (!store) {
+    return store;
+  }
+  const closures: Record<string, ClosureRecord> = {};
+  let expired = false;
+  for (const [label, record] of Object.entries(store.closures)) {
+    const held = record.locked;
+    if (!held?.optimistic || now - parseTime(held.at) < maxAgeMs) {
+      closures[label] = record;
+      continue;
+    }
+    expired = true;
+    const reverted: ClosureRecord = { ...record };
+    if (held.previous) {
+      reverted.locked = { ...held.previous };
+    } else {
+      delete reverted.locked;
+    }
+    closures[label] = reverted;
+  }
+  return expired ? { ...store, closures } : store;
 }
 
 /**

@@ -12,7 +12,7 @@ import {
   businessHeaders,
   vehicleHeaders,
 } from "@/data/lexus-api";
-import { applyObservation, readClosures } from "@/data/closure-state";
+import { applyObservation, expireOptimisticLocks, readClosures } from "@/data/closure-state";
 import { loadClosureStore, saveClosureStore } from "@/data/closure-state-store";
 import { fetchVehicleSubscriptions } from "@/data/subscriptions";
 import {
@@ -71,7 +71,11 @@ export async function loadVehicle(session: LexusSession, signal: AbortSignal): P
     // last-known-state store and render the materialized view, so a
     // lock-only snapshot after a drive doesn't blank out the doors/windows
     // grid — and each field keeps the time it was last observed.
-    const store = applyObservation(await loadClosureStore(), mapped.vin, {
+    // Drop any optimistic lock prediction that has outlived its window before
+    // folding — the run that made it (remote-command-effects.ts) expires its
+    // own, but a backgrounded or relaunched app leaves one behind, and a guess
+    // must never outlive the attempt to confirm it.
+    const store = applyObservation(expireOptimisticLocks(await loadClosureStore()), mapped.vin, {
       occurredAt: mapped.updatedAt,
       closures: mapped.closures,
     });
