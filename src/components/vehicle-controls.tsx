@@ -239,7 +239,15 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
     <View>
       <View style={styles.titleRow}>
         <SectionTitle style={styles.title}>REMOTE CONTROLS</SectionTitle>
+        {/* Lock state before engine state, matching the button order below
+            (Lock, Unlock, then Start/Stop). */}
         <View style={styles.status}>
+          <View style={styles.statusItem}>
+            <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
+            <ThemedText type="smallBold" style={{ color: lockColor }}>
+              {lockPending ? (locked ? "Locking…" : "Unlocking…") : locked ? "Locked" : "Unlocked"}
+            </ThemedText>
+          </View>
           {engineLabel ? (
             <View style={styles.statusItem}>
               <Icon name="power" size={13} tint={engineColor} />
@@ -248,12 +256,6 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
               </ThemedText>
             </View>
           ) : null}
-          <View style={styles.statusItem}>
-            <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
-            <ThemedText type="smallBold" style={{ color: lockColor }}>
-              {lockPending ? (locked ? "Locking…" : "Unlocking…") : locked ? "Locked" : "Unlocked"}
-            </ThemedText>
-          </View>
         </View>
       </View>
       {/* One Host for the whole row, not one per button: a measuring host
