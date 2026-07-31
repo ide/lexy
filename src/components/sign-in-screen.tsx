@@ -1,6 +1,7 @@
 import {
   Divider,
   Host,
+  HStack,
   ScrollView,
   SecureField,
   type SecureFieldRef,
@@ -235,7 +236,9 @@ export default function SignInScreen() {
           ) : null}
 
           {screen === "choice" ? (
-            <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
+            // One row of equal-width choices: each button's label stretches, so
+            // the HStack splits the width evenly between them.
+            <HStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
               {choices.map((choice, index) => (
                 <ChoiceButton
                   key={choice}
@@ -245,7 +248,7 @@ export default function SignInScreen() {
                   onPress={() => chooseMethod(index)}
                 />
               ))}
-            </VStack>
+            </HStack>
           ) : null}
 
           {screen === "otp" ? (
