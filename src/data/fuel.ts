@@ -1,4 +1,4 @@
-import type { SFSymbol } from 'sf-symbols-typescript';
+import type { SFSymbol } from "sf-symbols-typescript";
 
 // The fuel gauge is drawn as a bar divided into quarters — mirroring the car's
 // dashboard — rather than a precise percentage, because the underlying reading
@@ -35,7 +35,7 @@ export function isElectric(fuelType: string): boolean {
  * stays neutral, and the warning colors escalate as the tank drains
  * (yellow ≤25%, orange ≤15%, red ≤5%).
  */
-export type FuelLevel = 'full' | 'high' | 'medium' | 'low' | 'critical';
+export type FuelLevel = "full" | "high" | "medium" | "low" | "critical";
 
 export type FuelGauge = {
   /** Section label — "Fuel" for combustion/hybrid, "Charge" for EVs. */
@@ -49,18 +49,18 @@ export type FuelGauge = {
 
 function fuelLevel(percent: number): FuelLevel {
   if (percent >= 100) {
-    return 'full';
+    return "full";
   }
   if (percent > 25) {
-    return 'high';
+    return "high";
   }
   if (percent > 15) {
-    return 'medium';
+    return "medium";
   }
   if (percent > 5) {
-    return 'low';
+    return "low";
   }
-  return 'critical';
+  return "critical";
 }
 
 /**
@@ -71,9 +71,9 @@ export function fuelGauge(fuelType: string, percent: number): FuelGauge {
   const p = Math.round(clampPercent(percent));
   const electric = isElectric(fuelType);
   return {
-    label: electric ? 'Charge' : 'Fuel',
-    symbol: electric ? 'bolt.fill' : 'fuelpump.fill',
-    valueText: p >= 100 ? 'Full' : `${p}%`,
+    label: electric ? "Charge" : "Fuel",
+    symbol: electric ? "bolt.fill" : "fuelpump.fill",
+    valueText: p >= 100 ? "Full" : `${p}%`,
     level: fuelLevel(p),
     fills: fuelSegmentFills(p),
   };

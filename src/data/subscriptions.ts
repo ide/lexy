@@ -1,5 +1,5 @@
-import type { LexusSession, RequestLike } from '@/auth/lexus-auth';
-import { LEXUS_HOSTS, businessHeaders, type VehicleContext } from './lexus-api';
+import type { LexusSession, RequestLike } from "@/auth/lexus-auth";
+import { LEXUS_HOSTS, businessHeaders, type VehicleContext } from "./lexus-api";
 
 // Connected-services subscription state for a vehicle: the "all services" list
 // (Remote/Safety/Service/Drive/Wi-Fi Connect), bucketed into paid/trial/
@@ -22,11 +22,7 @@ export type SubscriptionVehicle = VehicleContext & {
 
 // Where in the app the request originates. The server accepts any of these; the
 // subscriptions screen uses SUBSCRIPTIONS.
-export type SubscriptionEntryPoint =
-  | 'ADDVEHICLE'
-  | 'DASHBOARD'
-  | 'PRIVACYPORTAL'
-  | 'SUBSCRIPTIONS';
+export type SubscriptionEntryPoint = "ADDVEHICLE" | "DASHBOARD" | "PRIVACYPORTAL" | "SUBSCRIPTIONS";
 
 export type Subscription = {
   subscriptionID?: string;
@@ -83,23 +79,23 @@ export type ServiceState = {
   name: string;
   productCode?: string;
   status: string;
-  bucket: 'paid' | 'trial' | 'complimentary';
+  bucket: "paid" | "trial" | "complimentary";
   active: boolean;
   endDate?: string;
 };
 
 // A subscription is usable when the server reports it ACTIVE (casing varies).
 export function isActiveStatus(status: string | undefined): boolean {
-  return (status ?? '').trim().toUpperCase() === 'ACTIVE';
+  return (status ?? "").trim().toUpperCase() === "ACTIVE";
 }
 
 // Collapse the paid/trial/complimentary buckets into one normalized list of the
 // vehicle's current connected-services states.
 export function summarizeSubscriptions(payload: VehicleSubscriptionsPayload): ServiceState[] {
-  const buckets: [keyof VehicleSubscriptionsPayload, ServiceState['bucket']][] = [
-    ['paidSubscriptions', 'paid'],
-    ['trialSubscriptions', 'trial'],
-    ['complimentarySubscriptions', 'complimentary'],
+  const buckets: [keyof VehicleSubscriptionsPayload, ServiceState["bucket"]][] = [
+    ["paidSubscriptions", "paid"],
+    ["trialSubscriptions", "trial"],
+    ["complimentarySubscriptions", "complimentary"],
   ];
   const states: ServiceState[] = [];
   for (const [key, bucket] of buckets) {
@@ -115,7 +111,7 @@ export function summarizeSubscriptions(payload: VehicleSubscriptionsPayload): Se
       states.push({
         name,
         productCode: sub.productCode,
-        status: sub.status ?? 'UNKNOWN',
+        status: sub.status ?? "UNKNOWN",
         bucket,
         active: isActiveStatus(sub.status),
         endDate: sub.subscriptionEndDate,
@@ -138,21 +134,23 @@ function subscriptionHeaders(
   return {
     ...businessHeaders(session),
     VIN: vehicle.vin,
-    'X-BRAND': vehicle.brand,
+    "X-BRAND": vehicle.brand,
     GENERATION: vehicle.generation,
     REGION: vehicle.region,
-    'ASI-CODE': vehicle.asiCode,
-    'HW-TYPE': vehicle.hwType,
+    "ASI-CODE": vehicle.asiCode,
+    "HW-TYPE": vehicle.hwType,
     DATETIME: String(now()),
     entryPoint,
-    'accept-encoding': 'deflate',
+    "accept-encoding": "deflate",
   };
 }
 
 async function readPayload<T>(response: Response): Promise<T> {
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(`Lexus subscriptions request failed (${response.status}): ${text.slice(0, 300)}`);
+    throw new Error(
+      `Lexus subscriptions request failed (${response.status}): ${text.slice(0, 300)}`,
+    );
   }
   return (JSON.parse(text) as { payload: T }).payload;
 }
@@ -170,11 +168,11 @@ export async function fetchVehicleSubscriptions(
 ): Promise<VehicleSubscriptionsPayload> {
   const request = options.request ?? globalThis.fetch;
   const response = await request(SUBSCRIPTIONS_ENDPOINT, {
-    method: 'GET',
+    method: "GET",
     headers: subscriptionHeaders(
       session,
       vehicle,
-      options.entryPoint ?? 'SUBSCRIPTIONS',
+      options.entryPoint ?? "SUBSCRIPTIONS",
       options.now ?? Date.now,
     ),
   });

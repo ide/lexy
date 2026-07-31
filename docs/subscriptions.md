@@ -18,11 +18,11 @@ Host is `onecdn.telematicsct.com`, and requests carry the standard headers from
 
 Every non-constant value on this page comes from one of three sources:
 
-| Source | Provides | Obtained from |
-|---|---|---|
-| **Session tokens** | `Authorization` bearer, customer GUID | The OAuth token exchange at sign-in. The customer GUID is the `extension_tmsguid` claim decoded from the ID token (the same value sent as the `X-GUID` header). See [authentication.md](./authentication.md#per-request-context). |
-| **Discovery record** | Per-vehicle `VIN`, `brand`, `generation`, `region`, `asiCode`, `hwType` | `GET /oneapi/v2/vehicle/guid`, the per-vehicle discovery call. Each header below names the discovery field it maps to. |
-| **The client** | `DATETIME`, `X-CORRELATIONID`, `entryPoint` | Generated per request (current time, a fresh UUID, the originating screen). |
+| Source               | Provides                                                                | Obtained from                                                                                                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Session tokens**   | `Authorization` bearer, customer GUID                                   | The OAuth token exchange at sign-in. The customer GUID is the `extension_tmsguid` claim decoded from the ID token (the same value sent as the `X-GUID` header). See [authentication.md](./authentication.md#per-request-context). |
+| **Discovery record** | Per-vehicle `VIN`, `brand`, `generation`, `region`, `asiCode`, `hwType` | `GET /oneapi/v2/vehicle/guid`, the per-vehicle discovery call. Each header below names the discovery field it maps to.                                                                                                            |
+| **The client**       | `DATETIME`, `X-CORRELATIONID`, `entryPoint`                             | Generated per request (current time, a fresh UUID, the originating screen).                                                                                                                                                       |
 
 Response payloads are server-generated. Where one call's response feeds another
 call's request (for example the `accessToken` echoed into a purchase), the field
@@ -34,18 +34,18 @@ notes say so.
 
 ## Endpoints at a glance
 
-| Purpose | Method | Path |
-|---|---|---|
-| All connected-services subscriptions (primary) | `GET` | `/oneapi/v3/vehicle-subscriptions` |
-| SiriusXM / XM radio card | `GET` | `/oneapi/v1/radio` |
-| Music / streaming entitlements (head unit) | `GET` | `/oa24mm/v1/svc/subscriptions?userProfileID={guid}` |
-| Subscriber / account record | `GET` | `/oneapi/v4/account` |
-| Purchasable-offer tax preview | `POST` | `/oneapi/v1/preview` |
-| Refund preview (pre-cancel) | `POST` | `/oneapi/v1/previewrefund` |
-| Toggle auto-renew | `PUT` | `/oneapi/v1/subscription/autorenew` |
-| Cancel | `PUT` | `/oneapi/v1/subscription/cancel` |
-| Update data consent | `PUT` | `/oneapi/v1/subscription/dataconsent` |
-| Create / waive (purchase) | `POST` | `/oneapi/v1/vehicle-subscriptions` |
+| Purpose                                        | Method | Path                                                |
+| ---------------------------------------------- | ------ | --------------------------------------------------- |
+| All connected-services subscriptions (primary) | `GET`  | `/oneapi/v3/vehicle-subscriptions`                  |
+| SiriusXM / XM radio card                       | `GET`  | `/oneapi/v1/radio`                                  |
+| Music / streaming entitlements (head unit)     | `GET`  | `/oa24mm/v1/svc/subscriptions?userProfileID={guid}` |
+| Subscriber / account record                    | `GET`  | `/oneapi/v4/account`                                |
+| Purchasable-offer tax preview                  | `POST` | `/oneapi/v1/preview`                                |
+| Refund preview (pre-cancel)                    | `POST` | `/oneapi/v1/previewrefund`                          |
+| Toggle auto-renew                              | `PUT`  | `/oneapi/v1/subscription/autorenew`                 |
+| Cancel                                         | `PUT`  | `/oneapi/v1/subscription/cancel`                    |
+| Update data consent                            | `PUT`  | `/oneapi/v1/subscription/dataconsent`               |
+| Create / waive (purchase)                      | `POST` | `/oneapi/v1/vehicle-subscriptions`                  |
 
 ---
 
@@ -63,16 +63,16 @@ Beyond the standard business set (`Authorization`, `X-API-KEY`, `X-GUID`,
 value comes from the vehicle's discovery record. Omitting any of them returns
 `HTTP 400` with an empty body.
 
-| Header | Example | Source |
-|---|---|---|
-| `VIN` | `JTHXXXXXXXXXXXXXX` | discovery |
-| `X-BRAND` | `L` | discovery `brand` |
-| `GENERATION` | `21MM` | discovery `generation` |
-| `REGION` | `US` | discovery `region` |
-| `ASI-CODE` | `JG` | discovery `asiCode` |
-| `HW-TYPE` | `211` | discovery `hwType` |
-| `DATETIME` | `1785311760000` | current epoch milliseconds |
-| `entryPoint` | `SUBSCRIPTIONS` | one of `ADDVEHICLE`, `DASHBOARD`, `PRIVACYPORTAL`, `SUBSCRIPTIONS` |
+| Header       | Example             | Source                                                             |
+| ------------ | ------------------- | ------------------------------------------------------------------ |
+| `VIN`        | `JTHXXXXXXXXXXXXXX` | discovery                                                          |
+| `X-BRAND`    | `L`                 | discovery `brand`                                                  |
+| `GENERATION` | `21MM`              | discovery `generation`                                             |
+| `REGION`     | `US`                | discovery `region`                                                 |
+| `ASI-CODE`   | `JG`                | discovery `asiCode`                                                |
+| `HW-TYPE`    | `211`               | discovery `hwType`                                                 |
+| `DATETIME`   | `1785311760000`     | current epoch milliseconds                                         |
+| `entryPoint` | `SUBSCRIPTIONS`     | one of `ADDVEHICLE`, `DASHBOARD`, `PRIVACYPORTAL`, `SUBSCRIPTIONS` |
 
 This call takes no query parameters.
 
@@ -86,36 +86,36 @@ bearer as `att-token` returns an identical response. The write calls in
 
 ### Response — `payload`
 
-| Field | Type | Notes |
-|---|---|---|
-| `paidSubscriptions` | `Subscription[]` | active paid services |
-| `trialSubscriptions` | `Subscription[]` | trial services |
-| `complimentarySubscriptions` | `Subscription[]` | complimentary services |
-| `availableSubscriptions` | `AvailableSubscription[]` | purchasable offers / bundles |
-| `connectivity` | `object` | data-consent / connectivity block (`status`, `serviceGroups`, `productDetails`, `sosStatus`, `wifiStatus`, `consentOptions`, …) |
-| `isPaidEnabled`, `isTrialEligible`, `isBundlingEnabled`, `isCPOEligible`, `isPPOEligible`, `isAppUpdateRequired` | `boolean` | capability / eligibility flags |
-| `autoRenewDisclaimer`, `bundlingDisclaimer`, `remoteConnectDisclaimer`, `taxDisclaimer`, `complimentaryDisclaimer` | `string` | HTML disclaimers |
+| Field                                                                                                              | Type                      | Notes                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `paidSubscriptions`                                                                                                | `Subscription[]`          | active paid services                                                                                                            |
+| `trialSubscriptions`                                                                                               | `Subscription[]`          | trial services                                                                                                                  |
+| `complimentarySubscriptions`                                                                                       | `Subscription[]`          | complimentary services                                                                                                          |
+| `availableSubscriptions`                                                                                           | `AvailableSubscription[]` | purchasable offers / bundles                                                                                                    |
+| `connectivity`                                                                                                     | `object`                  | data-consent / connectivity block (`status`, `serviceGroups`, `productDetails`, `sosStatus`, `wifiStatus`, `consentOptions`, …) |
+| `isPaidEnabled`, `isTrialEligible`, `isBundlingEnabled`, `isCPOEligible`, `isPPOEligible`, `isAppUpdateRequired`   | `boolean`                 | capability / eligibility flags                                                                                                  |
+| `autoRenewDisclaimer`, `bundlingDisclaimer`, `remoteConnectDisclaimer`, `taxDisclaimer`, `complimentaryDisclaimer` | `string`                  | HTML disclaimers                                                                                                                |
 
 **`Subscription`** — one paid, trial, or complimentary item. The fields below
 are present on every item:
 
-| Field | Type | Example |
-|---|---|---|
-| `subscriptionID` | `string` | `JTHXXXXXXXXXXXXXX-XXXXXXXXXX` (VIN, then a per-subscription id) |
-| `productName` / `displayProductName` | `string` | `Remote Connect` |
-| `productCode` / `productLine` | `string` | `PROD_REMOTEV2` |
-| `status` | `string` | `ACTIVE` / `INACTIVE` |
-| `type` | `string` | `Trial` / `Paid` |
-| `term` | `int` | `36` |
-| `termUnit` | `string` | `MTH` |
-| `renewable` | `bool` | `false` |
-| `subscriptionStartDate` / `subscriptionEndDate` | `string` (`YYYY-MM-DD`) | `2026-04-01` / `2029-04-01` |
-| `subscriptionRemainingDays` | `int` | `1000` |
-| `subscriptionTerm`, `displayTerm`, `productDescription`, `productLongDesc`, `formattedProductDesc`, `productImageUrl`, `productIconUrl` | `string` | copy / imagery |
-| `isExpiringSoon`, `futureCancel`, `hideSubscriptionStatus`, `externalProduct` | `bool` | |
-| `consolidatedProductIds`, `consolidatedGoodwillIds` | `string[]` | |
-| `dataShared` | `object` | `{ title, description, categories: [{ title, items: string[] }] }` |
-| `negativeButtonText` | `string` | |
+| Field                                                                                                                                   | Type                    | Example                                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------ |
+| `subscriptionID`                                                                                                                        | `string`                | `JTHXXXXXXXXXXXXXX-XXXXXXXXXX` (VIN, then a per-subscription id)   |
+| `productName` / `displayProductName`                                                                                                    | `string`                | `Remote Connect`                                                   |
+| `productCode` / `productLine`                                                                                                           | `string`                | `PROD_REMOTEV2`                                                    |
+| `status`                                                                                                                                | `string`                | `ACTIVE` / `INACTIVE`                                              |
+| `type`                                                                                                                                  | `string`                | `Trial` / `Paid`                                                   |
+| `term`                                                                                                                                  | `int`                   | `36`                                                               |
+| `termUnit`                                                                                                                              | `string`                | `MTH`                                                              |
+| `renewable`                                                                                                                             | `bool`                  | `false`                                                            |
+| `subscriptionStartDate` / `subscriptionEndDate`                                                                                         | `string` (`YYYY-MM-DD`) | `2026-04-01` / `2029-04-01`                                        |
+| `subscriptionRemainingDays`                                                                                                             | `int`                   | `1000`                                                             |
+| `subscriptionTerm`, `displayTerm`, `productDescription`, `productLongDesc`, `formattedProductDesc`, `productImageUrl`, `productIconUrl` | `string`                | copy / imagery                                                     |
+| `isExpiringSoon`, `futureCancel`, `hideSubscriptionStatus`, `externalProduct`                                                           | `bool`                  |                                                                    |
+| `consolidatedProductIds`, `consolidatedGoodwillIds`                                                                                     | `string[]`              |                                                                    |
+| `dataShared`                                                                                                                            | `object`                | `{ title, description, categories: [{ title, items: string[] }] }` |
+| `negativeButtonText`                                                                                                                    | `string`                |                                                                    |
 
 Paid items additionally carry `productType`, `productID`, `ratePlanID`,
 `autoRenew`, `price`, `currency`, `packageID`, and `category`. These billing
@@ -140,20 +140,71 @@ Each entry in `packages[]` describes one purchasable term: `packageID`,
     "paidSubscriptions": [],
     "complimentarySubscriptions": [],
     "trialSubscriptions": [
-      { "productName": "Safety Connect",  "productCode": "PROD_SAFETYCONNECT", "status": "ACTIVE",   "type": "Trial", "subscriptionEndDate": "2036-04-23" },
-      { "productName": "Service Connect", "productCode": "PROD_SERVICECONNECT","status": "ACTIVE",   "type": "Trial", "subscriptionEndDate": "2036-04-23" },
-      { "productName": "Drive Connect",   "productCode": "PROD_NAVPKG",        "status": "ACTIVE",   "type": "Trial", "subscriptionEndDate": "2029-04-01" },
-      { "productName": "Remote Connect",  "productCode": "PROD_REMOTEV2",      "status": "ACTIVE",   "type": "Trial", "subscriptionEndDate": "2029-04-01" },
-      { "productName": "Wi-Fi Connect",   "productCode": "WIFI-CONNECT",       "status": "INACTIVE", "type": "Trial", "subscriptionEndDate": "2026-08-28" }
+      {
+        "productName": "Safety Connect",
+        "productCode": "PROD_SAFETYCONNECT",
+        "status": "ACTIVE",
+        "type": "Trial",
+        "subscriptionEndDate": "2036-04-23",
+      },
+      {
+        "productName": "Service Connect",
+        "productCode": "PROD_SERVICECONNECT",
+        "status": "ACTIVE",
+        "type": "Trial",
+        "subscriptionEndDate": "2036-04-23",
+      },
+      {
+        "productName": "Drive Connect",
+        "productCode": "PROD_NAVPKG",
+        "status": "ACTIVE",
+        "type": "Trial",
+        "subscriptionEndDate": "2029-04-01",
+      },
+      {
+        "productName": "Remote Connect",
+        "productCode": "PROD_REMOTEV2",
+        "status": "ACTIVE",
+        "type": "Trial",
+        "subscriptionEndDate": "2029-04-01",
+      },
+      {
+        "productName": "Wi-Fi Connect",
+        "productCode": "WIFI-CONNECT",
+        "status": "INACTIVE",
+        "type": "Trial",
+        "subscriptionEndDate": "2026-08-28",
+      },
     ],
     "availableSubscriptions": [
-      { "productName": "Go Anywhere", "category": "BUNDLE", "packages": [ { "price": 15.0, "currency": "USD", "termUnit": "MTH", "displaySubscriptionTerm": "Monthly Subscription" } ] },
-      { "productName": "Premium",     "category": "BUNDLE" },
-      { "productName": "Music Lover", "category": "BUNDLE" }
+      {
+        "productName": "Go Anywhere",
+        "category": "BUNDLE",
+        "packages": [
+          {
+            "price": 15.0,
+            "currency": "USD",
+            "termUnit": "MTH",
+            "displaySubscriptionTerm": "Monthly Subscription",
+          },
+        ],
+      },
+      { "productName": "Premium", "category": "BUNDLE" },
+      { "productName": "Music Lover", "category": "BUNDLE" },
     ],
-    "connectivity": { "status": "ACTIVE", "serviceGroups": ["Trial Services","Services Available in Shop","Paid Services","Complimentary Services"] },
-    "isPaidEnabled": true, "isTrialEligible": true, "isBundlingEnabled": true
-  }
+    "connectivity": {
+      "status": "ACTIVE",
+      "serviceGroups": [
+        "Trial Services",
+        "Services Available in Shop",
+        "Paid Services",
+        "Complimentary Services",
+      ],
+    },
+    "isPaidEnabled": true,
+    "isTrialEligible": true,
+    "isBundlingEnabled": true,
+  },
 }
 ```
 
@@ -176,7 +227,9 @@ The response is a `SiriusXmResponse`:
 
 ```jsonc
 {
-  "status": { "messages": [ { "responseCode": "OVRS-0001", "description": "Request Processed Successfully" } ] },
+  "status": {
+    "messages": [{ "responseCode": "OVRS-0001", "description": "Request Processed Successfully" }],
+  },
   "vehicleRadio": {
     "radioID": "SXXXXXXXXXXX",
     "status": "Inactive",
@@ -190,8 +243,8 @@ The response is a `SiriusXmResponse`:
     "buttonDescription": "Subscribe Now",
     "linkOutUrl": "https://care.siriusxm.com/subscribe/checkout/flepz?programcode=…&RadioID=SXXXXXXXXXXX",
     "deepLinkUrl": "https://sxm.app.link/…",
-    "deepLinkButtonDesc": "Download the SXM App"
-  }
+    "deepLinkButtonDesc": "Download the SXM App",
+  },
 }
 ```
 

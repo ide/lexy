@@ -43,9 +43,7 @@ export const MAPS_PROVIDERS: readonly MapsProvider[] = [
     // detect it rather than assuming it is present.
     probeUrl: "maps://",
     buildDirectionsUrl: ({ latitude, longitude, label }) =>
-      `https://maps.apple.com/?ll=${latitude},${longitude}&q=${encodeURIComponent(
-        label,
-      )}`,
+      `https://maps.apple.com/?ll=${latitude},${longitude}&q=${encodeURIComponent(label)}`,
   },
   {
     id: "google",
@@ -79,10 +77,7 @@ export function getMapsProvider(id: MapsProviderId): MapsProvider {
 }
 
 export function isMapsProviderId(value: unknown): value is MapsProviderId {
-  return (
-    typeof value === "string" &&
-    Object.prototype.hasOwnProperty.call(PROVIDERS_BY_ID, value)
-  );
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(PROVIDERS_BY_ID, value);
 }
 
 /**
@@ -112,11 +107,8 @@ export function resolveMapsProvider(
 ): ResolvedMapsProvider {
   // Keep the installed list in the canonical MAPS_PROVIDERS order regardless of
   // detection order, and drop anything unrecognized.
-  const installed = MAPS_PROVIDERS.filter((provider) =>
-    installedIds.includes(provider.id),
-  );
-  const savedInstalled =
-    savedId !== null && installed.some((provider) => provider.id === savedId);
+  const installed = MAPS_PROVIDERS.filter((provider) => installedIds.includes(provider.id));
+  const savedInstalled = savedId !== null && installed.some((provider) => provider.id === savedId);
   // A saved choice the phone no longer has: treat as unset and flag it so the
   // caller can clear the stored value and (re)prompt.
   const staleSaved = savedId !== null && !savedInstalled;

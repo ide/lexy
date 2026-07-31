@@ -1,8 +1,8 @@
-import { onlineManager } from '@tanstack/react-query';
-import { useSyncExternalStore } from 'react';
+import { onlineManager } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 
-import { overrideIsOnline } from '@/debug/data-state';
-import { useDataStateOverride } from '@/debug/debug-overrides';
+import { overrideIsOnline } from "@/debug/data-state";
+import { useDataStateOverride } from "@/debug/debug-overrides";
 
 /**
  * Tracks whether the device currently has a usable internet connection.

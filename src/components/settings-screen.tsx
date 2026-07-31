@@ -1,12 +1,4 @@
-import {
-  Button,
-  Host,
-  HStack,
-  Image,
-  ScrollView,
-  Text,
-  VStack,
-} from "@expo/ui/swift-ui";
+import { Button, Host, HStack, Image, ScrollView, Text, VStack } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
   contentShape,
@@ -104,10 +96,7 @@ function SignOutRow() {
   };
 
   return (
-    <Button
-      onPress={onPress}
-      modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
-    >
+    <Button onPress={onPress} modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}>
       <HStack
         alignment="center"
         spacing={Spacing.two}
@@ -117,14 +106,8 @@ function SignOutRow() {
           padding({ horizontal: Spacing.three, vertical: Spacing.three }),
         ]}
       >
-        <Image
-          systemName="rectangle.portrait.and.arrow.right"
-          size={20}
-          color={red}
-        />
-        <Text
-          modifiers={[font({ textStyle: "body", weight: "semibold" }), foregroundStyle(red)]}
-        >
+        <Image systemName="rectangle.portrait.and.arrow.right" size={20} color={red} />
+        <Text modifiers={[font({ textStyle: "body", weight: "semibold" }), foregroundStyle(red)]}>
           Sign Out
         </Text>
       </HStack>

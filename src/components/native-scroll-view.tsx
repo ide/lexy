@@ -1,9 +1,4 @@
-import {
-  Host,
-  RNHostView,
-  ScrollView as SwiftUIScrollView,
-  VStack,
-} from "@expo/ui/swift-ui";
+import { Host, RNHostView, ScrollView as SwiftUIScrollView, VStack } from "@expo/ui/swift-ui";
 import { frame, refreshable } from "@expo/ui/swift-ui/modifiers";
 import type { ReactNode } from "react";
 import type { StyleProp, ViewStyle } from "react-native";

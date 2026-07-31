@@ -41,9 +41,7 @@ function CornerCard({ corner }: { corner: Corner }) {
       <View style={styles.cornerStates}>
         {showDoor ? <StatusLine status={doorStatus(corner.door!)} /> : null}
         {/* A window with no position reading has nothing to report. */}
-        {showWindow ? (
-          <StatusLine status={windowStatus(corner.window!, corner.side)} />
-        ) : null}
+        {showWindow ? <StatusLine status={windowStatus(corner.window!, corner.side)} /> : null}
       </View>
     </Card>
   );

@@ -38,8 +38,7 @@ export function doorStatus(door: Closure): ClosureStatus {
 export function windowStatus(window: Closure, side: Side): ClosureStatus {
   // The `car.window.left`/`right` glyphs read reversed against our driver-left /
   // passenger-right columns, so the sides are intentionally swapped here.
-  const symbol: SFSymbol =
-    side === "driver" ? "car.window.right" : "car.window.left";
+  const symbol: SFSymbol = side === "driver" ? "car.window.right" : "car.window.left";
   return window.state === "Open"
     ? { text: "Window open", tone: "attention", symbol }
     : { text: "Window closed", tone: "settled", symbol };
@@ -82,9 +81,7 @@ export function cornerVisibility(corner: Corner): {
   showWindow: boolean;
 } {
   return {
-    showDoor: Boolean(
-      corner.door && (corner.door.state || corner.door.locked !== undefined),
-    ),
+    showDoor: Boolean(corner.door && (corner.door.state || corner.door.locked !== undefined)),
     // A window with no position reading has nothing to report.
     showWindow: Boolean(corner.window?.state),
   };
@@ -104,10 +101,7 @@ export function cornerShownAts(corner: Corner): (string | undefined)[] {
 // Of the given field timestamps, the oldest one that predates the latest
 // snapshot (`freshAt`) — i.e. a reading the most recent status didn't refresh.
 // Null when everything shown is as fresh as the latest snapshot.
-export function oldestStale(
-  freshAt: string,
-  ats: (string | undefined)[],
-): string | null {
+export function oldestStale(freshAt: string, ats: (string | undefined)[]): string | null {
   const fresh = new Date(freshAt).getTime();
   if (!Number.isFinite(fresh)) {
     return null;

@@ -56,10 +56,7 @@ export function FuelBar({
           </ThemedText>
         </View>
         <View style={styles.fuelValueRow}>
-          <ThemedText
-            type="smallBold"
-            style={[styles.tabularNums, { color: valueColor }]}
-          >
+          <ThemedText type="smallBold" style={[styles.tabularNums, { color: valueColor }]}>
             {gauge.valueText}
           </ThemedText>
           <ThemedText type="smallBold" style={styles.tabularNums}>

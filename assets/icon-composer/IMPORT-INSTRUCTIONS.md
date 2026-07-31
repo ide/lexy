@@ -27,13 +27,13 @@ document was written programmatically rather than saved by the app:
 
 Import from `assets/svg/composer/`, one layer per file, ordered back to front:
 
-| Order | File | Notes |
-| --- | --- | --- |
-| 0 | `0-background.svg` | Optional; prefer Icon Composer's native background fill |
-| 1 | `1-ring-metal.svg` | Satin arc, vertical silver gradient |
-| 2 | `2-ring-red-bright.svg` | Flat bright red arc |
-| 3 | `3-ring-red-dark.svg` | Dark crimson arc with baked fade (see below) |
-| 4 | `4-glyph.svg` | L silhouette, simple vertical gradient |
+| Order | File                    | Notes                                                   |
+| ----- | ----------------------- | ------------------------------------------------------- |
+| 0     | `0-background.svg`      | Optional; prefer Icon Composer's native background fill |
+| 1     | `1-ring-metal.svg`      | Satin arc, vertical silver gradient                     |
+| 2     | `2-ring-red-bright.svg` | Flat bright red arc                                     |
+| 3     | `3-ring-red-dark.svg`   | Dark crimson arc with baked fade (see below)            |
+| 4     | `4-glyph.svg`           | L silhouette, simple vertical gradient                  |
 
 Group "Ring" = layers 1-3; group "Glyph" = layer 4, matching the numbering
 convention in the main deliverables (background 00-02, ring 03-07, glyph

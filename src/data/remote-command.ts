@@ -1,9 +1,5 @@
-import type { LexusSession } from '@/auth/lexus-auth';
-import {
-  VEHICLE_COMMAND_ENDPOINT,
-  vehicleHeaders,
-  type VehicleContext,
-} from '@/data/lexus-api';
+import type { LexusSession } from "@/auth/lexus-auth";
+import { VEHICLE_COMMAND_ENDPOINT, vehicleHeaders, type VehicleContext } from "@/data/lexus-api";
 
 // Structural fetch type so the caller can inject Expo's streaming `fetch` (the
 // app's standard) while the module stays free of an `expo/fetch` import — which
@@ -21,9 +17,9 @@ export type CommandFetch = (
  * official schema — the on-screen controls are gated to dev/preview builds
  * until they're verified on a real vehicle.
  */
-export type RemoteCommand = 'door-lock' | 'door-unlock' | 'engine-start';
+export type RemoteCommand = "door-lock" | "door-unlock" | "engine-start";
 
-export const REMOTE_COMMAND_ACCEPTED = '000000';
+export const REMOTE_COMMAND_ACCEPTED = "000000";
 
 /**
  * The POST body for a remote command. `autoFixPopup: false` opts out of the
@@ -48,12 +44,12 @@ export function commandBody(command: RemoteCommand): {
  * returns `returnCode` at the top level.
  */
 export function isCommandAccepted(response: unknown): boolean {
-  if (typeof response !== 'object' || response === null) {
+  if (typeof response !== "object" || response === null) {
     return false;
   }
   const envelope = response as Record<string, unknown>;
   const payload =
-    typeof envelope.payload === 'object' && envelope.payload !== null
+    typeof envelope.payload === "object" && envelope.payload !== null
       ? (envelope.payload as Record<string, unknown>)
       : envelope;
   return payload.returnCode === REMOTE_COMMAND_ACCEPTED;
@@ -72,7 +68,7 @@ export async function sendRemoteCommand(
   fetchImpl: CommandFetch = globalThis.fetch,
 ): Promise<void> {
   const response = await fetchImpl(VEHICLE_COMMAND_ENDPOINT, {
-    method: 'POST',
+    method: "POST",
     headers: vehicleHeaders(session, context),
     body: JSON.stringify(commandBody(command)),
   });
@@ -80,6 +76,6 @@ export async function sendRemoteCommand(
     throw new Error(`Remote command failed (${response.status})`);
   }
   if (!isCommandAccepted(await response.json())) {
-    throw new Error('The vehicle did not accept the command.');
+    throw new Error("The vehicle did not accept the command.");
   }
 }

@@ -1,12 +1,12 @@
-import type { LexusSession } from '@/auth/lexus-auth';
+import type { LexusSession } from "@/auth/lexus-auth";
 
 const accounts = {
-  accessToken: 'access-token',
-  refreshToken: 'refresh-token',
-  idToken: 'id-token',
+  accessToken: "access-token",
+  refreshToken: "refresh-token",
+  idToken: "id-token",
 } as const;
 
-const KEYCHAIN_SERVICE = 'app.ide.lexy';
+const KEYCHAIN_SERVICE = "app.ide.lexy";
 
 // The access token, its type, and its expiry are written and refreshed as a unit,
 // so they share one Keychain entry: a partial write can never leave the token
@@ -31,14 +31,8 @@ export type TokenStore = {
 };
 
 type SecureStoreModule = {
-  deleteItemAsync: (
-    key: string,
-    options?: { keychainService?: string },
-  ) => Promise<void>;
-  getItemAsync: (
-    key: string,
-    options?: { keychainService?: string },
-  ) => Promise<string | null>;
+  deleteItemAsync: (key: string, options?: { keychainService?: string }) => Promise<void>;
+  getItemAsync: (key: string, options?: { keychainService?: string }) => Promise<string | null>;
   setItemAsync: (
     key: string,
     value: string,
@@ -57,14 +51,14 @@ function parseAccessToken(value: string | null): StoredAccessToken | null {
   } catch {
     return null;
   }
-  if (!parsed || typeof parsed !== 'object') {
+  if (!parsed || typeof parsed !== "object") {
     return null;
   }
   const record = parsed as Record<string, unknown>;
   if (
-    typeof record.value !== 'string' ||
-    typeof record.type !== 'string' ||
-    typeof record.expiresAt !== 'number' ||
+    typeof record.value !== "string" ||
+    typeof record.type !== "string" ||
+    typeof record.expiresAt !== "number" ||
     !Number.isFinite(record.expiresAt)
   ) {
     return null;
@@ -113,7 +107,7 @@ export function createTokenStore(storage: KeyValueStorage): TokenStore {
 }
 
 export function createSecureStorage(
-  loadSecureStore: () => Promise<SecureStoreModule> = () => import('expo-secure-store'),
+  loadSecureStore: () => Promise<SecureStoreModule> = () => import("expo-secure-store"),
 ): KeyValueStorage {
   return {
     async getItem(key) {

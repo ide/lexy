@@ -1,8 +1,19 @@
 {
   "name": "lexy",
-  "main": "expo-router/entry",
   "version": "1.0.0",
-  "packageManager": "pnpm@11.17.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "oxlint -c oxlint.config.mjs",
+    "test": "vitest run",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
   "dependencies": {
     "@expo/ui": "~57.0.8",
     "@tanstack/query-async-storage-persister": "^5.101.4",
@@ -50,16 +61,5 @@
     "typescript": "~6.0.3",
     "vitest": "^4.1.10"
   },
-  "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "lint": "oxlint -c oxlint.config.mjs",
-    "test": "vitest run",
-    "format": "oxfmt",
-    "format:check": "oxfmt --check"
-  },
-  "private": true
+  "packageManager": "pnpm@11.17.0"
 }

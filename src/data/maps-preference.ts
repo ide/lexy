@@ -1,11 +1,7 @@
 import Storage from "expo-sqlite/kv-store";
 import * as Linking from "expo-linking";
 
-import {
-  MAPS_PROVIDERS,
-  isMapsProviderId,
-  type MapsProviderId,
-} from "@/data/maps-providers";
+import { MAPS_PROVIDERS, isMapsProviderId, type MapsProviderId } from "@/data/maps-providers";
 
 // The user's chosen navigation app, persisted in the same SQLite-backed
 // key-value store the query cache uses (expo-sqlite/kv-store). Read/written

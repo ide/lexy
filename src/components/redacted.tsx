@@ -56,10 +56,7 @@ export function Redacted({
 
   return (
     <RedactedContext.Provider value={loading}>
-      <Animated.View
-        pointerEvents={loading ? "none" : "auto"}
-        style={[style, animatedStyle]}
-      >
+      <Animated.View pointerEvents={loading ? "none" : "auto"} style={[style, animatedStyle]}>
         {children}
       </Animated.View>
     </RedactedContext.Provider>

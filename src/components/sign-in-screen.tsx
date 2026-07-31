@@ -38,12 +38,7 @@ import { useObserve } from "expo-observe";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/auth/auth-context";
-import {
-  choiceIcon,
-  otpCopy,
-  signInHero,
-  signInScreenFor,
-} from "@/auth/sign-in-copy";
+import { choiceIcon, otpCopy, signInHero, signInScreenFor } from "@/auth/sign-in-copy";
 import {
   ErrorNotice,
   Hero,
@@ -296,11 +291,7 @@ export default function SignInScreen() {
                 onPress={verify}
               />
               <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-                <SecondaryAction
-                  disabled={busy}
-                  label="Resend code"
-                  onPress={resend}
-                />
+                <SecondaryAction disabled={busy} label="Resend code" onPress={resend} />
                 {canChangeMethod ? (
                   <SecondaryAction
                     disabled={busy}
@@ -326,8 +317,8 @@ export default function SignInScreen() {
               padding({ top: Spacing.two, horizontal: Spacing.two }),
             ]}
           >
-            Your password and verification code are sent directly to Lexus. Lexy
-            never stores them nor collects your information.
+            Your password and verification code are sent directly to Lexus. Lexy never stores them
+            nor collects your information.
           </Text>
         </VStack>
       </ScrollView>

@@ -1,17 +1,17 @@
-import { HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import { HStack, Image, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
   containerBackground,
   font,
   foregroundStyle,
   frame,
   padding,
-} from '@expo/ui/swift-ui/modifiers';
-import { createWidget, type WidgetEnvironment } from 'expo-widgets';
+} from "@expo/ui/swift-ui/modifiers";
+import { createWidget, type WidgetEnvironment } from "expo-widgets";
 // In the widget bundle `react-native` resolves to expo-widgets' stub, whose
 // PlatformColor produces the { semantic: [...] } shape the SwiftUI renderer
 // expects — the widget cannot import the app's theme module (it pulls in the
 // full React Native runtime), so semantic colors are named directly here.
-import { PlatformColor } from 'react-native';
+import { PlatformColor } from "react-native";
 
 export type LexyStatusProps = {
   locked: boolean;
@@ -20,19 +20,19 @@ export type LexyStatusProps = {
 };
 
 const LexyStatusWidget = (props: LexyStatusProps, environment: WidgetEnvironment) => {
-  'widget';
-  const icon = props.locked ? 'lock.fill' : 'lock.open.fill';
-  const label = props.locked ? 'Locked' : 'Unlocked';
+  "widget";
+  const icon = props.locked ? "lock.fill" : "lock.open.fill";
+  const label = props.locked ? "Locked" : "Unlocked";
   // The same locked/unlocked tints the app's lock summary uses, adaptive to
   // light/dark instead of the pinned hex twins this once carried.
-  const tint = PlatformColor(props.locked ? 'systemGreen' : 'systemOrange');
-  const secondary = PlatformColor('secondaryLabel');
+  const tint = PlatformColor(props.locked ? "systemGreen" : "systemOrange");
+  const secondary = PlatformColor("secondaryLabel");
 
-  if (environment.widgetFamily === 'accessoryRectangular') {
+  if (environment.widgetFamily === "accessoryRectangular") {
     return (
       <HStack spacing={6}>
         <Image systemName={icon} />
-        <Text modifiers={[font({ weight: 'semibold', size: 14 })]}>{label}</Text>
+        <Text modifiers={[font({ weight: "semibold", size: 14 })]}>{label}</Text>
       </HStack>
     );
   }
@@ -44,16 +44,19 @@ const LexyStatusWidget = (props: LexyStatusProps, environment: WidgetEnvironment
       modifiers={[
         // System background + label colors so the widget follows light/dark
         // mode like every stock widget, rather than rendering always-dark.
-        containerBackground(PlatformColor('systemBackground'), 'widget'),
-        frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: 'leading' }),
+        containerBackground(PlatformColor("systemBackground"), "widget"),
+        frame({ maxWidth: Infinity, maxHeight: Infinity, alignment: "leading" }),
         padding({ all: 16 }),
-      ]}>
-      <Text modifiers={[font({ weight: 'medium', size: 12 }), foregroundStyle(secondary)]}>
+      ]}
+    >
+      <Text modifiers={[font({ weight: "medium", size: 12 }), foregroundStyle(secondary)]}>
         Lexy
       </Text>
       <Spacer />
       <Image systemName={icon} color={tint} />
-      <Text modifiers={[font({ weight: 'bold', size: 20 }), foregroundStyle(PlatformColor('label'))]}>
+      <Text
+        modifiers={[font({ weight: "bold", size: 20 }), foregroundStyle(PlatformColor("label"))]}
+      >
         {label}
       </Text>
       <Text modifiers={[font({ size: 11 }), foregroundStyle(secondary)]}>
@@ -63,4 +66,4 @@ const LexyStatusWidget = (props: LexyStatusProps, environment: WidgetEnvironment
   );
 };
 
-export default createWidget('LexyStatusWidget', LexyStatusWidget);
+export default createWidget("LexyStatusWidget", LexyStatusWidget);

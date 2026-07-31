@@ -65,11 +65,7 @@ export function useVehicleScreen() {
 
   const offlineBanner = !isOnline ? (
     <OfflineBanner
-      detail={
-        data
-          ? "Showing the latest data we saved."
-          : "Reconnect to load your vehicle."
-      }
+      detail={data ? "Showing the latest data we saved." : "Reconnect to load your vehicle."}
     />
   ) : null;
 

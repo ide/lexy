@@ -35,11 +35,7 @@ export function useUpdateActions({
         setActionError(null);
         haptic("selection");
       } catch (error) {
-        setActionError(
-          error instanceof Error
-            ? error.message
-            : "The update operation failed.",
-        );
+        setActionError(error instanceof Error ? error.message : "The update operation failed.");
         setActionMessage(null);
         haptic("impact-soft");
       } finally {
@@ -115,9 +111,7 @@ export function useUpdateActions({
       .then(() => Updates.reloadAsync())
       .catch((error: unknown) => {
         setActiveAction(null);
-        setActionError(
-          error instanceof Error ? error.message : "The app could not reload.",
-        );
+        setActionError(error instanceof Error ? error.message : "The app could not reload.");
       });
   };
 

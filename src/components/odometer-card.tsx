@@ -54,19 +54,13 @@ export function OdometerCard({
           apart from the total. */}
       <View style={styles.tripCell}>
         <View style={styles.odometerHeader}>
-          <Icon
-            name="gauge.with.dots.needle.67percent"
-            size={17}
-            tint={colors.secondaryLabel}
-          />
+          <Icon name="gauge.with.dots.needle.67percent" size={17} tint={colors.secondaryLabel} />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
             Total
           </ThemedText>
         </View>
         <View style={styles.metricValueRow}>
-          <ThemedText style={styles.tripValue}>
-            {odometer.toLocaleString()}
-          </ThemedText>
+          <ThemedText style={styles.tripValue}>{odometer.toLocaleString()}</ThemedText>
           <ThemedText type="small" themeColor="secondaryLabel">
             {unit}
           </ThemedText>
@@ -97,16 +91,10 @@ export function TireCell({
         {label}
       </ThemedText>
       <View style={styles.metricValueRow}>
-        <ThemedText
-          style={[styles.tireValue, low && { color: colors.systemOrange }]}
-        >
+        <ThemedText style={[styles.tireValue, low && { color: colors.systemOrange }]}>
           {value}
         </ThemedText>
-        <ThemedText
-          type="small"
-          themeColor="secondaryLabel"
-          style={styles.metricUnit}
-        >
+        <ThemedText type="small" themeColor="secondaryLabel" style={styles.metricUnit}>
           {unit}
         </ThemedText>
       </View>

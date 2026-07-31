@@ -32,21 +32,11 @@ const messageModifiers = [
  * pressed/haptic behavior. The label is regular weight — these are recovery
  * actions, not shouted calls to action.
  */
-function RetryButton({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress: () => void;
-}) {
+function RetryButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Button
       onPress={onPress}
-      modifiers={[
-        buttonStyle("borderedProminent"),
-        controlSize("large"),
-        tint(colors.systemBlue),
-      ]}
+      modifiers={[buttonStyle("borderedProminent"), controlSize("large"), tint(colors.systemBlue)]}
     >
       <Text
         modifiers={[
@@ -85,11 +75,7 @@ function StateScreen({
           padding({ horizontal: Spacing.four }),
         ]}
       >
-        <Image
-          systemName={symbol}
-          size={44}
-          color={colors.secondaryLabel}
-        />
+        <Image systemName={symbol} size={44} color={colors.secondaryLabel} />
         <Text
           modifiers={[
             font({ textStyle: "largeTitle", weight: "bold" }),
@@ -108,8 +94,7 @@ export function VehicleError({ retry }: { retry: () => void }) {
   return (
     <StateScreen symbol="exclamationmark.triangle" title="Vehicle data unavailable">
       <Text modifiers={messageModifiers}>
-        We couldn&apos;t reach the Lexus vehicle service. Check your connection
-        and try again.
+        We couldn&apos;t reach the Lexus vehicle service. Check your connection and try again.
       </Text>
       <RetryButton label="Try again" onPress={retry} />
     </StateScreen>

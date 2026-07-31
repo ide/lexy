@@ -10,7 +10,7 @@ Loading skeletons used to be separate component trees maintained in parallel
 with the real UI (`details-skeleton.tsx`, `vehicle-skeleton.tsx`). They drifted:
 block sizes and section shapes needed manual re-syncing every time the real
 layout changed. The goal is one layout with two render modes, so the skeleton
-*cannot* drift.
+_cannot_ drift.
 
 ## Empirical finding: SwiftUI `redacted` does not cross `RNHostView`
 
@@ -26,7 +26,7 @@ representable/host boundary, as hypothesized.
 
 Consequence: to use native redaction, a screen's presentation would have to be
 rewritten as a SwiftUI (@expo/ui) tree. Instead we replicate the redaction
-*idea* on the RN side.
+_idea_ on the RN side.
 
 ## The chosen design (Option B: RN redaction primitive, single tree)
 
@@ -66,7 +66,7 @@ states (bars and text line up row-for-row), scroll offset preserved when
 toggling while scrolled mid-list, scrolling works while redacted, and the
 genuine cold start (long-press = query reset) goes skeleton → data in place.
 
-Known, accepted approximation: array *counts* in the placeholder are a guess
+Known, accepted approximation: array _counts_ in the placeholder are a guess
 (like any skeleton). This vehicle currently reports 4 capabilities and 0
 subscriptions; the placeholder uses 4 and 2. Wrong guesses change section
 heights when data lands — same limitation the old skeletons had, and the same
@@ -88,15 +88,16 @@ Four things Details didn't have to deal with:
   slider, and the footer's popover rows are genuine SwiftUI inside `Host`s, so
   `useRedacted()` can't style them. The real `redacted()` modifier does apply
   within a host, and it is enough for the button and the footer (text becomes
-  grey bars). It is *not* enough for controls: a redacted `Toggle` still draws a
+  grey bars). It is _not_ enough for controls: a redacted `Toggle` still draws a
   live blue switch and a redacted `Slider` still draws its filled track, so
   those two are swapped for plain RN placeholders in the same slots while
   loading. Redaction also doesn't disable anything — the button takes
   `disabled(true)` alongside it.
 
-  One more wrinkle: placeholder redaction masks a label's *image* into a solid
+  One more wrinkle: placeholder redaction masks a label's _image_ into a solid
   rounded rect in the image's own color, so the button's blue `map.fill` glyph
   came out a blue square. It gets the neutral fill color while redacted.
+
 - **Placeholder data must not address a real API.** The climate settings read is
   vehicle-scoped through its headers, so `useClimateSettings` takes a
   `placeholder` flag that disables the query and returns

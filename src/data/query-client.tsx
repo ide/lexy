@@ -1,12 +1,12 @@
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { focusManager, onlineManager, QueryClient } from '@tanstack/react-query';
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import * as Network from 'expo-network';
-import Storage from 'expo-sqlite/kv-store';
-import { AppState, type AppStateStatus } from 'react-native';
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { focusManager, onlineManager, QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import * as Network from "expo-network";
+import Storage from "expo-sqlite/kv-store";
+import { AppState, type AppStateStatus } from "react-native";
 
-import { clearClosureStore } from '@/data/closure-state-store';
-import { CACHE_VERSION, createValidatingPersister } from '@/data/persisted-cache';
+import { clearClosureStore } from "@/data/closure-state-store";
+import { CACHE_VERSION, createValidatingPersister } from "@/data/persisted-cache";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,9 +25,9 @@ export const queryClient = new QueryClient({
 // while the refresh runs, so opening the app after a while quietly refreshes.
 focusManager.setEventListener((handleFocus) => {
   const onChange = (state: AppStateStatus) => {
-    handleFocus(state === 'active');
+    handleFocus(state === "active");
   };
-  const subscription = AppState.addEventListener('change', onChange);
+  const subscription = AppState.addEventListener("change", onChange);
   return () => subscription.remove();
 });
 
@@ -38,7 +38,9 @@ onlineManager.setEventListener((setOnline) => {
   // `addNetworkStateListener` only fires on change, so seed the current state on
   // subscribe to match the immediate-emit behavior the online manager expects
   // (otherwise an app launched offline would look online until the next change).
-  Network.getNetworkStateAsync().then(apply).catch(() => {});
+  Network.getNetworkStateAsync()
+    .then(apply)
+    .catch(() => {});
   const subscription = Network.addNetworkStateListener(apply);
   return () => subscription.remove();
 });
@@ -48,7 +50,7 @@ onlineManager.setEventListener((setOnline) => {
 // persister. See persisted-cache.ts.
 const persister = createValidatingPersister(
   createAsyncStoragePersister({
-    key: 'lexy-query-cache',
+    key: "lexy-query-cache",
     storage: Storage,
   }),
 );
@@ -74,7 +76,8 @@ export function VehicleDataProvider({ children }: { children: React.ReactNode })
     // rendered with missing fields. See persisted-cache.ts for when to bump it.
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ buster: CACHE_VERSION, maxAge: Infinity, persister }}>
+      persistOptions={{ buster: CACHE_VERSION, maxAge: Infinity, persister }}
+    >
       {children}
     </PersistQueryClientProvider>
   );

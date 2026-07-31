@@ -1,7 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetch } from 'expo/fetch';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetch } from "expo/fetch";
 
-import { useAuth } from '@/auth/auth-context';
+import { useAuth } from "@/auth/auth-context";
 import {
   defrostParameters,
   parseClimateSettings,
@@ -10,12 +10,12 @@ import {
   withTemperature,
   type ClimateSettings,
   type DefrostName,
-} from '@/data/climate-settings';
-import { VEHICLE_CLIMATE_ENDPOINT, vehicleHeaders } from '@/data/lexus-api';
-import { PLACEHOLDER_CLIMATE_SETTINGS } from '@/data/placeholder-vehicle';
-import type { Vehicle } from '@/data/vehicle';
+} from "@/data/climate-settings";
+import { VEHICLE_CLIMATE_ENDPOINT, vehicleHeaders } from "@/data/lexus-api";
+import { PLACEHOLDER_CLIMATE_SETTINGS } from "@/data/placeholder-vehicle";
+import type { Vehicle } from "@/data/vehicle";
 
-export const CLIMATE_SETTINGS_QUERY_KEY = ['climate-settings'] as const;
+export const CLIMATE_SETTINGS_QUERY_KEY = ["climate-settings"] as const;
 
 /**
  * Remote-start climate configuration (setpoint, master switch, defrost).
@@ -54,7 +54,7 @@ export function useClimateSettings(
       }
       const settings = parseClimateSettings(await response.json());
       if (!settings) {
-        throw new Error('Unrecognized climate settings response');
+        throw new Error("Unrecognized climate settings response");
       }
       return settings;
     },
@@ -67,13 +67,13 @@ export function useClimateSettings(
     mutationKey: CLIMATE_SETTINGS_QUERY_KEY,
     mutationFn: async (updated: ClimateSettings) => {
       if (!session) {
-        throw new Error('Sign in to change climate settings');
+        throw new Error("Sign in to change climate settings");
       }
       const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
           ...vehicleHeaders(session, context),
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(updated),
       });
@@ -121,9 +121,7 @@ export function useClimateSettings(
   // already holds one: the query is off, but the persisted cache is the honest
   // answer, so the card can show its true state (a climate switch that is off,
   // and the dimmed rows that go with it) instead of the stand-in's defaults.
-  const settings = placeholder
-    ? (query.data ?? PLACEHOLDER_CLIMATE_SETTINGS)
-    : query.data;
+  const settings = placeholder ? (query.data ?? PLACEHOLDER_CLIMATE_SETTINGS) : query.data;
 
   return {
     settings,

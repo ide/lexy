@@ -26,13 +26,13 @@ Returns a snapshot with three parts:
 
 Companion reads:
 
-| Method | Path | Returns |
-|---|---|---|
-| `GET` | `/v1/remote/route/engine-status` | Engine running/stopped |
-| `GET` | `/v1/remote/route/climate-settings` | Setpoint, min/max, defrost options |
-| `POST` | `/v1/remote/route/refresh-status` | Ask the vehicle to push fresh state |
-| `POST` | `/v1/remote/route/wake` | Wake the telematics unit before work |
-| `GET` | `/oneapi/v2/legacy/remote/status` | Legacy status |
+| Method | Path                                | Returns                              |
+| ------ | ----------------------------------- | ------------------------------------ |
+| `GET`  | `/v1/remote/route/engine-status`    | Engine running/stopped               |
+| `GET`  | `/v1/remote/route/climate-settings` | Setpoint, min/max, defrost options   |
+| `POST` | `/v1/remote/route/refresh-status`   | Ask the vehicle to push fresh state  |
+| `POST` | `/v1/remote/route/wake`             | Wake the telematics unit before work |
+| `GET`  | `/oneapi/v2/legacy/remote/status`   | Legacy status                        |
 
 ### REST — `GET|PUT /v1/remote/route/climate-settings`
 
@@ -43,16 +43,35 @@ settings configure, they do not actuate). Captured live from a 21MM IS 350
 
 ```json
 {
-  "temperature": 71, "temperatureUnit": "F", "minTemp": 65, "maxTemp": 85,
-  "tempInterval": 1, "settingsOn": true,
+  "temperature": 71,
+  "temperatureUnit": "F",
+  "minTemp": 65,
+  "maxTemp": 85,
+  "tempInterval": 1,
+  "settingsOn": true,
   "extendedRuntime": { "available": false, "enabled": false },
   "acOperations": [
-    { "categoryName": "defrost", "categoryDisplayName": "Defrost", "available": true,
+    {
+      "categoryName": "defrost",
+      "categoryDisplayName": "Defrost",
+      "available": true,
       "acParameters": [
-        { "name": "frontDefrost", "displayName": "Front Defrost", "iconUrl": "…",
-          "available": true, "enabled": false },
-        { "name": "rearDefrost", "displayName": "Rear Defrost", "iconUrl": "…",
-          "available": true, "enabled": false } ] },
+        {
+          "name": "frontDefrost",
+          "displayName": "Front Defrost",
+          "iconUrl": "…",
+          "available": true,
+          "enabled": false
+        },
+        {
+          "name": "rearDefrost",
+          "displayName": "Rear Defrost",
+          "iconUrl": "…",
+          "available": true,
+          "enabled": false
+        }
+      ]
+    },
     { "categoryName": "seatHeat", "available": false },
     { "categoryName": "seatVent", "available": false },
     { "categoryName": "steeringHeaterCat", "available": false }
@@ -109,11 +128,11 @@ Returns `{ requestNo, correlationId, returnCode }`. Track to completion with the
 The `command` value differs by generation (the app keeps parallel enums; suffix
 `_1`/`_2` = legacy CY paths, `_17` = 17MM):
 
-| Action | Legacy value(s) | 17MM |
-|---|---|---|
-| Door lock | `door-lock`, `DLock` | `DL` |
-| Engine start | `engine-start`, `EStart` | `RES` |
-| Engine-start status | — | `RES1` |
+| Action              | Legacy value(s)          | 17MM   |
+| ------------------- | ------------------------ | ------ |
+| Door lock           | `door-lock`, `DLock`     | `DL`   |
+| Engine start        | `engine-start`, `EStart` | `RES`  |
+| Engine-start status | —                        | `RES1` |
 
 Only lock and engine-start codes were recovered here; unlock, hazard, horn,
 trunk, moonroof, and window codes follow the same per-generation pattern and
@@ -129,6 +148,7 @@ requested → delivered → executing → succeeded | failed | timed out | unkno
 ```
 
 Guidance for a production client:
+
 - Submit one command with a unique idempotency id; do not silently retry.
 - Bind the command to server-verified VIN ownership; never trust a client-supplied VIN.
 - Validate preconditions server-side (ignition, gear/park, door/hood, subscription, consent, reachability).

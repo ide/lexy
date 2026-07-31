@@ -1,10 +1,5 @@
 import { Button, HStack, Host, Image as SFImage, Text } from "@expo/ui/swift-ui";
-import {
-  buttonStyle,
-  controlSize,
-  font,
-  tint,
-} from "@expo/ui/swift-ui/modifiers";
+import { buttonStyle, controlSize, font, tint } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";

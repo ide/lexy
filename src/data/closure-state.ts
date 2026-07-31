@@ -1,4 +1,4 @@
-import type { Closure } from '@/data/vehicle';
+import type { Closure } from "@/data/vehicle";
 
 // The Lexus status feed alternates between full snapshots (every door, window,
 // and opening with positions — while the car sits parked) and sparse ones
@@ -28,7 +28,7 @@ export type FieldRecord<T> = {
 
 export type ClosureRecord = {
   label: string;
-  state?: FieldRecord<'Closed' | 'Open'>;
+  state?: FieldRecord<"Closed" | "Open">;
   locked?: FieldRecord<boolean>;
   /** First-seen index, so display order is stable across folds. */
   order: number;
@@ -176,11 +176,11 @@ export function readClosures(store: ClosureStore | null): Closure[] {
 /** Runtime shape check for a persisted store (see closure-state-store.ts). */
 export function parseClosureStore(value: unknown): ClosureStore | null {
   if (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    typeof (value as ClosureStore).vin === 'string' &&
-    typeof (value as ClosureStore).seq === 'number' &&
-    typeof (value as ClosureStore).closures === 'object' &&
+    typeof (value as ClosureStore).vin === "string" &&
+    typeof (value as ClosureStore).seq === "number" &&
+    typeof (value as ClosureStore).closures === "object" &&
     (value as ClosureStore).closures !== null
   ) {
     return value as ClosureStore;

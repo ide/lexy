@@ -12,15 +12,7 @@ import { Spacing, colors } from "@/constants/theme";
 import { openLexusApp } from "@/data/lexus-app";
 import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 
-function InfoRow({
-  label,
-  value,
-  last,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
+function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <View
       style={[
@@ -42,8 +34,7 @@ function InfoRow({
 }
 
 export default function CarDetails() {
-  const { vehicle, loading, headerRight, errorScreen, offlineBanner } =
-    useVehicleScreen();
+  const { vehicle, loading, headerRight, errorScreen, offlineBanner } = useVehicleScreen();
 
   if (errorScreen) {
     return (
@@ -79,12 +70,7 @@ export default function CarDetails() {
             <SectionTitle>VEHICLE</SectionTitle>
             <Card style={styles.rowCard}>
               {spec.map(([label, value], i) => (
-                <InfoRow
-                  key={label}
-                  label={label}
-                  value={value}
-                  last={i === spec.length - 1}
-                />
+                <InfoRow key={label} label={label} value={value} last={i === spec.length - 1} />
               ))}
             </Card>
           </View>
@@ -141,11 +127,7 @@ export default function CarDetails() {
                       <ThemedText
                         type="smallBold"
                         themeColor={subscription.active ? undefined : "secondaryLabel"}
-                        style={
-                          subscription.active
-                            ? { color: colors.systemGreen }
-                            : undefined
-                        }
+                        style={subscription.active ? { color: colors.systemGreen } : undefined}
                       >
                         {subscription.status}
                       </ThemedText>
@@ -160,10 +142,7 @@ export default function CarDetails() {
                   {({ pressed }) => (
                     <ThemedText
                       type="linkPrimary"
-                      style={[
-                        styles.manageText,
-                        pressed && { opacity: 0.6 },
-                      ]}
+                      style={[styles.manageText, pressed && { opacity: 0.6 }]}
                     >
                       Manage your subscriptions in the Lexus app
                     </ThemedText>
