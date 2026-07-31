@@ -13,6 +13,12 @@ export function useVehicle() {
   const query = useQuery({
     queryKey: ["vehicle"],
     enabled: session !== null,
+    // Staleness is not React Query's call for this query: how old is too old
+    // depends on how the data would be refreshed (a cheap GET, or waking the
+    // car), so `useVehicleResume` owns mount and foreground refreshing for the
+    // whole ladder. Reconnecting still refetches — that one is unambiguous.
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     // A settled "no vehicle on this account" is a definitive empty state, and a
     // dead session only recovers by signing in — don't burn retries on either.
     // Everything else keeps the default two retries.
