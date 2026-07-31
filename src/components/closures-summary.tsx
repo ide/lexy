@@ -159,7 +159,10 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
                 modifiers={[
                   // A fixed height regardless of state, so the card never
                   // shifts its collapsed size and the skeleton matches it.
-                  frame({ maxWidth: Infinity, height: 44, alignment: "leading" }),
+                  // Two frame calls: expo-ui's frame modifier drops maxWidth
+                  // when height is set, which left the row floating centered.
+                  frame({ height: 44 }),
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
                   ...(redacted ? [redactedModifier(), disabledModifier(true)] : []),
                 ]}
               >
