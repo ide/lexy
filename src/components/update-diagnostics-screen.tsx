@@ -42,6 +42,7 @@ import * as Haptics from "expo-haptics";
 import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useWindowDimensions } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Spacing, colors } from "@/constants/theme";
@@ -618,6 +619,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
 
 export default function UpdateDiagnostics() {
   const updateState = Updates.useUpdates();
+  const { width: windowWidth } = useWindowDimensions();
   const { markInteractive } = useObserve();
   const [activeAction, setActiveAction] = useState<Action | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -834,6 +836,13 @@ export default function UpdateDiagnostics() {
               horizontal: Spacing.three,
               bottom: Spacing.six,
             }),
+            // Clamp the content to the window so it cannot end up a fraction of
+            // a point wider than the scroll view. Text measurements land on
+            // sub-pixel widths, and a stack that reports even one device pixel
+            // past the viewport gives the vertical scroll view a horizontal
+            // scrolling range, which reads as the screen rubber-banding
+            // sideways.
+            frame({ maxWidth: windowWidth }),
             // Animate the relayout when a known-update card appears or
             // disappears instead of letting the sections below jump.
             animation(Animation.spring({ duration: 0.35 }), updateEntries.length),
