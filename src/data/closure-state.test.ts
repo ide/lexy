@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyObservation,
   applyOptimisticLock,
+  expireOptimisticLocks,
   hasOptimisticLock,
   parseClosureStore,
   readClosures,
@@ -223,6 +224,83 @@ describe("applyOptimisticLock", () => {
     const store = applyOptimisticLock(applyObservation(null, VIN, full), "OTHERVIN", true, OPT_AT);
     expect(store.vin).toBe("OTHERVIN");
     expect(readClosures(store)).toEqual([]);
+  });
+});
+
+describe("expireOptimisticLocks", () => {
+  const OPT_AT = "2026-07-29T21:00:00Z";
+  const sentAt = new Date(OPT_AT).getTime();
+  const pending = () => applyOptimisticLock(applyObservation(null, VIN, full), VIN, false, OPT_AT);
+
+  it("leaves a prediction alone inside its window", () => {
+    const store = pending();
+    expect(expireOptimisticLocks(store, sentAt + 30_000, 90_000)).toBe(store);
+    expect(expireOptimisticLocks(null, sentAt, 90_000)).toBeNull();
+  });
+
+  it("reverts an expired prediction to the reading it displaced", () => {
+    // The vehicle accepted the unlock and never reported it — the doors were
+    // locked before, and locked is what they are known to be.
+    const expired = expireOptimisticLocks(pending(), sentAt + 90_000, 90_000);
+    expect(hasOptimisticLock(expired)).toBe(false);
+    expect(readClosures(expired).find((c) => c.label === "Driver Door")).toEqual({
+      label: "Driver Door",
+      state: "Closed",
+      stateAt: FULL_AT,
+      locked: true,
+      lockedAt: FULL_AT,
+    });
+  });
+
+  it("leaves the lock unknown when there is no reading to fall back to", () => {
+    // A prediction persisted by a build that didn't keep what it displaced.
+    // Unknown is the honest answer; a guess is not improved by keeping it.
+    const store: ClosureStore = {
+      vin: VIN,
+      seq: 1,
+      closures: {
+        "Driver Door": {
+          label: "Driver Door",
+          order: 0,
+          state: { value: "Closed", at: FULL_AT },
+          locked: { value: false, at: OPT_AT, optimistic: true },
+        },
+      },
+    };
+    const expired = expireOptimisticLocks(store, sentAt + 90_000, 90_000);
+    expect(readClosures(expired)).toEqual([
+      { label: "Driver Door", state: "Closed", stateAt: FULL_AT },
+    ]);
+  });
+
+  it("keeps the original reading as the fallback across a second command", () => {
+    // Lock, then unlock before either settles: the fallback is the last thing
+    // the vehicle actually said, never the first prediction.
+    const relocked = applyOptimisticLock(pending(), VIN, true, "2026-07-29T21:00:20Z");
+    const expired = expireOptimisticLocks(relocked, sentAt + 120_000, 90_000);
+    const driver = readClosures(expired).find((c) => c.label === "Driver Door");
+    expect(driver?.locked).toBe(true);
+    expect(driver?.lockedAt).toBe(FULL_AT);
+    expect(driver?.lockedOptimistic).toBeUndefined();
+  });
+
+  it("expires only predictions at least as old as the command that gave up", () => {
+    // How remote-command-effects stands its own prediction down without
+    // touching one from a command the user issued seconds ago.
+    const now = sentAt + 60_000;
+    const newer = applyOptimisticLock(pending(), VIN, true, new Date(now - 5_000).toISOString());
+    expect(expireOptimisticLocks(newer, now, now - sentAt)).toBe(newer);
+  });
+
+  it("treats an unparseable stamp as expired rather than eternal", () => {
+    const store = applyOptimisticLock(applyObservation(null, VIN, full), VIN, false, "not a date");
+    expect(hasOptimisticLock(expireOptimisticLocks(store, sentAt, 90_000))).toBe(false);
+  });
+
+  it("survives a JSON round-trip (the store is persisted)", () => {
+    const store = JSON.parse(JSON.stringify(pending())) as ClosureStore;
+    const expired = expireOptimisticLocks(store, sentAt + 90_000, 90_000);
+    expect(readClosures(expired).find((c) => c.label === "Driver Door")?.locked).toBe(true);
   });
 });
 
