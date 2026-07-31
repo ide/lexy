@@ -48,7 +48,14 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
 function StatusLine({ status }: { status: ClosureStatus }) {
   return (
     <HStack spacing={Spacing.one}>
-      <Image systemName={status.symbol} size={15} color={TONE_COLORS[status.tone]} />
+      <Image
+        systemName={status.symbol}
+        size={15}
+        color={TONE_COLORS[status.tone]}
+        // SF Symbols vary in intrinsic width (a lock is narrow, a window
+        // wide); a fixed slot keeps the texts of stacked lines aligned.
+        modifiers={[frame({ width: 22 })]}
+      />
       <Text modifiers={[font({ textStyle: "subheadline" }), foregroundStyle(colors.label)]}>
         {status.text}
       </Text>
