@@ -344,10 +344,13 @@ const styles = StyleSheet.create({
   title: {
     marginTop: Spacing.one,
   },
+  // Left-aligned as one run: the indicators' left edges stay anchored when
+  // "Locked" grows into "Locking…", instead of the whole right-aligned block
+  // sliding over.
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: Spacing.three,
   },
   // Mirrors the SectionTitle's own margins (left/bottom Spacing.two, top
   // Spacing.one) so the status indicators line up with the title baseline.
@@ -357,7 +360,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     marginTop: Spacing.one,
     marginBottom: Spacing.two,
-    marginRight: Spacing.two,
   },
   statusItem: {
     flexDirection: "row",

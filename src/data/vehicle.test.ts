@@ -216,10 +216,10 @@ describe("mapVehicle", () => {
       status: "Good",
       unit: "psi",
       positions: [
-        { label: "Front Left", value: 39, low: false },
-        { label: "Front Right", value: 39, low: false },
-        { label: "Rear Left", value: 40, low: false },
-        { label: "Rear Right", value: 33, low: true },
+        { label: "Front left", value: 39, low: false },
+        { label: "Front right", value: 39, low: false },
+        { label: "Rear left", value: 40, low: false },
+        { label: "Rear right", value: 33, low: true },
       ],
     });
     expect(mapped).toMatchObject({

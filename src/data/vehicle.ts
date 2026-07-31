@@ -340,10 +340,10 @@ function mapTires(tires: unknown): TirePressure | undefined {
     status: str(p.tirePressureStatus),
     unit: str(asRecord(p.flTirePressure).unit, "psi"),
     positions: [
-      position("flTirePressure", "Front Left"),
-      position("frTirePressure", "Front Right"),
-      position("rlTirePressure", "Rear Left"),
-      position("rrTirePressure", "Rear Right"),
+      position("flTirePressure", "Front left"),
+      position("frTirePressure", "Front right"),
+      position("rlTirePressure", "Rear left"),
+      position("rrTirePressure", "Rear right"),
     ],
   };
 }
