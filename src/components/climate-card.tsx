@@ -8,7 +8,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
-import { useRedacted } from "@/components/redacted";
+import { useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import type { AcParameter } from "@/data/climate-settings";

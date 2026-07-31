@@ -5,7 +5,7 @@ import { Pressable } from "react-native-gesture-handler";
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
-import { Redacted } from "@/components/redacted";
+import { Redactable } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
@@ -34,7 +34,7 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
 }
 
 export default function CarDetails() {
-  const { vehicle, loading, headerRight, errorScreen, offlineBanner } = useVehicleScreen();
+  const { vehicle, redaction, headerRight, errorScreen, statusBanner } = useVehicleScreen();
 
   if (errorScreen) {
     return (
@@ -64,8 +64,8 @@ export default function CarDetails() {
     <>
       <Stack.Screen options={{ title: "Specs", headerRight }} />
       <NativeScrollView contentContainerStyle={styles.content}>
-        {offlineBanner}
-        <Redacted loading={loading} style={styles.group}>
+        {statusBanner}
+        <Redactable reason={redaction} style={styles.group}>
           <View>
             <SectionTitle>VEHICLE</SectionTitle>
             <Card style={styles.rowCard}>
@@ -151,7 +151,7 @@ export default function CarDetails() {
               </Card>
             </View>
           ) : null}
-        </Redacted>
+        </Redactable>
       </NativeScrollView>
     </>
   );
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: Spacing.six,
   },
-  // The Redacted wrapper groups the sections into one child of the scroll
+  // The Redactable wrapper groups the sections into one child of the scroll
   // content, so it re-applies the container's section gap inside itself.
   group: {
     gap: Spacing.three,

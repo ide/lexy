@@ -2,12 +2,12 @@ import { Image } from "expo-image";
 import { View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { useRedacted } from "@/components/redacted";
+import { useRedacted } from "@/components/redactable";
 import { colors } from "@/constants/theme";
 
 /**
  * An SF Symbol drawn through expo-image, shared by the RN-rendered screens.
- * Inside a `Redacted` subtree it draws as a neutral fill circle of its normal
+ * Inside a `Redactable` subtree it draws as a neutral fill circle of its normal
  * size instead, so icon slots keep their exact geometry while loading.
  */
 export function Icon({ name, size = 22, tint }: { name: SFSymbol; size?: number; tint?: string }) {

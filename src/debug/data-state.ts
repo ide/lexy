@@ -15,7 +15,8 @@ export type DataStateOverride =
   | "skeleton"
   | "offline-cached"
   | "offline-empty"
-  | "error"
+  | "error-cached"
+  | "error-empty"
   | "no-vehicle";
 
 type VehicleResult = UseQueryResult<Vehicle, Error>;
@@ -68,16 +69,27 @@ export function overrideVehicleResult(
         status: "success",
         dataUpdatedAt: query.dataUpdatedAt || Date.now(),
       } as VehicleResult;
-    // Settled failure (online), so the screens show the "Vehicle unavailable"
-    // error rather than the offline skeleton.
-    case "error":
-      return failed(query, new Error("Forced fetch error (dev override)"));
+    // A failed refresh that still has cached data behind it — React Query
+    // keeps `data` and reports the error alongside it. The screens render the
+    // cached dashboard under the "Couldn't refresh" banner.
+    case "error-cached":
+      return {
+        ...failed(query, FORCED_ERROR),
+        data: PLACEHOLDER_VEHICLE,
+        dataUpdatedAt: query.dataUpdatedAt || Date.now(),
+      } as VehicleResult;
+    // Settled failure (online) with nothing cached, so the screens show the
+    // full-screen "Vehicle data unavailable" error rather than a skeleton.
+    case "error-empty":
+      return failed(query, FORCED_ERROR);
     // A settled NoVehicleError, which the screens render as the distinct
     // "No vehicle found" empty state.
     case "no-vehicle":
       return failed(query, new NoVehicleError());
   }
 }
+
+const FORCED_ERROR = new Error("Forced fetch error (dev override)");
 
 function failed(query: VehicleResult, error: Error): VehicleResult {
   return {
@@ -97,7 +109,8 @@ function failed(query: VehicleResult, error: Error): VehicleResult {
  * The online state the vehicle screens should see for `state`. The offline
  * states force `false` (that is what the override is for); the error and empty
  * states force `true` so the screens reach the error/empty branches instead of
- * the offline skeleton; `live` passes the device's real connectivity through.
+ * the offline ones — offline outranks an error in the banner; `live` passes the
+ * device's real connectivity through.
  */
 export function overrideIsOnline(real: boolean, state: DataStateOverride): boolean {
   switch (state) {
@@ -105,7 +118,8 @@ export function overrideIsOnline(real: boolean, state: DataStateOverride): boole
     case "offline-empty":
       return false;
     case "skeleton":
-    case "error":
+    case "error-cached":
+    case "error-empty":
     case "no-vehicle":
       return true;
     case "live":

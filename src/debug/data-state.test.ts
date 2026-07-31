@@ -31,7 +31,8 @@ describe("overrideVehicleResult", () => {
       "skeleton",
       "offline-cached",
       "offline-empty",
-      "error",
+      "error-cached",
+      "error-empty",
       "no-vehicle",
     ] as const) {
       expect(overrideVehicleResult(live, state).refetch).toBe(refetch);
@@ -62,12 +63,26 @@ describe("overrideVehicleResult", () => {
     expect(result.error).toBeNull();
   });
 
-  it("error surfaces a generic error, not a NoVehicleError", () => {
-    const result = overrideVehicleResult(live, "error");
+  it("error-empty surfaces a generic error, not a NoVehicleError", () => {
+    const result = overrideVehicleResult(live, "error-empty");
     expect(result.data).toBeUndefined();
     expect(result.error).toBeInstanceOf(Error);
     expect(result.error).not.toBeInstanceOf(NoVehicleError);
     expect(result.isError).toBe(true);
+  });
+
+  // The banner-over-cached-data case: React Query keeps `data` when a refetch
+  // fails, so the override has to report both at once.
+  it("error-cached keeps data alongside the error", () => {
+    const result = overrideVehicleResult(
+      { ...live, data: undefined } as typeof live,
+      "error-cached",
+    );
+    expect(result.data).toBe(PLACEHOLDER_VEHICLE);
+    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error).not.toBeInstanceOf(NoVehicleError);
+    expect(result.isError).toBe(true);
+    expect(result.isLoading).toBe(false);
   });
 
   it("no-vehicle surfaces a NoVehicleError so the empty state shows", () => {
@@ -89,7 +104,8 @@ describe("overrideIsOnline", () => {
   });
 
   it("forces online for error/empty/skeleton so those branches are reached", () => {
-    expect(overrideIsOnline(false, "error")).toBe(true);
+    expect(overrideIsOnline(false, "error-cached")).toBe(true);
+    expect(overrideIsOnline(false, "error-empty")).toBe(true);
     expect(overrideIsOnline(false, "no-vehicle")).toBe(true);
     expect(overrideIsOnline(false, "skeleton")).toBe(true);
   });

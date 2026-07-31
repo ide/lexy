@@ -2,7 +2,8 @@ import { useObserve } from "expo-observe";
 import { useEffect, useState } from "react";
 
 import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
-import { OfflineBanner } from "@/components/offline-banner";
+import type { RedactionReason } from "@/components/redactable";
+import { StatusBanner } from "@/components/status-banner";
 import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
@@ -12,8 +13,15 @@ import { useVehicle } from "@/hooks/use-vehicle";
 
 /**
  * The scaffolding every vehicle screen (Status, Specs) shares: the vehicle
- * query, the loading/redaction policy, the offline banner, the error screen,
+ * query, the redaction policy, the status banner, the error screen,
  * and the dev-build skeleton toggle. The screens keep only their content tree.
+ *
+ * Both ways a load can go wrong — offline and a failed fetch — split on the
+ * same question: is there cached data to fall back on? With cache, the screen
+ * renders that data under a banner explaining why it may be stale. Without it,
+ * offline shows a still redacted tree (the data can still arrive on its own,
+ * once the network returns) and a failure shows the full-screen error with
+ * its retry (nothing will change until the user asks again).
  */
 export function useVehicleScreen() {
   const query = useVehicle();
@@ -39,15 +47,19 @@ export function useVehicleScreen() {
       )
     : undefined;
 
-  // A single redacted state covers every "no vehicle yet" case: the dev
-  // override, the first-load fetch, and offline-before-anything-cached (with a
-  // banner). Only a settled, online, data-less result is a real error.
-  const loading = forceSkeleton || (!data && (isLoading || !isOnline));
+  // Every "no vehicle to show yet" case in one value: why the content tree is
+  // standing in for data it doesn't have, or null when it has the real thing.
+  // A fetch in flight is `loading` (the dev toggle included — it exists to
+  // inspect that exact skeleton); offline before anything was cached is
+  // `unavailable`, because React Query has paused the fetch and nothing is on
+  // its way. Anything else is real data, or falls through to `errorScreen`.
+  const redaction: RedactionReason =
+    forceSkeleton || isLoading ? "loading" : !data && !isOnline ? "unavailable" : null;
 
   // Non-null exactly when there is nothing to render at all — the caller
   // returns it (under its own Stack.Screen title) instead of the content tree.
   const errorScreen =
-    !loading && !data ? (
+    !redaction && !data ? (
       error instanceof NoVehicleError ? (
         <NoVehicleState retry={() => refetch()} />
       ) : (
@@ -55,17 +67,29 @@ export function useVehicleScreen() {
       )
     ) : null;
 
-  // While loading, the real content tree renders placeholder data redacted
-  // into neutral bars (see `Redacted`). One tree, one scroll container: the
+  // While redacted, the real content tree renders placeholder data drawn as
+  // neutral bars (see `Redactable`). One tree, one scroll container: the
   // layout cannot drift from itself, sizes are identical in both states, and
   // toggling reconciles in place so the scroll offset is preserved. (The
   // placeholder fallback on the right is unreachable when errorScreen is
   // null; it just spares callers a non-null assertion.)
-  const vehicle = loading ? PLACEHOLDER_VEHICLE : (data ?? PLACEHOLDER_VEHICLE);
+  const vehicle = redaction ? PLACEHOLDER_VEHICLE : (data ?? PLACEHOLDER_VEHICLE);
 
-  const offlineBanner = !isOnline ? (
-    <OfflineBanner
-      detail={data ? "Showing the latest data we saved." : "Reconnect to load your vehicle."}
+  // Offline outranks a stale error: the network being down is the more
+  // actionable explanation, and a paused query's last error is stale anyway.
+  const statusBanner = !isOnline ? (
+    <StatusBanner
+      symbol="wifi.slash"
+      title="You're offline"
+      detail={data ? "Showing the latest data we saved." : "Reconnect to see your vehicle."}
+    />
+  ) : error && data ? (
+    // Online, the fetch failed, but there is cached data to keep showing. The
+    // data-less version of this is `errorScreen` above.
+    <StatusBanner
+      symbol="exclamationmark.triangle.fill"
+      title="Couldn't refresh"
+      detail="Showing the latest data we saved."
     />
   ) : null;
 
@@ -73,10 +97,11 @@ export function useVehicleScreen() {
     /** The underlying vehicle query, for screens that need more than `data`. */
     query,
     vehicle,
-    loading,
+    /** Why the content tree is redacted, or null when it shows real data. */
+    redaction,
     isOnline,
     headerRight,
     errorScreen,
-    offlineBanner,
+    statusBanner,
   };
 }

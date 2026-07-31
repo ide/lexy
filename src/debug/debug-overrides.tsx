@@ -44,10 +44,17 @@ export const DATA_STATE_OPTIONS: DataStateOption[] = [
     tint: colors.systemOrange,
   },
   {
-    key: "error",
-    title: "Fetch error",
-    subtitle: 'Force the "Vehicle unavailable" error screen.',
+    key: "error-cached",
+    title: "Fetch error — cached data",
+    subtitle: "Show the last-seen dashboard behind the refresh-failed banner.",
     icon: "exclamationmark.triangle.fill",
+    tint: colors.systemOrange,
+  },
+  {
+    key: "error-empty",
+    title: "Fetch error — no cache",
+    subtitle: 'Force the full-screen "Vehicle data unavailable" error.',
+    icon: "exclamationmark.octagon.fill",
     tint: colors.systemRed,
   },
   {

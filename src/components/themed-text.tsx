@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from "react-native";
 
-import { useRedacted } from "@/components/redacted";
+import { useRedacted } from "@/components/redactable";
 import { Fonts, ThemeColor, colors } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {
@@ -17,7 +17,7 @@ export function ThemedText({ style, type = "default", themeColor, ...rest }: The
         { color: colors[themeColor ?? "label"] },
         styles[type],
         style,
-        // Inside a `Redacted` subtree the text keeps its exact metrics (font,
+        // Inside a `Redactable` subtree the text keeps its exact metrics (font,
         // line height, width from the placeholder string) but draws as a
         // neutral bar: transparent glyphs over a fill background. Placed last
         // so it also wins over caller color overrides.
