@@ -1,15 +1,15 @@
 import {
-  Button as SwiftUIButton,
+  Button,
   DisclosureGroup,
   Divider,
   Group,
   HStack,
   Host,
-  Image as SwiftUIImage,
+  Image,
   ProgressView,
-  ScrollView as SwiftUIScrollView,
+  ScrollView,
   Spacer,
-  Text as SwiftUIText,
+  Text,
   VStack,
   ZStack,
 } from "@expo/ui/swift-ui";
@@ -40,33 +40,34 @@ import {
 import Constants from "expo-constants";
 import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useWindowDimensions } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Spacing, colors } from "@/constants/theme";
 import {
-  readUpdateActivity,
-  recordUpdateActivity,
-} from "@/updates/update-history";
-import {
   buildUpdateEntries,
   describeKnownUpdate,
   describeNativeLog,
+  describeUpdateStatus,
+  formatUpdateDate,
   resolveLastCheck,
   shortUpdateId,
-  sortNewestFirst,
   type UpdateActivityEvent,
   type UpdateEntry,
+  type UpdateStatusTone,
 } from "@/updates/update-utils";
-import { haptic } from "@/utils/haptics";
+import { useUpdateActions } from "@/updates/use-update-actions";
+import { MAX_VISIBLE_EVENTS, useUpdateEvents } from "@/updates/use-update-events";
 
-type Action = "check" | "download" | "reload";
+// The headline status tones, mapped from the theme palette.
+const TONE_COLORS: Record<UpdateStatusTone, string> = {
+  good: colors.systemGreen,
+  busy: colors.systemBlue,
+  attention: colors.systemOrange,
+};
 
-const MAX_VISIBLE_EVENTS = 20;
-const NATIVE_LOG_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
-
-function Icon({
+function Glyph({
   name,
   size = 20,
   tint = colors.label,
@@ -75,12 +76,12 @@ function Icon({
   size?: number;
   tint?: string;
 }) {
-  return <SwiftUIImage systemName={name} size={size} color={tint} />;
+  return <Image systemName={name} size={size} color={tint} />;
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <SwiftUIText
+    <Text
       modifiers={[
         font({ textStyle: "caption", weight: "semibold" }),
         foregroundStyle({ type: "hierarchical", style: "secondary" }),
@@ -89,11 +90,31 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
       ]}
     >
       {children}
-    </SwiftUIText>
+    </Text>
   );
 }
 
-function Card({
+// The muted footnote under a section's card.
+function SectionFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <Text
+      modifiers={[
+        font({ textStyle: "footnote", weight: "medium" }),
+        foregroundStyle({ type: "hierarchical", style: "secondary" }),
+        fixedSize({ horizontal: false, vertical: true }),
+        frame({ maxWidth: Infinity, alignment: "leading" }),
+        padding({
+          top: Spacing.two,
+          horizontal: Spacing.two,
+        }),
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function Panel({
   children,
   spacing = 0,
   verticalPadding = Spacing.three,
@@ -142,16 +163,16 @@ function DataRow({
           padding({ vertical: Spacing.two }),
         ]}
       >
-        <SwiftUIText
+        <Text
           modifiers={[
             font({ textStyle: "footnote", weight: "medium" }),
             foregroundStyle({ type: "hierarchical", style: "secondary" }),
           ]}
         >
           {label}
-        </SwiftUIText>
+        </Text>
         <Spacer />
-        <SwiftUIText
+        <Text
           modifiers={[
             font({ textStyle: "footnote", weight: "medium" }),
             textSelection(true),
@@ -159,7 +180,7 @@ function DataRow({
           ]}
         >
           {value}
-        </SwiftUIText>
+        </Text>
       </HStack>
       {last ? null : <Divider />}
     </VStack>
@@ -182,7 +203,7 @@ function ActionButton({
   primary?: boolean;
 }) {
   return (
-    <SwiftUIButton
+    <Button
       onPress={onPress}
       modifiers={[
         buttonStyle(primary ? "borderedProminent" : "bordered"),
@@ -200,27 +221,23 @@ function ActionButton({
         {/* The fixed icon frame keeps the labels aligned across buttons whose
             symbols have different intrinsic widths, and keeps the button
             height stable when the busy hourglass swaps in. */}
-        <SwiftUIImage
+        <Image
           systemName={busy ? "hourglass" : icon}
           size={17}
           modifiers={[frame({ width: 24, height: 20 })]}
         />
-        <SwiftUIText>{busy ? `${label}…` : label}</SwiftUIText>
+        <Text>{busy ? `${label}…` : label}</Text>
       </HStack>
-    </SwiftUIButton>
+    </Button>
   );
 }
 
-function formatDate(
-  value: Date | undefined,
-  fallback = "Not reported",
-): string {
-  return value
-    ? value.toLocaleString([], {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : fallback;
+function formatEventTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
@@ -234,7 +251,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
       : colors.systemOrange;
 
   return (
-    <Card spacing={Spacing.three}>
+    <Panel spacing={Spacing.three}>
       <HStack
         alignment="center"
         spacing={Spacing.three}
@@ -252,7 +269,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
             ),
           ]}
         >
-          <Icon
+          <Glyph
             name={
               isCurrent
                 ? "play.fill"
@@ -278,16 +295,16 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
                 priority over a `fixedSize` badge instead pushed the row wider
                 than the screen, which made the whole scroll view pan
                 sideways. */}
-            <SwiftUIText
+            <Text
               modifiers={[
                 font({ textStyle: "footnote", weight: "bold" }),
                 lineLimit(2),
               ]}
             >
               {copy.title}
-            </SwiftUIText>
+            </Text>
             <Spacer />
-            <SwiftUIText
+            <Text
               modifiers={[
                 font({
                   textStyle: "caption2",
@@ -310,9 +327,9 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
               ]}
             >
               {copy.badge}
-            </SwiftUIText>
+            </Text>
           </HStack>
-          <SwiftUIText
+          <Text
             modifiers={[
               font({ textStyle: "footnote", weight: "medium" }),
               foregroundStyle({ type: "hierarchical", style: "secondary" }),
@@ -320,7 +337,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
             ]}
           >
             {copy.detail}
-          </SwiftUIText>
+          </Text>
         </VStack>
       </HStack>
       <Divider />
@@ -330,54 +347,54 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
         modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
       >
         <HStack spacing={Spacing.three}>
-          <SwiftUIText
+          <Text
             modifiers={[
               font({ textStyle: "footnote", weight: "medium" }),
               foregroundStyle({ type: "hierarchical", style: "secondary" }),
             ]}
           >
             Published
-          </SwiftUIText>
+          </Text>
           <Spacer />
-          <SwiftUIText
+          <Text
             modifiers={[
               font({ textStyle: "footnote", weight: "medium" }),
               textSelection(true),
             ]}
           >
-            {formatDate(entry.createdAt)}
-          </SwiftUIText>
+            {formatUpdateDate(entry.createdAt)}
+          </Text>
         </HStack>
         <HStack spacing={Spacing.three}>
-          <SwiftUIText
+          <Text
             modifiers={[
               font({ textStyle: "footnote", weight: "medium" }),
               foregroundStyle({ type: "hierarchical", style: "secondary" }),
             ]}
           >
             Source
-          </SwiftUIText>
+          </Text>
           <Spacer />
-          <SwiftUIText
+          <Text
             modifiers={[font({ textStyle: "footnote", weight: "medium" })]}
           >
             {entry.source}
-          </SwiftUIText>
+          </Text>
         </HStack>
         <VStack
           alignment="leading"
           spacing={Spacing.one}
           modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
         >
-          <SwiftUIText
+          <Text
             modifiers={[
               font({ textStyle: "footnote", weight: "medium" }),
               foregroundStyle({ type: "hierarchical", style: "secondary" }),
             ]}
           >
             Update ID
-          </SwiftUIText>
-          <SwiftUIText
+          </Text>
+          <Text
             modifiers={[
               font({
                 textStyle: "caption2",
@@ -389,10 +406,10 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
             ]}
           >
             {entry.id}
-          </SwiftUIText>
+          </Text>
         </VStack>
       </VStack>
-    </Card>
+    </Panel>
   );
 }
 
@@ -400,9 +417,7 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
   const description = describeNativeLog(entry);
   const isProblem =
     entry.level === "error" || entry.level === "fatal" || entry.level === "warn";
-  const accent = isProblem
-    ? colors.systemOrange
-    : colors.systemBlue;
+  const accent = isProblem ? colors.systemOrange : colors.systemBlue;
   const detailRows = [
     entry.updateId ? `Update ${entry.updateId}` : null,
     entry.assetId ? `Asset ${entry.assetId}` : null,
@@ -429,10 +444,10 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
             spacing={Spacing.two}
             modifiers={[frame({ maxWidth: Infinity })]}
           >
-            <SwiftUIImage systemName="circle.fill" size={8} color={accent} />
+            <Image systemName="circle.fill" size={8} color={accent} />
             {/* Same ordering as the known-update card: the title truncates so
                 the level and time — which cannot wrap — always fit. */}
-            <SwiftUIText
+            <Text
               modifiers={[
                 font({ textStyle: "subheadline", weight: "semibold" }),
                 foregroundStyle(colors.label),
@@ -441,9 +456,9 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
               ]}
             >
               {description.title}
-            </SwiftUIText>
+            </Text>
             {isProblem ? (
-              <SwiftUIText
+              <Text
                 modifiers={[
                   font({
                     textStyle: "caption2",
@@ -456,10 +471,10 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
                 ]}
               >
                 {entry.level.toUpperCase()}
-              </SwiftUIText>
+              </Text>
             ) : null}
             <Spacer />
-            <SwiftUIText
+            <Text
               modifiers={[
                 font({ textStyle: "caption" }),
                 foregroundStyle(colors.secondaryLabel),
@@ -468,14 +483,10 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
                 layoutPriority(1),
               ]}
             >
-              {new Date(entry.timestamp).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </SwiftUIText>
+              {formatEventTime(entry.timestamp)}
+            </Text>
           </HStack>
-          <SwiftUIText
+          <Text
             modifiers={[
               font({ textStyle: "footnote" }),
               foregroundStyle(colors.secondaryLabel),
@@ -487,7 +498,7 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
             ]}
           >
             {description.summary}
-          </SwiftUIText>
+          </Text>
         </VStack>
       </DisclosureGroup.Label>
       <VStack
@@ -498,7 +509,7 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
           padding({ leading: Spacing.three, bottom: Spacing.two }),
         ]}
       >
-        <SwiftUIText
+        <Text
           modifiers={[
             font({
               textStyle: "caption2",
@@ -511,8 +522,8 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
         >
           {entry.level.toUpperCase()}
           {entry.code === "None" ? "" : ` · ${entry.code}`}
-        </SwiftUIText>
-        <SwiftUIText
+        </Text>
+        <Text
           modifiers={[
             font({ textStyle: "caption", design: "monospaced" }),
             foregroundStyle(colors.label),
@@ -523,9 +534,9 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
           ]}
         >
           {entry.message}
-        </SwiftUIText>
+        </Text>
         {detailRows.map((row) => (
-          <SwiftUIText
+          <Text
             key={row}
             modifiers={[
               font({ textStyle: "caption2", design: "monospaced" }),
@@ -537,268 +548,132 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
             ]}
           >
             {row}
-          </SwiftUIText>
+          </Text>
         ))}
       </VStack>
     </DisclosureGroup>
   );
 }
 
-function sameEntries<T>(previous: T[], next: T[]): boolean {
+function ActivityRow({ entry }: { entry: UpdateActivityEvent }) {
   return (
-    previous.length === next.length &&
-    previous.every(
-      (entry, index) => JSON.stringify(entry) === JSON.stringify(next[index]),
-    )
+    <VStack
+      alignment="leading"
+      spacing={Spacing.one}
+      modifiers={[
+        frame({ maxWidth: Infinity, alignment: "leading" }),
+        padding({ vertical: Spacing.two }),
+      ]}
+    >
+      <HStack
+        alignment="firstTextBaseline"
+        spacing={Spacing.two}
+        modifiers={[frame({ maxWidth: Infinity })]}
+      >
+        <Text
+          modifiers={[
+            font({
+              textStyle: "footnote",
+              weight: "bold",
+            }),
+            entry.level === "error"
+              ? foregroundStyle(colors.systemOrange)
+              : foregroundStyle({
+                  type: "hierarchical",
+                  style: "primary",
+                }),
+          ]}
+        >
+          {entry.title}
+        </Text>
+        <Spacer />
+        <Text
+          modifiers={[
+            font({ textStyle: "caption" }),
+            foregroundStyle({
+              type: "hierarchical",
+              style: "secondary",
+            }),
+            monospacedDigit(),
+            lineLimit(1),
+            layoutPriority(1),
+          ]}
+        >
+          {formatEventTime(entry.timestamp)}
+        </Text>
+      </HStack>
+      <Text
+        modifiers={[
+          font({ textStyle: "footnote", weight: "medium" }),
+          textSelection(true),
+          fixedSize({ horizontal: false, vertical: true }),
+        ]}
+      >
+        {entry.detail}
+      </Text>
+      {entry.updateId ? (
+        <Text
+          modifiers={[
+            font({
+              textStyle: "caption2",
+              design: "monospaced",
+              weight: "medium",
+            }),
+            foregroundStyle({
+              type: "hierarchical",
+              style: "secondary",
+            }),
+            textSelection(true),
+          ]}
+        >
+          Update {shortUpdateId(entry.updateId)}
+        </Text>
+      ) : null}
+    </VStack>
   );
-}
-
-function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
-  icon: SFSymbol;
-  title: string;
-  detail: string;
-  color: string;
-} {
-  if (!Updates.isEnabled) {
-    return {
-      icon: "exclamationmark.triangle.fill",
-      title: "Updates disabled",
-      detail: "This build is not configured to use expo-updates.",
-      color: colors.systemOrange,
-    };
-  }
-  if (state.isRestarting) {
-    return {
-      icon: "arrow.clockwise",
-      title: "Reloading",
-      detail: "Switching to the newest downloaded update.",
-      color: colors.systemBlue,
-    };
-  }
-  if (state.isDownloading) {
-    return {
-      icon: "arrow.down.circle.fill",
-      title: `Downloading ${Math.round((state.downloadProgress ?? 0) * 100)}%`,
-      detail: "The update will be ready to launch when the download completes.",
-      color: colors.systemBlue,
-    };
-  }
-  if (state.isChecking) {
-    return {
-      icon: "magnifyingglass",
-      title: "Checking for updates",
-      detail: "Contacting the update server for this channel and runtime.",
-      color: colors.systemBlue,
-    };
-  }
-  if (state.isUpdatePending) {
-    return {
-      icon: "arrow.down.circle.fill",
-      title: "Update ready",
-      detail: "Downloaded and scheduled for the next reload or cold launch.",
-      color: colors.systemGreen,
-    };
-  }
-  if (state.isUpdateAvailable) {
-    return {
-      icon: "sparkles",
-      title: "Update available",
-      detail: "A compatible update is available but has not been downloaded.",
-      color: colors.systemOrange,
-    };
-  }
-  return {
-    icon: "checkmark.circle.fill",
-    title: "Running normally",
-    detail: state.lastCheckForUpdateTimeSinceRestart
-      ? "No newer compatible update was found at the last check."
-      : "Use Check Now to ask the update server for the latest version.",
-    color: colors.systemGreen,
-  };
 }
 
 export default function UpdateDiagnostics() {
   const updateState = Updates.useUpdates();
   const { width: windowWidth } = useWindowDimensions();
   const { markInteractive } = useObserve();
-  const [activeAction, setActiveAction] = useState<Action | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<Updates.UpdatesLogEntry[]>([]);
-  const [activity, setActivity] = useState<UpdateActivityEvent[]>([]);
-  const isRefreshingEventsRef = useRef(false);
-  const status = statusFor(updateState);
-  const lastCheck = resolveLastCheck(
-    updateState.lastCheckForUpdateTimeSinceRestart,
-    Updates.checkAutomatically,
-  );
-  const updateEntries = useMemo(
-    () =>
-      buildUpdateEntries({
-        running: updateState.currentlyRunning,
-        available: updateState.availableUpdate,
-        downloaded: updateState.downloadedUpdate,
-      }),
-    [
-      updateState.availableUpdate,
-      updateState.currentlyRunning,
-      updateState.downloadedUpdate,
-    ],
-  );
 
   useEffect(() => {
     markInteractive();
   }, [markInteractive]);
 
-  const refreshEvents = useCallback(async () => {
-    const [nativeEntries, activityEntries] = await Promise.all([
-      Updates.readLogEntriesAsync(NATIVE_LOG_MAX_AGE_MS),
-      readUpdateActivity(),
-    ]);
-    const nextLogs = sortNewestFirst(nativeEntries).slice(0, MAX_VISIBLE_EVENTS);
-    const nextActivity = sortNewestFirst(activityEntries).slice(
-      0,
-      MAX_VISIBLE_EVENTS,
-    );
-    // Keep the previous arrays when nothing changed so a no-op refresh does
-    // not re-render (and visibly flash) the native tree.
-    setLogs((previous) => (sameEntries(previous, nextLogs) ? previous : nextLogs));
-    setActivity((previous) =>
-      sameEntries(previous, nextActivity) ? previous : nextActivity,
-    );
-  }, []);
-
-  useEffect(() => {
-    refreshEvents().catch((error: unknown) => {
-      setActionError(
-        error instanceof Error ? error.message : "Could not read update logs.",
-      );
-    });
-  }, [refreshEvents]);
-
-  const refreshEventLists = useCallback(async () => {
-    if (isRefreshingEventsRef.current) {
-      return;
-    }
-    isRefreshingEventsRef.current = true;
-    try {
-      await refreshEvents();
-      haptic("selection");
-    } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : "Could not read update logs.",
-      );
-    } finally {
-      isRefreshingEventsRef.current = false;
-    }
-  }, [refreshEvents]);
-
-  const perform = useCallback(
-    async (action: Action, operation: () => Promise<string>) => {
-      setActiveAction(action);
-      // Leave the previous result visible while the action runs; clearing it
-      // here would flip the result card's colors twice per action.
-      try {
-        const message = await operation();
-        setActionMessage(message);
-        setActionError(null);
-        haptic("selection");
-      } catch (error) {
-        setActionError(
-          error instanceof Error
-            ? error.message
-            : "The update operation failed.",
-        );
-        setActionMessage(null);
-        haptic("impact-soft");
-      } finally {
-        setActiveAction(null);
-        refreshEvents().catch(() => {});
-      }
-    },
-    [refreshEvents],
+  const status = describeUpdateStatus(Updates.isEnabled, updateState);
+  const lastCheck = resolveLastCheck(
+    updateState.lastCheckForUpdateTimeSinceRestart,
+    Updates.checkAutomatically,
   );
+  const updateEntries = buildUpdateEntries({
+    running: updateState.currentlyRunning,
+    available: updateState.availableUpdate,
+    downloaded: updateState.downloadedUpdate,
+  });
 
-  const check = () =>
-    perform("check", async () => {
-      const result = await Updates.checkForUpdateAsync();
-      if (result.isAvailable) {
-        // The global UpdateHistoryRecorder logs the "Update found" activity
-        // when availableUpdate changes, so nothing to record here.
-        return "A newer update is available to download.";
-      }
-      if (result.isRollBackToEmbedded) {
-        return "A rollback to the embedded update is available.";
-      }
-      // A successful check that finds nothing produces no expo-updates state
-      // change, so the recorder never sees it — record it here so the activity
-      // log shows that a check ran and came back empty.
-      await recordUpdateActivity([
-        {
-          id: `check:${Date.now()}`,
-          timestamp: Date.now(),
-          title: "Update check completed",
-          detail: `No newer compatible update (${result.reason}).`,
-        },
-      ]);
-      // The raw reason code stays in the recorded activity above; the result
-      // card keeps to plain language.
-      return "You are already running the latest compatible update.";
-    });
+  const events = useUpdateEvents((message) => setActionError(message));
+  const {
+    activeAction,
+    actionMessage,
+    actionError,
+    setActionError,
+    check,
+    download,
+    reload,
+  } = useUpdateActions({
+    isUpdatePending: updateState.isUpdatePending,
+    downloadedUpdateId: updateState.downloadedUpdate?.updateId,
+    refreshEvents: events.refreshEvents,
+  });
 
-  // Pull-to-refresh asks the server for a newer update in addition to reloading
-  // the local logs/activity. check() runs through perform(), which records the
-  // outcome, refreshes the event lists, and fires the success haptic, so the
-  // pull spinner stays up until the server check resolves.
-  const pullToRefresh = useCallback(async () => {
-    if (isRefreshingEventsRef.current) {
-      return;
-    }
-    isRefreshingEventsRef.current = true;
-    try {
-      await check();
-    } finally {
-      isRefreshingEventsRef.current = false;
-    }
-  }, [check]);
-
-  const download = () =>
-    perform("download", async () => {
-      const result = await Updates.fetchUpdateAsync();
-      if (result.isNew) {
-        // The recorder logs "Update downloaded" when downloadedUpdate changes.
-        return "Update downloaded. Reload now or launch it next time.";
-      }
-      if (result.isRollBackToEmbedded) {
-        return "Rollback downloaded. Reload now or launch it next time.";
-      }
-      return "No new update was downloaded.";
-    });
-
-  const reload = () => {
-    setActiveAction("reload");
-    setActionMessage(null);
-    setActionError(null);
-    recordUpdateActivity([
-      {
-        id: `reload:${Date.now()}`,
-        timestamp: Date.now(),
-        title: "Reload requested",
-        detail: updateState.isUpdatePending
-          ? "Switching to the downloaded update."
-          : "Restarting the current update.",
-        updateId: updateState.downloadedUpdate?.updateId,
-      },
-    ])
-      .catch(() => {})
-      .then(() => Updates.reloadAsync())
-      .catch((error: unknown) => {
-        setActiveAction(null);
-        setActionError(
-          error instanceof Error ? error.message : "The app could not reload.",
-        );
-      });
-  };
+  // Pull-to-refresh asks the server for a newer update in addition to
+  // reloading the local logs/activity. check() runs through the actions hook,
+  // which records the outcome, refreshes the event lists, and fires the
+  // success haptic, so the pull spinner stays up until the server check
+  // resolves. It shares the exclusive gate with the Refresh button.
+  const pullToRefresh = () => events.runExclusive(() => check());
 
   const busy =
     activeAction !== null ||
@@ -819,7 +694,7 @@ export default function UpdateDiagnostics() {
       seedColor={colors.systemBlue}
       style={{ flex: 1, backgroundColor: colors.groupedBackground }}
     >
-      <SwiftUIScrollView modifiers={[refreshable(pullToRefresh)]}>
+      <ScrollView modifiers={[refreshable(pullToRefresh)]}>
         <VStack
           alignment="leading"
           spacing={Spacing.four}
@@ -845,7 +720,7 @@ export default function UpdateDiagnostics() {
             animation(Animation.easeInOut({ duration: 0.2 }), busy),
           ]}
         >
-          <Card spacing={Spacing.three}>
+          <Panel spacing={Spacing.three}>
             <HStack
               alignment="center"
               spacing={Spacing.three}
@@ -863,7 +738,11 @@ export default function UpdateDiagnostics() {
                   ),
                 ]}
               >
-                <Icon name={status.icon} size={24} tint={status.color} />
+                <Glyph
+                  name={status.icon}
+                  size={24}
+                  tint={TONE_COLORS[status.tone]}
+                />
               </ZStack>
               <VStack
                 alignment="leading"
@@ -872,12 +751,12 @@ export default function UpdateDiagnostics() {
                   frame({ maxWidth: Infinity, alignment: "leading" }),
                 ]}
               >
-                <SwiftUIText
+                <Text
                   modifiers={[font({ textStyle: "footnote", weight: "bold" })]}
                 >
                   {status.title}
-                </SwiftUIText>
-                <SwiftUIText
+                </Text>
+                <Text
                   modifiers={[
                     font({ textStyle: "footnote", weight: "medium" }),
                     foregroundStyle({
@@ -892,7 +771,7 @@ export default function UpdateDiagnostics() {
                   ]}
                 >
                   {status.detail}
-                </SwiftUIText>
+                </Text>
               </VStack>
             </HStack>
             {/* Only shown while downloading — otherwise it would reserve empty
@@ -907,15 +786,15 @@ export default function UpdateDiagnostics() {
                 ]}
               />
             ) : null}
-          </Card>
+          </Panel>
 
           <VStack
             alignment="leading"
             spacing={0}
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
-            <SectionTitle>UPDATE SYSTEM</SectionTitle>
-            <Card verticalPadding={Spacing.two}>
+            <SectionLabel>UPDATE SYSTEM</SectionLabel>
+            <Panel verticalPadding={Spacing.two}>
               <DataRow
                 label="Enabled"
                 value={Updates.isEnabled ? "Yes" : "No"}
@@ -949,12 +828,12 @@ export default function UpdateDiagnostics() {
                 label="Most recent check"
                 value={
                   "checkedAt" in lastCheck
-                    ? formatDate(lastCheck.checkedAt)
+                    ? formatUpdateDate(lastCheck.checkedAt)
                     : lastCheck.detail
                 }
                 last
               />
-            </Card>
+            </Panel>
           </VStack>
 
           <VStack
@@ -962,7 +841,7 @@ export default function UpdateDiagnostics() {
             spacing={0}
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
-            <SectionTitle>KNOWN UPDATES</SectionTitle>
+            <SectionLabel>KNOWN UPDATES</SectionLabel>
             <VStack
               alignment="leading"
               spacing={Spacing.two}
@@ -975,26 +854,12 @@ export default function UpdateDiagnostics() {
                 />
               ))}
             </VStack>
-            <SwiftUIText
-              modifiers={[
-                font({ textStyle: "footnote", weight: "medium" }),
-                foregroundStyle({
-                  type: "hierarchical",
-                  style: "secondary",
-                }),
-                fixedSize({ horizontal: false, vertical: true }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-                padding({
-                  top: Spacing.two,
-                  horizontal: Spacing.two,
-                }),
-              ]}
-            >
+            <SectionFooter>
               This is the actionable update state Expo exposes: what is running,
               what is ready on this device, and what the server has offered.
               Older downloaded updates are managed internally and are not enumerable
               from app code.
-            </SwiftUIText>
+            </SectionFooter>
           </VStack>
 
           <VStack
@@ -1002,7 +867,7 @@ export default function UpdateDiagnostics() {
             spacing={0}
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
-            <SectionTitle>CONTROLS</SectionTitle>
+            <SectionLabel>CONTROLS</SectionLabel>
             <VStack
               spacing={Spacing.two}
               modifiers={[frame({ maxWidth: Infinity })]}
@@ -1040,8 +905,8 @@ export default function UpdateDiagnostics() {
 
           {/* Always rendered with two reserved lines so results appearing
               (or changing) below the controls never shift the layout. */}
-          <Card>
-            <SwiftUIText
+          <Panel>
+            <Text
               modifiers={[
                 font({ textStyle: "footnote", weight: "medium" }),
                 resultText
@@ -1060,8 +925,8 @@ export default function UpdateDiagnostics() {
             >
               {resultText ??
                 "Results from the controls above will appear here."}
-            </SwiftUIText>
-          </Card>
+            </Text>
+          </Panel>
 
           <VStack
             alignment="leading"
@@ -1076,7 +941,7 @@ export default function UpdateDiagnostics() {
                 padding({ horizontal: Spacing.two, bottom: Spacing.two }),
               ]}
             >
-              <SwiftUIText
+              <Text
                 modifiers={[
                   font({ textStyle: "caption", weight: "semibold" }),
                   foregroundStyle({
@@ -1086,12 +951,12 @@ export default function UpdateDiagnostics() {
                 ]}
               >
                 UPDATE ACTIVITY
-              </SwiftUIText>
+              </Text>
               <Spacer />
-              <SwiftUIButton
+              <Button
                 label="Refresh"
                 systemImage="arrow.clockwise"
-                onPress={refreshEventLists}
+                onPress={events.refreshEventLists}
                 modifiers={[
                   buttonStyle("borderless"),
                   controlSize("small"),
@@ -1099,13 +964,13 @@ export default function UpdateDiagnostics() {
                 ]}
               />
             </HStack>
-            <Card
+            <Panel
               verticalPadding={
-                activity.length === 0 ? Spacing.three : Spacing.two
+                events.activity.length === 0 ? Spacing.three : Spacing.two
               }
             >
-              {activity.length === 0 ? (
-                <SwiftUIText
+              {events.activity.length === 0 ? (
+                <Text
                   modifiers={[
                     font({ textStyle: "footnote", weight: "medium" }),
                     foregroundStyle({
@@ -1117,109 +982,19 @@ export default function UpdateDiagnostics() {
                 >
                   Activity tracking starts with this version. The current launch
                   will appear here after Refresh.
-                </SwiftUIText>
+                </Text>
               ) : (
-                activity.map((entry, index) => (
+                events.activity.map((entry, index) => (
                   <Group key={entry.id}>
-                    <VStack
-                      alignment="leading"
-                      spacing={Spacing.one}
-                      modifiers={[
-                        frame({ maxWidth: Infinity, alignment: "leading" }),
-                        padding({ vertical: Spacing.two }),
-                      ]}
-                    >
-                      <HStack
-                        alignment="firstTextBaseline"
-                        spacing={Spacing.two}
-                        modifiers={[frame({ maxWidth: Infinity })]}
-                      >
-                        <SwiftUIText
-                          modifiers={[
-                            font({
-                              textStyle: "footnote",
-                              weight: "bold",
-                            }),
-                            entry.level === "error"
-                              ? foregroundStyle(colors.systemOrange)
-                              : foregroundStyle({
-                                  type: "hierarchical",
-                                  style: "primary",
-                                }),
-                          ]}
-                        >
-                          {entry.title}
-                        </SwiftUIText>
-                        <Spacer />
-                        <SwiftUIText
-                          modifiers={[
-                            font({ textStyle: "caption" }),
-                            foregroundStyle({
-                              type: "hierarchical",
-                              style: "secondary",
-                            }),
-                            monospacedDigit(),
-                            lineLimit(1),
-                            layoutPriority(1),
-                          ]}
-                        >
-                          {new Date(entry.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </SwiftUIText>
-                      </HStack>
-                      <SwiftUIText
-                        modifiers={[
-                          font({ textStyle: "footnote", weight: "medium" }),
-                          textSelection(true),
-                          fixedSize({ horizontal: false, vertical: true }),
-                        ]}
-                      >
-                        {entry.detail}
-                      </SwiftUIText>
-                      {entry.updateId ? (
-                        <SwiftUIText
-                          modifiers={[
-                            font({
-                              textStyle: "caption2",
-                              design: "monospaced",
-                              weight: "medium",
-                            }),
-                            foregroundStyle({
-                              type: "hierarchical",
-                              style: "secondary",
-                            }),
-                            textSelection(true),
-                          ]}
-                        >
-                          Update {shortUpdateId(entry.updateId)}
-                        </SwiftUIText>
-                      ) : null}
-                    </VStack>
-                    {index < activity.length - 1 ? <Divider /> : null}
+                    <ActivityRow entry={entry} />
+                    {index < events.activity.length - 1 ? <Divider /> : null}
                   </Group>
                 ))
               )}
-            </Card>
-            <SwiftUIText
-              modifiers={[
-                font({ textStyle: "footnote", weight: "medium" }),
-                foregroundStyle({
-                  type: "hierarchical",
-                  style: "secondary",
-                }),
-                fixedSize({ horizontal: false, vertical: true }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-                padding({
-                  top: Spacing.two,
-                  horizontal: Spacing.two,
-                }),
-              ]}
-            >
+            </Panel>
+            <SectionFooter>
               {`Update checks, downloads, and reloads recorded by Lexy on this device. The ${MAX_VISIBLE_EVENTS} most recent events are shown.`}
-            </SwiftUIText>
+            </SectionFooter>
           </VStack>
 
           <VStack
@@ -1227,12 +1002,14 @@ export default function UpdateDiagnostics() {
             spacing={0}
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
-            <SectionTitle>NATIVE UPDATE LOG</SectionTitle>
-            <Card
-              verticalPadding={logs.length === 0 ? Spacing.three : Spacing.two}
+            <SectionLabel>NATIVE UPDATE LOG</SectionLabel>
+            <Panel
+              verticalPadding={
+                events.logs.length === 0 ? Spacing.three : Spacing.two
+              }
             >
-              {logs.length === 0 ? (
-                <SwiftUIText
+              {events.logs.length === 0 ? (
+                <Text
                   modifiers={[
                     font({ textStyle: "footnote", weight: "medium" }),
                     foregroundStyle({
@@ -1244,7 +1021,7 @@ export default function UpdateDiagnostics() {
                 >
                   No native expo-updates entries were recorded in the last 24
                   hours.
-                </SwiftUIText>
+                </Text>
               ) : (
                 <VStack
                   spacing={0}
@@ -1252,37 +1029,23 @@ export default function UpdateDiagnostics() {
                     frame({ maxWidth: Infinity, alignment: "leading" }),
                   ]}
                 >
-                  {logs.map((entry, index) => (
+                  {events.logs.map((entry, index) => (
                     <Group
                       key={`${entry.timestamp}-${entry.code}-${entry.message}`}
                     >
                       <NativeLogDisclosure entry={entry} />
-                      {index < logs.length - 1 ? <Divider /> : null}
+                      {index < events.logs.length - 1 ? <Divider /> : null}
                     </Group>
                   ))}
                 </VStack>
               )}
-            </Card>
-            <SwiftUIText
-              modifiers={[
-                font({ textStyle: "footnote", weight: "medium" }),
-                foregroundStyle({
-                  type: "hierarchical",
-                  style: "secondary",
-                }),
-                fixedSize({ horizontal: false, vertical: true }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-                padding({
-                  top: Spacing.two,
-                  horizontal: Spacing.two,
-                }),
-              ]}
-            >
+            </Panel>
+            <SectionFooter>
               {`The ${MAX_VISIBLE_EVENTS} most recent low-level expo-updates entries from the last 24 hours. Entries are summarized; tap one to inspect its raw message and identifiers.`}
-            </SwiftUIText>
+            </SectionFooter>
           </VStack>
         </VStack>
-      </SwiftUIScrollView>
+      </ScrollView>
     </Host>
   );
 }
