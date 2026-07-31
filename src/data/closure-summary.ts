@@ -132,9 +132,20 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
         exceptions: [],
       };
     }
+    // The headline states facts, not a verdict — "2 open, 1 unlocked" rather
+    // than an alarm like "needs attention": an open window in the garage may
+    // be entirely intentional.
+    const unlocked = exceptions.filter((e) => e.label.endsWith("unlocked")).length;
+    const open = exceptions.length - unlocked;
+    const headline =
+      unlocked === 0
+        ? `${open} open`
+        : open === 0
+          ? `${unlocked} doors unlocked`
+          : `${open} open, ${unlocked} unlocked`;
     return {
       kind: "attention",
-      headline: `${exceptions.length} need attention`,
+      headline,
       subline,
       symbol: "exclamationmark.triangle.fill",
       exceptions,
