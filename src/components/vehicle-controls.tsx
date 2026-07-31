@@ -181,7 +181,11 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   const controls = [LOCK, UNLOCK, engineControl];
 
   // No reading yet means no claim — the indicator stays absent rather than
-  // asserting "Stopped" about an engine we haven't asked about.
+  // asserting "Stopped" about an engine we haven't asked about. The redacted
+  // pass is the exception: the engine read is skipped there, but the run is
+  // right-aligned, so an absent second indicator would leave the lock one
+  // parked against the margin and slide it left the moment the first reading
+  // lands. It draws as a bar either way, so the word only sets the width.
   const engineLabel = pending
     ? pending.command === "engine-start"
       ? "Starting…"
@@ -190,7 +194,9 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       ? engine.running
         ? "Started"
         : "Stopped"
-      : null;
+      : isRedacted
+        ? "Stopped"
+        : null;
   const engineColor = engine?.running ? green : colors.secondaryLabel;
 
   const run = (control: Control) => {
@@ -349,21 +355,26 @@ const styles = StyleSheet.create({
   title: {
     marginTop: Spacing.one,
   },
-  // Left-aligned as one run: the indicators' left edges stay anchored when
-  // "Locked" grows into "Locking…", instead of the whole right-aligned block
-  // sliding over.
+  // Title on the leading edge, indicators on the trailing one, each inset the
+  // same amount (see `status`). The cost is that "Locked" growing into
+  // "Locking…" pushes the run leftward instead of only extending it — the
+  // right edge is what stays put.
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: Spacing.three,
   },
-  // Mirrors the SectionTitle's own margins (left/bottom Spacing.two, top
-  // Spacing.one) so the status indicators line up with the title baseline.
+  // Mirrors the SectionTitle's own margins (bottom Spacing.two, top
+  // Spacing.one) so the status indicators line up with the title baseline, and
+  // the trailing inset mirrors the title's leading one so the row is inset the
+  // same amount on both ends.
   status: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.two,
     marginTop: Spacing.one,
+    marginRight: Spacing.two,
     marginBottom: Spacing.two,
   },
   statusItem: {
