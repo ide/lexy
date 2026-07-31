@@ -4,6 +4,20 @@ import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError, type Vehicle } from "@/data/vehicle";
 
 /**
+ * The vehicle the forced cached states show. Unlike the loading placeholder —
+ * whose empty image and 0,0 location are never meant to be seen — this renders
+ * unredacted, as if it were real cached data, so it carries the real IS 350
+ * render from the discovery record and parks the car at Apple Park: a
+ * recognizable, obviously stand-in spot instead of null island.
+ */
+export const MOCK_VEHICLE: Vehicle = {
+  ...PLACEHOLDER_VEHICLE,
+  imageUrl:
+    "https://delivery.vcr.assetscs.toyota.com/adobe/assets/urn:aaid:aem:06327492-1484-4909-af33-b7c14b21edda/as/image.png?size=700,700",
+  location: { latitude: 37.334606, longitude: -122.009102 },
+};
+
+/**
  * A developer-forced data state for the vehicle screens. `live` is the real
  * data (no override); the rest each pin one of the states the UI is designed to
  * handle so they can be exercised on demand from Settings > Dev Tools > Data
@@ -59,7 +73,7 @@ export function overrideVehicleResult(
     case "offline-cached":
       return {
         ...query,
-        data: PLACEHOLDER_VEHICLE,
+        data: MOCK_VEHICLE,
         error: null,
         isLoading: false,
         isPending: false,
@@ -75,7 +89,7 @@ export function overrideVehicleResult(
     case "error-cached":
       return {
         ...failed(query, FORCED_ERROR),
-        data: PLACEHOLDER_VEHICLE,
+        data: MOCK_VEHICLE,
         dataUpdatedAt: query.dataUpdatedAt || Date.now(),
       } as VehicleResult;
     // Settled failure (online) with nothing cached, so the screens show the

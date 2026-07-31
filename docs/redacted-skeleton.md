@@ -122,11 +122,12 @@ Four things Details didn't have to deal with:
   real settings landed — the `available` flags decide whether the slider and
   defrost rows exist at all, so the placeholder turns them on.
 - **The hero, and anything else drawn in raw color.** The car render is simply
-  absent while redacted, and the map draws in both states — the placeholder
-  carries the real IS 350 render URL and parks the car at Apple Park, so the
-  forced offline/error mock states (which show the placeholder as if it were
-  cached data) look like the live dashboard instead of an empty frame over null
-  island. The fuel gauge needed the same treatment for a different reason:
+  absent while redacted, and the map draws in both states. The loading
+  placeholder keeps an empty `imageUrl` and a 0,0 location — those are never
+  meant to be seen — while the forced cached mock states (`data-state.ts`)
+  render a separate `MOCK_VEHICLE` that carries the real IS 350 render URL and
+  parks the car at Apple Park, so they look like the live dashboard instead of
+  an empty frame over null island. The fuel gauge needed its own treatment:
   its segment fills are plain colored views, not text or icons, so an unmodified
   skeleton reported a confident green full tank. They take the track color while
   redacted, leaving the gauge as its own empty tracks.
