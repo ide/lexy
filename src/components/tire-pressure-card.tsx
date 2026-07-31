@@ -31,21 +31,23 @@ function TireCorner({ tire, unit }: { tire: TireReading | undefined; unit: strin
 
 /**
  * All four tire readings in one card, laid out like the car itself: front row
- * on top, left readings in the left column. The columns cluster around the
- * card's center line — close enough to compare at a glance — and the readings
- * stay at label scale so the card reads as one quiet instrument.
+ * on top, left readings in the left column. Each column shrink-wraps its text
+ * — no fixed widths — so the centered pair carries no trailing dead space and
+ * the whole block sits visually balanced on the card's center line.
  */
 export function TirePressureCard({ tires }: { tires: TirePressure }) {
   const corner = (front: boolean, left: boolean) =>
     tires.positions.find((t) => /front/i.test(t.label) === front && /left/i.test(t.label) === left);
   return (
     <Card style={styles.card}>
-      {[true, false].map((front) => (
-        <View key={front ? "front" : "rear"} style={styles.axle}>
-          <TireCorner tire={corner(front, true)} unit={tires.unit} />
-          <TireCorner tire={corner(front, false)} unit={tires.unit} />
-        </View>
-      ))}
+      <View style={styles.columns}>
+        {[true, false].map((left) => (
+          <View key={left ? "left" : "right"} style={styles.column}>
+            <TireCorner tire={corner(true, left)} unit={tires.unit} />
+            <TireCorner tire={corner(false, left)} unit={tires.unit} />
+          </View>
+        ))}
+      </View>
     </Card>
   );
 }
@@ -53,18 +55,16 @@ export function TirePressureCard({ tires }: { tires: TirePressure }) {
 const styles = StyleSheet.create({
   card: {
     padding: Spacing.three,
-    gap: Spacing.three,
   },
-  axle: {
+  columns: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: Spacing.five,
+    gap: Spacing.five + Spacing.three,
   },
-  // Equal fixed-share columns so the rows align vertically; both columns are
-  // left-aligned for scanning, with the shared center gutter carrying the
-  // left/right split.
+  column: {
+    gap: Spacing.three,
+  },
   corner: {
-    width: "40%",
     gap: Spacing.half,
   },
   value: {
