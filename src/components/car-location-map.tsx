@@ -19,12 +19,17 @@ export function CarLocationMap({
   longitude,
   label,
   showMarker = true,
+  showPlaces = true,
   style,
 }: {
   latitude: number;
   longitude: number;
   label: string;
   showMarker?: boolean;
+  // Apple Maps' built-in points of interest (business/landmark labels). They
+  // load a beat after the base map tiles, so they "pop in" separately; the hero
+  // map hides them for a calmer backdrop while the full sheet keeps them.
+  showPlaces?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   if (Platform.OS !== "ios") {
@@ -59,6 +64,11 @@ export function CarLocationMap({
             ]
           : []
       }
+      properties={{
+        // An empty `including` list hides every built-in point of interest (the
+        // MapKit place labels) without touching our own car marker above.
+        ...(showPlaces ? null : { pointsOfInterest: { including: [] } }),
+      }}
       uiSettings={{
         // The map is a compact glanceable view, not a full navigation surface:
         // hide every built-in control so nothing floats over the corners. The
