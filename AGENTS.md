@@ -57,6 +57,23 @@ For example, downsample a 3x phone screenshot with `sips`:
 sips --resampleWidth 393 screenshot.png
 ```
 
+# Unit tests
+
+Vitest runs in plain Node, so native modules do not resolve. `expo-sqlite` is
+handled globally: `vitest.config.ts` aliases `expo-sqlite/kv-store` to the
+in-memory fake in `src/test-support/expo-sqlite-kv-store.ts`, so a module that
+imports the store is testable with no `vi.mock`. Call `resetKvStore()` from
+`beforeEach` when a test cares about starting empty.
+
+Do not try to fix this by adding `expo-sqlite` web support — its server-runtime
+entry is a no-op stub, so tests would silently drop every write instead of
+failing loudly.
+
+Other native imports (`expo-linking`, `expo-network`, `react-native`, `@expo/ui`)
+still need a per-file `vi.mock`. Prefer keeping native imports at the edge, as
+`closure-state.ts` and `update-history-repository.ts` do, so the logic itself
+stays importable in Node.
+
 # EAS Updates
 
 Publish updates for iOS only — pass `--platform ios` to `eas update`. Lexy is
