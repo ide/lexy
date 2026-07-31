@@ -19,6 +19,7 @@ import { HeroCard } from "@/components/hero-card";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OdometerCard } from "@/components/odometer-card";
 import { Redactable } from "@/components/redactable";
+import { RefreshingNote } from "@/components/refreshing-note";
 import { SectionTitle } from "@/components/section-title";
 import { TirePressureCard } from "@/components/tire-pressure-card";
 import { VehicleControls } from "@/components/vehicle-controls";
@@ -26,10 +27,8 @@ import { Spacing } from "@/constants/theme";
 import { cornerShownAts, oldestStale } from "@/data/closure-display";
 import { groupClosures } from "@/data/closures";
 import { fuelGauge } from "@/data/fuel";
-import { queryClient } from "@/data/query-client";
-import { refreshVehicleStatus } from "@/data/refresh-status-sender";
-import { absoluteLocalTime, relativeTime } from "@/data/vehicle";
-import { CLIMATE_SETTINGS_QUERY_KEY } from "@/hooks/use-climate-settings";
+import { absoluteLocalTime, relativeTime, vehicleContext } from "@/data/vehicle";
+import { refreshVehicleData } from "@/data/vehicle-refresh";
 import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 import { useAuth } from "@/auth/auth-context";
 
@@ -66,8 +65,9 @@ function FooterTimeRow({ label, timestamp }: { label: string; timestamp: string 
 }
 
 export default function CarDashboard() {
-  const { query, vehicle, redaction, headerRight, errorScreen, statusBanner } = useVehicleScreen();
-  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = query;
+  const { query, vehicle, redaction, headerRight, errorScreen, statusBanner, isRefreshing } =
+    useVehicleScreen();
+  const { data, dataUpdatedAt } = query;
   const { session, runAuthorized } = useAuth();
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
   // sole indicator during a manual refresh (see autoRefreshing below).
@@ -75,43 +75,27 @@ export default function CarDashboard() {
 
   // Tell a user-initiated pull-to-refresh apart from an automatic (foreground /
   // stale) refetch: pull-to-refresh already shows the native refresh control,
-  // so only an *automatic* refetch gets our own "Updating…" cue — no double
-  // indicator, and nothing crammed into the nav bar's button slot.
-  const autoRefreshing = isFetching && !isLoading && !manualRefreshing;
+  // so only an *automatic* refetch gets our own cues — the floating
+  // "Refreshing…" note and the "Updating…" footer — with no double indicator,
+  // and nothing crammed into the nav bar's button slot.
+  const autoRefreshing = isRefreshing && !manualRefreshing;
 
   const refresh = async () => {
-    // Mark this as a manual refresh so the "Updating…" footer stays quiet
-    // and only the native pull-to-refresh spinner shows.
+    // Mark this as a manual refresh so our own cues stay quiet and only the
+    // native pull-to-refresh spinner shows.
     setManualRefreshing(true);
     try {
-      // A pull is explicit user intent, so prime a fresh full snapshot
-      // from the car first (rate-limited — it wakes the telematics unit).
-      // That makes the server-side status current, so the refetch's GET
-      // returns complete state instead of the last sparse push. If it's
-      // rate-limited or fails, the refetch below still runs.
+      // A pull is explicit user intent, so it primes: refreshVehicleData wakes
+      // the car for a fresh full snapshot (rate-limited) before re-reading, so
+      // the GET returns complete state instead of the last sparse push.
       //
       // Read the context off `data`, never the placeholder: pulling on
       // the skeleton must not address a VIN that isn't a car.
-      if (session && data) {
-        // The prime signals auth failures (401/403) so runAuthorized can
-        // refresh the token and retry it once; any other failure — including a
-        // dead session — still falls through to the plain refetch below, which
-        // surfaces the real state.
-        await runAuthorized((session) =>
-          refreshVehicleStatus(session, {
-            vin: data.vin,
-            brand: data.brand,
-            generation: data.generation,
-          }),
-        ).catch(() => {});
-      }
-      // Climate settings live in their own query and can change out from
-      // under us (the official Lexus app edits the same settings), so a
-      // manual refresh re-reads them alongside the vehicle.
-      await Promise.all([
-        refetch(),
-        queryClient.refetchQueries({ queryKey: CLIMATE_SETTINGS_QUERY_KEY }),
-      ]);
+      await refreshVehicleData({
+        prime: true,
+        context: data ? vehicleContext(data) : null,
+        runAuthorized: session ? runAuthorized : null,
+      });
     } finally {
       setManualRefreshing(false);
     }
@@ -145,104 +129,112 @@ export default function CarDashboard() {
           fallback, rather than the tab's "Status" label, which reads oddly as a
           large screen title. */}
       <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />
-      <NativeScrollView
-        onRefresh={refresh}
-        contentContainerStyle={styles.content}
-        // The sync lines are SwiftUI, so they ride in the scroll view's own
-        // footer slot rather than a `Host` of their own inside the RN content
-        // — one less SwiftUI island to measure and lay out. Being genuine
-        // SwiftUI, they take the real `redacted` modifier while loading, which
-        // also spares them from rendering the placeholder's timestamps as
-        // readable sentences; `disabled` keeps the popovers shut, the job the
-        // redacted wrapper's `pointerEvents` used to do here.
-        nativeFooter={
-          <VStack
-            alignment="center"
-            spacing={Spacing.half}
-            modifiers={[
-              frame({ maxWidth: Infinity }),
-              padding({ top: Spacing.four, bottom: Spacing.six }),
-              ...(redaction ? [redacted(), disabled(true)] : []),
-            ]}
-          >
-            <FooterTimeRow
-              label={`Vehicle last synced with Lexus ${relativeTime(vehicle.updatedAt)}.`}
-              timestamp={vehicle.updatedAt}
-            />
-            {/* During an automatic (non-pull-to-refresh) refresh, the data
+      {/* The scroll view and the floating note share this box so the note
+          can hang over the content without displacing any of it. */}
+      <View style={styles.screen}>
+        <NativeScrollView
+          onRefresh={refresh}
+          contentContainerStyle={styles.content}
+          // The sync lines are SwiftUI, so they ride in the scroll view's own
+          // footer slot rather than a `Host` of their own inside the RN content
+          // — one less SwiftUI island to measure and lay out. Being genuine
+          // SwiftUI, they take the real `redacted` modifier while loading, which
+          // also spares them from rendering the placeholder's timestamps as
+          // readable sentences; `disabled` keeps the popovers shut, the job the
+          // redacted wrapper's `pointerEvents` used to do here.
+          nativeFooter={
+            <VStack
+              alignment="center"
+              spacing={Spacing.half}
+              modifiers={[
+                frame({ maxWidth: Infinity }),
+                padding({ top: Spacing.four, bottom: Spacing.six }),
+                ...(redaction ? [redacted(), disabled(true)] : []),
+              ]}
+            >
+              <FooterTimeRow
+                label={`Vehicle last synced with Lexus ${relativeTime(vehicle.updatedAt)}.`}
+                timestamp={vehicle.updatedAt}
+              />
+              {/* During an automatic (non-pull-to-refresh) refresh, the data
                 freshness line becomes a quiet "Updating…" — the one bit of
                 state we actually have — then returns to the timestamp. */}
-            {autoRefreshing ? (
-              <Text
-                modifiers={[
-                  font({ textStyle: "footnote", weight: "regular" }),
-                  foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                ]}
-              >
-                Updating…
-              </Text>
-            ) : (
-              <FooterTimeRow
-                label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
-                timestamp={dataUpdatedAt}
-              />
-            )}
-          </VStack>
-        }
-      >
-        {statusBanner}
-        <Redactable reason={redaction} style={styles.group}>
-          <HeroCard vehicle={vehicle} />
+              {autoRefreshing ? (
+                <Text
+                  modifiers={[
+                    font({ textStyle: "footnote", weight: "regular" }),
+                    foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                  ]}
+                >
+                  Updating…
+                </Text>
+              ) : (
+                <FooterTimeRow
+                  label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
+                  timestamp={dataUpdatedAt}
+                />
+              )}
+            </VStack>
+          }
+        >
+          {statusBanner}
+          <Redactable reason={redaction} style={styles.group}>
+            <HeroCard vehicle={vehicle} />
 
-          {/* Summary readouts stay above the REMOTE CONTROLS section title so
+            {/* Summary readouts stay above the REMOTE CONTROLS section title so
               they don't read as controls. Location comes first, then the energy
               and range available to leave that location. */}
-          <FuelBar
-            gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
-            range={vehicle.range}
-            unit={vehicle.distanceUnit}
-          />
-
-          <VehicleControls vehicle={vehicle} />
-
-          <ClimateCard vehicle={vehicle} />
-
-          {corners.length > 0 || openings.length > 0 ? (
-            <View>
-              <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
-              <ClosuresCard corners={corners} openings={openings} />
-              {/* A single note for the closures area — some readings weren't in
-                  the latest snapshot (e.g. windows after a drive). */}
-              {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
-            </View>
-          ) : null}
-
-          {/* Mileage bridges immediate access/security state and longer-term
-              running condition (tire pressure) without competing with the
-              location/fuel summary at the top. */}
-          <View>
-            <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
-            <OdometerCard
-              odometer={vehicle.odometer}
-              tripA={vehicle.tripA}
-              tripB={vehicle.tripB}
+            <FuelBar
+              gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
+              range={vehicle.range}
               unit={vehicle.distanceUnit}
             />
-          </View>
 
-          {tires.length > 0 ? (
+            <VehicleControls vehicle={vehicle} />
+
+            <ClimateCard vehicle={vehicle} />
+
+            {corners.length > 0 || openings.length > 0 ? (
+              <View>
+                <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
+                <ClosuresCard corners={corners} openings={openings} />
+                {/* A single note for the closures area — some readings weren't in
+                  the latest snapshot (e.g. windows after a drive). */}
+                {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
+              </View>
+            ) : null}
+
+            {/* Mileage bridges immediate access/security state and longer-term
+              running condition (tire pressure) without competing with the
+              location/fuel summary at the top. */}
             <View>
-              <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
-              <TirePressureCard tires={vehicle.tires!} />
+              <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
+              <OdometerCard
+                odometer={vehicle.odometer}
+                tripA={vehicle.tripA}
+                tripB={vehicle.tripB}
+                unit={vehicle.distanceUnit}
+              />
             </View>
-          ) : null}
-        </Redactable>
-      </NativeScrollView>
+
+            {tires.length > 0 ? (
+              <View>
+                <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
+                <TirePressureCard tires={vehicle.tires!} />
+              </View>
+            ) : null}
+          </Redactable>
+        </NativeScrollView>
+        <RefreshingNote visible={autoRefreshing} />
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   content: {
     padding: Spacing.three,
     gap: Spacing.three,

@@ -11,6 +11,7 @@ import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
+import { useVehicleResume } from "@/hooks/use-vehicle-resume";
 
 /**
  * The scaffolding every vehicle screen (Status, Specs) shares: the vehicle
@@ -26,10 +27,15 @@ import { useVehicle } from "@/hooks/use-vehicle";
  */
 export function useVehicleScreen() {
   const query = useVehicle();
-  const { data, error, isLoading, refetch } = query;
+  const { data, dataUpdatedAt, error, isFetching, isLoading, refetch } = query;
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
   const [forceSkeleton, setForceSkeleton] = useState(false);
+
+  // Cached data that has aged past the point of being worth showing as-is
+  // refreshes itself here, rather than waiting for a pull the user has no
+  // reason to think is needed. See resume-refresh.ts.
+  useVehicleResume(dataUpdatedAt);
 
   useEffect(() => {
     // TTI marks the UI shell becoming interactive; data readiness is tracked
@@ -109,5 +115,12 @@ export function useVehicleScreen() {
     headerRight,
     errorScreen,
     statusBanner,
+    /**
+     * A refresh is running over data already on screen — the quiet cue's cue
+     * (`RefreshingPill`). The first load is `redaction`/`isLoading`'s job, and
+     * a screen with its own pull-to-refresh should suppress this while that
+     * gesture's native spinner is up.
+     */
+    isRefreshing: isFetching && !isLoading,
   };
 }

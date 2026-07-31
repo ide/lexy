@@ -189,6 +189,14 @@ export class NoVehicleError extends Error {
 // array under `payload`. Most accounts have exactly one; return every entry
 // that carries the fields we need to scope vehicle calls, in Lexus's order.
 // The first is treated as the primary vehicle until a vehicle switcher lands.
+/**
+ * The vehicle-scoped request headers' worth of a loaded vehicle — what every
+ * command, prime, and engine read needs to address this car.
+ */
+export function vehicleContext(vehicle: Vehicle): VehicleContext {
+  return { vin: vehicle.vin, brand: vehicle.brand, generation: vehicle.generation };
+}
+
 export function parseVehicleContexts(value: unknown): VehicleContext[] {
   const payload = isRecord(value) ? value.payload : value;
   const records = Array.isArray(payload) ? payload.filter(isRecord) : [];
