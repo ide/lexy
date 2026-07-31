@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
-import { useRedacted } from "@/components/redacted";
+import { useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import type { FuelGauge, FuelLevel } from "@/data/fuel";

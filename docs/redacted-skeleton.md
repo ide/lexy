@@ -41,13 +41,25 @@ Options considered:
 - **C. Shared layout constants, two trees** — strictly worse than B (still two
   trees, still drift), only cheaper. Not needed.
 
-How B works (see `src/components/redacted.tsx`):
+How B works (see `src/components/redactable.tsx`). The vocabulary follows
+SwiftUI's: a subtree is _redactable_, and a redaction _reason_ says whether it
+is redacted right now and why.
 
-- `<Redacted loading>` provides a context flag, pulses opacity while loading
-  (same 0.4→1 / 800ms treatment the old skeletons used), and sets
+- `<Redactable reason>` provides a context flag, pulses opacity while a fetch is
+  in flight (same 0.4→1 / 800ms treatment the old skeletons used), and sets
   `pointerEvents: "none"` so placeholder content is inert (e.g. the Sign Out
-  button cannot fire). The wrapper stays mounted in both states, so the
-  loading↔data transition reconciles in place — no remount, no scroll jump.
+  button cannot fire). The wrapper stays mounted in every state — hence
+  `Redactable`, not `Redacted`; its contents are the real tree whenever `reason`
+  is null — so the loading↔data transition reconciles in place: no remount, no
+  scroll jump.
+- `reason` is a single value, `"loading" | "unavailable" | null`, rather than a
+  redact flag plus an animate flag, so "animating but not redacted" is
+  unrepresentable:
+  - `"loading"` — a fetch is in flight; the data is on its way. Pulses.
+  - `"unavailable"` — offline before anything was cached. React Query has
+    paused the fetch, so nothing is on its way; it holds still, because a pulse
+    would promise an arrival that cannot happen.
+  - `null` — the real, populated content.
 - Redaction-aware leaves check `useRedacted()`:
   - `ThemedText` draws itself as a neutral bar: transparent glyphs over a
     `colors.fill` background, rounded corners. Font, line height, and width all
@@ -74,10 +86,11 @@ one SwiftUI redaction has with placeholder collections.
 
 ## Status: the same recipe, plus what a live screen needed
 
-Status followed the Details recipe — `loading` computed the same way, the real
-tree fed `PLACEHOLDER_VEHICLE` inside `<Redacted loading style={styles.group}>`,
-the early-return branch dropped, the offline banner left outside the wrapper so
-it neither pulses nor redacts, and the "My Lexus" fallback title preserved (it
+Status followed the Details recipe — `redaction` computed the same way, the real
+tree fed `PLACEHOLDER_VEHICLE` inside `<Redactable reason={redaction}
+style={styles.group}>`, the early-return branch dropped, the status banner left
+outside the wrapper so it neither pulses nor redacts, and the "My Lexus"
+fallback title preserved (it
 is the placeholder's own nickname, and the nav bar sits outside the redacted
 tree anyway).
 

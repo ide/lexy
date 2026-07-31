@@ -18,7 +18,7 @@ import { FuelBar } from "@/components/fuel-bar";
 import { HeroCard } from "@/components/hero-card";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OdometerCard, TireCell } from "@/components/odometer-card";
-import { Redacted } from "@/components/redacted";
+import { Redactable } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { TwoColumnGrid } from "@/components/two-column-grid";
 import { VehicleControls } from "@/components/vehicle-controls";
@@ -66,7 +66,7 @@ function FooterTimeRow({ label, timestamp }: { label: string; timestamp: string 
 }
 
 export default function CarDashboard() {
-  const { query, vehicle, loading, headerRight, errorScreen, offlineBanner } = useVehicleScreen();
+  const { query, vehicle, redaction, headerRight, errorScreen, statusBanner } = useVehicleScreen();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = query;
   const { session } = useAuth();
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
@@ -156,7 +156,7 @@ export default function CarDashboard() {
             modifiers={[
               frame({ maxWidth: Infinity }),
               padding({ top: Spacing.four, bottom: Spacing.six }),
-              ...(loading ? [redacted(), disabled(true)] : []),
+              ...(redaction ? [redacted(), disabled(true)] : []),
             ]}
           >
             <FooterTimeRow
@@ -184,8 +184,8 @@ export default function CarDashboard() {
           </VStack>
         }
       >
-        {offlineBanner}
-        <Redacted loading={loading} style={styles.group}>
+        {statusBanner}
+        <Redactable reason={redaction} style={styles.group}>
           <HeroCard vehicle={vehicle} />
 
           {/* Summary readouts stay above the REMOTE CONTROLS section title so
@@ -252,7 +252,7 @@ export default function CarDashboard() {
               />
             </View>
           ) : null}
-        </Redacted>
+        </Redactable>
       </NativeScrollView>
     </>
   );
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     // including the room the floating tab bar needs.
     paddingBottom: 0,
   },
-  // The Redacted wrapper groups the sections into one child of the scroll
+  // The Redactable wrapper groups the sections into one child of the scroll
   // content, so it re-applies the container's section gap inside itself.
   group: {
     gap: Spacing.three,

@@ -1,6 +1,6 @@
 import { StyleSheet, type StyleProp, type TextStyle } from "react-native";
 
-import { useRedacted } from "@/components/redacted";
+import { useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing } from "@/constants/theme";
 

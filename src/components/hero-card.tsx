@@ -6,7 +6,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Card } from "@/components/card";
 import { CarLocationMap } from "@/components/car-location-map";
-import { useRedacted } from "@/components/redacted";
+import { useRedacted } from "@/components/redactable";
 import { Spacing, colors } from "@/constants/theme";
 import type { Vehicle } from "@/data/vehicle";
 import { haptic } from "@/utils/haptics";

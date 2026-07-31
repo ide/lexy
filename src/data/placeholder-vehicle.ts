@@ -3,7 +3,7 @@ import type { Vehicle } from "@/data/vehicle";
 
 /**
  * Stand-in vehicle rendered through the real screen components while the first
- * load is in flight (see `Redacted`). The values are never readable — redacted
+ * load is in flight (see `Redactable`). The values are never readable — redacted
  * text draws as neutral bars — but their *lengths* set the bar widths and the
  * array sizes set the row/cell counts, so keep them the shape of typical real
  * data. Everything else (fonts, paddings, line heights) comes from the real
