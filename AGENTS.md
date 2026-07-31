@@ -9,6 +9,17 @@ and implementation work on native Apple experiences, including SwiftUI, Home
 Screen widgets, and Live Activities. Do not add Android or web parity unless the
 user explicitly asks for it.
 
+# Deployment target
+
+Assume **iOS 26 or newer**. Do not build support for older OS versions.
+
+Use iOS 26 APIs — Liquid Glass (`buttonStyle('glass' | 'glassProminent')`, the
+`glassEffect` modifier, `expo-glass-effect`) included — directly, without a
+version gate and without a pre-26 fallback path. Do not add
+`isLiquidGlassAvailable()` checks, `if (Platform.Version >= 26)` branches, or
+parallel legacy styling. A single modern implementation is the whole
+implementation.
+
 # Interaction controls
 
 - Never import `Pressable`, `TouchableOpacity`, or another JavaScript-thread
