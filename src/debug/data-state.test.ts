@@ -1,7 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
-import { overrideIsOnline, overrideVehicleResult } from "@/debug/data-state";
+import { MOCK_VEHICLE, overrideIsOnline, overrideVehicleResult } from "@/debug/data-state";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError, type Vehicle } from "@/data/vehicle";
 
@@ -53,14 +53,27 @@ describe("overrideVehicleResult", () => {
     expect(result.error).toBeNull();
   });
 
-  it("offline-cached surfaces placeholder data as a success", () => {
+  it("offline-cached surfaces the mock vehicle as a success", () => {
     const result = overrideVehicleResult(
       { ...live, data: undefined } as typeof live,
       "offline-cached",
     );
-    expect(result.data).toBe(PLACEHOLDER_VEHICLE);
+    expect(result.data).toBe(MOCK_VEHICLE);
     expect(result.isSuccess).toBe(true);
     expect(result.error).toBeNull();
+  });
+
+  // The mock vehicle renders unredacted, so unlike the loading placeholder it
+  // carries a real render URL and a real (stand-in) parking spot — Apple Park —
+  // while the placeholder keeps values that are never meant to be seen.
+  it("the mock vehicle differs from the loading placeholder only where it shows", () => {
+    expect(MOCK_VEHICLE.imageUrl).toMatch(/^https:/);
+    expect(MOCK_VEHICLE.location).not.toEqual({ latitude: 0, longitude: 0 });
+    expect(PLACEHOLDER_VEHICLE.imageUrl).toBe("");
+    expect(PLACEHOLDER_VEHICLE.location).toEqual({ latitude: 0, longitude: 0 });
+    expect({ ...MOCK_VEHICLE, imageUrl: "", location: { latitude: 0, longitude: 0 } }).toEqual(
+      PLACEHOLDER_VEHICLE,
+    );
   });
 
   it("error-empty surfaces a generic error, not a NoVehicleError", () => {
@@ -78,7 +91,7 @@ describe("overrideVehicleResult", () => {
       { ...live, data: undefined } as typeof live,
       "error-cached",
     );
-    expect(result.data).toBe(PLACEHOLDER_VEHICLE);
+    expect(result.data).toBe(MOCK_VEHICLE);
     expect(result.error).toBeInstanceOf(Error);
     expect(result.error).not.toBeInstanceOf(NoVehicleError);
     expect(result.isError).toBe(true);
