@@ -94,7 +94,9 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
     .filter((row) => row.length > 0);
 
   return (
-    <Host matchContents>
+    // Match only the content's height: the width comes from the RN layout, so
+    // the card stretches edge-to-edge like the other section cards.
+    <Host matchContents={{ vertical: true }}>
       <DisclosureGroup
         isExpanded={false}
         modifiers={[
