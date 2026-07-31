@@ -27,8 +27,9 @@ import { Spacing } from "@/constants/theme";
 import { cornerShownAts, oldestStale } from "@/data/closure-display";
 import { groupClosures } from "@/data/closures";
 import { fuelGauge } from "@/data/fuel";
-import { absoluteLocalTime, relativeTime } from "@/data/vehicle";
+import { absoluteLocalTime, observedAt, relativeTime } from "@/data/vehicle";
 import { refreshVehicleData } from "@/data/vehicle-refresh";
+import { useNow } from "@/hooks/use-now";
 import { useIsAutoRefreshing } from "@/hooks/use-vehicle-auto-refresh";
 import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 import { useAuth } from "@/auth/auth-context";
@@ -76,6 +77,13 @@ export default function CarDashboard() {
   // describing something the user is already watching, or something that isn't
   // happening.
   const autoRefreshing = useIsAutoRefreshing();
+  // One clock for the whole screen, so the sync lines and the closures' "some
+  // readings as of" are measured from the same instant, and all of them stay
+  // true while the screen sits open.
+  const now = useNow();
+  // The car's own stamp, bounded by the read that carried it — the two clocks
+  // are not the same one. See observedAt.
+  const syncedAt = observedAt(vehicle.updatedAt, dataUpdatedAt);
 
   const refresh = () =>
     // A pull is explicit user intent, so it primes: refreshVehicleData wakes
@@ -144,8 +152,8 @@ export default function CarDashboard() {
               ]}
             >
               <FooterTimeRow
-                label={`Vehicle last synced with Lexus ${relativeTime(vehicle.updatedAt)}.`}
-                timestamp={vehicle.updatedAt}
+                label={`Vehicle last synced with Lexus ${relativeTime(syncedAt, now)}.`}
+                timestamp={syncedAt}
               />
               {/* During an automatic (non-pull-to-refresh) refresh, the data
                 freshness line becomes a quiet "Updating…" — the one bit of
@@ -161,7 +169,7 @@ export default function CarDashboard() {
                 </Text>
               ) : (
                 <FooterTimeRow
-                  label={`Lexy has data from ${relativeTime(dataUpdatedAt)}.`}
+                  label={`Lexy has data from ${relativeTime(dataUpdatedAt, now)}.`}
                   timestamp={dataUpdatedAt}
                 />
               )}
@@ -190,8 +198,13 @@ export default function CarDashboard() {
                 <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
                 <ClosuresCard corners={corners} openings={openings} />
                 {/* A single note for the closures area — some readings weren't in
-                  the latest snapshot (e.g. windows after a drive). */}
-                {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
+                  the latest snapshot (e.g. windows after a drive). Bounded by the
+                  same read as the sync line above it, and measured from the same
+                  `now`, so the reading it names always reads as older than the
+                  snapshot that didn't refresh it. */}
+                {closuresStaleAt ? (
+                  <StaleNote at={observedAt(closuresStaleAt, dataUpdatedAt)} now={now} />
+                ) : null}
               </View>
             ) : null}
 

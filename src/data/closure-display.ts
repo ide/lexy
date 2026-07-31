@@ -48,7 +48,12 @@ export function windowStatus(window: Closure, side: Side): ClosureStatus {
 // identity glyph; open/closed is conveyed by color + the written word rather
 // than a checkmark, keeping them visually consistent with doors and windows.
 const OPENING_SYMBOLS: { match: RegExp; open: SFSymbol; closed: SFSymbol }[] = [
-  { match: /moonroof|sunroof/i, open: "window.ceiling", closed: "window.ceiling.closed" },
+  // A moon, for the roof named after one. `window.ceiling` is the literal
+  // depiction and reads as a vent at 17pt; the moon is the thing the panel is
+  // called, so it identifies the row at a glance the way the trunk and engine
+  // glyphs do. Filled, matching them — and one glyph for both positions, since
+  // open/closed is already carried by the color and the word.
+  { match: /moonroof|sunroof/i, open: "moon.fill", closed: "moon.fill" },
   {
     match: /trunk|hatch|tailgate/i,
     open: "car.side.rear.crop.trunk.partition.fill",

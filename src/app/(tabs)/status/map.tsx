@@ -8,13 +8,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VehicleLocationMap } from "@/components/vehicle-location-map";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
-import { relativeTime } from "@/data/vehicle";
+import { observedAt, relativeTime } from "@/data/vehicle";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
+import { useNow } from "@/hooks/use-now";
 import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
 
 export default function VehicleLocationSheet() {
-  const { vehicle } = useVehicle();
+  const { vehicle, dataUpdatedAt } = useVehicle();
+  // This sheet is pushed over the status screen and can sit open for a while,
+  // so its own clock — the screen underneath has stopped ticking while blurred.
+  const now = useNow();
   const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { resolved, openInMaps } = useMapsProvider();
   const { markInteractive } = useObserve();
@@ -53,7 +57,7 @@ export default function VehicleLocationSheet() {
             down when the text arrives a beat after the sheet opens. */}
         <ThemedText style={styles.address}>{parkingAddress ?? " "}</ThemedText>
         <ThemedText type="small" themeColor="secondaryLabel">
-          {`Location as of ${relativeTime(vehicle.updatedAt)}`}
+          {`Location as of ${relativeTime(observedAt(vehicle.updatedAt, dataUpdatedAt), now)}`}
         </ThemedText>
       </View>
 

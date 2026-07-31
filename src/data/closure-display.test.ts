@@ -57,10 +57,11 @@ describe("windowStatus", () => {
 
 describe("openingStatus", () => {
   it("matches known openings to their identity glyphs", () => {
-    expect(openingStatus({ label: "Moonroof", state: "Open" }).symbol).toBe("window.ceiling");
-    expect(openingStatus({ label: "Moonroof", state: "Closed" }).symbol).toBe(
-      "window.ceiling.closed",
-    );
+    // One glyph per opening, both positions: the tone and the word carry
+    // open/closed, so the icon is only there to say which panel this row is.
+    expect(openingStatus({ label: "Moonroof", state: "Open" }).symbol).toBe("moon.fill");
+    expect(openingStatus({ label: "Moonroof", state: "Closed" }).symbol).toBe("moon.fill");
+    expect(openingStatus({ label: "Sunroof", state: "Open" }).symbol).toBe("moon.fill");
     expect(openingStatus({ label: "Trunk", state: "Closed" }).symbol).toBe(
       "car.side.rear.crop.trunk.partition.fill",
     );
