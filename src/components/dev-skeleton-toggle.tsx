@@ -1,9 +1,9 @@
-import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Pressable } from "react-native-gesture-handler";
 
 import { colors } from "@/constants/theme";
 import { queryClient } from "@/data/query-client";
+import { haptic } from "@/utils/haptics";
 
 const blue = colors.systemBlue;
 
@@ -28,15 +28,11 @@ export function DevSkeletonToggle({
       accessibilityLabel="Toggle loading skeleton"
       hitSlop={12}
       onPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.selectionAsync();
-        }
+        haptic("selection");
         onToggle();
       }}
       onLongPress={() => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
+        haptic("impact-medium");
         queryClient.resetQueries({ queryKey: ["vehicle"] });
       }}
     >

@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
+import { haptic } from "@/utils/haptics";
 import * as Linking from "expo-linking";
 import {
   useCallback,
@@ -51,19 +51,8 @@ type UseMapsProvider = {
   promptChoice: () => void;
 };
 
-function haptic(style: "select" | "tap") {
-  if (process.env.EXPO_OS !== "ios") {
-    return;
-  }
-  if (style === "select") {
-    Haptics.selectionAsync();
-  } else {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-}
-
 function open(provider: MapsProvider, target: MapsTarget) {
-  haptic("tap");
+  haptic("impact-light");
   Linking.openURL(provider.buildDirectionsUrl(target)).catch(() => {
     Alert.alert(
       "Couldn't open " + provider.name,
@@ -134,7 +123,7 @@ export function useMapsProvider(): UseMapsProvider {
 
   const promptWith = useCallback(
     (options: MapsProvider[], onPick: (provider: MapsProvider) => void) => {
-      haptic("select");
+      haptic("selection");
       ActionSheetIOS.showActionSheetWithOptions(
         {
           title: "Open location in",

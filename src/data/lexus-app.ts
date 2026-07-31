@@ -1,5 +1,6 @@
-import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+
+import { haptic } from "@/utils/haptics";
 
 // The Lexus OneApp App Store entry (iOS app com.lexus.oneApp). Hard fallback if
 // the universal link below can't be opened at all.
@@ -22,9 +23,7 @@ const LEXUS_APP_ORIGIN = "https://ctlexusapp.com";
  * (e.g. "/shop" for subscriptions); omit it to land on the app's home.
  */
 export async function openLexusApp(path = "") {
-  if (process.env.EXPO_OS === "ios") {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
+  haptic("impact-light");
   try {
     await Linking.openURL(`${LEXUS_APP_ORIGIN}${path}`);
   } catch {

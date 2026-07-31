@@ -1,5 +1,4 @@
 import { fetch as expoFetch } from "expo/fetch";
-import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
@@ -17,6 +16,7 @@ import { loadClosureStore, saveClosureStore } from "@/data/closure-state-store";
 import type { VehicleContext } from "@/data/lexus-api";
 import { sendRemoteCommand, type RemoteCommand } from "@/data/remote-command";
 import type { Vehicle } from "@/data/vehicle";
+import { haptic } from "@/utils/haptics";
 
 type Control = {
   command: RemoteCommand;
@@ -139,14 +139,10 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       generation: vehicle.generation,
     };
     setBusy(true);
-    if (process.env.EXPO_OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    haptic("impact-medium");
     sendRemoteCommand(session, context, control.command, expoFetch)
       .then(async () => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        haptic("success");
         // Acceptance, not completion. For lock/unlock, optimistically fold the
         // predicted lock state into the closure store — flagged optimistic so
         // the screen shows it as pending — and push it into the cache for an
@@ -180,9 +176,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
         );
       })
       .catch((error: unknown) => {
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        }
+        haptic("error");
         Alert.alert(
           "Command failed",
           error instanceof Error ? error.message : "The command could not be sent.",

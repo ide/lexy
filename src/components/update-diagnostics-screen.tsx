@@ -38,7 +38,6 @@ import {
   truncationMode,
 } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
-import * as Haptics from "expo-haptics";
 import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -60,6 +59,7 @@ import {
   type UpdateActivityEvent,
   type UpdateEntry,
 } from "@/updates/update-utils";
+import { haptic } from "@/utils/haptics";
 
 type Action = "check" | "download" | "reload";
 
@@ -683,9 +683,7 @@ export default function UpdateDiagnostics() {
     isRefreshingEventsRef.current = true;
     try {
       await refreshEvents();
-      if (process.env.EXPO_OS === "ios") {
-        Haptics.selectionAsync();
-      }
+      haptic("selection");
     } catch (error) {
       setActionError(
         error instanceof Error ? error.message : "Could not read update logs.",
@@ -704,9 +702,7 @@ export default function UpdateDiagnostics() {
         const message = await operation();
         setActionMessage(message);
         setActionError(null);
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.selectionAsync();
-        }
+        haptic("selection");
       } catch (error) {
         setActionError(
           error instanceof Error
@@ -714,9 +710,7 @@ export default function UpdateDiagnostics() {
             : "The update operation failed.",
         );
         setActionMessage(null);
-        if (process.env.EXPO_OS === "ios") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-        }
+        haptic("impact-soft");
       } finally {
         setActiveAction(null);
         refreshEvents().catch(() => {});

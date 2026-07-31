@@ -139,3 +139,24 @@ export function resolveMapsProvider(
   }
   return { kind: "prompt", options: installed, staleSaved };
 }
+
+/**
+ * The Settings row's summary of the maps choice: the deliberate saved choice,
+ * else the auto-resolved single app, else "Not set" (multiple installed, none
+ * chosen), else "Unavailable" (nothing installed).
+ */
+export function describeMapsProviderChoice(
+  resolved: ResolvedMapsProvider | null,
+  saved: MapsProvider | null,
+): string {
+  if (resolved?.kind === "none") {
+    return "Unavailable";
+  }
+  if (saved) {
+    return saved.name;
+  }
+  if (resolved?.kind === "ready") {
+    return resolved.provider.name;
+  }
+  return "Not set";
+}
