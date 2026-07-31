@@ -21,7 +21,6 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { Image } from "expo-image";
-import { useObserve } from "expo-observe";
 import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
@@ -35,37 +34,30 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
 import { CarLocationMap } from "@/components/car-location-map";
-import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
-import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
-import { OfflineBanner } from "@/components/offline-banner";
 import { Redacted, useRedacted } from "@/components/redacted";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { VehicleControls } from "@/components/vehicle-controls";
-import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { groupClosures, type Corner, type Side } from "@/data/closures";
 import { fuelGauge, type FuelGauge, type FuelLevel } from "@/data/fuel";
 import {
   absoluteLocalTime,
-  NoVehicleError,
   relativeTime,
   type Closure,
   type DistanceUnit,
   type Vehicle,
 } from "@/data/vehicle";
 import type { AcParameter } from "@/data/climate-settings";
-import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { queryClient } from "@/data/query-client";
 import { refreshVehicleStatus } from "@/data/refresh-status-sender";
 import {
   CLIMATE_SETTINGS_QUERY_KEY,
   useClimateSettings,
 } from "@/hooks/use-climate-settings";
-import { useIsOnline } from "@/hooks/use-is-online";
-import { useVehicle } from "@/hooks/use-vehicle";
+import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 import { useAuth } from "@/auth/auth-context";
 import { haptic } from "@/utils/haptics";
 
@@ -749,21 +741,13 @@ function FooterTimeRow({
 }
 
 export default function CarDashboard() {
-  const { data, error, isLoading, isFetching, refetch, dataUpdatedAt } =
-    useVehicle();
-  const { markInteractive } = useObserve();
+  const { query, vehicle, loading, headerRight, errorScreen, offlineBanner } =
+    useVehicleScreen();
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = query;
   const { session } = useAuth();
-  const isOnline = useIsOnline();
-  const [forceSkeleton, setForceSkeleton] = useState(false);
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
   // sole indicator during a manual refresh (see autoRefreshing below).
   const [manualRefreshing, setManualRefreshing] = useState(false);
-
-  useEffect(() => {
-    // TTI marks the UI shell becoming interactive; data readiness is tracked
-    // separately by the vehicle.load events.
-    markInteractive();
-  }, [markInteractive]);
 
   // A background refresh (foreground/stale refetch over already-cached data)
   // Tell a user-initiated pull-to-refresh apart from an automatic (foreground /
@@ -772,41 +756,14 @@ export default function CarDashboard() {
   // indicator, and nothing crammed into the nav bar's button slot.
   const autoRefreshing = isFetching && !isLoading && !manualRefreshing;
 
-  // Affordance to hold the real loading skeleton on the real screen. Available
-  // in dev and preview builds (see SHOW_DEV_TOOLS); kept out of
-  // production.
-  const headerRight = SHOW_DEV_TOOLS
-    ? () => (
-        <DevSkeletonToggle
-          active={forceSkeleton}
-          onToggle={() => setForceSkeleton((value) => !value)}
-        />
-      )
-    : undefined;
-
-  // A single redacted state covers every "no vehicle yet" case: the dev
-  // override, the first-load fetch, and offline-before-anything-cached (with a
-  // banner). Only a settled, online, data-less result is a real error.
-  const loading = forceSkeleton || (!data && (isLoading || !isOnline));
-
-  if (!loading && !data) {
+  if (errorScreen) {
     return (
       <>
         <Stack.Screen options={{ title: "My Lexus", headerRight }} />
-        {error instanceof NoVehicleError ? (
-          <NoVehicleState retry={() => refetch()} />
-        ) : (
-          <VehicleError retry={() => refetch()} />
-        )}
+        {errorScreen}
       </>
     );
   }
-
-  // While loading, the real tree below renders placeholder data redacted into
-  // neutral bars (see `Redacted`). One tree, one scroll container: the layout
-  // cannot drift from itself, sizes are identical in both states, and toggling
-  // reconciles in place so the scroll offset is preserved.
-  const vehicle = loading ? PLACEHOLDER_VEHICLE : data!;
 
   const { corners, openings: allOpenings } = groupClosures(vehicle.closures);
   // Openings (moonroof/trunk/hood) only have a position to report, so a sparse
@@ -906,15 +863,7 @@ export default function CarDashboard() {
           </VStack>
         }
       >
-        {!isOnline ? (
-          <OfflineBanner
-            detail={
-              data
-                ? "Showing the latest data we saved."
-                : "Reconnect to load your vehicle."
-            }
-          />
-        ) : null}
+        {offlineBanner}
         <Redacted loading={loading} style={styles.group}>
           <HeroCard vehicle={vehicle} />
 

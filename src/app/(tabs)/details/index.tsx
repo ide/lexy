@@ -1,25 +1,16 @@
-import { useObserve } from "expo-observe";
 import { Stack } from "expo-router";
-import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 
 import { Card } from "@/components/card";
-import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
-import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
-import { OfflineBanner } from "@/components/offline-banner";
 import { Redacted } from "@/components/redacted";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
-import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { Spacing, colors } from "@/constants/theme";
 import { openLexusApp } from "@/data/lexus-app";
-import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
-import { NoVehicleError } from "@/data/vehicle";
-import { useIsOnline } from "@/hooks/use-is-online";
-import { useVehicle } from "@/hooks/use-vehicle";
+import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 
 function InfoRow({
   label,
@@ -51,52 +42,17 @@ function InfoRow({
 }
 
 export default function CarDetails() {
-  const { data, error, isLoading, refetch } = useVehicle();
-  const { markInteractive } = useObserve();
-  const isOnline = useIsOnline();
-  const [forceSkeleton, setForceSkeleton] = useState(false);
+  const { vehicle, loading, headerRight, errorScreen, offlineBanner } =
+    useVehicleScreen();
 
-  useEffect(() => {
-    // TTI marks the UI shell becoming interactive; data readiness is tracked
-    // separately by the vehicle.load events.
-    markInteractive();
-  }, [markInteractive]);
-
-  // Affordance to hold the real loading skeleton on the real screen. Available
-  // in dev and preview builds (see SHOW_DEV_TOOLS); kept out of
-  // production.
-  const headerRight = SHOW_DEV_TOOLS
-    ? () => (
-        <DevSkeletonToggle
-          active={forceSkeleton}
-          onToggle={() => setForceSkeleton((value) => !value)}
-        />
-      )
-    : undefined;
-
-  // A single redacted state covers every "no vehicle yet" case: the dev
-  // override, the first-load fetch, and offline-before-anything-cached (with a
-  // banner). Only a settled, online, data-less result is a real error.
-  const loading = forceSkeleton || (!data && (isLoading || !isOnline));
-
-  if (!loading && !data) {
+  if (errorScreen) {
     return (
       <>
         <Stack.Screen options={{ title: "Specs", headerRight }} />
-        {error instanceof NoVehicleError ? (
-          <NoVehicleState retry={() => refetch()} />
-        ) : (
-          <VehicleError retry={() => refetch()} />
-        )}
+        {errorScreen}
       </>
     );
   }
-
-  // While loading, the real tree below renders placeholder data redacted into
-  // neutral bars (see `Redacted`). One tree, one scroll container: the layout
-  // cannot drift from itself, sizes are identical in both states, and toggling
-  // reconciles in place so the scroll offset is preserved.
-  const vehicle = loading ? PLACEHOLDER_VEHICLE : data!;
 
   const spec: [string, string][] = [
     ["VIN", vehicle.vin],
@@ -117,15 +73,7 @@ export default function CarDetails() {
     <>
       <Stack.Screen options={{ title: "Specs", headerRight }} />
       <NativeScrollView contentContainerStyle={styles.content}>
-        {!isOnline ? (
-          <OfflineBanner
-            detail={
-              data
-                ? "Showing the latest data we saved."
-                : "Reconnect to load your vehicle."
-            }
-          />
-        ) : null}
+        {offlineBanner}
         <Redacted loading={loading} style={styles.group}>
           <View>
             <SectionTitle>VEHICLE</SectionTitle>
