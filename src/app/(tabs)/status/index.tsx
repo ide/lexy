@@ -17,9 +17,10 @@ import { OpeningCard, SideGrid, StaleNote } from "@/components/closures-grid";
 import { FuelBar } from "@/components/fuel-bar";
 import { HeroCard } from "@/components/hero-card";
 import { NativeScrollView } from "@/components/native-scroll-view";
-import { OdometerCard, TireCell } from "@/components/odometer-card";
+import { OdometerCard } from "@/components/odometer-card";
 import { Redactable } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
+import { TirePressureCard } from "@/components/tire-pressure-card";
 import { TwoColumnGrid } from "@/components/two-column-grid";
 import { VehicleControls } from "@/components/vehicle-controls";
 import { Spacing } from "@/constants/theme";
@@ -237,19 +238,7 @@ export default function CarDashboard() {
           {tires.length > 0 ? (
             <View>
               <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
-              <TwoColumnGrid
-                left={tires.filter((t) => /left/i.test(t.label))}
-                right={tires.filter((t) => /right/i.test(t.label))}
-                keyFor={(t) => t.label}
-                renderItem={(t) => (
-                  <TireCell
-                    label={t.label}
-                    value={t.value}
-                    unit={vehicle.tires!.unit}
-                    low={t.low}
-                  />
-                )}
-              />
+              <TirePressureCard tires={vehicle.tires!} />
             </View>
           ) : null}
         </Redactable>
