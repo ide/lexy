@@ -32,6 +32,11 @@ export const VEHICLE_STATUS_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/stat
 // new full snapshot (docs/vehicle-status-and-control.md).
 export const VEHICLE_REFRESH_STATUS_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/refresh-status`;
 
+// Whether a remote start is currently running, and how much runtime is left.
+// A separate read from the status snapshot, which carries no engine state on
+// this plane (docs/vehicle-status-and-control.md, "engine-status").
+export const VEHICLE_ENGINE_STATUS_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/engine-status`;
+
 // Climate setpoint + min/max, and per-VIN vehicle specification (grade,
 // transmission, drivetrain, in-service date).
 export const VEHICLE_CLIMATE_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/climate-settings`;

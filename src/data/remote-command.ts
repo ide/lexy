@@ -18,11 +18,11 @@ export type CommandFetch = (
  * Remote actuation commands for the 21MM REST plane
  * (docs/vehicle-status-and-control.md, "Command codes"). All three codes are
  * confirmed: they're verbatim from the official app's own `RemoteCommand` enum,
- * recovered from the OneApp 3.4.0 Android build. That enum holds thirteen more
- * (`engine-stop`, `hazard-on`, `sound-horn`, windows, moonroof…) — see the doc
- * — but only the ones this app actually sends belong in this union.
+ * recovered from the OneApp 3.4.0 Android build. That enum holds twelve more
+ * (`hazard-on`, `sound-horn`, windows, moonroof…) — see the doc — but only the
+ * ones this app actually sends belong in this union.
  */
-export type RemoteCommand = "door-lock" | "door-unlock" | "engine-start";
+export type RemoteCommand = "door-lock" | "door-unlock" | "engine-start" | "engine-stop";
 
 export const REMOTE_COMMAND_ACCEPTED = "000000";
 
