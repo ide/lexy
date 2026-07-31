@@ -99,6 +99,10 @@ export function HeroCard({ vehicle }: { vehicle: Vehicle }) {
             style={styles.heroImage}
             contentFit="contain"
             transition={200}
+            // Memory on top of the default disk cache: the render re-mounts on
+            // every visit to the tab, and the disk copy keeps the car visible
+            // offline once it has loaded a single time.
+            cachePolicy="memory-disk"
           />
         )}
       </View>
