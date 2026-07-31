@@ -126,16 +126,6 @@ export function applyObservation(
 }
 
 /**
- * How long an unconfirmed prediction may stand before it expires back to the
- * last real reading. The in-app reconciliation (remote-command-effects.ts) runs
- * well inside this and expires its own prediction the moment it gives up; this
- * is the backstop for a prediction that outlived the run that made it — the app
- * was backgrounded mid-reconcile, or killed and relaunched — so a guess can
- * never be rendered as state indefinitely.
- */
-export const OPTIMISTIC_LOCK_MAX_AGE_MS = 90 * 1000;
-
-/**
  * Optimistically set the lock state of every door to the value a just-accepted
  * lock/unlock command should produce — flagged optimistic and stamped `at` (the
  * client's send time, ISO). A "door" is any closure that already carries a lock
@@ -186,13 +176,19 @@ export function hasOptimisticLock(store: ClosureStore | null): boolean {
  * prediction with, so without an expiry "Locking…" stands until the car
  * happens to push a fresh snapshot.
  *
+ * `maxAgeMs` is the caller's to choose, and the two callers choose differently:
+ * a reconciliation giving up passes its own age (so it can only expire the
+ * prediction it made), while the loader passes the standing backstop window
+ * (see OPTIMISTIC_LOCK_MAX_AGE_MS in lock-reconcile.ts). Keeping the window out
+ * of this module keeps the fold free of command-timing policy.
+ *
  * Returns the store unchanged (same reference) when nothing expired, so callers
  * can tell a no-op from a revert. An unparseable stamp counts as expired.
  */
 export function expireOptimisticLocks(
   store: ClosureStore | null,
+  maxAgeMs: number,
   now: number = Date.now(),
-  maxAgeMs: number = OPTIMISTIC_LOCK_MAX_AGE_MS,
 ): ClosureStore | null {
   if (!store) {
     return store;

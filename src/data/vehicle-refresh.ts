@@ -1,17 +1,37 @@
+import { Observe } from "expo-observe";
+
 import type { LexusSession } from "@/auth/lexus-auth";
+import { CLIMATE_SETTINGS_QUERY_KEY } from "@/data/climate-settings";
 import type { VehicleContext } from "@/data/lexus-api";
 import { queryClient } from "@/data/query-client";
 import { refreshVehicleStatus } from "@/data/refresh-status-sender";
-import { CLIMATE_SETTINGS_QUERY_KEY } from "@/hooks/use-climate-settings";
+import { createSingleFlight } from "@/data/single-flight";
+import { vehicleStatusQueryKey } from "@/data/vehicle-keys";
 
 /** `runAuthorized` from the auth context: run an operation with a live session. */
 export type RunAuthorized = <T>(operation: (session: LexusSession) => Promise<T>) => Promise<T>;
 
 /**
+ * Who asked for this refresh. `manual` is a deliberate gesture (pull-to-
+ * refresh); `auto` is the app deciding on its own that what it is showing is
+ * too old (use-vehicle-auto-refresh.ts). Recorded with each prime, because
+ * whether unprompted primes are worth their 12V cost — and whether the age
+ * threshold that triggers them is right — is a product question that should be
+ * answered with evidence rather than re-argued.
+ */
+export type RefreshTrigger = "auto" | "manual";
+
+/**
  * What "refresh the dashboard" means, in one place: optionally prime the car
- * for a fresh snapshot, then re-read the vehicle and the climate settings
- * together. Climate lives in its own query and can change out from under us
- * (the official Lexus app edits the same settings), so it refreshes alongside.
+ * for a fresh snapshot, then re-read the live data — the status snapshot and
+ * the climate settings, which live in their own query and can change out from
+ * under us (the official Lexus app edits the same settings).
+ *
+ * The profile is deliberately not refreshed here. Identity, spec sheet, and
+ * subscriptions don't go stale on the timescale a refresh is about, and
+ * re-reading them would put discovery, spec, and subscriptions back on a path
+ * that runs on every foreground and after every lock command. React Query
+ * refreshes that half on its own schedule (see PROFILE_STALE_TIME_MS).
  *
  * `prime` POSTs `refresh-status`, which wakes the telematics unit and asks
  * every body module to report — expensive for the 12V battery, so it is
@@ -26,10 +46,12 @@ export type RunAuthorized = <T>(operation: (session: LexusSession) => Promise<T>
 export async function refreshVehicleData({
   context,
   runAuthorized,
+  trigger,
   prime = false,
 }: {
   context: VehicleContext | null;
   runAuthorized: RunAuthorized | null;
+  trigger: RefreshTrigger;
   prime?: boolean;
 }): Promise<void> {
   if (prime && context && runAuthorized) {
@@ -37,10 +59,45 @@ export async function refreshVehicleData({
     // the token and retry it once; any other failure — including a dead
     // session — still falls through to the plain re-read below, which surfaces
     // the real state.
-    await runAuthorized((session) => refreshVehicleStatus(session, context)).catch(() => {});
+    const sent = await runAuthorized((session) => refreshVehicleStatus(session, context)).catch(
+      () => false,
+    );
+    // `sent` is false when the per-VIN rate limiter declined it, which is the
+    // interesting half of the measurement: it is how an automatic prime taking
+    // the window from a later pull-to-refresh would show up.
+    Observe.logEvent("vehicle.prime", { attributes: { trigger, sent } });
   }
   await Promise.all([
-    queryClient.refetchQueries({ queryKey: ["vehicle"] }),
+    // Without a context there is no car to scope a status read to, so there is
+    // nothing to refetch — the profile load that produces one is already in
+    // flight, and its arrival is what starts the first status read.
+    context
+      ? queryClient.refetchQueries({ queryKey: vehicleStatusQueryKey(context.vin) })
+      : Promise.resolve(),
     queryClient.refetchQueries({ queryKey: CLIMATE_SETTINGS_QUERY_KEY }),
   ]);
 }
+
+// ---- Automatic refreshes ----------------------------------------------------
+// A refresh the user didn't ask for is the only kind worth announcing on screen
+// (RefreshingNote), and the only kind that must not stack.
+//
+// Both are facts about this one call, so its in-flight state is tracked here
+// rather than inferred from a query's `isFetching` — which is also true for a
+// pull-to-refresh, whose own spinner is already the indicator, and for each of
+// the re-reads a lock command's reconciliation fires, which are not a refresh
+// of stale data at all.
+
+const autoRefresh = createSingleFlight();
+
+/**
+ * Run `refresh` as *the* automatic refresh: at most one at a time, with
+ * {@link isAutoRefreshing} true for its duration. A call made while one is
+ * already running joins it rather than starting a second.
+ */
+export const runAutoRefresh = autoRefresh.run;
+
+/** Whether an automatic refresh is running right now. */
+export const isAutoRefreshing = autoRefresh.isRunning;
+
+export const subscribeAutoRefresh = autoRefresh.subscribe;

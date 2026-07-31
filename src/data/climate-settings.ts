@@ -13,6 +13,12 @@
 // Categories observed: defrost (frontDefrost/rearDefrost), seatHeat, seatVent,
 // steeringHeaterCat — each gated by its own `available` flag per vehicle.
 
+/**
+ * Lives here rather than beside the hook so the refresh orchestration
+ * (vehicle-refresh.ts) can name this query without importing a hook module.
+ */
+export const CLIMATE_SETTINGS_QUERY_KEY = ["climate-settings"] as const;
+
 export type AcParameter = {
   name: string;
   displayName: string | null;

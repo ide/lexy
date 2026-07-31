@@ -37,7 +37,6 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
   tripA: 120,
   tripB: 450,
   location: { latitude: 0, longitude: 0 },
-  climate: { temperatureF: 72, minF: 60, maxF: 85 },
   closures: [
     { label: "Front driver door", state: "Closed", locked: true },
     { label: "Front passenger door", state: "Closed", locked: true },

@@ -4,6 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { createValidatingPersister } from "@/data/persisted-cache";
+import { VEHICLE_PROFILE_QUERY_KEY, vehicleStatusQueryKey } from "@/data/vehicle-keys";
+
+// What each half is persisted as: the profile query caches the request context
+// alongside the profile, the status query caches the snapshot bare.
+const persistedProfile = {
+  profile: PLACEHOLDER_VEHICLE,
+  context: { vin: PLACEHOLDER_VEHICLE.vin },
+};
+const STATUS_KEY = vehicleStatusQueryKey(PLACEHOLDER_VEHICLE.vin);
 
 function query(queryKey: unknown[], data: unknown) {
   return {
@@ -30,26 +39,47 @@ function stubPersister(restored: PersistedClient | undefined): Persister {
 }
 
 describe("createValidatingPersister", () => {
-  it("keeps a persisted vehicle whose data still parses", async () => {
-    const base = stubPersister(client([query(["vehicle"], PLACEHOLDER_VEHICLE)]));
+  it("keeps persisted halves whose data still parses", async () => {
+    const base = stubPersister(
+      client([
+        query([...VEHICLE_PROFILE_QUERY_KEY], persistedProfile),
+        query([...STATUS_KEY], PLACEHOLDER_VEHICLE),
+      ]),
+    );
     const restored = await createValidatingPersister(base).restoreClient();
-    expect(restored?.clientState.queries).toHaveLength(1);
+    expect(restored?.clientState.queries).toHaveLength(2);
   });
 
-  it("drops a persisted vehicle whose data no longer matches the shape", async () => {
+  it("drops a persisted profile whose data no longer matches the shape", async () => {
+    const stale = { profile: { ...PLACEHOLDER_VEHICLE, subscriptions: null } };
+    const base = stubPersister(client([query([...VEHICLE_PROFILE_QUERY_KEY], stale)]));
+    const restored = await createValidatingPersister(base).restoreClient();
+    expect(restored?.clientState.queries).toHaveLength(0);
+  });
+
+  // The status key carries a VIN, so it is matched structurally rather than by
+  // hash — a snapshot for any car still gets validated.
+  it("drops a persisted status whose data no longer matches the shape", async () => {
     const stale = { ...PLACEHOLDER_VEHICLE, location: null };
-    const base = stubPersister(client([query(["vehicle"], stale)]));
+    const base = stubPersister(client([query([...STATUS_KEY], stale)]));
     const restored = await createValidatingPersister(base).restoreClient();
     expect(restored?.clientState.queries).toHaveLength(0);
   });
 
   it("keeps valid queries and drops only the invalid ones", async () => {
     const base = stubPersister(
-      client([query(["vehicle"], { not: "a vehicle" }), query(["other"], { anything: true })]),
+      client([
+        query([...STATUS_KEY], { not: "a status" }),
+        query(["other"], { anything: true }),
+        query([...VEHICLE_PROFILE_QUERY_KEY], persistedProfile),
+      ]),
     );
     const restored = await createValidatingPersister(base).restoreClient();
-    // The unknown key has no validator and survives; the bad vehicle is gone.
-    expect(restored?.clientState.queries.map((q) => q.queryKey)).toEqual([["other"]]);
+    // The unknown key has no validator and survives; the bad status is gone.
+    expect(restored?.clientState.queries.map((q) => q.queryKey)).toEqual([
+      ["other"],
+      [...VEHICLE_PROFILE_QUERY_KEY],
+    ]);
   });
 
   it("passes through unknown query keys untouched", async () => {

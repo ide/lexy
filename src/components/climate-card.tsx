@@ -121,7 +121,8 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
     settings !== undefined &&
     typeof settings.minTemp === "number" &&
     typeof settings.maxTemp === "number";
-  const temperature = draftTemperature ?? settings?.temperature ?? vehicle.climate.temperatureF;
+  // Only ever read inside `showSlider`, which already requires settings.
+  const temperature = draftTemperature ?? settings?.temperature ?? 0;
   const unit = `°${settings?.temperatureUnit ?? "F"}`;
 
   return (
@@ -149,12 +150,11 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
                 <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
               </Host>
             )
-          ) : (
-            <ThemedText type="smallBold" style={styles.tabularNums}>
-              {vehicle.climate.temperatureF}
-              {unit}
-            </ThemedText>
-          )}
+          ) : // No settings yet — and nothing honest to put here. The setpoint
+          // this slot used to fall back on came from the vehicle load's own copy
+          // of this very endpoint; with that duplicate read gone, an absent
+          // reading is simply absent rather than quietly a beat behind.
+          null}
         </View>
         <ThemedText type="small" themeColor="secondaryLabel">
           Settings for when you start your vehicle remotely.

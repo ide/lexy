@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import {
   absoluteLocalTime,
-  mapVehicle,
+  composeVehicle,
+  mapVehicleProfile,
+  mapVehicleStatus,
   parseSubscriptionVehicle,
-  parseVehicle,
   parseVehicleContexts,
+  parseVehicleProfile,
+  parseVehicleStatus,
   relativeTime,
+  type VehicleProfile,
+  type VehicleStatus,
 } from "./vehicle";
 
-const vehicle = {
+const profile: VehicleProfile = {
   nickname: "Daily driver",
   fullName: "2025 Lexus Example",
   model: "Example sedan",
@@ -27,6 +32,20 @@ const vehicle = {
   imageUrl: "https://example.com/vehicle.png",
   inServiceDate: "2025-01-02",
   manufacturedDate: "2024-12-01",
+  capabilities: [{ label: "Lock & Unlock", symbol: "lock.fill" }],
+  subscriptions: [
+    {
+      name: "Remote Connect",
+      status: "Active",
+      active: true,
+      trial: false,
+      expires: "Jan 2, 2028",
+    },
+  ],
+};
+
+const snapshot: VehicleStatus = {
+  vin: "TESTVIN1234567890",
   updatedAt: "2026-07-24T17:03:10Z",
   fuelPercent: 75,
   distanceUnit: "mi",
@@ -36,25 +55,56 @@ const vehicle = {
   tripA: 10.2,
   tripB: 20.4,
   location: { latitude: 37.5, longitude: -122.2 },
-  climate: { temperatureF: 72, minF: 65, maxF: 85 },
   closures: [{ label: "Driver Door", state: "Closed", locked: true }],
-  capabilities: [{ label: "Lock & Unlock", symbol: "lock.fill" }],
-  subscriptions: [{ name: "Remote Connect", status: "Active", expires: "Jan 2, 2028" }],
 };
 
-describe("parseVehicle", () => {
-  it("accepts a normalized vehicle API response", () => {
-    expect(parseVehicle(vehicle)).toEqual(vehicle);
+describe("parseVehicleProfile", () => {
+  it("accepts a normalized profile", () => {
+    expect(parseVehicleProfile(profile)).toEqual(profile);
   });
 
-  it("rejects malformed responses instead of caching them", () => {
-    expect(() => parseVehicle({ ...vehicle, location: null })).toThrow("Invalid vehicle response");
+  it("rejects malformed profiles instead of caching them", () => {
+    expect(() => parseVehicleProfile({ ...profile, subscriptions: null })).toThrow(
+      "Invalid vehicle profile",
+    );
+  });
+});
+
+describe("parseVehicleStatus", () => {
+  it("accepts a normalized status snapshot", () => {
+    expect(parseVehicleStatus(snapshot)).toEqual(snapshot);
+  });
+
+  it("rejects malformed snapshots instead of caching them", () => {
+    expect(() => parseVehicleStatus({ ...snapshot, location: null })).toThrow(
+      "Invalid vehicle status",
+    );
   });
 
   it("rejects a distance unit outside mi/km", () => {
-    expect(() => parseVehicle({ ...vehicle, distanceUnit: "Mile" })).toThrow(
-      "Invalid vehicle response",
+    expect(() => parseVehicleStatus({ ...snapshot, distanceUnit: "Mile" })).toThrow(
+      "Invalid vehicle status",
     );
+  });
+
+  // The stamp is what lets composeVehicle refuse a mismatched join, so a
+  // snapshot without one is not a snapshot.
+  it("rejects a snapshot with no VIN", () => {
+    const { vin: _vin, ...withoutVin } = snapshot;
+    expect(() => parseVehicleStatus(withoutVin)).toThrow("Invalid vehicle status");
+  });
+});
+
+describe("composeVehicle", () => {
+  it("joins the two halves into the view the screens render", () => {
+    expect(composeVehicle(profile, snapshot)).toEqual({ ...profile, ...snapshot });
+  });
+
+  // Cached halves outlive each other — a vehicle switch, or a status blob
+  // persisted before an account change. Rendering identity from one car beside
+  // live state from another would be worse than rendering nothing.
+  it("refuses to join a status snapshot from a different car", () => {
+    expect(composeVehicle(profile, { ...snapshot, vin: "OTHERVIN000000000" })).toBeNull();
   });
 });
 
@@ -89,8 +139,9 @@ describe("parseVehicleContexts", () => {
   });
 });
 
-describe("mapVehicle", () => {
+describe("mapVehicleProfile / mapVehicleStatus", () => {
   // Fixtures captured from live production responses for the account's IS 350.
+  const VIN = "DEMO0000000000000";
   const discovery = {
     payload: [
       {
@@ -153,7 +204,6 @@ describe("mapVehicle", () => {
       },
     },
   };
-  const climate = { payload: { temperature: 71, temperatureUnit: "F", minTemp: 65, maxTemp: 85 } };
   const spec = {
     payload: {
       vehicleSpecifications: {
@@ -210,8 +260,26 @@ describe("mapVehicle", () => {
     availableSubscriptions: [{ productName: "Music Lover", category: "BUNDLE" }],
   };
 
-  it("composes the live responses into the UI vehicle shape", () => {
-    const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
+  it("maps discovery and the spec sheet into the profile", () => {
+    expect(mapVehicleProfile(discovery, spec, subscriptions)).toMatchObject({
+      nickname: "2026 IS 350",
+      fullName: "2026 Lexus IS 350 4-DOOR SEDAN",
+      model: "IS 350 4-DOOR SEDAN",
+      color: "Cloudburst Grey",
+      vin: VIN,
+      modelCode: "9510",
+      generation: "21MM",
+      fuelType: "Gasoline",
+      transmission: "8AT-F",
+      drivetrain: "2WD",
+      trim: "F SPORT",
+      headUnit: "Lexus Multimedia (21MM)",
+      inServiceDate: "April 1, 2026",
+    });
+  });
+
+  it("maps the status and tire responses into the snapshot", () => {
+    const mapped = mapVehicleStatus(VIN, status, tires);
     expect(mapped.tires).toEqual({
       status: "Good",
       unit: "psi",
@@ -223,19 +291,8 @@ describe("mapVehicle", () => {
       ],
     });
     expect(mapped).toMatchObject({
-      nickname: "2026 IS 350",
-      fullName: "2026 Lexus IS 350 4-DOOR SEDAN",
-      model: "IS 350 4-DOOR SEDAN",
-      color: "Cloudburst Grey",
-      vin: "DEMO0000000000000",
-      modelCode: "9510",
-      generation: "21MM",
-      fuelType: "Gasoline",
-      transmission: "8AT-F",
-      drivetrain: "2WD",
-      trim: "F SPORT",
-      headUnit: "Lexus Multimedia (21MM)",
-      inServiceDate: "April 1, 2026",
+      vin: VIN,
+      updatedAt: "2026-07-28T01:23:50Z",
       fuelPercent: 100,
       distanceUnit: "mi",
       range: 281,
@@ -243,7 +300,6 @@ describe("mapVehicle", () => {
       tripA: 272.1,
       tripB: 735.1,
       location: { latitude: 37.33461, longitude: -122.00910 },
-      climate: { temperatureF: 71, minF: 65, maxF: 85 },
     });
     expect(mapped.closures).toEqual([
       { label: "Driver Door", state: "Closed", locked: true },
@@ -252,8 +308,14 @@ describe("mapVehicle", () => {
     ]);
   });
 
+  // The snapshot is stamped with the car that was *asked*, not with anything the
+  // payload echoes — that stamp is what composeVehicle checks.
+  it("stamps the snapshot with the requested VIN", () => {
+    expect(mapVehicleStatus("OTHERVIN000000000", status, tires).vin).toBe("OTHERVIN000000000");
+  });
+
   it("flattens paid/trial/complimentary subscriptions with status, trial, and expiry", () => {
-    const mapped = mapVehicle(discovery, status, climate, spec, tires, subscriptions);
+    const mapped = mapVehicleProfile(discovery, spec, subscriptions);
     expect(mapped.subscriptions).toEqual([
       {
         name: "Remote Connect",
@@ -282,12 +344,14 @@ describe("mapVehicle", () => {
   });
 
   it("leaves subscriptions empty when the read is missing or failed", () => {
-    expect(mapVehicle(discovery, status, climate, spec, tires, null).subscriptions).toEqual([]);
-    expect(mapVehicle(discovery, status, climate, spec, tires).subscriptions).toEqual([]);
+    expect(mapVehicleProfile(discovery, spec, null).subscriptions).toEqual([]);
+    expect(mapVehicleProfile(discovery, spec).subscriptions).toEqual([]);
   });
 
-  it("produces a value that passes parseVehicle validation", () => {
-    expect(() => parseVehicle(mapVehicle(discovery, status, climate, spec))).not.toThrow();
+  it("produces halves that pass their own validation, and join", () => {
+    const mappedProfile = parseVehicleProfile(mapVehicleProfile(discovery, spec));
+    const mappedStatus = parseVehicleStatus(mapVehicleStatus(VIN, status));
+    expect(composeVehicle(mappedProfile, mappedStatus)).not.toBeNull();
   });
 
   it("keeps lock-only closures from sparse status snapshots", () => {
@@ -314,7 +378,7 @@ describe("mapVehicle", () => {
       },
       { category: "Other", sections: [{ section: "Trunk", values: [] }] },
     ] as typeof status.payload.status.vehicleStatus;
-    expect(mapVehicle(discovery, sparse, climate, spec).closures).toEqual([
+    expect(mapVehicleStatus(VIN, sparse).closures).toEqual([
       { label: "Driver Door", state: "Closed", locked: true },
       { label: "Driver Rear Door", locked: true },
       { label: "Passenger Door", locked: true },
@@ -324,14 +388,14 @@ describe("mapVehicle", () => {
   it("takes the distance unit from telemetry, defaulting to miles", () => {
     const metricStatus = structuredClone(status);
     metricStatus.payload.status.telemetry.rage.unit = "Kilometer";
-    expect(mapVehicle(discovery, metricStatus, climate, spec).distanceUnit).toBe("km");
+    expect(mapVehicleStatus(VIN, metricStatus).distanceUnit).toBe("km");
 
     const unitless = structuredClone(status);
     // @ts-expect-error -- exercise telemetry that omits the unit entirely
     delete unitless.payload.status.telemetry.rage.unit;
     // @ts-expect-error
     delete unitless.payload.status.telemetry.odo.unit;
-    expect(mapVehicle(discovery, unitless, climate, spec).distanceUnit).toBe("mi");
+    expect(mapVehicleStatus(VIN, unitless).distanceUnit).toBe("mi");
   });
 });
 

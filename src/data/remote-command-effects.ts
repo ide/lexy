@@ -10,43 +10,24 @@ import {
   ENGINE_POLL_INTERVAL_MS,
   ENGINE_STATUS_QUERY_KEY,
 } from "@/data/engine-status";
+import type { VehicleContext } from "@/data/lexus-api";
+import { reconcileLock } from "@/data/lock-reconcile";
 import { queryClient } from "@/data/query-client";
 import type { RemoteCommand } from "@/data/remote-command";
-import type { Vehicle } from "@/data/vehicle";
+import type { VehicleStatus } from "@/data/vehicle";
+import { vehicleStatusQueryKey } from "@/data/vehicle-keys";
 
-// When to re-read status after a lock/unlock, measured from acceptance. The
-// car pushes its own status event once the actuation lands, but propagation
-// into the non-waking GET takes anywhere from seconds to half a minute — the
-// old two fixed refetches (0s/5s) routinely both saw the pre-command snapshot,
-// and the pending "Unlocking…" then sat on screen until a manual refresh.
-const LOCK_RECONCILE_AT_MS = [0, 5_000, 12_000, 25_000];
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// And when to re-read after the `prime` escalation, measured from the prime
-// returning. Waking the telematics unit is the strongest ask we have, but the
-// car still needs a few seconds to answer it, so the reads that follow are what
-// gives that ask a chance — a single immediate one lands before the wake does.
-const LOCK_RECONCILE_AFTER_PRIME_MS = [3_000, 9_000, 18_000];
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Re-read status on the given schedule (offsets from now), stopping as soon as
-// the optimistic prediction is confirmed or corrected — each vehicle refetch
-// folds the server reading into the closure store, see vehicle-load.ts.
-// Returns whether the prediction settled.
-async function pollUntilSettled(schedule: readonly number[]): Promise<boolean> {
-  let elapsed = 0;
-  for (const at of schedule) {
-    await sleep(at - elapsed);
-    elapsed = at;
-    if (!hasOptimisticLock(await loadClosureStore())) {
-      return true;
-    }
-    await queryClient.refetchQueries({ queryKey: ["vehicle"] });
-    if (!hasOptimisticLock(await loadClosureStore())) {
-      return true;
-    }
-  }
-  return false;
+/**
+ * Put the closure store's materialized view into the status query, so a change
+ * the store made — a prediction applied, or one stood down — shows on screen
+ * without a round trip.
+ */
+function publishClosures(vin: string, closures: VehicleStatus["closures"]) {
+  queryClient.setQueryData<VehicleStatus>(vehicleStatusQueryKey(vin), (old) =>
+    old ? { ...old, closures } : old,
+  );
 }
 
 /**
@@ -59,7 +40,7 @@ async function pollUntilSettled(schedule: readonly number[]): Promise<boolean> {
  * pending label going away is the whole message: there is nothing to act on
  * that pulling to refresh (or looking at the car) doesn't already cover.
  */
-async function abandonPrediction(sentAt: number) {
+async function abandonPrediction(vin: string, sentAt: number) {
   const store = await loadClosureStore();
   if (!store) {
     return;
@@ -67,50 +48,32 @@ async function abandonPrediction(sentAt: number) {
   const now = Date.now();
   // Anything stamped at or before our send time is ours (or older); a newer
   // command's prediction outlives this one.
-  const expired = expireOptimisticLocks(store, now, now - sentAt) ?? store;
+  const expired = expireOptimisticLocks(store, now - sentAt, now) ?? store;
   if (expired === store) {
     // Nothing of ours was still standing — it settled between the last read
     // and here, or a newer command already took the prediction over.
     return;
   }
   await saveClosureStore(expired);
-  const closures = readClosures(expired);
-  queryClient.setQueryData<Vehicle>(["vehicle"], (old) => (old ? { ...old, closures } : old));
-}
-
-// Re-read status until the optimistic lock prediction is confirmed or
-// corrected. If the whole schedule passes and the store still holds a
-// prediction, escalate once to `prime` — the same telematics wake that
-// pull-to-refresh sends — and read the car again a few times. If it still
-// hasn't reported, the command's outcome is genuinely unknown: expire the
-// prediction rather than show it indefinitely.
-async function reconcileLock(sentAt: number, prime?: () => Promise<boolean>) {
-  if (await pollUntilSettled(LOCK_RECONCILE_AT_MS)) {
-    return;
-  }
-  if (prime && (await prime().catch(() => false))) {
-    if (await pollUntilSettled(LOCK_RECONCILE_AFTER_PRIME_MS)) {
-      return;
-    }
-  }
-  await abandonPrediction(sentAt);
+  publishClosures(vin, readClosures(expired));
 }
 
 /**
  * Reflect a remote command the server just accepted (not completed) in local
- * state. For lock/unlock, optimistically fold the predicted lock state into
- * the closure store — flagged optimistic so the screen shows it as pending —
- * and push it into the cache for an instant reflection. (Engine start/stop
- * changes no closure, so there's nothing to predict there — it's confirmed by
- * polling engine-status instead.) `primeStatus` should request a fresh
- * server-side snapshot from the car (refreshVehicleStatus); it backs the
- * reconciliation's last resort.
+ * state. For lock/unlock, optimistically fold the predicted lock state into the
+ * closure store — flagged optimistic so the screen shows it as pending — and
+ * push it into the cache for an instant reflection. (Engine start/stop changes
+ * no closure, so there's nothing to predict there — it's confirmed by polling
+ * engine-status instead.) `primeStatus` should request a fresh server-side
+ * snapshot from the car (refreshVehicleStatus); it backs the reconciliation's
+ * last resort.
  */
 export async function reflectAcceptedCommand(
-  vin: string,
+  context: VehicleContext,
   command: RemoteCommand,
   primeStatus?: () => Promise<boolean>,
 ) {
+  const { vin } = context;
   const sentAt = Date.now();
   if (command === "engine-start" || command === "engine-stop") {
     // Engine state lives on its own route, and a remote start takes a while to
@@ -122,6 +85,7 @@ export async function reflectAcceptedCommand(
         queryClient.invalidateQueries({ queryKey: ENGINE_STATUS_QUERY_KEY });
       }, poll * ENGINE_POLL_INTERVAL_MS);
     }
+    return;
   }
   if (command === "door-lock" || command === "door-unlock") {
     const store = applyOptimisticLock(
@@ -131,14 +95,27 @@ export async function reflectAcceptedCommand(
       new Date(sentAt).toISOString(),
     );
     await saveClosureStore(store);
-    const closures = readClosures(store);
-    queryClient.setQueryData<Vehicle>(["vehicle"], (old) => (old ? { ...old, closures } : old));
-    // Reconcile in the background — each refetch GETs status without waking
-    // the car, and the fold merges its (possibly partial, possibly stale)
-    // payload without clobbering the optimistic value. Not awaited: the
-    // schedule spans a minute or so and the caller only needs acceptance.
-    reconcileLock(sentAt, primeStatus).catch(() => {});
+    publishClosures(vin, readClosures(store));
+    // Reconcile in the background — each re-read GETs status without waking the
+    // car, and the fold merges its (possibly partial, possibly stale) payload
+    // without clobbering the optimistic value. Not awaited: the schedule spans
+    // a minute or so and the caller only needs acceptance.
+    //
+    // The schedule and its control flow live in lock-reconcile.ts, where they
+    // are testable; what is bound here is only what each step *means* in this
+    // app.
+    reconcileLock({
+      sleep,
+      // Just the status snapshot: the question is whether the car has reported
+      // the new lock state, and nothing in the profile can answer it.
+      readStatus: async () => {
+        await queryClient.refetchQueries({ queryKey: vehicleStatusQueryKey(vin) });
+      },
+      hasPrediction: async () => hasOptimisticLock(await loadClosureStore()),
+      prime: primeStatus,
+      abandon: () => abandonPrediction(vin, sentAt),
+    }).catch(() => {});
     return;
   }
-  queryClient.invalidateQueries({ queryKey: ["vehicle"] });
+  queryClient.invalidateQueries({ queryKey: vehicleStatusQueryKey(vin) });
 }
