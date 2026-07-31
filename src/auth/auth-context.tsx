@@ -1,4 +1,4 @@
-import { fetch as expoFetch } from 'expo/fetch';
+import { fetch as expoFetch } from "expo/fetch";
 import {
   createContext,
   type PropsWithChildren,
@@ -7,7 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
+} from "react";
 
 import {
   classifyAuthenticationNode,
@@ -20,9 +20,9 @@ import {
   type AuthenticationStep,
   type LexusSession,
   type RequestLike,
-} from '@/auth/lexus-auth';
-import { secureTokenStore, type TokenStore } from '@/auth/token-store';
-import { clearVehicleCache } from '@/data/query-client';
+} from "@/auth/lexus-auth";
+import { secureTokenStore, type TokenStore } from "@/auth/token-store";
+import { clearVehicleCache } from "@/data/query-client";
 
 type AuthContextValue = {
   busy: boolean;
@@ -74,17 +74,17 @@ function callbackOutput(node: AuthenticationNode | null, name: string): unknown 
 }
 
 function nodePrompt(node: AuthenticationNode | null): string | null {
-  const prompt = callbackOutput(node, 'prompt');
-  if (typeof prompt === 'string') {
+  const prompt = callbackOutput(node, "prompt");
+  if (typeof prompt === "string") {
     return prompt;
   }
-  const message = callbackOutput(node, 'message');
-  return typeof message === 'string' ? message : null;
+  const message = callbackOutput(node, "message");
+  return typeof message === "string" ? message : null;
 }
 
 function nodeChoices(node: AuthenticationNode | null): string[] {
-  const choices = callbackOutput(node, 'choices');
-  return Array.isArray(choices) && choices.every((choice) => typeof choice === 'string')
+  const choices = callbackOutput(node, "choices");
+  return Array.isArray(choices) && choices.every((choice) => typeof choice === "string")
     ? choices
     : [];
 }
@@ -93,7 +93,7 @@ function errorMessage(error: unknown): string {
   if (error instanceof LexusAuthError || error instanceof Error) {
     return error.message;
   }
-  return 'Lexus sign-in failed. Please try again.';
+  return "Lexus sign-in failed. Please try again.";
 }
 
 /**
@@ -191,7 +191,7 @@ export function AuthProvider({
         // Remember which verification method was picked so the OTP screen can
         // name it correctly (e.g. an email code vs. an SMS code), along with the
         // full set of offered methods so it knows whether switching is possible.
-        if (typeof value === 'number' && classifyAuthenticationNode(current) === 'choice') {
+        if (typeof value === "number" && classifyAuthenticationNode(current) === "choice") {
           const offered = nodeChoices(current);
           setAvailableMethods(offered);
           setMethod(offered[value] ?? null);
@@ -215,13 +215,13 @@ export function AuthProvider({
         // Answer the username step unless we are already resuming at the
         // password step (e.g. after a wrong-password retry that re-prompts only
         // the password) — otherwise the username would be sent as the password.
-        if (classifyAuthenticationNode(current) !== 'password') {
+        if (classifyAuthenticationNode(current) !== "password") {
           current = await continueAuthentication(current, username, fetch);
         }
         // The happy path lands on the password node; answer it in the same pass.
         // Anything else (a rejected username, a jump straight to 2FA) is
         // surfaced as-is.
-        if (!current.tokenId && classifyAuthenticationNode(current) === 'password') {
+        if (!current.tokenId && classifyAuthenticationNode(current) === "password") {
           current = await continueAuthentication(current, password, fetch);
         }
         // Remember the accepted credentials so verification can be restarted to
@@ -246,7 +246,7 @@ export function AuthProvider({
   const restartVerification = useCallback(
     async (reselectMethod: boolean) => {
       if (!credentials) {
-        setError('Your sign-in session expired. Please enter your email and password again.');
+        setError("Your sign-in session expired. Please enter your email and password again.");
         setNode(null);
         return;
       }
@@ -254,10 +254,10 @@ export function AuthProvider({
       setError(null);
       try {
         let current = await startAuthentication(fetch);
-        if (classifyAuthenticationNode(current) === 'username') {
+        if (classifyAuthenticationNode(current) === "username") {
           current = await continueAuthentication(current, credentials.username, fetch);
         }
-        if (!current.tokenId && classifyAuthenticationNode(current) === 'password') {
+        if (!current.tokenId && classifyAuthenticationNode(current) === "password") {
           current = await continueAuthentication(current, credentials.password, fetch);
         }
         // Resend: re-select the same channel so a new code is sent and we return
@@ -266,7 +266,7 @@ export function AuthProvider({
           reselectMethod &&
           method &&
           !current.tokenId &&
-          classifyAuthenticationNode(current) === 'choice'
+          classifyAuthenticationNode(current) === "choice"
         ) {
           const index = nodeChoices(current).indexOf(method);
           if (index >= 0) {
@@ -275,7 +275,7 @@ export function AuthProvider({
         }
         // Landing on the choice step means the user re-picks; drop the remembered
         // method so the OTP copy isn't stale, and refresh the offered methods.
-        if (!current.tokenId && classifyAuthenticationNode(current) === 'choice') {
+        if (!current.tokenId && classifyAuthenticationNode(current) === "choice") {
           setAvailableMethods(nodeChoices(current));
           setMethod(null);
         }
@@ -345,7 +345,7 @@ export function AuthProvider({
 export function useAuth(): AuthContextValue {
   const value = use(AuthContext);
   if (!value) {
-    throw new Error('useAuth must be used inside AuthProvider');
+    throw new Error("useAuth must be used inside AuthProvider");
   }
   return value;
 }

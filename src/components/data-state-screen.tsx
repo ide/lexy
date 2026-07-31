@@ -1,10 +1,5 @@
 import { Host, ScrollView, Text, VStack } from "@expo/ui/swift-ui";
-import {
-  font,
-  foregroundStyle,
-  frame,
-  padding,
-} from "@expo/ui/swift-ui/modifiers";
+import { font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
 import { useObserve } from "expo-observe";
 import { useEffect } from "react";
 
@@ -12,18 +7,14 @@ import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
 import { RowCheckmark, SettingsRow } from "@/components/swift-ui/settings-row";
 import { Spacing, colors } from "@/constants/theme";
 import type { DataStateOverride } from "@/debug/data-state";
-import {
-  DATA_STATE_OPTIONS,
-  useDebugOverrides,
-} from "@/debug/debug-overrides";
+import { DATA_STATE_OPTIONS, useDebugOverrides } from "@/debug/debug-overrides";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { haptic } from "@/utils/haptics";
 
 export default function DataStateScreen() {
   const { markInteractive } = useObserve();
   const { dataState, setDataState } = useDebugOverrides();
-  const { saved: savedMapsProvider, clear: clearMapsProvider } =
-    useMapsProvider();
+  const { saved: savedMapsProvider, clear: clearMapsProvider } = useMapsProvider();
 
   useEffect(() => {
     markInteractive();
@@ -87,8 +78,8 @@ export default function DataStateScreen() {
                 frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              Overrides the Status and Details tabs so you can preview each data
-              state. Resets to Live when the app reloads.
+              Overrides the Status and Details tabs so you can preview each data state. Resets to
+              Live when the app reloads.
             </Text>
           </VStack>
 
@@ -106,9 +97,7 @@ export default function DataStateScreen() {
                   title="Clear Maps provider"
                   titleColor={colors.systemRed}
                   subtitle={
-                    savedMapsProvider
-                      ? `Currently ${savedMapsProvider.name}`
-                      : "No saved provider"
+                    savedMapsProvider ? `Currently ${savedMapsProvider.name}` : "No saved provider"
                   }
                   disabled={savedMapsProvider === null}
                   onPress={clearProvider}
@@ -123,8 +112,8 @@ export default function DataStateScreen() {
                 frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              Forgets the navigation app selected in Settings. The next map
-              handoff will resolve or ask again.
+              Forgets the navigation app selected in Settings. The next map handoff will resolve or
+              ask again.
             </Text>
           </VStack>
         </VStack>

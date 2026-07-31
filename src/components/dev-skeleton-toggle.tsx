@@ -15,13 +15,7 @@ const blue = colors.systemBlue;
  * data). Callers render it only when SHOW_DEV_TOOLS is true, so it
  * reaches dev and preview builds but never production.
  */
-export function DevSkeletonToggle({
-  active,
-  onToggle,
-}: {
-  active: boolean;
-  onToggle: () => void;
-}) {
+export function DevSkeletonToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"

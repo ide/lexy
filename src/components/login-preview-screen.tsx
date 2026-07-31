@@ -1,13 +1,4 @@
-import {
-  Button,
-  Host,
-  HStack,
-  Image,
-  Menu,
-  Spacer,
-  Text,
-  VStack,
-} from "@expo/ui/swift-ui";
+import { Button, Host, HStack, Image, Menu, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import {
   background,
   buttonStyle,
@@ -51,10 +42,7 @@ export default function LoginPreviewScreen() {
   // fresh mock backend, i.e. a clean sign-in run.
   const [runId, setRunId] = useState(0);
 
-  const fetchImpl = useMemo(
-    () => createPreviewFetch(scenario),
-    [scenario, runId],
-  );
+  const fetchImpl = useMemo(() => createPreviewFetch(scenario), [scenario, runId]);
   const tokenStore = useMemo(() => createPreviewTokenStore(), [scenario, runId]);
 
   const selectScenario = (id: PreviewScenario) => {
@@ -63,11 +51,7 @@ export default function LoginPreviewScreen() {
   };
 
   return (
-    <AuthProvider
-      key={`${scenario}:${runId}`}
-      fetch={fetchImpl}
-      tokenStore={tokenStore}
-    >
+    <AuthProvider key={`${scenario}:${runId}`} fetch={fetchImpl} tokenStore={tokenStore}>
       <PreviewBody
         scenario={scenario}
         onSelect={selectScenario}
@@ -87,8 +71,7 @@ function ScenarioRow({
   onSelect: (id: PreviewScenario) => void;
 }) {
   const current =
-    PREVIEW_SCENARIOS.find((option) => option.id === scenario) ??
-    PREVIEW_SCENARIOS[0];
+    PREVIEW_SCENARIOS.find((option) => option.id === scenario) ?? PREVIEW_SCENARIOS[0];
   return (
     <HStack
       alignment="center"
@@ -98,11 +81,7 @@ function ScenarioRow({
         frame({ maxWidth: Infinity, alignment: "leading" }),
       ]}
     >
-      <Image
-        systemName="wrench.and.screwdriver.fill"
-        size={14}
-        color={colors.secondaryLabel}
-      />
+      <Image systemName="wrench.and.screwdriver.fill" size={14} color={colors.secondaryLabel} />
       <Text
         modifiers={[
           font({ textStyle: "footnote", weight: "semibold" }),
@@ -118,11 +97,7 @@ function ScenarioRow({
       <Menu
         label={
           <HStack alignment="center" spacing={Spacing.one}>
-            <Image
-              systemName={current.systemImage}
-              size={14}
-              color={colors.systemBlue}
-            />
+            <Image systemName={current.systemImage} size={14} color={colors.systemBlue} />
             <Text
               modifiers={[
                 font({ textStyle: "footnote", weight: "semibold" }),
@@ -164,26 +139,17 @@ function PreviewBody({
     // SwiftUI tree in a single Host.
     return (
       <Host style={{ flex: 1, backgroundColor: colors.groupedBackground }}>
-        <VStack
-          spacing={0}
-          modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity })]}
-        >
+        <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity, maxHeight: Infinity })]}>
           <VStack
             spacing={0}
-            modifiers={[
-              frame({ maxWidth: Infinity }),
-              background(colors.card, shapes.rectangle()),
-            ]}
+            modifiers={[frame({ maxWidth: Infinity }), background(colors.card, shapes.rectangle())]}
           >
             <ScenarioRow scenario={scenario} onSelect={onSelect} />
           </VStack>
           <Spacer />
           <VStack
             spacing={Spacing.three}
-            modifiers={[
-              frame({ maxWidth: Infinity }),
-              padding({ horizontal: Spacing.four }),
-            ]}
+            modifiers={[frame({ maxWidth: Infinity }), padding({ horizontal: Spacing.four })]}
           >
             <Image
               systemName={"checkmark.seal.fill" as SFSymbol}
@@ -207,8 +173,8 @@ function PreviewBody({
                 frame({ maxWidth: Infinity }),
               ]}
             >
-              This ran the real sign-in flow against a mock Lexus backend. Your
-              actual session was never touched and no real login happened.
+              This ran the real sign-in flow against a mock Lexus backend. Your actual session was
+              never touched and no real login happened.
             </Text>
             <Button
               label="Run the flow again"

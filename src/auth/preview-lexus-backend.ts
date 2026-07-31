@@ -1,7 +1,7 @@
-import type { SFSymbol } from 'sf-symbols-typescript';
+import type { SFSymbol } from "sf-symbols-typescript";
 
-import type { RequestLike } from './lexus-auth';
-import { createTokenStore, type KeyValueStorage, type TokenStore } from './token-store';
+import type { RequestLike } from "./lexus-auth";
+import { createTokenStore, type KeyValueStorage, type TokenStore } from "./token-store";
 
 /**
  * A mock of the Lexus ForgeRock backend for the Development tab's login preview.
@@ -17,11 +17,11 @@ import { createTokenStore, type KeyValueStorage, type TokenStore } from './token
  * threads its own state through that field.
  */
 export type PreviewScenario =
-  | 'success-multi'
-  | 'success-single'
-  | 'wrong-password'
-  | 'wrong-code'
-  | 'network-error';
+  | "success-multi"
+  | "success-single"
+  | "wrong-password"
+  | "wrong-code"
+  | "network-error";
 
 export type PreviewScenarioOption = {
   id: PreviewScenario;
@@ -32,44 +32,44 @@ export type PreviewScenarioOption = {
 
 export const PREVIEW_SCENARIOS: PreviewScenarioOption[] = [
   {
-    id: 'success-multi',
-    label: 'Success · Email or SMS',
-    detail: 'Two verification methods offered — the full happy path.',
-    systemImage: 'checkmark.seal.fill',
+    id: "success-multi",
+    label: "Success · Email or SMS",
+    detail: "Two verification methods offered — the full happy path.",
+    systemImage: "checkmark.seal.fill",
   },
   {
-    id: 'success-single',
-    label: 'Success · single method',
-    detail: 'One method only — the flow skips the picker straight to the code.',
-    systemImage: 'checkmark.seal',
+    id: "success-single",
+    label: "Success · single method",
+    detail: "One method only — the flow skips the picker straight to the code.",
+    systemImage: "checkmark.seal",
   },
   {
-    id: 'wrong-password',
-    label: 'Error · wrong password',
-    detail: 'Lexus rejects the credentials.',
-    systemImage: 'xmark.octagon.fill',
+    id: "wrong-password",
+    label: "Error · wrong password",
+    detail: "Lexus rejects the credentials.",
+    systemImage: "xmark.octagon.fill",
   },
   {
-    id: 'wrong-code',
-    label: 'Error · invalid code',
-    detail: 'Lexus rejects the verification code.',
-    systemImage: 'xmark.octagon',
+    id: "wrong-code",
+    label: "Error · invalid code",
+    detail: "Lexus rejects the verification code.",
+    systemImage: "xmark.octagon",
   },
   {
-    id: 'network-error',
-    label: 'Error · network failure',
-    detail: 'Requests never reach Lexus.',
-    systemImage: 'wifi.slash',
+    id: "network-error",
+    label: "Error · network failure",
+    detail: "Requests never reach Lexus.",
+    systemImage: "wifi.slash",
   },
 ];
 
 // The step markers we thread through ForgeRock's `authId` field to remember
 // where the (otherwise stateless) mock is in the tree.
 const STEP = {
-  username: 'preview-username',
-  password: 'preview-password',
-  choice: 'preview-choice',
-  otp: 'preview-otp',
+  username: "preview-username",
+  password: "preview-password",
+  choice: "preview-choice",
+  otp: "preview-otp",
 } as const;
 
 type Node = Record<string, unknown>;
@@ -77,7 +77,7 @@ type Node = Record<string, unknown>;
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -86,9 +86,9 @@ function usernameNode(): Node {
     authId: STEP.username,
     callbacks: [
       {
-        type: 'NameCallback',
-        output: [{ name: 'prompt', value: 'User Name' }],
-        input: [{ name: 'IDToken1', value: '' }],
+        type: "NameCallback",
+        output: [{ name: "prompt", value: "User Name" }],
+        input: [{ name: "IDToken1", value: "" }],
       },
     ],
   };
@@ -99,9 +99,9 @@ function passwordNode(): Node {
     authId: STEP.password,
     callbacks: [
       {
-        type: 'PasswordCallback',
-        output: [{ name: 'prompt', value: 'Password' }],
-        input: [{ name: 'IDToken1', value: '' }],
+        type: "PasswordCallback",
+        output: [{ name: "prompt", value: "Password" }],
+        input: [{ name: "IDToken1", value: "" }],
       },
     ],
   };
@@ -112,13 +112,13 @@ function choiceNode(): Node {
     authId: STEP.choice,
     callbacks: [
       {
-        type: 'ChoiceCallback',
+        type: "ChoiceCallback",
         output: [
-          { name: 'prompt', value: 'How would you like to receive your code?' },
-          { name: 'choices', value: ['Email', 'Text message'] },
-          { name: 'defaultChoice', value: 0 },
+          { name: "prompt", value: "How would you like to receive your code?" },
+          { name: "choices", value: ["Email", "Text message"] },
+          { name: "defaultChoice", value: 0 },
         ],
-        input: [{ name: 'IDToken1', value: 0 }],
+        input: [{ name: "IDToken1", value: 0 }],
       },
     ],
   };
@@ -131,26 +131,26 @@ function otpNode(): Node {
     // the OTP step; the TextInputCallback is what the flow answers.
     callbacks: [
       {
-        type: 'TextInputCallback',
+        type: "TextInputCallback",
         output: [
-          { name: 'prompt', value: 'Enter the verification code we sent you.' },
-          { name: 'value', value: '' },
+          { name: "prompt", value: "Enter the verification code we sent you." },
+          { name: "value", value: "" },
         ],
-        input: [{ name: 'IDToken1', value: '' }],
+        input: [{ name: "IDToken1", value: "" }],
       },
     ],
   };
 }
 
 function markerOf(posted: unknown): string {
-  if (!posted || typeof posted !== 'object') {
-    return 'start';
+  if (!posted || typeof posted !== "object") {
+    return "start";
   }
   const node = posted as Node;
   if (!Array.isArray(node.callbacks)) {
-    return 'start';
+    return "start";
   }
-  return typeof node.authId === 'string' ? node.authId : 'start';
+  return typeof node.authId === "string" ? node.authId : "start";
 }
 
 function authenticateResponse(posted: unknown, scenario: PreviewScenario): Response {
@@ -158,21 +158,21 @@ function authenticateResponse(posted: unknown, scenario: PreviewScenario): Respo
     case STEP.username:
       return jsonResponse(200, passwordNode());
     case STEP.password:
-      if (scenario === 'wrong-password') {
+      if (scenario === "wrong-password") {
         return jsonResponse(401, {
-          message: 'The email or password you entered is incorrect.',
+          message: "The email or password you entered is incorrect.",
         });
       }
-      return jsonResponse(200, scenario === 'success-single' ? otpNode() : choiceNode());
+      return jsonResponse(200, scenario === "success-single" ? otpNode() : choiceNode());
     case STEP.choice:
       return jsonResponse(200, otpNode());
     case STEP.otp:
-      if (scenario === 'wrong-code') {
+      if (scenario === "wrong-code") {
         return jsonResponse(401, {
-          message: 'That verification code is incorrect or has expired.',
+          message: "That verification code is incorrect or has expired.",
         });
       }
-      return jsonResponse(200, { tokenId: 'preview-sso-token' });
+      return jsonResponse(200, { tokenId: "preview-sso-token" });
     default:
       // A fresh `{}` start (including every resend / switch-method restart).
       return jsonResponse(200, usernameNode());
@@ -187,27 +187,27 @@ export function createPreviewFetch(scenario: PreviewScenario): RequestLike {
   return async (input, init) => {
     // Simulate a total network failure before any endpoint gets a chance to
     // answer, so the error surfaces exactly where a real outage would.
-    if (scenario === 'network-error') {
-      throw new TypeError('Network request failed');
+    if (scenario === "network-error") {
+      throw new TypeError("Network request failed");
     }
     const url = String(input);
-    if (url.includes('/access_token')) {
+    if (url.includes("/access_token")) {
       return jsonResponse(200, {
-        access_token: 'preview-access-token',
-        id_token: 'preview-id-token',
-        refresh_token: 'preview-refresh-token',
+        access_token: "preview-access-token",
+        id_token: "preview-id-token",
+        refresh_token: "preview-refresh-token",
         expires_in: 3600,
-        token_type: 'Bearer',
+        token_type: "Bearer",
       });
     }
-    if (url.includes('/authorize')) {
+    if (url.includes("/authorize")) {
       // `exchangeSsoToken` expects a 3xx with the auth code on the Location URL.
       return new Response(null, {
         status: 302,
-        headers: { Location: 'com.toyota.oneapp:/oauth2Callback?code=preview-auth-code' },
+        headers: { Location: "com.toyota.oneapp:/oauth2Callback?code=preview-auth-code" },
       });
     }
-    const body = typeof init?.body === 'string' ? init.body : '{}';
+    const body = typeof init?.body === "string" ? init.body : "{}";
     let posted: unknown;
     try {
       posted = JSON.parse(body);

@@ -10,15 +10,7 @@ import { colors } from "@/constants/theme";
  * Inside a `Redacted` subtree it draws as a neutral fill circle of its normal
  * size instead, so icon slots keep their exact geometry while loading.
  */
-export function Icon({
-  name,
-  size = 22,
-  tint,
-}: {
-  name: SFSymbol;
-  size?: number;
-  tint?: string;
-}) {
+export function Icon({ name, size = 22, tint }: { name: SFSymbol; size?: number; tint?: string }) {
   const redacted = useRedacted();
   if (redacted) {
     return (

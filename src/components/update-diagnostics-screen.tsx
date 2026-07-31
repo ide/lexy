@@ -144,24 +144,13 @@ function Panel({
   );
 }
 
-function DataRow({
-  label,
-  value,
-  last = false,
-}: {
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
+function DataRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
   return (
     <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
       <HStack
         alignment="center"
         spacing={Spacing.three}
-        modifiers={[
-          frame({ maxWidth: Infinity }),
-          padding({ vertical: Spacing.two }),
-        ]}
+        modifiers={[frame({ maxWidth: Infinity }), padding({ vertical: Spacing.two })]}
       >
         <Text
           modifiers={[
@@ -244,11 +233,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
   const copy = describeKnownUpdate(entry.state);
   const isCurrent = entry.state === "Running now";
   const isReady = entry.state === "Downloaded · launches next";
-  const accent = isCurrent
-    ? colors.systemGreen
-    : isReady
-      ? colors.systemBlue
-      : colors.systemOrange;
+  const accent = isCurrent ? colors.systemGreen : isReady ? colors.systemBlue : colors.systemOrange;
 
   return (
     <Panel spacing={Spacing.three}>
@@ -270,13 +255,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
           ]}
         >
           <Glyph
-            name={
-              isCurrent
-                ? "play.fill"
-                : isReady
-                  ? "arrow.down"
-                  : "icloud.and.arrow.down"
-            }
+            name={isCurrent ? "play.fill" : isReady ? "arrow.down" : "icloud.and.arrow.down"}
             size={18}
             tint={accent}
           />
@@ -286,21 +265,13 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
           spacing={Spacing.half}
           modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
         >
-          <HStack
-            spacing={Spacing.two}
-            modifiers={[frame({ maxWidth: Infinity })]}
-          >
+          <HStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
             {/* The title yields first: it can wrap, so it is the child that
                 should give up width when the two together don't fit. Giving it
                 priority over a `fixedSize` badge instead pushed the row wider
                 than the screen, which made the whole scroll view pan
                 sideways. */}
-            <Text
-              modifiers={[
-                font({ textStyle: "footnote", weight: "bold" }),
-                lineLimit(2),
-              ]}
-            >
+            <Text modifiers={[font({ textStyle: "footnote", weight: "bold" }), lineLimit(2)]}>
               {copy.title}
             </Text>
             <Spacer />
@@ -357,10 +328,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
           </Text>
           <Spacer />
           <Text
-            modifiers={[
-              font({ textStyle: "footnote", weight: "medium" }),
-              textSelection(true),
-            ]}
+            modifiers={[font({ textStyle: "footnote", weight: "medium" }), textSelection(true)]}
           >
             {formatUpdateDate(entry.createdAt)}
           </Text>
@@ -375,9 +343,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
             Source
           </Text>
           <Spacer />
-          <Text
-            modifiers={[font({ textStyle: "footnote", weight: "medium" })]}
-          >
+          <Text modifiers={[font({ textStyle: "footnote", weight: "medium" })]}>
             {entry.source}
           </Text>
         </HStack>
@@ -415,8 +381,7 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
 
 function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
   const description = describeNativeLog(entry);
-  const isProblem =
-    entry.level === "error" || entry.level === "fatal" || entry.level === "warn";
+  const isProblem = entry.level === "error" || entry.level === "fatal" || entry.level === "warn";
   const accent = isProblem ? colors.systemOrange : colors.systemBlue;
   const detailRows = [
     entry.updateId ? `Update ${entry.updateId}` : null,
@@ -654,19 +619,12 @@ export default function UpdateDiagnostics() {
   });
 
   const events = useUpdateEvents((message) => setActionError(message));
-  const {
-    activeAction,
-    actionMessage,
-    actionError,
-    setActionError,
-    check,
-    download,
-    reload,
-  } = useUpdateActions({
-    isUpdatePending: updateState.isUpdatePending,
-    downloadedUpdateId: updateState.downloadedUpdate?.updateId,
-    refreshEvents: events.refreshEvents,
-  });
+  const { activeAction, actionMessage, actionError, setActionError, check, download, reload } =
+    useUpdateActions({
+      isUpdatePending: updateState.isUpdatePending,
+      downloadedUpdateId: updateState.downloadedUpdate?.updateId,
+      refreshEvents: events.refreshEvents,
+    });
 
   // Pull-to-refresh asks the server for a newer update in addition to
   // reloading the local logs/activity. check() runs through the actions hook,
@@ -680,9 +638,7 @@ export default function UpdateDiagnostics() {
     updateState.isChecking ||
     updateState.isDownloading ||
     updateState.isRestarting;
-  const resultIsError = Boolean(
-    actionError || updateState.checkError || updateState.downloadError,
-  );
+  const resultIsError = Boolean(actionError || updateState.checkError || updateState.downloadError);
   const resultText =
     actionError ??
     updateState.checkError?.message ??
@@ -738,22 +694,14 @@ export default function UpdateDiagnostics() {
                   ),
                 ]}
               >
-                <Glyph
-                  name={status.icon}
-                  size={24}
-                  tint={TONE_COLORS[status.tone]}
-                />
+                <Glyph name={status.icon} size={24} tint={TONE_COLORS[status.tone]} />
               </ZStack>
               <VStack
                 alignment="leading"
                 spacing={Spacing.half}
-                modifiers={[
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                ]}
+                modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
               >
-                <Text
-                  modifiers={[font({ textStyle: "footnote", weight: "bold" })]}
-                >
+                <Text modifiers={[font({ textStyle: "footnote", weight: "bold" })]}>
                   {status.title}
                 </Text>
                 <Text
@@ -795,23 +743,11 @@ export default function UpdateDiagnostics() {
           >
             <SectionLabel>UPDATE SYSTEM</SectionLabel>
             <Panel verticalPadding={Spacing.two}>
-              <DataRow
-                label="Enabled"
-                value={Updates.isEnabled ? "Yes" : "No"}
-              />
+              <DataRow label="Enabled" value={Updates.isEnabled ? "Yes" : "No"} />
               <DataRow label="Channel" value={Updates.channel || "None"} />
-              <DataRow
-                label="Runtime"
-                value={Updates.runtimeVersion ?? "Unknown"}
-              />
-              <DataRow
-                label="App version"
-                value={Constants.expoConfig?.version ?? "Unknown"}
-              />
-              <DataRow
-                label="Automatic checks"
-                value={Updates.checkAutomatically ?? "Unknown"}
-              />
+              <DataRow label="Runtime" value={Updates.runtimeVersion ?? "Unknown"} />
+              <DataRow label="App version" value={Constants.expoConfig?.version ?? "Unknown"} />
+              <DataRow label="Automatic checks" value={Updates.checkAutomatically ?? "Unknown"} />
               <DataRow
                 label="Launch time"
                 value={
@@ -820,10 +756,7 @@ export default function UpdateDiagnostics() {
                     : `${updateState.currentlyRunning.launchDuration} ms`
                 }
               />
-              <DataRow
-                label="Reloads this launch"
-                value={`${updateState.restartCount}`}
-              />
+              <DataRow label="Reloads this launch" value={`${updateState.restartCount}`} />
               <DataRow
                 label="Most recent check"
                 value={
@@ -848,17 +781,13 @@ export default function UpdateDiagnostics() {
               modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
             >
               {updateEntries.map((entry) => (
-                <KnownUpdateCard
-                  key={`${entry.state}-${entry.id}`}
-                  entry={entry}
-                />
+                <KnownUpdateCard key={`${entry.state}-${entry.id}`} entry={entry} />
               ))}
             </VStack>
             <SectionFooter>
-              This is the actionable update state Expo exposes: what is running,
-              what is ready on this device, and what the server has offered.
-              Older downloaded updates are managed internally and are not enumerable
-              from app code.
+              This is the actionable update state Expo exposes: what is running, what is ready on
+              this device, and what the server has offered. Older downloaded updates are managed
+              internally and are not enumerable from app code.
             </SectionFooter>
           </VStack>
 
@@ -868,10 +797,7 @@ export default function UpdateDiagnostics() {
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
             <SectionLabel>CONTROLS</SectionLabel>
-            <VStack
-              spacing={Spacing.two}
-              modifiers={[frame({ maxWidth: Infinity })]}
-            >
+            <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
               <ActionButton
                 busy={activeAction === "check" || updateState.isChecking}
                 disabled={!Updates.isEnabled || busy}
@@ -882,9 +808,7 @@ export default function UpdateDiagnostics() {
               />
               <ActionButton
                 busy={activeAction === "download" || updateState.isDownloading}
-                disabled={
-                  !Updates.isEnabled || busy || !updateState.isUpdateAvailable
-                }
+                disabled={!Updates.isEnabled || busy || !updateState.isUpdateAvailable}
                 icon="arrow.down.circle"
                 label="Download Update"
                 onPress={download}
@@ -893,11 +817,7 @@ export default function UpdateDiagnostics() {
                 busy={activeAction === "reload" || updateState.isRestarting}
                 disabled={!Updates.isEnabled || busy}
                 icon="arrow.clockwise.circle"
-                label={
-                  updateState.isUpdatePending
-                    ? "Reload Into Update"
-                    : "Reload App"
-                }
+                label={updateState.isUpdatePending ? "Reload Into Update" : "Reload App"}
                 onPress={reload}
               />
             </VStack>
@@ -910,9 +830,7 @@ export default function UpdateDiagnostics() {
               modifiers={[
                 font({ textStyle: "footnote", weight: "medium" }),
                 resultText
-                  ? foregroundStyle(
-                      resultIsError ? colors.systemOrange : colors.systemGreen,
-                    )
+                  ? foregroundStyle(resultIsError ? colors.systemOrange : colors.systemGreen)
                   : foregroundStyle({
                       type: "hierarchical",
                       style: "tertiary",
@@ -923,8 +841,7 @@ export default function UpdateDiagnostics() {
                 frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              {resultText ??
-                "Results from the controls above will appear here."}
+              {resultText ?? "Results from the controls above will appear here."}
             </Text>
           </Panel>
 
@@ -964,11 +881,7 @@ export default function UpdateDiagnostics() {
                 ]}
               />
             </HStack>
-            <Panel
-              verticalPadding={
-                events.activity.length === 0 ? Spacing.three : Spacing.two
-              }
-            >
+            <Panel verticalPadding={events.activity.length === 0 ? Spacing.three : Spacing.two}>
               {events.activity.length === 0 ? (
                 <Text
                   modifiers={[
@@ -980,8 +893,8 @@ export default function UpdateDiagnostics() {
                     fixedSize({ horizontal: false, vertical: true }),
                   ]}
                 >
-                  Activity tracking starts with this version. The current launch
-                  will appear here after Refresh.
+                  Activity tracking starts with this version. The current launch will appear here
+                  after Refresh.
                 </Text>
               ) : (
                 events.activity.map((entry, index) => (
@@ -1003,11 +916,7 @@ export default function UpdateDiagnostics() {
             modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
           >
             <SectionLabel>NATIVE UPDATE LOG</SectionLabel>
-            <Panel
-              verticalPadding={
-                events.logs.length === 0 ? Spacing.three : Spacing.two
-              }
-            >
+            <Panel verticalPadding={events.logs.length === 0 ? Spacing.three : Spacing.two}>
               {events.logs.length === 0 ? (
                 <Text
                   modifiers={[
@@ -1019,20 +928,15 @@ export default function UpdateDiagnostics() {
                     fixedSize({ horizontal: false, vertical: true }),
                   ]}
                 >
-                  No native expo-updates entries were recorded in the last 24
-                  hours.
+                  No native expo-updates entries were recorded in the last 24 hours.
                 </Text>
               ) : (
                 <VStack
                   spacing={0}
-                  modifiers={[
-                    frame({ maxWidth: Infinity, alignment: "leading" }),
-                  ]}
+                  modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
                 >
                   {events.logs.map((entry, index) => (
-                    <Group
-                      key={`${entry.timestamp}-${entry.code}-${entry.message}`}
-                    >
+                    <Group key={`${entry.timestamp}-${entry.code}-${entry.message}`}>
                       <NativeLogDisclosure entry={entry} />
                       {index < events.logs.length - 1 ? <Divider /> : null}
                     </Group>

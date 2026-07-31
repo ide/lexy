@@ -4,8 +4,7 @@ import { haptic } from "@/utils/haptics";
 
 // The Lexus OneApp App Store entry (iOS app com.lexus.oneApp). Hard fallback if
 // the universal link below can't be opened at all.
-export const LEXUS_APP_STORE_URL =
-  "https://apps.apple.com/us/app/lexus/id1468484450";
+export const LEXUS_APP_STORE_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
 
 // The Lexus app's associated domain. Confirmed from the app's
 // apple-app-site-association at ctlexusapp.com, which claims all paths for

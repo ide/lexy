@@ -1,12 +1,12 @@
-import { fetch } from 'expo/fetch';
+import { fetch } from "expo/fetch";
 
-import type { LexusSession } from '@/auth/lexus-auth';
+import type { LexusSession } from "@/auth/lexus-auth";
 import {
   VEHICLE_REFRESH_STATUS_ENDPOINT,
   vehicleHeaders,
   type VehicleContext,
-} from '@/data/lexus-api';
-import { canRefreshStatus, recordPrime, releasePrime } from '@/data/refresh-status';
+} from "@/data/lexus-api";
+import { canRefreshStatus, recordPrime, releasePrime } from "@/data/refresh-status";
 
 /**
  * Prime a fresh full snapshot from the car, if not rate-limited. Fire-and-await
@@ -27,7 +27,7 @@ export async function refreshVehicleStatus(
   recordPrime(context.vin);
   try {
     const response = await fetch(VEHICLE_REFRESH_STATUS_ENDPOINT, {
-      method: 'POST',
+      method: "POST",
       headers: vehicleHeaders(session, context),
       body: JSON.stringify({ autoFixPopup: false }),
     });

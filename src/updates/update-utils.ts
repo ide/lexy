@@ -1,4 +1,4 @@
-import type { SFSymbol } from 'sf-symbols-typescript';
+import type { SFSymbol } from "sf-symbols-typescript";
 
 type RunningUpdate = {
   updateId?: string;
@@ -15,7 +15,7 @@ export type UpdateEntry = {
   id: string;
   createdAt?: Date;
   source: string;
-  state: 'Running now' | 'Downloaded · launches next' | 'Available to download';
+  state: "Running now" | "Downloaded · launches next" | "Available to download";
 };
 
 export type UpdateActivityEvent = {
@@ -24,7 +24,7 @@ export type UpdateActivityEvent = {
   title: string;
   detail: string;
   updateId?: string;
-  level?: 'info' | 'error';
+  level?: "info" | "error";
 };
 
 type NativeLogLike = {
@@ -35,11 +35,11 @@ type NativeLogLike = {
 
 function humanize(value: string): string {
   const words = value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
     .trim()
     .toLowerCase();
-  return words ? words[0].toUpperCase() + words.slice(1) : 'Update event';
+  return words ? words[0].toUpperCase() + words.slice(1) : "Update event";
 }
 
 export function describeNativeLog(entry: NativeLogLike): {
@@ -58,38 +58,36 @@ export function describeNativeLog(entry: NativeLogLike): {
 
   if (/Updates state (?:is )?reset/i.test(entry.message)) {
     return {
-      title: 'Update state reset',
-      summary: 'The native update state machine returned to its initial state.',
+      title: "Update state reset",
+      summary: "The native update state machine returned to its initial state.",
     };
   }
 
   if (/getConstants called/i.test(entry.message)) {
     return {
-      title: 'Update module initialized',
-      summary: 'The app read its native update configuration.',
+      title: "Update module initialized",
+      summary: "The app read its native update configuration.",
     };
   }
 
   if (/Sending state machine context|Sent state machine context/i.test(entry.message)) {
     return {
-      title: 'State shared with app',
-      summary: 'Native update status was delivered to the JavaScript UI.',
+      title: "State shared with app",
+      summary: "Native update status was delivered to the JavaScript UI.",
     };
   }
 
   if (/No update available/i.test(entry.message)) {
     return {
-      title: 'No newer update',
-      summary: 'The update check completed without finding a newer compatible update.',
+      title: "No newer update",
+      summary: "The update check completed without finding a newer compatible update.",
     };
   }
 
-  const conciseMessage = entry.message
-    .replace(/,\s*context\s*=\s*\{[\s\S]*$/i, '')
-    .trim();
+  const conciseMessage = entry.message.replace(/,\s*context\s*=\s*\{[\s\S]*$/i, "").trim();
   return {
-    title: entry.code !== 'None' ? humanize(entry.code) : humanize(entry.level),
-    summary: conciseMessage || 'Native expo-updates event.',
+    title: entry.code !== "None" ? humanize(entry.code) : humanize(entry.level),
+    summary: conciseMessage || "Native expo-updates event.",
   };
 }
 
@@ -103,38 +101,38 @@ export function resolveLastCheck(
   // Keep these short enough to share one line with the row label; a value
   // that wraps changes the row height and shifts the layout below it once a
   // real check time replaces it.
-  if (automaticChecks === 'ON_LOAD' || automaticChecks === 'WIFI_ONLY') {
-    return { detail: 'At startup' };
+  if (automaticChecks === "ON_LOAD" || automaticChecks === "WIFI_ONLY") {
+    return { detail: "At startup" };
   }
-  if (automaticChecks === 'ON_ERROR_RECOVERY') {
-    return { detail: 'On error recovery' };
+  if (automaticChecks === "ON_ERROR_RECOVERY") {
+    return { detail: "On error recovery" };
   }
-  return { detail: 'Not checked yet' };
+  return { detail: "Not checked yet" };
 }
 
-export function describeKnownUpdate(state: UpdateEntry['state']): {
+export function describeKnownUpdate(state: UpdateEntry["state"]): {
   badge: string;
   title: string;
   detail: string;
 } {
-  if (state === 'Running now') {
+  if (state === "Running now") {
     return {
-      badge: 'CURRENT',
-      title: 'Running update',
-      detail: 'This JavaScript bundle is active now.',
+      badge: "CURRENT",
+      title: "Running update",
+      detail: "This JavaScript bundle is active now.",
     };
   }
-  if (state === 'Downloaded · launches next') {
+  if (state === "Downloaded · launches next") {
     return {
-      badge: 'READY NEXT',
-      title: 'Downloaded update',
-      detail: 'Stored on this device. Reload to activate it.',
+      badge: "READY NEXT",
+      title: "Downloaded update",
+      detail: "Stored on this device. Reload to activate it.",
     };
   }
   return {
-    badge: 'AVAILABLE',
-    title: 'Update on server',
-    detail: 'Found for this channel. Download it before it can run.',
+    badge: "AVAILABLE",
+    title: "Update on server",
+    detail: "Found for this channel. Download it before it can run.",
   };
 }
 
@@ -157,7 +155,7 @@ export function mergeUpdateActivity(
 }
 
 export function shortUpdateId(updateId: string | undefined): string {
-  return updateId?.slice(0, 8) ?? 'Embedded';
+  return updateId?.slice(0, 8) ?? "Embedded";
 }
 
 export function buildUpdateEntries({
@@ -169,22 +167,22 @@ export function buildUpdateEntries({
   available?: UpdateCandidate;
   downloaded?: UpdateCandidate;
 }): UpdateEntry[] {
-  const runningId = running.updateId ?? 'embedded';
+  const runningId = running.updateId ?? "embedded";
   const entries: UpdateEntry[] = [
     {
       id: runningId,
       createdAt: running.createdAt,
-      source: running.isEmbeddedLaunch ? 'Embedded in build' : 'EAS Update',
-      state: 'Running now',
+      source: running.isEmbeddedLaunch ? "Embedded in build" : "EAS Update",
+      state: "Running now",
     },
   ];
 
   if (downloaded && downloaded.updateId !== running.updateId) {
     entries.push({
-      id: downloaded?.updateId ?? 'rollback-to-embedded',
+      id: downloaded?.updateId ?? "rollback-to-embedded",
       createdAt: downloaded?.createdAt,
-      source: downloaded?.updateId ? 'EAS Update' : 'Rollback to embedded',
-      state: 'Downloaded · launches next',
+      source: downloaded?.updateId ? "EAS Update" : "Rollback to embedded",
+      state: "Downloaded · launches next",
     });
   }
 
@@ -194,10 +192,10 @@ export function buildUpdateEntries({
     available.updateId !== downloaded?.updateId
   ) {
     entries.push({
-      id: available.updateId ?? 'rollback-to-embedded',
+      id: available.updateId ?? "rollback-to-embedded",
       createdAt: available.createdAt,
-      source: available.updateId ? 'EAS Update' : 'Rollback to embedded',
-      state: 'Available to download',
+      source: available.updateId ? "EAS Update" : "Rollback to embedded",
+      state: "Available to download",
     });
   }
 
@@ -216,7 +214,7 @@ export type UpdateSystemState = {
 
 // Semantic tone rather than a color so this module stays theme-free; the
 // screen maps good → green, busy → blue, attention → orange.
-export type UpdateStatusTone = 'good' | 'busy' | 'attention';
+export type UpdateStatusTone = "good" | "busy" | "attention";
 
 export type UpdateStatus = {
   icon: SFSymbol;
@@ -226,76 +224,70 @@ export type UpdateStatus = {
 };
 
 /** The headline status card copy for the update diagnostics screen. */
-export function describeUpdateStatus(
-  enabled: boolean,
-  state: UpdateSystemState,
-): UpdateStatus {
+export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState): UpdateStatus {
   if (!enabled) {
     return {
-      icon: 'exclamationmark.triangle.fill',
-      title: 'Updates disabled',
-      detail: 'This build is not configured to use expo-updates.',
-      tone: 'attention',
+      icon: "exclamationmark.triangle.fill",
+      title: "Updates disabled",
+      detail: "This build is not configured to use expo-updates.",
+      tone: "attention",
     };
   }
   if (state.isRestarting) {
     return {
-      icon: 'arrow.clockwise',
-      title: 'Reloading',
-      detail: 'Switching to the newest downloaded update.',
-      tone: 'busy',
+      icon: "arrow.clockwise",
+      title: "Reloading",
+      detail: "Switching to the newest downloaded update.",
+      tone: "busy",
     };
   }
   if (state.isDownloading) {
     return {
-      icon: 'arrow.down.circle.fill',
+      icon: "arrow.down.circle.fill",
       title: `Downloading ${Math.round((state.downloadProgress ?? 0) * 100)}%`,
-      detail: 'The update will be ready to launch when the download completes.',
-      tone: 'busy',
+      detail: "The update will be ready to launch when the download completes.",
+      tone: "busy",
     };
   }
   if (state.isChecking) {
     return {
-      icon: 'magnifyingglass',
-      title: 'Checking for updates',
-      detail: 'Contacting the update server for this channel and runtime.',
-      tone: 'busy',
+      icon: "magnifyingglass",
+      title: "Checking for updates",
+      detail: "Contacting the update server for this channel and runtime.",
+      tone: "busy",
     };
   }
   if (state.isUpdatePending) {
     return {
-      icon: 'arrow.down.circle.fill',
-      title: 'Update ready',
-      detail: 'Downloaded and scheduled for the next reload or cold launch.',
-      tone: 'good',
+      icon: "arrow.down.circle.fill",
+      title: "Update ready",
+      detail: "Downloaded and scheduled for the next reload or cold launch.",
+      tone: "good",
     };
   }
   if (state.isUpdateAvailable) {
     return {
-      icon: 'sparkles',
-      title: 'Update available',
-      detail: 'A compatible update is available but has not been downloaded.',
-      tone: 'attention',
+      icon: "sparkles",
+      title: "Update available",
+      detail: "A compatible update is available but has not been downloaded.",
+      tone: "attention",
     };
   }
   return {
-    icon: 'checkmark.circle.fill',
-    title: 'Running normally',
+    icon: "checkmark.circle.fill",
+    title: "Running normally",
     detail: state.lastCheckForUpdateTimeSinceRestart
-      ? 'No newer compatible update was found at the last check.'
-      : 'Use Check Now to ask the update server for the latest version.',
-    tone: 'good',
+      ? "No newer compatible update was found at the last check."
+      : "Use Check Now to ask the update server for the latest version.",
+    tone: "good",
   };
 }
 
-export function formatUpdateDate(
-  value: Date | undefined,
-  fallback = 'Not reported',
-): string {
+export function formatUpdateDate(value: Date | undefined, fallback = "Not reported"): string {
   return value
     ? value.toLocaleString([], {
-        dateStyle: 'medium',
-        timeStyle: 'short',
+        dateStyle: "medium",
+        timeStyle: "short",
       })
     : fallback;
 }

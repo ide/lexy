@@ -5,13 +5,7 @@ import * as Haptics from "expo-haptics";
  * written once instead of at each call site.
  */
 export function haptic(
-  kind:
-    | "selection"
-    | "impact-light"
-    | "impact-medium"
-    | "impact-soft"
-    | "success"
-    | "error",
+  kind: "selection" | "impact-light" | "impact-medium" | "impact-soft" | "success" | "error",
 ) {
   if (process.env.EXPO_OS !== "ios") {
     return;

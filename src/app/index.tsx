@@ -1,6 +1,6 @@
-import { Redirect } from 'expo-router';
+import { Redirect } from "expo-router";
 
-import { useAuth } from '@/auth/auth-context';
+import { useAuth } from "@/auth/auth-context";
 
 export default function Index() {
   // No isLoading guard: RootNavigator returns null for the whole stack while
@@ -10,5 +10,5 @@ export default function Index() {
   // built-in "Unmatched Route" screen on launch. The redirect hands off to the
   // tabs (or sign-in); the root stack disables its animation so the target
   // renders in place instead of sliding in from the right.
-  return <Redirect href={session ? '/(tabs)/status' : '/sign-in'} />;
+  return <Redirect href={session ? "/(tabs)/status" : "/sign-in"} />;
 }

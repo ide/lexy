@@ -1,7 +1,7 @@
-import { Observe } from 'expo-observe';
-import { fetch } from 'expo/fetch';
+import { Observe } from "expo-observe";
+import { fetch } from "expo/fetch";
 
-import type { LexusSession } from '@/auth/lexus-auth';
+import type { LexusSession } from "@/auth/lexus-auth";
 import {
   VEHICLE_CLIMATE_ENDPOINT,
   VEHICLE_DISCOVERY_ENDPOINT,
@@ -10,10 +10,10 @@ import {
   VEHICLE_TIRES_ENDPOINT,
   businessHeaders,
   vehicleHeaders,
-} from '@/data/lexus-api';
-import { applyObservation, readClosures } from '@/data/closure-state';
-import { loadClosureStore, saveClosureStore } from '@/data/closure-state-store';
-import { fetchVehicleSubscriptions } from '@/data/subscriptions';
+} from "@/data/lexus-api";
+import { applyObservation, readClosures } from "@/data/closure-state";
+import { loadClosureStore, saveClosureStore } from "@/data/closure-state-store";
+import { fetchVehicleSubscriptions } from "@/data/subscriptions";
 import {
   mapVehicle,
   NoVehicleError,
@@ -21,7 +21,7 @@ import {
   parseVehicle,
   parseVehicleContexts,
   type Vehicle,
-} from '@/data/vehicle';
+} from "@/data/vehicle";
 
 async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   const response = await fetch(url, { headers, signal });
@@ -76,18 +76,18 @@ export async function loadVehicle(session: LexusSession, signal: AbortSignal): P
     });
     await saveClosureStore(store);
     const vehicle = parseVehicle({ ...mapped, closures: readClosures(store) });
-    Observe.logEvent('vehicle.load.completed', {
-      attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
+    Observe.logEvent("vehicle.load.completed", {
+      attributes: { source: "lexus", durationMs: Math.round(performance.now() - startedAt) },
     });
     return vehicle;
   } catch (error) {
     // Aborts happen when the screen unmounts or a refetch supersedes this
     // request; they are lifecycle noise, not load failures.
     if (!signal.aborted) {
-      Observe.logEvent('vehicle.load.failed', {
-        severity: 'error',
-        body: error instanceof Error ? error.message : 'Unknown error loading vehicle data',
-        attributes: { source: 'lexus', durationMs: Math.round(performance.now() - startedAt) },
+      Observe.logEvent("vehicle.load.failed", {
+        severity: "error",
+        body: error instanceof Error ? error.message : "Unknown error loading vehicle data",
+        attributes: { source: "lexus", durationMs: Math.round(performance.now() - startedAt) },
       });
     }
     throw error;

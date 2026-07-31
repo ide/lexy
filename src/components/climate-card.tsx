@@ -3,11 +3,7 @@ import { disabled } from "@expo/ui/swift-ui/modifiers";
 import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
@@ -58,11 +54,7 @@ function DefrostToggle({
             (pressed || disabled) && { opacity: 0.6 },
           ]}
         >
-          <Icon
-            name={symbol}
-            size={17}
-            tint={active ? blue : colors.secondaryLabel}
-          />
+          <Icon name={symbol} size={17} tint={active ? blue : colors.secondaryLabel} />
           <ThemedText
             type="smallBold"
             themeColor={active ? undefined : "secondaryLabel"}
@@ -116,11 +108,7 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
   const dim = useSharedValue(on ? 1 : 0.4);
   const wasReal = useRef(false);
   useEffect(() => {
-    dim.value = wasReal.current
-      ? withTiming(on ? 1 : 0.4, { duration: 250 })
-      : on
-        ? 1
-        : 0.4;
+    dim.value = wasReal.current ? withTiming(on ? 1 : 0.4, { duration: 250 }) : on ? 1 : 0.4;
     wasReal.current = hasRealSettings;
   }, [dim, hasRealSettings, on]);
   const dimStyle = useAnimatedStyle(() => ({ opacity: dim.value }));

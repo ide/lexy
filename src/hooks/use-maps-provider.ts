@@ -1,13 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { haptic } from "@/utils/haptics";
 import * as Linking from "expo-linking";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ActionSheetIOS, Alert } from "react-native";
 
 import {
@@ -93,8 +87,7 @@ export function useMapsProvider(): UseMapsProvider {
   // focus.
   useFocusEffect(probe);
 
-  const resolved =
-    installedIds === null ? null : resolveMapsProvider(savedId, installedIds);
+  const resolved = installedIds === null ? null : resolveMapsProvider(savedId, installedIds);
 
   // A saved provider that is no longer installed is dropped from storage so the
   // preference genuinely reads "unset" and the user is prompted again.
@@ -147,8 +140,7 @@ export function useMapsProvider(): UseMapsProvider {
       explainNoApps();
       return;
     }
-    const options =
-      current.kind === "prompt" ? current.options : installedProviders(installedIds);
+    const options = current.kind === "prompt" ? current.options : installedProviders(installedIds);
     promptWith(options, (provider) => choose(provider.id));
   }, [choose, explainNoApps, installedIds, promptWith]);
 

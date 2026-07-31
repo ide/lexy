@@ -1,7 +1,7 @@
-import { hashKey, type QueryKey } from '@tanstack/react-query';
-import type { PersistedClient, Persister } from '@tanstack/react-query-persist-client';
+import { hashKey, type QueryKey } from "@tanstack/react-query";
+import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
 
-import { parseVehicle } from '@/data/vehicle';
+import { parseVehicle } from "@/data/vehicle";
 
 /**
  * Version stamp for the on-disk query cache. React Query's persister discards a
@@ -18,14 +18,14 @@ import { parseVehicle } from '@/data/vehicle';
  *
  * History: v2 renamed the distance fields and added `distanceUnit`.
  */
-export const CACHE_VERSION = 'vehicle-v2';
+export const CACHE_VERSION = "vehicle-v2";
 
 // Per-query validators, keyed by the hash React Query stores next to each
 // persisted query (`hashKey`, so the keys track the real query keys). A
 // persisted query whose key has a validator is dropped on restore if its data
 // no longer parses; keys without one pass through untouched.
 const VALIDATORS: Record<string, (data: unknown) => void> = {
-  [hashKey(['vehicle'] satisfies QueryKey)]: (data) => {
+  [hashKey(["vehicle"] satisfies QueryKey)]: (data) => {
     parseVehicle(data);
   },
 };

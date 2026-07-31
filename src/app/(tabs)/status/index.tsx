@@ -35,21 +35,12 @@ import { useAuth } from "@/auth/auth-context";
 
 // A non-bold footer line whose tap reveals the precise local timestamp in a
 // native SwiftUI popover — a tooltip anchored to the sentence itself.
-function FooterTimeRow({
-  label,
-  timestamp,
-}: {
-  label: string;
-  timestamp: string | number;
-}) {
+function FooterTimeRow({ label, timestamp }: { label: string; timestamp: string | number }) {
   const [isPresented, setIsPresented] = useState(false);
   return (
     <Popover isPresented={isPresented} onIsPresentedChange={setIsPresented}>
       <Popover.Trigger>
-        <Button
-          onPress={() => setIsPresented(true)}
-          modifiers={[buttonStyle("plain")]}
-        >
+        <Button onPress={() => setIsPresented(true)} modifiers={[buttonStyle("plain")]}>
           <Text
             modifiers={[
               font({ textStyle: "footnote", weight: "regular" }),
@@ -75,8 +66,7 @@ function FooterTimeRow({
 }
 
 export default function CarDashboard() {
-  const { query, vehicle, loading, headerRight, errorScreen, offlineBanner } =
-    useVehicleScreen();
+  const { query, vehicle, loading, headerRight, errorScreen, offlineBanner } = useVehicleScreen();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = query;
   const { session } = useAuth();
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
@@ -170,9 +160,7 @@ export default function CarDashboard() {
             ]}
           >
             <FooterTimeRow
-              label={`Vehicle last synced with Lexus ${relativeTime(
-                vehicle.updatedAt,
-              )}.`}
+              label={`Vehicle last synced with Lexus ${relativeTime(vehicle.updatedAt)}.`}
               timestamp={vehicle.updatedAt}
             />
             {/* During an automatic (non-pull-to-refresh) refresh, the data
@@ -264,7 +252,6 @@ export default function CarDashboard() {
               />
             </View>
           ) : null}
-
         </Redacted>
       </NativeScrollView>
     </>

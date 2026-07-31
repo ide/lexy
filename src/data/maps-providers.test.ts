@@ -69,11 +69,7 @@ describe("resolveMapsProvider", () => {
     expect(result.kind).toBe("prompt");
     if (result.kind === "prompt") {
       // Options come back in canonical order regardless of detection order.
-      expect(result.options.map((p) => p.id)).toEqual([
-        "apple",
-        "google",
-        "waze",
-      ]);
+      expect(result.options.map((p) => p.id)).toEqual(["apple", "google", "waze"]);
       expect(result.staleSaved).toBe(false);
     }
   });
@@ -116,9 +112,9 @@ describe("resolveMapsProvider", () => {
 
 describe("describeMapsProviderChoice", () => {
   it("reads Unavailable when no maps app is installed", () => {
-    expect(
-      describeMapsProviderChoice({ kind: "none", staleSaved: false }, null),
-    ).toBe("Unavailable");
+    expect(describeMapsProviderChoice({ kind: "none", staleSaved: false }, null)).toBe(
+      "Unavailable",
+    );
   });
 
   it("prefers the deliberate saved choice", () => {
@@ -131,23 +127,18 @@ describe("describeMapsProviderChoice", () => {
   });
 
   it("falls back to the auto-resolved single app", () => {
-    expect(
-      describeMapsProviderChoice(resolveMapsProvider(null, ["apple"]), null),
-    ).toBe("Apple Maps");
+    expect(describeMapsProviderChoice(resolveMapsProvider(null, ["apple"]), null)).toBe(
+      "Apple Maps",
+    );
   });
 
   it("reads Not set with several apps and no saved choice", () => {
-    expect(
-      describeMapsProviderChoice(
-        resolveMapsProvider(null, ["apple", "google"]),
-        null,
-      ),
-    ).toBe("Not set");
+    expect(describeMapsProviderChoice(resolveMapsProvider(null, ["apple", "google"]), null)).toBe(
+      "Not set",
+    );
   });
 
   it("reads the saved name even before the first probe resolves", () => {
-    expect(describeMapsProviderChoice(null, getMapsProvider("google"))).toBe(
-      "Google Maps",
-    );
+    expect(describeMapsProviderChoice(null, getMapsProvider("google"))).toBe("Google Maps");
   });
 });

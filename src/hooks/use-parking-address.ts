@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import * as Location from 'expo-location';
+import { useQuery } from "@tanstack/react-query";
+import * as Location from "expo-location";
 
-import { formatStreetAddress } from '@/data/parking-address';
+import { formatStreetAddress } from "@/data/parking-address";
 
 type Coordinates = {
   latitude: number;
@@ -17,16 +17,16 @@ export function useParkingAddress(coordinates?: Coordinates) {
   const latitude = coordinates?.latitude;
   const longitude = coordinates?.longitude;
   const valid =
-    typeof latitude === 'number' &&
+    typeof latitude === "number" &&
     Number.isFinite(latitude) &&
-    typeof longitude === 'number' &&
+    typeof longitude === "number" &&
     Number.isFinite(longitude) &&
     !(latitude === 0 && longitude === 0);
   const latitudeKey = valid ? latitude.toFixed(5) : null;
   const longitudeKey = valid ? longitude.toFixed(5) : null;
 
   return useQuery({
-    queryKey: ['parking-address', latitudeKey, longitudeKey],
+    queryKey: ["parking-address", latitudeKey, longitudeKey],
     enabled: valid,
     staleTime: Infinity,
     retry: false,

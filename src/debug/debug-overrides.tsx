@@ -1,9 +1,9 @@
-import { createContext, useContext, useMemo, useState } from 'react';
-import type { SFSymbol } from 'sf-symbols-typescript';
+import { createContext, useContext, useMemo, useState } from "react";
+import type { SFSymbol } from "sf-symbols-typescript";
 
-import { SHOW_DEV_TOOLS } from '@/constants/build-channel';
-import { colors } from '@/constants/theme';
-import type { DataStateOverride } from '@/debug/data-state';
+import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
+import { colors } from "@/constants/theme";
+import type { DataStateOverride } from "@/debug/data-state";
 
 export type DataStateOption = {
   key: DataStateOverride;
@@ -16,45 +16,45 @@ export type DataStateOption = {
 // The rows shown in the Data State dev screen, in display order.
 export const DATA_STATE_OPTIONS: DataStateOption[] = [
   {
-    key: 'live',
-    title: 'Live',
-    subtitle: 'Use the real Lexus data — no override.',
-    icon: 'antenna.radiowaves.left.and.right',
+    key: "live",
+    title: "Live",
+    subtitle: "Use the real Lexus data — no override.",
+    icon: "antenna.radiowaves.left.and.right",
     tint: colors.systemBlue,
   },
   {
-    key: 'skeleton',
-    title: 'Loading skeleton',
-    subtitle: 'Hold the first-load skeleton / redacted layout.',
-    icon: 'rectangle.dashed',
+    key: "skeleton",
+    title: "Loading skeleton",
+    subtitle: "Hold the first-load skeleton / redacted layout.",
+    icon: "rectangle.dashed",
     tint: colors.systemBlue,
   },
   {
-    key: 'offline-cached',
-    title: 'Offline — cached data',
-    subtitle: 'Show the last-seen dashboard behind the offline banner.',
-    icon: 'wifi.slash',
+    key: "offline-cached",
+    title: "Offline — cached data",
+    subtitle: "Show the last-seen dashboard behind the offline banner.",
+    icon: "wifi.slash",
     tint: colors.systemOrange,
   },
   {
-    key: 'offline-empty',
-    title: 'Offline — no cache',
-    subtitle: 'Offline before anything was ever loaded.',
-    icon: 'wifi.exclamationmark',
+    key: "offline-empty",
+    title: "Offline — no cache",
+    subtitle: "Offline before anything was ever loaded.",
+    icon: "wifi.exclamationmark",
     tint: colors.systemOrange,
   },
   {
-    key: 'error',
-    title: 'Fetch error',
+    key: "error",
+    title: "Fetch error",
     subtitle: 'Force the "Vehicle unavailable" error screen.',
-    icon: 'exclamationmark.triangle.fill',
+    icon: "exclamationmark.triangle.fill",
     tint: colors.systemRed,
   },
   {
-    key: 'no-vehicle',
-    title: 'No vehicle on account',
+    key: "no-vehicle",
+    title: "No vehicle on account",
     subtitle: 'Force the "No vehicle found" empty state.',
-    icon: 'car.2',
+    icon: "car.2",
     tint: colors.secondaryLabel,
   },
 ];
@@ -73,7 +73,7 @@ const DebugContext = createContext<DebugContextValue | null>(null);
  * only: the override resets to `live` on reload, which is the safe default.
  */
 export function DebugOverrideProvider({ children }: { children: React.ReactNode }) {
-  const [dataState, setDataState] = useState<DataStateOverride>('live');
+  const [dataState, setDataState] = useState<DataStateOverride>("live");
   const value = useMemo(() => ({ dataState, setDataState }), [dataState]);
   return <DebugContext.Provider value={value}>{children}</DebugContext.Provider>;
 }
@@ -81,7 +81,7 @@ export function DebugOverrideProvider({ children }: { children: React.ReactNode 
 // Controls for the dev screen. Falls back to a no-op when the provider is absent
 // so it can never crash a screen that renders it outside the tree.
 export function useDebugOverrides(): DebugContextValue {
-  return useContext(DebugContext) ?? { dataState: 'live', setDataState: () => {} };
+  return useContext(DebugContext) ?? { dataState: "live", setDataState: () => {} };
 }
 
 /**
@@ -91,5 +91,5 @@ export function useDebugOverrides(): DebugContextValue {
  */
 export function useDataStateOverride(): DataStateOverride {
   const { dataState } = useDebugOverrides();
-  return SHOW_DEV_TOOLS ? dataState : 'live';
+  return SHOW_DEV_TOOLS ? dataState : "live";
 }

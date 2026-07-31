@@ -1,4 +1,4 @@
-import type { LexusSession } from '@/auth/lexus-auth';
+import type { LexusSession } from "@/auth/lexus-auth";
 
 // Production Lexus OneApp API hosts, hard-coded from docs/README.md ("Hosts") and
 // docs/endpoints.md. The client talks to Lexus directly — there is no intermediary
@@ -6,14 +6,14 @@ import type { LexusSession } from '@/auth/lexus-auth';
 export const LEXUS_HOSTS = {
   // Primary REST API: the default host for vehicle, status, remote control,
   // subscriptions, account, etc.
-  rest: 'https://onecdn.telematicsct.com',
+  rest: "https://onecdn.telematicsct.com",
   // 24MM GraphQL status/command plane and its realtime subscription socket.
-  graphql: 'https://oa-api.telematicsct.com/graphql',
-  graphqlRealtime: 'wss://oa-api.telematicsct.com/graphql/realtime',
+  graphql: "https://oa-api.telematicsct.com/graphql",
+  graphqlRealtime: "wss://oa-api.telematicsct.com/graphql/realtime",
   // Hosted identity: sign-in and token issuance (see src/auth/lexus-auth.ts).
-  identity: 'https://login.lexusdriverslogin.com',
+  identity: "https://login.lexusdriverslogin.com",
   // PIN service / identity management.
-  identityManagement: 'https://openidm.lexusdriverslogin.com',
+  identityManagement: "https://openidm.lexusdriverslogin.com",
 } as const;
 
 // Vehicle discovery for the signed-in customer: returns the associated vehicle
@@ -55,8 +55,8 @@ export const VEHICLE_COMMAND_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/com
 // false positive on a 40-char token literal. `LEXUS_X_API_KEY` below is the
 // decoded, human-readable value.
 const X_API_KEY_BYTES = [
-  112, 121, 112, 73, 72, 71, 48, 49, 53, 107, 52, 65, 66, 72, 87, 98, 99, 73, 52, 71,
-  48, 97, 57, 52, 70, 55, 99, 67, 48, 74, 68, 111, 49, 79, 121, 110, 112, 65, 115, 71,
+  112, 121, 112, 73, 72, 71, 48, 49, 53, 107, 52, 65, 66, 72, 87, 98, 99, 73, 52, 71, 48, 97, 57,
+  52, 70, 55, 99, 67, 48, 74, 68, 111, 49, 79, 121, 110, 112, 65, 115, 71,
 ];
 
 export const LEXUS_X_API_KEY = String.fromCharCode(...X_API_KEY_BYTES);
@@ -70,18 +70,18 @@ export type VehicleContext = {
 
 function correlationId(): string {
   // Unique per request (docs/README.md, "X-CORRELATIONID"); not security-sensitive.
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
     const rand = Math.floor(Math.random() * 16);
-    const value = char === 'x' ? rand : (rand & 0x3) | 0x8;
+    const value = char === "x" ? rand : (rand & 0x3) | 0x8;
     return value.toString(16);
   });
 }
 
 function base64UrlDecode(value: string): string {
-  const padded = value.replaceAll('-', '+').replaceAll('_', '/').padEnd(
-    value.length + ((4 - (value.length % 4)) % 4),
-    '=',
-  );
+  const padded = value
+    .replaceAll("-", "+")
+    .replaceAll("_", "/")
+    .padEnd(value.length + ((4 - (value.length % 4)) % 4), "=");
   // Hermes and modern JS engines expose a global atob.
   return atob(padded);
 }
@@ -89,13 +89,13 @@ function base64UrlDecode(value: string): string {
 // The customer GUID is carried in the ID token as `extension_tmsguid` and is sent
 // as the X-GUID header on business calls (docs/authentication.md, "Sign-in flow").
 export function guidFromIdToken(idToken: string): string | undefined {
-  const payload = idToken.split('.')[1];
+  const payload = idToken.split(".")[1];
   if (!payload) {
     return undefined;
   }
   try {
     const claims = JSON.parse(base64UrlDecode(payload)) as Record<string, unknown>;
-    return typeof claims.extension_tmsguid === 'string' ? claims.extension_tmsguid : undefined;
+    return typeof claims.extension_tmsguid === "string" ? claims.extension_tmsguid : undefined;
   } catch {
     return undefined;
   }
@@ -105,34 +105,37 @@ export function guidFromIdToken(idToken: string): string | undefined {
 // (docs/README.md, "Request conventions").
 export function businessHeaders(session: LexusSession): Record<string, string> {
   const headers: Record<string, string> = {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
+    Accept: "application/json",
+    "Content-Type": "application/json",
     Authorization: `${session.tokenType} ${session.accessToken}`,
-    'X-API-KEY': LEXUS_X_API_KEY,
-    'X-APPBRAND': 'L',
-    'X-CHANNEL': 'ONEAPP',
-    'X-LOCALE': 'en-US',
-    'X-OSNAME': 'iOS',
-    'X-OSVERSION': '18.5',
-    'X-APPVERSION': '3.4.0',
-    'X-DEVICE-TIMEZONE': 'PST',
-    'X-CORRELATIONID': correlationId(),
+    "X-API-KEY": LEXUS_X_API_KEY,
+    "X-APPBRAND": "L",
+    "X-CHANNEL": "ONEAPP",
+    "X-LOCALE": "en-US",
+    "X-OSNAME": "iOS",
+    "X-OSVERSION": "18.5",
+    "X-APPVERSION": "3.4.0",
+    "X-DEVICE-TIMEZONE": "PST",
+    "X-CORRELATIONID": correlationId(),
   };
   const guid = guidFromIdToken(session.idToken);
   if (guid) {
-    headers['X-GUID'] = guid;
+    headers["X-GUID"] = guid;
   }
   return headers;
 }
 
 // Headers for a vehicle-scoped call: the business headers plus the per-vehicle
 // VIN, brand, and generation from discovery (docs/README.md, "Request conventions").
-export function vehicleHeaders(session: LexusSession, vehicle: VehicleContext): Record<string, string> {
+export function vehicleHeaders(
+  session: LexusSession,
+  vehicle: VehicleContext,
+): Record<string, string> {
   return {
     ...businessHeaders(session),
     VIN: vehicle.vin,
-    'X-BRAND': vehicle.brand,
-    'X-GENERATION': vehicle.generation,
+    "X-BRAND": vehicle.brand,
+    "X-GENERATION": vehicle.generation,
     // Some /oneapi vehicle services (e.g. telemetry/tires/pressure) require the
     // literal lowercase `brand`/`generation` headers in addition to the X- ones.
     brand: vehicle.brand,

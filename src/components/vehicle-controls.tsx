@@ -83,13 +83,7 @@ function ControlButton({
       style={styles.buttonWrapper}
     >
       {({ pressed }) => (
-        <Card
-          style={[
-            styles.button,
-            pressed && { opacity: 0.7 },
-            disabled && { opacity: 0.4 },
-          ]}
-        >
+        <Card style={[styles.button, pressed && { opacity: 0.7 }, disabled && { opacity: 0.4 }]}>
           <Icon name={control.symbol} size={22} tint={control.tint} />
           <ThemedText type="smallBold">{control.label}</ThemedText>
         </Card>
@@ -175,19 +169,9 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       <View style={styles.titleRow}>
         <SectionTitle style={styles.title}>REMOTE CONTROLS</SectionTitle>
         <View style={styles.lockStatus}>
-          <Icon
-            name={locked ? "lock.fill" : "lock.open.fill"}
-            size={13}
-            tint={lockColor}
-          />
+          <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
           <ThemedText type="smallBold" style={{ color: lockColor }}>
-            {lockPending
-              ? locked
-                ? "Locking…"
-                : "Unlocking…"
-              : locked
-                ? "Locked"
-                : "Unlocked"}
+            {lockPending ? (locked ? "Locking…" : "Unlocking…") : locked ? "Locked" : "Unlocked"}
           </ThemedText>
         </View>
       </View>

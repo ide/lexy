@@ -1,20 +1,20 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps } from "react-native";
 
-import { useRedacted } from '@/components/redacted';
-import { Fonts, ThemeColor, colors } from '@/constants/theme';
+import { useRedacted } from "@/components/redacted";
+import { Fonts, ThemeColor, colors } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?: "default" | "title" | "small" | "smallBold" | "subtitle" | "link" | "linkPrimary" | "code";
   themeColor?: ThemeColor;
 };
 
-export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
+export function ThemedText({ style, type = "default", themeColor, ...rest }: ThemedTextProps) {
   const redacted = useRedacted();
 
   return (
     <Text
       style={[
-        { color: colors[themeColor ?? 'label'] },
+        { color: colors[themeColor ?? "label"] },
         styles[type],
         style,
         // Inside a `Redacted` subtree the text keeps its exact metrics (font,
@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   redacted: {
-    color: 'transparent',
+    color: "transparent",
     backgroundColor: colors.fill,
     borderRadius: 6,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 });

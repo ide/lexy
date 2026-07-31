@@ -9,18 +9,8 @@ import { colors } from "@/constants/theme";
  * callers — row-based cards pad horizontally and let rows pad vertically,
  * while content cards pad all around.
  */
-export function Card({
-  children,
-  style,
-}: {
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card }, style]}>
-      {children}
-    </View>
-  );
+export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.card, { backgroundColor: colors.card }, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

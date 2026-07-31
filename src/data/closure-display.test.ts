@@ -12,14 +12,15 @@ import type { Corner } from "./closures";
 
 describe("doorStatus", () => {
   it("flags an open door before considering the lock", () => {
-    expect(doorStatus({ label: "Driver Front Door", state: "Open", locked: true }))
-      .toEqual({ text: "Door open", tone: "attention", symbol: "lock.open.fill" });
+    expect(doorStatus({ label: "Driver Front Door", state: "Open", locked: true })).toEqual({
+      text: "Door open",
+      tone: "attention",
+      symbol: "lock.open.fill",
+    });
   });
 
   it("reads unlocked as attention and locked as settled", () => {
-    expect(doorStatus({ label: "d", state: "Closed", locked: false }).text).toBe(
-      "Door unlocked",
-    );
+    expect(doorStatus({ label: "d", state: "Closed", locked: false }).text).toBe("Door unlocked");
     expect(doorStatus({ label: "d", state: "Closed", locked: true })).toEqual({
       text: "Door locked",
       tone: "settled",
@@ -28,12 +29,10 @@ describe("doorStatus", () => {
   });
 
   it("shows optimistic lock predictions as pending", () => {
-    expect(
-      doorStatus({ label: "d", locked: true, lockedOptimistic: true }).text,
-    ).toBe("Locking…");
-    expect(
-      doorStatus({ label: "d", locked: false, lockedOptimistic: true }).text,
-    ).toBe("Unlocking…");
+    expect(doorStatus({ label: "d", locked: true, lockedOptimistic: true }).text).toBe("Locking…");
+    expect(doorStatus({ label: "d", locked: false, lockedOptimistic: true }).text).toBe(
+      "Unlocking…",
+    );
   });
 
   it("falls back to a plain closed reading without a lock", () => {
@@ -47,9 +46,7 @@ describe("doorStatus", () => {
 
 describe("windowStatus", () => {
   it("swaps the left/right glyphs to match the driver/passenger columns", () => {
-    expect(windowStatus({ label: "w", state: "Closed" }, "driver").symbol).toBe(
-      "car.window.right",
-    );
+    expect(windowStatus({ label: "w", state: "Closed" }, "driver").symbol).toBe("car.window.right");
     expect(windowStatus({ label: "w", state: "Open" }, "passenger")).toEqual({
       text: "Window open",
       tone: "attention",
@@ -60,18 +57,14 @@ describe("windowStatus", () => {
 
 describe("openingStatus", () => {
   it("matches known openings to their identity glyphs", () => {
-    expect(openingStatus({ label: "Moonroof", state: "Open" }).symbol).toBe(
-      "window.ceiling",
-    );
+    expect(openingStatus({ label: "Moonroof", state: "Open" }).symbol).toBe("window.ceiling");
     expect(openingStatus({ label: "Moonroof", state: "Closed" }).symbol).toBe(
       "window.ceiling.closed",
     );
     expect(openingStatus({ label: "Trunk", state: "Closed" }).symbol).toBe(
       "car.side.rear.crop.trunk.partition.fill",
     );
-    expect(openingStatus({ label: "Hood", state: "Closed" }).symbol).toBe(
-      "engine.combustion.fill",
-    );
+    expect(openingStatus({ label: "Hood", state: "Closed" }).symbol).toBe("engine.combustion.fill");
   });
 
   it("falls back to generic glyphs for unrecognized openings", () => {
@@ -101,11 +94,7 @@ describe("cornerVisibility / cornerShownAts", () => {
       window: { label: "w", stateAt: "2026-01-01T00:00:00Z" },
     };
     expect(cornerVisibility(corner)).toEqual({ showDoor: true, showWindow: false });
-    expect(cornerShownAts(corner)).toEqual([
-      undefined,
-      "2026-01-02T00:00:00Z",
-      undefined,
-    ]);
+    expect(cornerShownAts(corner)).toEqual([undefined, "2026-01-02T00:00:00Z", undefined]);
   });
 
   it("hides a door with neither position nor lock", () => {
@@ -122,11 +111,7 @@ describe("cornerVisibility / cornerShownAts", () => {
       ...CORNER,
       window: { label: "w", state: "Closed", stateAt: "2026-01-01T00:00:00Z" },
     };
-    expect(cornerShownAts(corner)).toEqual([
-      undefined,
-      undefined,
-      "2026-01-01T00:00:00Z",
-    ]);
+    expect(cornerShownAts(corner)).toEqual([undefined, undefined, "2026-01-01T00:00:00Z"]);
   });
 });
 
@@ -135,18 +120,12 @@ describe("oldestStale", () => {
 
   it("returns the oldest reading that predates the snapshot", () => {
     expect(
-      oldestStale(FRESH, [
-        "2026-01-09T00:00:00Z",
-        "2026-01-05T00:00:00Z",
-        "2026-01-08T00:00:00Z",
-      ]),
+      oldestStale(FRESH, ["2026-01-09T00:00:00Z", "2026-01-05T00:00:00Z", "2026-01-08T00:00:00Z"]),
     ).toBe("2026-01-05T00:00:00Z");
   });
 
   it("ignores readings as fresh as (or newer than) the snapshot", () => {
-    expect(oldestStale(FRESH, [FRESH, "2026-01-11T00:00:00Z", undefined])).toBe(
-      null,
-    );
+    expect(oldestStale(FRESH, [FRESH, "2026-01-11T00:00:00Z", undefined])).toBe(null);
   });
 
   it("returns null for an unparseable snapshot time", () => {
@@ -154,8 +133,6 @@ describe("oldestStale", () => {
   });
 
   it("skips unparseable readings", () => {
-    expect(oldestStale(FRESH, ["garbage", "2026-01-06T00:00:00Z"])).toBe(
-      "2026-01-06T00:00:00Z",
-    );
+    expect(oldestStale(FRESH, ["garbage", "2026-01-06T00:00:00Z"])).toBe("2026-01-06T00:00:00Z");
   });
 });

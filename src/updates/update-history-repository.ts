@@ -1,7 +1,4 @@
-import {
-  mergeUpdateActivity,
-  type UpdateActivityEvent,
-} from "./update-utils";
+import { mergeUpdateActivity, type UpdateActivityEvent } from "./update-utils";
 
 export interface UpdateHistoryStorage {
   getItemAsync(key: string): Promise<string | null>;
@@ -41,8 +38,7 @@ export function createUpdateHistoryRepository(
   }
 
   return {
-    read: () =>
-      enqueue(async () => parseActivity(await storage.getItemAsync(storageKey))),
+    read: () => enqueue(async () => parseActivity(await storage.getItemAsync(storageKey))),
     record: (events) => {
       if (events.length === 0) {
         return Promise.resolve();

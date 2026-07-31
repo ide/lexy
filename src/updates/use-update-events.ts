@@ -11,9 +11,7 @@ const NATIVE_LOG_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
 function sameEntries<T>(previous: T[], next: T[]): boolean {
   return (
     previous.length === next.length &&
-    previous.every(
-      (entry, index) => JSON.stringify(entry) === JSON.stringify(next[index]),
-    )
+    previous.every((entry, index) => JSON.stringify(entry) === JSON.stringify(next[index]))
   );
 }
 
@@ -37,16 +35,11 @@ export function useUpdateEvents(onReadError: (message: string) => void) {
       readUpdateActivity(),
     ]);
     const nextLogs = sortNewestFirst(nativeEntries).slice(0, MAX_VISIBLE_EVENTS);
-    const nextActivity = sortNewestFirst(activityEntries).slice(
-      0,
-      MAX_VISIBLE_EVENTS,
-    );
+    const nextActivity = sortNewestFirst(activityEntries).slice(0, MAX_VISIBLE_EVENTS);
     // Keep the previous arrays when nothing changed so a no-op refresh does
     // not re-render (and visibly flash) the native tree.
     setLogs((previous) => (sameEntries(previous, nextLogs) ? previous : nextLogs));
-    setActivity((previous) =>
-      sameEntries(previous, nextActivity) ? previous : nextActivity,
-    );
+    setActivity((previous) => (sameEntries(previous, nextActivity) ? previous : nextActivity));
   }, []);
 
   useEffect(() => {

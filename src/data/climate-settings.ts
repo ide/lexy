@@ -44,10 +44,10 @@ export type ClimateSettings = {
   [key: string]: unknown;
 };
 
-export type DefrostName = 'frontDefrost' | 'rearDefrost';
+export type DefrostName = "frontDefrost" | "rearDefrost";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -56,7 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export function parseClimateSettings(value: unknown): ClimateSettings | null {
   const payload = isRecord(value) && isRecord(value.payload) ? value.payload : value;
-  if (!isRecord(payload) || typeof payload.settingsOn !== 'boolean') {
+  if (!isRecord(payload) || typeof payload.settingsOn !== "boolean") {
     return null;
   }
   return payload as ClimateSettings;
@@ -71,13 +71,13 @@ export function defrostParameters(settings: ClimateSettings): {
   rear?: AcParameter;
 } {
   const category = (settings.acOperations ?? []).find(
-    (operation) => operation.categoryName === 'defrost' && operation.available,
+    (operation) => operation.categoryName === "defrost" && operation.available,
   );
   const parameter = (name: DefrostName) => {
     const match = category?.acParameters.find((p) => p.name === name);
     return match?.available ? match : undefined;
   };
-  return { front: parameter('frontDefrost'), rear: parameter('rearDefrost') };
+  return { front: parameter("frontDefrost"), rear: parameter("rearDefrost") };
 }
 
 /** A copy of the settings with a new temperature setpoint. */
@@ -102,7 +102,7 @@ export function withDefrost(
   return {
     ...settings,
     acOperations: (settings.acOperations ?? []).map((operation) =>
-      operation.categoryName === 'defrost'
+      operation.categoryName === "defrost"
         ? {
             ...operation,
             acParameters: operation.acParameters.map((parameter) =>

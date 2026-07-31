@@ -39,9 +39,7 @@ export default function CarLocationSheet() {
   // "Open in <app>" once a provider is resolved; otherwise the neutral "Open in
   // Maps" (which prompts the chooser, or explains when nothing is installed).
   const buttonLabel =
-    resolved?.kind === "ready"
-      ? `Open in ${resolved.provider.name}`
-      : "Open in Maps";
+    resolved?.kind === "ready" ? `Open in ${resolved.provider.name}` : "Open in Maps";
   // No installed apps: the button looks inert but still explains on tap.
   const actionable = resolved?.kind !== "none";
 
@@ -60,19 +58,10 @@ export default function CarLocationSheet() {
       </View>
 
       <View style={styles.mapFrame}>
-        <CarLocationMap
-          latitude={latitude}
-          longitude={longitude}
-          label={vehicle.nickname}
-        />
+        <CarLocationMap latitude={latitude} longitude={longitude} label={vehicle.nickname} />
       </View>
 
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, Spacing.three) },
-        ]}
-      >
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
         <Host style={styles.buttonHost}>
           <Button
             onPress={() => openInMaps({ latitude, longitude, label: vehicle.nickname })}
@@ -82,9 +71,7 @@ export default function CarLocationSheet() {
               frame({ maxWidth: Infinity }),
             ]}
           >
-            <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>
-              {buttonLabel}
-            </Text>
+            <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>{buttonLabel}</Text>
           </Button>
         </Host>
       </View>

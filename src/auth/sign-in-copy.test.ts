@@ -44,9 +44,7 @@ describe("classifyDeliveryMethod", () => {
 
 describe("otpCopy", () => {
   it("labels an email selection as an email code, not SMS", () => {
-    expect(otpCopy("Email to l***@example.com").title).toBe(
-      "Enter your email code",
-    );
+    expect(otpCopy("Email to l***@example.com").title).toBe("Enter your email code");
     expect(otpCopy("Text to ***-1234").placeholder).toBe("SMS code");
     expect(otpCopy(null).icon).toBe("number");
   });

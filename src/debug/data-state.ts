@@ -1,7 +1,7 @@
-import type { UseQueryResult } from '@tanstack/react-query';
+import type { UseQueryResult } from "@tanstack/react-query";
 
-import { PLACEHOLDER_VEHICLE } from '@/data/placeholder-vehicle';
-import { NoVehicleError, type Vehicle } from '@/data/vehicle';
+import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
+import { NoVehicleError, type Vehicle } from "@/data/vehicle";
 
 /**
  * A developer-forced data state for the vehicle screens. `live` is the real
@@ -11,12 +11,12 @@ import { NoVehicleError, type Vehicle } from '@/data/vehicle';
  * for a failure to happen on its own.
  */
 export type DataStateOverride =
-  | 'live'
-  | 'skeleton'
-  | 'offline-cached'
-  | 'offline-empty'
-  | 'error'
-  | 'no-vehicle';
+  | "live"
+  | "skeleton"
+  | "offline-cached"
+  | "offline-empty"
+  | "error"
+  | "no-vehicle";
 
 type VehicleResult = UseQueryResult<Vehicle, Error>;
 
@@ -27,15 +27,18 @@ type VehicleResult = UseQueryResult<Vehicle, Error>;
  * `error`, and the loading/settled flags — so each state drives the exact same
  * code path production does. `live` is returned untouched.
  */
-export function overrideVehicleResult(query: VehicleResult, state: DataStateOverride): VehicleResult {
-  if (state === 'live') {
+export function overrideVehicleResult(
+  query: VehicleResult,
+  state: DataStateOverride,
+): VehicleResult {
+  if (state === "live") {
     return query;
   }
   switch (state) {
     // First-load: no data yet, still loading. The screens show the skeleton /
     // redacted layout.
-    case 'skeleton':
-    case 'offline-empty':
+    case "skeleton":
+    case "offline-empty":
       return {
         ...query,
         data: undefined,
@@ -43,16 +46,16 @@ export function overrideVehicleResult(query: VehicleResult, state: DataStateOver
         // `offline-empty` is settled (nothing will load while offline);
         // `skeleton` is mid-flight. Either way there is no data — the offline
         // banner is what tells them apart, driven by the online override below.
-        isLoading: state === 'skeleton',
+        isLoading: state === "skeleton",
         isPending: true,
-        isFetching: state === 'skeleton',
+        isFetching: state === "skeleton",
         isError: false,
         isSuccess: false,
-        status: 'pending',
+        status: "pending",
       } as VehicleResult;
     // Settled with data — paired with a forced-offline online state so the
     // screens show the cached dashboard behind the offline banner.
-    case 'offline-cached':
+    case "offline-cached":
       return {
         ...query,
         data: PLACEHOLDER_VEHICLE,
@@ -62,16 +65,16 @@ export function overrideVehicleResult(query: VehicleResult, state: DataStateOver
         isFetching: false,
         isError: false,
         isSuccess: true,
-        status: 'success',
+        status: "success",
         dataUpdatedAt: query.dataUpdatedAt || Date.now(),
       } as VehicleResult;
     // Settled failure (online), so the screens show the "Vehicle unavailable"
     // error rather than the offline skeleton.
-    case 'error':
-      return failed(query, new Error('Forced fetch error (dev override)'));
+    case "error":
+      return failed(query, new Error("Forced fetch error (dev override)"));
     // A settled NoVehicleError, which the screens render as the distinct
     // "No vehicle found" empty state.
-    case 'no-vehicle':
+    case "no-vehicle":
       return failed(query, new NoVehicleError());
   }
 }
@@ -86,7 +89,7 @@ function failed(query: VehicleResult, error: Error): VehicleResult {
     isFetching: false,
     isError: true,
     isSuccess: false,
-    status: 'error',
+    status: "error",
   } as VehicleResult;
 }
 
@@ -98,14 +101,14 @@ function failed(query: VehicleResult, error: Error): VehicleResult {
  */
 export function overrideIsOnline(real: boolean, state: DataStateOverride): boolean {
   switch (state) {
-    case 'offline-cached':
-    case 'offline-empty':
+    case "offline-cached":
+    case "offline-empty":
       return false;
-    case 'skeleton':
-    case 'error':
-    case 'no-vehicle':
+    case "skeleton":
+    case "error":
+    case "no-vehicle":
       return true;
-    case 'live':
+    case "live":
       return real;
   }
 }

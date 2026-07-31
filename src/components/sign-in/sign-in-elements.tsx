@@ -1,11 +1,4 @@
-import {
-  Button,
-  HStack,
-  Image,
-  Text,
-  VStack,
-  ZStack,
-} from "@expo/ui/swift-ui";
+import { Button, HStack, Image, Text, VStack, ZStack } from "@expo/ui/swift-ui";
 import {
   background,
   bold,
@@ -58,11 +51,7 @@ export function Hero({
             ),
           ]}
         >
-          <Image
-            systemName={icon}
-            size={26}
-            color={colors.systemBlue}
-          />
+          <Image systemName={icon} size={26} color={colors.systemBlue} />
         </ZStack>
         <Text
           modifiers={[
@@ -196,8 +185,8 @@ export function NewToLexusCallout() {
             frame({ maxWidth: Infinity, alignment: "leading" }),
           ]}
         >
-          Create <Text modifiers={[bold()]}>your</Text> account and add your car
-          in the Lexus app, then come back here to sign in.{" "}
+          Create <Text modifiers={[bold()]}>your</Text> account and add your car in the Lexus app,
+          then come back here to sign in.{" "}
           <Text modifiers={[foregroundStyle(colors.systemBlue)]}>
             Get the Lexus app from the App Store.
           </Text>
@@ -224,11 +213,7 @@ export function ErrorNotice({ message }: { message: string }) {
         ),
       ]}
     >
-      <Image
-        systemName="exclamationmark.triangle.fill"
-        size={18}
-        color={colors.systemOrange}
-      />
+      <Image systemName="exclamationmark.triangle.fill" size={18} color={colors.systemOrange} />
       <Text
         modifiers={[
           font({ textStyle: "footnote", weight: "medium" }),

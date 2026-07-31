@@ -68,14 +68,10 @@ function RootLayout() {
     // every screen behind the transparent header share one color — matching
     // the splash screen's backgroundColor, with no white window flashing
     // through between the splash and the first content paint.
-    <GestureHandlerRootView
-      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
-    >
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.groupedBackground }}>
       <AuthProvider>
         <VehicleDataProvider>
-          <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-          >
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
             <UpdateHistoryRecorder />
             <DebugOverrideProvider>
               <RootNavigator />

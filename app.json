@@ -59,11 +59,7 @@
               "name": "LexyStatusWidget",
               "displayName": "Lexy Status",
               "description": "Vehicle lock status at a glance",
-              "supportedFamilies": [
-                "systemSmall",
-                "systemMedium",
-                "accessoryRectangular"
-              ]
+              "supportedFamilies": ["systemSmall", "systemMedium", "accessoryRectangular"]
             }
           ]
         }
@@ -87,9 +83,7 @@
                   "targetName": "ExpoWidgetsTarget",
                   "bundleIdentifier": "app.ide.lexy.Widgets",
                   "entitlements": {
-                    "com.apple.security.application-groups": [
-                      "group.app.ide.lexy"
-                    ]
+                    "com.apple.security.application-groups": ["group.app.ide.lexy"]
                   }
                 }
               ]

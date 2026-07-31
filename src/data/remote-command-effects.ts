@@ -21,9 +21,7 @@ export async function reflectAcceptedCommand(vin: string, command: RemoteCommand
     );
     await saveClosureStore(store);
     const closures = readClosures(store);
-    queryClient.setQueryData<Vehicle>(["vehicle"], (old) =>
-      old ? { ...old, closures } : old,
-    );
+    queryClient.setQueryData<Vehicle>(["vehicle"], (old) => (old ? { ...old, closures } : old));
   }
   // Reconcile with the server via a non-waking status read: the plain
   // vehicle refetch GETs status without priming the telematics unit, and

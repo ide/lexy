@@ -17,9 +17,7 @@ import { Spacing, colors } from "@/constants/theme";
 
 /** The trailing chevron of a row that pushes another screen. */
 export function RowChevron() {
-  return (
-    <Image systemName="chevron.right" size={14} color={colors.secondaryLabel} />
-  );
+  return <Image systemName="chevron.right" size={14} color={colors.secondaryLabel} />;
 }
 
 /**

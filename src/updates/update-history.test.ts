@@ -44,10 +44,7 @@ describe("update history repository", () => {
     ]);
 
     expect(storage.maxActiveWrites).toBe(1);
-    expect(await repository.read()).toEqual([
-      event("second", 2),
-      event("first", 1),
-    ]);
+    expect(await repository.read()).toEqual([event("second", 2), event("first", 1)]);
   });
 
   it("passes a string to SQLite storage instead of opening an updater transaction", async () => {

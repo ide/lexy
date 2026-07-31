@@ -23,12 +23,7 @@ export function OfflineBanner({
   const orange = colors.systemOrange;
   return (
     <View style={[styles.banner, { backgroundColor: "rgba(255,149,0,0.15)" }]}>
-      <Image
-        source="sf:wifi.slash"
-        tintColor={orange}
-        style={styles.icon}
-        contentFit="contain"
-      />
+      <Image source="sf:wifi.slash" tintColor={orange} style={styles.icon} contentFit="contain" />
       <View style={styles.text}>
         <ThemedText type="smallBold" style={{ color: orange }}>
           {title}

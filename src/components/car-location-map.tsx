@@ -35,9 +35,7 @@ export function CarLocationMap({
   if (Platform.OS !== "ios") {
     return (
       <View style={[styles.fallback, style]}>
-        <ThemedText themeColor="secondaryLabel">
-          Maps are only available on iOS.
-        </ThemedText>
+        <ThemedText themeColor="secondaryLabel">Maps are only available on iOS.</ThemedText>
       </View>
     );
   }

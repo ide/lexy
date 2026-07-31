@@ -6,60 +6,60 @@
  * static hex stand-ins; Lexy itself is iOS-only (see AGENTS.md).
  */
 
-import { Color } from 'expo-router';
-import { Platform } from 'react-native';
+import { Color } from "expo-router";
+import { Platform } from "react-native";
 
 const palette = {
   label: Platform.select({
     ios: Color.ios.label,
-    default: '#000000',
+    default: "#000000",
   })!,
   secondaryLabel: Platform.select({
     ios: Color.ios.secondaryLabel,
-    default: '#60646C',
+    default: "#60646C",
   })!,
   // Grouped (settings-style) backgrounds: grey screen, elevated cards.
   groupedBackground: Platform.select({
     ios: Color.ios.systemGroupedBackground,
-    default: '#F2F2F7',
+    default: "#F2F2F7",
   })!,
   card: Platform.select({
     ios: Color.ios.secondarySystemGroupedBackground,
-    default: '#FFFFFF',
+    default: "#FFFFFF",
   })!,
   fill: Platform.select({
     ios: Color.ios.tertiarySystemFill,
-    default: '#E0E1E6',
+    default: "#E0E1E6",
   })!,
   // The gentlest system fill — for sub-grouping surfaces inside a card where
   // `fill` would read too heavy.
   subtleFill: Platform.select({
     ios: Color.ios.quaternarySystemFill,
-    default: '#F0F0F3',
+    default: "#F0F0F3",
   })!,
   separator: Platform.select({
     ios: Color.ios.separator,
-    default: '#C6C6C8',
+    default: "#C6C6C8",
   })!,
   systemBlue: Platform.select({
     ios: Color.ios.systemBlue,
-    default: '#007AFF',
+    default: "#007AFF",
   })!,
   systemGreen: Platform.select({
     ios: Color.ios.systemGreen,
-    default: '#34C759',
+    default: "#34C759",
   })!,
   systemOrange: Platform.select({
     ios: Color.ios.systemOrange,
-    default: '#FF9500',
+    default: "#FF9500",
   })!,
   systemYellow: Platform.select({
     ios: Color.ios.systemYellow,
-    default: '#FFCC00',
+    default: "#FFCC00",
   })!,
   systemRed: Platform.select({
     ios: Color.ios.systemRed,
-    default: '#FF3B30',
+    default: "#FF3B30",
   })!,
 } as const;
 
@@ -74,10 +74,10 @@ export const colors = palette as Record<ThemeColor, string>;
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+    mono: "ui-monospace",
   },
   default: {
-    mono: 'monospace',
+    mono: "monospace",
   },
 });
 
