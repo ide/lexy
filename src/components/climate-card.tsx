@@ -157,7 +157,7 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
           )}
         </View>
         <ThemedText type="small" themeColor="secondaryLabel">
-          Settings for when you start your car remotely.
+          Settings for when you start your vehicle remotely.
         </ThemedText>
       </View>
       {showSlider ? (

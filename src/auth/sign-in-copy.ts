@@ -100,6 +100,6 @@ export function signInHero(
   return {
     icon: "key.fill",
     title: "Welcome to Lexy",
-    subtitle: "Sign in with your Lexus account to see and control your car.",
+    subtitle: "Sign in with your Lexus account to see and control your vehicle.",
   };
 }

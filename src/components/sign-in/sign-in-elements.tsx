@@ -225,7 +225,7 @@ export function NewToLexusCallout() {
             frame({ maxWidth: Infinity, alignment: "leading" }),
           ]}
         >
-          Create an account and add your car in the Lexus app, then come back here to sign in.
+          Create an account and add your vehicle in the Lexus app, then come back here to sign in.
         </Text>
         <Text
           modifiers={[

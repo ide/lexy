@@ -111,7 +111,7 @@ export function NoVehicleState({ retry }: { retry: () => void }) {
   return (
     <StateScreen symbol="car.2" title="No vehicle found">
       <Text markdownEnabled modifiers={messageModifiers}>
-        {`There's no vehicle associated with this Lexus account. Add your car in the [Lexus app](${LEXUS_APP_URL}), then check again here.`}
+        {`There's no vehicle associated with this Lexus account. Add your vehicle in the [Lexus app](${LEXUS_APP_URL}), then check again here.`}
       </Text>
       <RetryButton label="Check again" onPress={retry} />
     </StateScreen>

@@ -29,7 +29,7 @@ const FADE_IN_FALLBACK_MS = 700;
  * show exactly the same map. iOS only — Apple Maps is the only platform Expo
  * Maps supports for `AppleMaps`, and Lexy is an iOS app.
  */
-export function CarLocationMap({
+export function VehicleLocationMap({
   latitude,
   longitude,
   label,

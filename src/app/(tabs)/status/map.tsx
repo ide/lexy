@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CarLocationMap } from "@/components/car-location-map";
+import { VehicleLocationMap } from "@/components/vehicle-location-map";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import { relativeTime } from "@/data/vehicle";
@@ -13,7 +13,7 @@ import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
 
-export default function CarLocationSheet() {
+export default function VehicleLocationSheet() {
   const { data: vehicle } = useVehicle();
   const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { resolved, openInMaps } = useMapsProvider();
@@ -58,7 +58,7 @@ export default function CarLocationSheet() {
       </View>
 
       <View style={styles.mapFrame}>
-        <CarLocationMap latitude={latitude} longitude={longitude} label={vehicle.nickname} />
+        <VehicleLocationMap latitude={latitude} longitude={longitude} label={vehicle.nickname} />
       </View>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>

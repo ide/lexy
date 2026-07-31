@@ -98,7 +98,7 @@ function rejectedMessage(stage: SignInStage): string {
     case "restore":
       // A rejected restore is normally a SessionInvalidError (handled as
       // "session"); this is the fallback if a rejection arrives another way.
-      return "Lexus no longer accepts the app's saved sign-in. Sign in again to reconnect your car.";
+      return "Lexus no longer accepts the app's saved sign-in. Sign in again to reconnect your vehicle.";
   }
 }
 
@@ -144,7 +144,7 @@ export function signInErrorMessage(error: unknown, stage: SignInStage): string {
       return (
         "You've been signed out because Lexus no longer accepts the app's " +
         "saved session. This happens after a password change, or when Lexus " +
-        "expires it on their end. Sign in again to reconnect your car."
+        "expires it on their end. Sign in again to reconnect your vehicle."
       );
     case "unknown": {
       // invalid_step LexusAuthErrors already carry user-ready advice; other
