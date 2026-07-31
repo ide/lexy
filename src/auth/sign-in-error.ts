@@ -74,19 +74,19 @@ function rejectedMessage(stage: SignInStage): string {
     case "credentials":
       return (
         "Lexus didn't accept that email and password. One of them is likely " +
-        "mistyped — passwords are case-sensitive — or the account is locked " +
+        "mistyped (passwords are case-sensitive), or the account is locked " +
         "after too many attempts. Check both fields and try again, or reset " +
         "your password in the Lexus app."
       );
     case "otp":
       return (
         "Lexus didn't accept that verification code. It may be mistyped, " +
-        "expired, or already used — codes work once and only for a few " +
+        "expired, or already used, since codes work once and only for a few " +
         "minutes. Tap Resend Code and enter the fresh code right away."
       );
     case "choice":
       return (
-        "Lexus couldn't send a code by that method — the contact info on your " +
+        "Lexus couldn't send a code by that method. The contact info on your " +
         "account may be out of date. Try another method, or update your " +
         "details in the Lexus app."
       );
@@ -98,9 +98,7 @@ function rejectedMessage(stage: SignInStage): string {
     case "restore":
       // A rejected restore is normally a SessionInvalidError (handled as
       // "session"); this is the fallback if a rejection arrives another way.
-      return (
-        "Lexus no longer accepts the app's saved sign-in. Sign in again to " + "reconnect your car."
-      );
+      return "Lexus no longer accepts the app's saved sign-in. Sign in again to reconnect your car.";
   }
 }
 
@@ -114,13 +112,13 @@ export function signInErrorMessage(error: unknown, stage: SignInStage): string {
     case "network":
       if (stage === "restore") {
         return (
-          "Couldn't reach Lexus to reconnect your saved session — your iPhone " +
+          "Couldn't reach Lexus to reconnect your saved session. Your iPhone " +
           "looks offline, or the connection dropped. Your sign-in is still " +
           "saved: get back online and reopen the app, or sign in again now."
         );
       }
       return (
-        "Couldn't reach Lexus — your iPhone looks offline, or the connection " +
+        "Couldn't reach Lexus. Your iPhone looks offline, or the connection " +
         `dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.`
       );
     case "rejected":
@@ -128,12 +126,12 @@ export function signInErrorMessage(error: unknown, stage: SignInStage): string {
     case "rate-limited":
       return (
         "Lexus is limiting sign-in attempts after too many recent tries. " +
-        `This clears on its own — wait a few minutes, then ${retryAction(stage)}.`
+        `This clears on its own. Wait a few minutes, then ${retryAction(stage)}.`
       );
     case "server":
       return (
-        "The Lexus sign-in service hit an error on its end — nothing you " +
-        "entered caused it. It usually recovers quickly, so wait a moment, " +
+        "The Lexus sign-in service hit an error on its end, not something " +
+        "you entered. It usually recovers quickly, so wait a moment, " +
         `then ${retryAction(stage)}.`
       );
     case "protocol":
@@ -145,7 +143,7 @@ export function signInErrorMessage(error: unknown, stage: SignInStage): string {
     case "session":
       return (
         "You've been signed out because Lexus no longer accepts the app's " +
-        "saved session — this happens after a password change, or when Lexus " +
+        "saved session. This happens after a password change, or when Lexus " +
         "expires it on their end. Sign in again to reconnect your car."
       );
     case "unknown": {
