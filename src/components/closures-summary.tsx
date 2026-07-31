@@ -1,20 +1,24 @@
-import { DisclosureGroup, HStack, Host, Image, Text, VStack, ZStack } from "@expo/ui/swift-ui";
+import { HStack, Host, Image, Text, VStack, ZStack } from "@expo/ui/swift-ui";
 import {
-  background,
-  contentShape,
   disabled as disabledModifier,
   font,
   foregroundStyle,
   frame,
   lineLimit,
   opacity,
-  padding,
   redacted as redactedModifier,
-  shapes,
-  tint,
 } from "@expo/ui/swift-ui/modifiers";
+import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
+import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
 import { useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
@@ -44,6 +48,8 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
   attention: colors.systemOrange,
   busy: colors.secondaryLabel,
 };
+
+const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 
 function StatusLine({ status }: { status: ClosureStatus }) {
   return (
@@ -88,12 +94,35 @@ function CornerCell({ corner }: { corner: Corner }) {
 
 /**
  * The Doors & Windows card: a one-line, fixed-height verdict ("All secure",
- * "Trunk open", "2 open, 1 unlocked") with the full per-corner detail behind a
- * native SwiftUI disclosure, which animates the expansion itself. The verdict
+ * "Trunk open", "2 open, 1 unlocked") with the full per-corner detail one tap
+ * away. The content is SwiftUI; the expansion is a Reanimated height clip,
+ * because a SwiftUI animation cannot span the host boundary — the RN side
+ * snaps to the new size instead of growing (verified on-device), so the
+ * UI-thread clip is what makes the card visibly grow and shrink. The verdict
  * logic lives in closure-summary.ts.
  */
 export function ClosuresCard({ corners, openings }: { corners: Corner[]; openings: Closure[] }) {
   const redacted = useRedacted();
+  const [expanded, setExpanded] = useState(false);
+  const expandedRef = useRef(expanded);
+  // The detail's natural height, measured from its always-rendered (but
+  // clipped) content so the first expansion already knows where to land.
+  const measuredDetail = useRef(0);
+  const detailHeight = useSharedValue(0);
+  const rotation = useSharedValue(0);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+  const clipStyle = useAnimatedStyle(() => ({ height: detailHeight.value }));
+
+  const toggle = () => {
+    const next = !expanded;
+    expandedRef.current = next;
+    setExpanded(next);
+    rotation.value = withTiming(next ? 90 : 0, EXPAND_TIMING);
+    detailHeight.value = withTiming(next ? measuredDetail.current : 0, EXPAND_TIMING);
+  };
+
   const summary = closuresSummary(corners, openings);
   const badgeTint = KIND_COLORS[summary.kind];
   const rows = (["front", "rear"] as Row[])
@@ -101,103 +130,113 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
     .filter((row) => row.length > 0);
 
   return (
-    // Match only the content's height: the width comes from the RN layout, so
-    // the card stretches edge-to-edge like the other section cards.
-    <Host matchContents={{ vertical: true }}>
-      <DisclosureGroup
-        isExpanded={false}
-        modifiers={[
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-          padding({ horizontal: Spacing.three, vertical: Spacing.two + Spacing.one }),
-          background(
-            colors.card,
-            shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
-          ),
-          // The disclosure indicator inherits the accent color otherwise.
-          tint(colors.secondaryLabel),
-          // While loading, the placeholder skeletonizes at the same fixed
-          // height and the disclosure cannot be opened onto placeholder data.
-          ...(redacted ? [redactedModifier(), disabledModifier(true)] : []),
-        ]}
+    <Card>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityHint="Shows each door and window"
+        disabled={redacted}
+        onPress={toggle}
       >
-        <DisclosureGroup.Label>
-          <HStack
-            spacing={Spacing.three - Spacing.one}
-            modifiers={[
-              // A fixed height regardless of state, so the card never shifts
-              // its collapsed size and the loading skeleton matches exactly.
-              frame({ maxWidth: Infinity, height: 44, alignment: "leading" }),
-              contentShape(shapes.rectangle()),
-            ]}
-          >
-            <ZStack>
-              {/* The tint at full strength would shout; a translucent wash of
-                  the same color keeps the icon the loudest element. */}
-              <Image
-                systemName="circle.fill"
-                size={36}
-                color={badgeTint}
-                modifiers={[opacity(0.15)]}
-              />
-              <Image systemName={summary.symbol} size={18} color={badgeTint} />
-            </ZStack>
-            <VStack alignment="leading" spacing={Spacing.half}>
-              <Text
+        {({ pressed }) => (
+          <View style={[styles.header, pressed && styles.pressed]}>
+            {/* The SwiftUI host would swallow the tap before the Pressable
+                sees it; the header content is purely presentational. */}
+            <Host matchContents={{ vertical: true }} style={styles.headerHost} pointerEvents="none">
+              <HStack
+                spacing={Spacing.three - Spacing.one}
                 modifiers={[
-                  font({ textStyle: "body", weight: "semibold" }),
-                  foregroundStyle(colors.label),
-                  lineLimit(1),
+                  // A fixed height regardless of state, so the card never
+                  // shifts its collapsed size and the skeleton matches it.
+                  frame({ maxWidth: Infinity, height: 44, alignment: "leading" }),
+                  ...(redacted ? [redactedModifier(), disabledModifier(true)] : []),
                 ]}
               >
-                {summary.headline}
-              </Text>
-              {summary.subline ? (
-                <Text
-                  modifiers={[
-                    font({ textStyle: "footnote" }),
-                    foregroundStyle(colors.secondaryLabel),
-                    lineLimit(1),
-                  ]}
+                <ZStack>
+                  {/* The tint at full strength would shout; a translucent wash
+                      of the same color keeps the icon the loudest element. */}
+                  <Image
+                    systemName="circle.fill"
+                    size={36}
+                    color={badgeTint}
+                    modifiers={[opacity(0.15)]}
+                  />
+                  <Image systemName={summary.symbol} size={18} color={badgeTint} />
+                </ZStack>
+                <VStack alignment="leading" spacing={Spacing.half}>
+                  <Text
+                    modifiers={[
+                      font({ textStyle: "body", weight: "semibold" }),
+                      foregroundStyle(colors.label),
+                      lineLimit(1),
+                    ]}
+                  >
+                    {summary.headline}
+                  </Text>
+                  {summary.subline ? (
+                    <Text
+                      modifiers={[
+                        font({ textStyle: "footnote" }),
+                        foregroundStyle(colors.secondaryLabel),
+                        lineLimit(1),
+                      ]}
+                    >
+                      {summary.subline}
+                    </Text>
+                  ) : null}
+                </VStack>
+              </HStack>
+            </Host>
+            <Animated.View style={chevronStyle}>
+              <Icon name="chevron.right" size={14} tint={colors.secondaryLabel} />
+            </Animated.View>
+          </View>
+        )}
+      </Pressable>
+
+      <Animated.View style={[styles.detailClip, clipStyle]}>
+        <View
+          style={styles.detailContent}
+          onLayout={(event) => {
+            measuredDetail.current = event.nativeEvent.layout.height;
+            // A data refresh can reflow the open detail; track it unanimated.
+            if (expandedRef.current) {
+              detailHeight.value = event.nativeEvent.layout.height;
+            }
+          }}
+        >
+          {/* The detail breathes on the card itself — the corner titles carry
+              the grouping, so no surface or border boxes the grid in. */}
+          <Host matchContents={{ vertical: true }} pointerEvents="none">
+            <VStack
+              alignment="leading"
+              spacing={Spacing.three}
+              modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+            >
+              {rows.map((rowCorners) => (
+                <HStack
+                  key={rowCorners[0].row}
+                  alignment="top"
+                  spacing={Spacing.three}
+                  modifiers={[frame({ maxWidth: Infinity })]}
                 >
-                  {summary.subline}
-                </Text>
+                  {rowCorners.map((corner) => (
+                    <CornerCell key={corner.key} corner={corner} />
+                  ))}
+                </HStack>
+              ))}
+              {openings.length > 0 ? (
+                <VStack alignment="leading" spacing={Spacing.two}>
+                  {openings.map((opening) => (
+                    <StatusLine key={opening.label} status={openingStatus(opening)} />
+                  ))}
+                </VStack>
               ) : null}
             </VStack>
-          </HStack>
-        </DisclosureGroup.Label>
-
-        {/* The detail breathes on the card itself — the corner titles carry
-            the grouping, so no surface or border boxes the grid in. */}
-        <VStack
-          alignment="leading"
-          spacing={Spacing.three}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({ top: Spacing.one, bottom: Spacing.one }),
-          ]}
-        >
-          {rows.map((rowCorners) => (
-            <HStack
-              key={rowCorners[0].row}
-              alignment="top"
-              spacing={Spacing.three}
-              modifiers={[frame({ maxWidth: Infinity })]}
-            >
-              {rowCorners.map((corner) => (
-                <CornerCell key={corner.key} corner={corner} />
-              ))}
-            </HStack>
-          ))}
-          {openings.length > 0 ? (
-            <VStack alignment="leading" spacing={Spacing.two}>
-              {openings.map((opening) => (
-                <StatusLine key={opening.label} status={openingStatus(opening)} />
-              ))}
-            </VStack>
-          ) : null}
-        </VStack>
-      </DisclosureGroup>
-    </Host>
+          </Host>
+        </View>
+      </Animated.View>
+    </Card>
   );
 }
 
@@ -216,6 +255,32 @@ export function StaleNote({ at }: { at: string }) {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + Spacing.one,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  headerHost: {
+    flex: 1,
+  },
+  detailClip: {
+    overflow: "hidden",
+  },
+  // Rendered (and measured) at natural size even while the clip is closed.
+  detailContent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.three,
+    paddingTop: Spacing.half,
+  },
   staleNote: {
     flexDirection: "row",
     alignItems: "center",
