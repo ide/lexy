@@ -95,7 +95,7 @@ describe("closuresSummary", () => {
       { label: "Trunk", state: "Open" },
     ]);
     expect(summary.kind).toBe("attention");
-    expect(summary.headline).toBe("3 need attention");
+    expect(summary.headline).toBe("2 open, 1 unlocked");
     expect(summary.exceptions).toEqual([
       {
         key: "door:frontDriver",
@@ -119,6 +119,20 @@ describe("closuresSummary", () => {
         symbol: "car.side.rear.crop.trunk.partition.fill",
       },
     ]);
+  });
+
+  it("states plain counts when the exceptions are all of one kind", () => {
+    const openTwo = closuresSummary(allClearCorners(), [
+      { label: "Moonroof", state: "Open" },
+      { label: "Trunk", state: "Open" },
+    ]);
+    expect(openTwo.headline).toBe("2 open");
+
+    const corners = allClearCorners();
+    corners[0].door = { label: "door", state: "Closed", locked: false };
+    corners[1].door = { label: "door", state: "Closed", locked: false };
+    const unlockedTwo = closuresSummary(corners, []);
+    expect(unlockedTwo.headline).toBe("2 doors unlocked");
   });
 
   it("does not promise locked doors in the subline when a door lacks a lock reading", () => {
