@@ -13,7 +13,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { ClimateCard } from "@/components/climate-card";
-import { OpeningCard, SideGrid, StaleNote } from "@/components/closures-grid";
+import { ClosuresCard, StaleNote } from "@/components/closures-summary";
 import { FuelBar } from "@/components/fuel-bar";
 import { HeroCard } from "@/components/hero-card";
 import { NativeScrollView } from "@/components/native-scroll-view";
@@ -21,7 +21,6 @@ import { OdometerCard } from "@/components/odometer-card";
 import { Redactable } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { TirePressureCard } from "@/components/tire-pressure-card";
-import { TwoColumnGrid } from "@/components/two-column-grid";
 import { VehicleControls } from "@/components/vehicle-controls";
 import { Spacing } from "@/constants/theme";
 import { cornerShownAts, oldestStale } from "@/data/closure-display";
@@ -208,25 +207,15 @@ export default function CarDashboard() {
 
           <ClimateCard vehicle={vehicle} />
 
-          {corners.length > 0 ? (
+          {corners.length > 0 || openings.length > 0 ? (
             <View>
               <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
-              <SideGrid corners={corners} />
+              <ClosuresCard corners={corners} openings={openings} />
+              {/* A single note for the closures area — some readings weren't in
+                  the latest snapshot (e.g. windows after a drive). */}
+              {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
             </View>
           ) : null}
-
-          {openings.length > 0 ? (
-            <TwoColumnGrid
-              left={openings.filter((_, i) => i % 2 === 0)}
-              right={openings.filter((_, i) => i % 2 === 1)}
-              keyFor={(o) => o.label}
-              renderItem={(o) => <OpeningCard opening={o} />}
-            />
-          ) : null}
-
-          {/* A single note for the closures area — some readings weren't in the
-              latest snapshot (e.g. windows after a drive). */}
-          {closuresStaleAt ? <StaleNote at={closuresStaleAt} /> : null}
 
           {/* Mileage bridges immediate access/security state and longer-term
               running condition (tire pressure) without competing with the
