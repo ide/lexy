@@ -267,12 +267,18 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
 // A single muted line shown when some closures are older than the latest
 // snapshot (e.g. windows after a drive), so stale state isn't presented as
 // current. "Some" because the doors that a lock event refreshed stay current.
-export function StaleNote({ at }: { at: string }) {
+//
+// `at` and `now` arrive already resolved, from the screen's single clock (see
+// useNow), so this line and the sync lines in the footer are measured from the
+// same instant — the reading named here is genuinely older than the snapshot
+// named there, and the numbers have to bear that out rather than drift apart
+// because they were computed on different renders.
+export function StaleNote({ at, now }: { at: number; now: number }) {
   return (
     <View style={styles.staleNote}>
       <Icon name="clock.arrow.circlepath" size={12} tint={colors.secondaryLabel} />
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.staleText}>
-        Some readings as of {relativeTime(at)}
+        Some readings as of {relativeTime(at, now)}
       </ThemedText>
     </View>
   );

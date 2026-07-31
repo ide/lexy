@@ -5,6 +5,7 @@ import {
   composeVehicle,
   mapVehicleProfile,
   mapVehicleStatus,
+  observedAt,
   parseSubscriptionVehicle,
   parseVehicleContexts,
   parseVehicleProfile,
@@ -416,6 +417,48 @@ describe("parseSubscriptionVehicle", () => {
   it("returns null when a required discovery field is absent", () => {
     expect(parseSubscriptionVehicle({ payload: [{ ...record, hwType: undefined }] })).toBeNull();
     expect(parseSubscriptionVehicle({ payload: [] })).toBeNull();
+  });
+});
+
+describe("observedAt", () => {
+  const fetchedAt = Date.parse("2026-07-28T12:00:00Z");
+
+  it("passes a stamp older than the read through untouched", () => {
+    const at = "2026-07-28T11:30:00Z";
+    expect(observedAt(at, fetchedAt)).toBe(Date.parse(at));
+  });
+
+  // The bug this exists for. The car's clock ran three minutes ahead of the
+  // phone's, so its snapshot claimed to be newer than the fetch that carried
+  // it, and the footer contradicted itself: "Lexy has data from 2 hours 35
+  // minutes ago" directly under "Vehicle last synced with Lexus 2 hours 32
+  // minutes ago".
+  it("never reports a vehicle stamp as newer than the read that carried it", () => {
+    const ahead = "2026-07-28T12:03:00Z";
+    expect(observedAt(ahead, fetchedAt)).toBe(fetchedAt);
+  });
+
+  // The property that matters, stated directly: whatever the two clocks are
+  // doing, the car's last word can never read as more recent than our own data.
+  it("keeps the sync line no more recent than the data line", () => {
+    const now = fetchedAt + 60_000;
+    for (const skewMinutes of [-90, -5, 0, 3, 45]) {
+      const at = new Date(fetchedAt + skewMinutes * 60_000).toISOString();
+      const syncAge = now - observedAt(at, fetchedAt);
+      const dataAge = now - fetchedAt;
+      expect(syncAge).toBeGreaterThanOrEqual(dataAge);
+    }
+  });
+
+  it("leaves the stamp alone when there is no read to bound it by", () => {
+    const at = "2026-07-28T12:03:00Z";
+    expect(observedAt(at, 0)).toBe(Date.parse(at));
+  });
+
+  it("returns NaN for a missing or unparseable stamp, which reads as unknown", () => {
+    expect(observedAt(undefined, fetchedAt)).toBeNaN();
+    expect(observedAt("not a date", fetchedAt)).toBeNaN();
+    expect(relativeTime(observedAt("not a date", fetchedAt))).toBe("unknown");
   });
 });
 

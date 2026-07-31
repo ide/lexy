@@ -528,6 +528,34 @@ export function absoluteLocalTime(from: string | number): string {
   });
 }
 
+/**
+ * A vehicle-reported timestamp, placed on the device's clock, never claiming to
+ * be more recent than the read that delivered it.
+ *
+ * The car stamps its own events (`occurrenceDate`) from its own clock; the app
+ * renders "how long ago" against the phone's. Those two clocks disagree — car
+ * clocks drift by minutes — and when the car's runs ahead, its snapshot reads
+ * as *newer* than the fetch that carried it. On the dashboard footer that came
+ * out as two adjacent lines contradicting each other: "Lexy has data from 2
+ * hours 35 minutes ago", directly under "Vehicle last synced with Lexus 2 hours
+ * 32 minutes ago" — the car apparently reporting after we last heard from it.
+ *
+ * We cannot know about a sync later than our own read, so the read is the
+ * ceiling. Display-only: the stored `occurrenceDate` stays exactly as the car
+ * sent it, because the closure fold orders snapshots against each other and has
+ * to keep doing that in the car's own clock (see closure-state.ts).
+ *
+ * Returns NaN for an unparseable stamp, which `relativeTime` renders as
+ * "unknown", and leaves the stamp alone when there is no read to bound it by.
+ */
+export function observedAt(at: string | undefined, fetchedAt: number): number {
+  const time = at ? new Date(at).getTime() : NaN;
+  if (!Number.isFinite(time)) {
+    return NaN;
+  }
+  return fetchedAt > 0 ? Math.min(time, fetchedAt) : time;
+}
+
 const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
 // A plain, human "how long ago" for the vehicle-sync and data-freshness
