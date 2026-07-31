@@ -43,10 +43,16 @@ describe("classifyDeliveryMethod", () => {
 });
 
 describe("otpCopy", () => {
-  it("labels an email selection as an email code, not SMS", () => {
-    expect(otpCopy("Email to l***@example.com").title).toBe("Enter your email code");
-    expect(otpCopy("Text to ***-1234").placeholder).toBe("SMS code");
+  it("derives the copy from the chosen delivery channel", () => {
+    expect(otpCopy("Email to l***@example.com").title).toBe("Check Your Email");
+    expect(otpCopy("Text to ***-1234").title).toBe("Check Your Messages");
     expect(otpCopy(null).icon).toBe("number");
+  });
+
+  it("uses one placeholder across channels", () => {
+    expect(otpCopy("Email").placeholder).toBe("Verification Code");
+    expect(otpCopy("Text to ***-1234").placeholder).toBe("Verification Code");
+    expect(otpCopy(null).placeholder).toBe("Verification Code");
   });
 });
 
@@ -59,22 +65,25 @@ describe("choiceIcon", () => {
 });
 
 describe("signInHero", () => {
-  it("prefers the server prompt as the subtitle on choice and otp", () => {
+  it("prefers the server prompt as the subtitle on choice only", () => {
     expect(signInHero("choice", null, "Pick one.").subtitle).toBe("Pick one.");
-    expect(signInHero("otp", "Email", "Code sent.").subtitle).toBe("Code sent.");
+    // The OTP prompt is boilerplate; the channel-derived copy wins.
+    expect(signInHero("otp", "Email", "Code sent.").subtitle).toBe(
+      "We sent a verification code to your email address.",
+    );
   });
 
-  it("derives the otp hero from the chosen method when the prompt is generic", () => {
+  it("derives the otp hero from the chosen method", () => {
     const hero = signInHero("otp", "Email to l***@example.com", null);
     expect(hero.icon).toBe("envelope.fill");
-    expect(hero.subtitle).toBe("We sent a verification code to your email.");
+    expect(hero.title).toBe("Check Your Email");
   });
 
   it("uses the static credentials hero", () => {
     expect(signInHero("credentials", null, null)).toEqual({
       icon: "key.fill",
-      title: "Sign in",
-      subtitle: "Sign in with your Lexus account.",
+      title: "Welcome to Lexy",
+      subtitle: "Sign in with your Lexus account to see and control your car.",
     });
   });
 });

@@ -1,5 +1,4 @@
 import {
-  Button,
   Divider,
   Host,
   ScrollView,
@@ -15,9 +14,6 @@ import {
   animation,
   autocorrectionDisabled,
   background,
-  buttonStyle,
-  controlSize,
-  disabled as disabledModifier,
   fixedSize,
   font,
   foregroundStyle,
@@ -32,7 +28,6 @@ import {
   textContentType,
   textFieldStyle,
   textInputAutocapitalization,
-  tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { useObserve } from "expo-observe";
 import { useEffect, useRef, useState } from "react";
@@ -40,6 +35,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/auth/auth-context";
 import { choiceIcon, otpCopy, signInHero, signInScreenFor } from "@/auth/sign-in-copy";
 import {
+  ChoiceButton,
   ErrorNotice,
   Hero,
   NewToLexusCallout,
@@ -192,7 +188,7 @@ export default function SignInScreen() {
               >
                 <TextField
                   ref={emailRef}
-                  placeholder="Email address"
+                  placeholder="Email"
                   autoFocus
                   onTextChange={setEmail}
                   modifiers={[
@@ -230,8 +226,9 @@ export default function SignInScreen() {
                   fill from vibrant blue to disabled grey and back. */}
               <PrimaryButton
                 busy={busy}
+                busyLabel="Signing In…"
                 disabled={email.trim().length === 0 || password.length === 0}
-                label="Sign in to Lexus"
+                label="Sign In"
                 onPress={signIn}
               />
             </VStack>
@@ -240,18 +237,12 @@ export default function SignInScreen() {
           {screen === "choice" ? (
             <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
               {choices.map((choice, index) => (
-                <Button
+                <ChoiceButton
                   key={choice}
+                  disabled={busy}
+                  icon={choiceIcon(choice)}
                   label={choice}
-                  systemImage={choiceIcon(choice)}
                   onPress={() => chooseMethod(index)}
-                  modifiers={[
-                    buttonStyle("bordered"),
-                    controlSize("large"),
-                    tint(colors.systemBlue),
-                    disabledModifier(busy),
-                    frame({ maxWidth: Infinity }),
-                  ]}
                 />
               ))}
             </VStack>
@@ -286,16 +277,17 @@ export default function SignInScreen() {
                   double submit) instead of flickering to disabled grey. */}
               <PrimaryButton
                 busy={busy}
+                busyLabel="Verifying…"
                 disabled={code.trim().length === 0}
                 label="Verify"
                 onPress={verify}
               />
-              <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-                <SecondaryAction disabled={busy} label="Resend code" onPress={resend} />
+              <VStack spacing={Spacing.one} modifiers={[frame({ maxWidth: Infinity })]}>
+                <SecondaryAction disabled={busy} label="Resend Code" onPress={resend} />
                 {canChangeMethod ? (
                   <SecondaryAction
                     disabled={busy}
-                    label="Use a different method"
+                    label="Use a Different Method"
                     onPress={switchMethod}
                   />
                 ) : null}
@@ -317,8 +309,8 @@ export default function SignInScreen() {
               padding({ top: Spacing.two, horizontal: Spacing.two }),
             ]}
           >
-            Your password and verification code are sent directly to Lexus. Lexy never stores them
-            nor collects your information.
+            Your password and verification code go directly to Lexus. Lexy never stores them or
+            collects your information.
           </Text>
         </VStack>
       </ScrollView>

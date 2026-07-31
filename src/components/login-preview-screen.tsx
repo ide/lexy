@@ -88,7 +88,7 @@ function ScenarioRow({
           foregroundStyle({ type: "hierarchical", style: "secondary" }),
         ]}
       >
-        Preview scenario
+        Preview Scenario
       </Text>
       <Spacer />
       {/* A custom label (instead of the string form) so the menu trigger
@@ -162,22 +162,22 @@ function PreviewBody({
                 multilineTextAlignment("center"),
               ]}
             >
-              Signed in — preview only
+              You're Signed In
             </Text>
             <Text
               modifiers={[
-                font({ textStyle: "subheadline", weight: "medium" }),
+                font({ textStyle: "subheadline" }),
                 foregroundStyle({ type: "hierarchical", style: "secondary" }),
                 multilineTextAlignment("center"),
                 fixedSize({ horizontal: false, vertical: true }),
                 frame({ maxWidth: Infinity }),
               ]}
             >
-              This ran the real sign-in flow against a mock Lexus backend. Your actual session was
-              never touched and no real login happened.
+              This preview ran the real sign-in flow against a mock Lexus backend. Your actual
+              session was never touched, and no real sign-in happened.
             </Text>
             <Button
-              label="Run the flow again"
+              label="Run Again"
               onPress={onRestart}
               modifiers={[
                 buttonStyle("borderedProminent"),
