@@ -101,7 +101,7 @@ function ScenarioRow({
       <Image
         systemName="wrench.and.screwdriver.fill"
         size={14}
-        color={colors.secondaryLabel as string}
+        color={colors.secondaryLabel}
       />
       <Text
         modifiers={[
@@ -121,7 +121,7 @@ function ScenarioRow({
             <Image
               systemName={current.systemImage}
               size={14}
-              color={colors.systemBlue as string}
+              color={colors.systemBlue}
             />
             <Text
               modifiers={[
@@ -188,7 +188,7 @@ function PreviewBody({
             <Image
               systemName={"checkmark.seal.fill" as SFSymbol}
               size={56}
-              color={colors.systemGreen as string}
+              color={colors.systemGreen}
             />
             <Text
               modifiers={[
@@ -237,8 +237,8 @@ function PreviewBody({
   // baking the inset into the HStack's SwiftUI padding made `matchContents`
   // mis-measure and clip the row — hence letting RN handle the inset.)
   return (
-    <View style={{ flex: 1, backgroundColor: colors.groupedBackground as string }}>
-      <View style={{ paddingTop: insets.top, backgroundColor: colors.card as string }}>
+    <View style={{ flex: 1, backgroundColor: colors.groupedBackground }}>
+      <View style={{ paddingTop: insets.top, backgroundColor: colors.card }}>
         <Host matchContents>
           <ScenarioRow scenario={scenario} onSelect={onSelect} />
         </Host>

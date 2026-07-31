@@ -36,8 +36,8 @@ function RootNavigator() {
         headerTransparent: true,
         headerShadowVisible: false,
         headerBackButtonDisplayMode: "minimal",
-        headerTintColor: colors.systemBlue as string,
-        headerTitleStyle: { color: colors.label as string },
+        headerTintColor: colors.systemBlue,
+        headerTitleStyle: { color: colors.label },
         contentStyle: { backgroundColor: colors.groupedBackground },
         // The root stack only switches between the auth-boundary screens
         // (index → tabs, sign-in ↔ tabs). Those should appear in place, not

@@ -3,12 +3,7 @@ import { Pressable } from "react-native-gesture-handler";
 
 import { Icon } from "@/components/icon";
 import { colors } from "@/constants/theme";
-import { createTabStackScreenOptions } from "@/navigation/tab-stack-options";
-
-const tabStackScreenOptions = createTabStackScreenOptions({
-  label: colors.label as string,
-  groupedBackground: colors.groupedBackground as string,
-});
+import { tabStackScreenOptions } from "@/navigation/tab-stack-options-preset";
 
 // Anchor the stack to `index` so the map sheet (a formSheet) keeps the Status
 // screen behind it, including when the route is deep-linked.
@@ -26,7 +21,7 @@ function SheetCloseButton() {
       hitSlop={16}
       onPress={() => router.back()}
     >
-      <Icon name="xmark" size={19} tint={colors.label as string} />
+      <Icon name="xmark" size={19} tint={colors.label} />
     </Pressable>
   );
 }
@@ -50,7 +45,7 @@ export default function StatusLayout() {
           headerShown: true,
           headerLargeTitleEnabled: false,
           headerTransparent: false,
-          headerStyle: { backgroundColor: colors.groupedBackground as string },
+          headerStyle: { backgroundColor: colors.groupedBackground },
           title: "Last Parked",
           headerRight: () => <SheetCloseButton />,
         }}

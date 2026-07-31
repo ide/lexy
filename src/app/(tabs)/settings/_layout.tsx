@@ -1,12 +1,6 @@
 import { Stack } from "expo-router/stack";
 
-import { colors } from "@/constants/theme";
-import { createTabStackScreenOptions } from "@/navigation/tab-stack-options";
-
-const tabStackScreenOptions = createTabStackScreenOptions({
-  label: colors.label as string,
-  groupedBackground: colors.groupedBackground as string,
-});
+import { tabStackScreenOptions } from "@/navigation/tab-stack-options-preset";
 
 export default function SettingsLayout() {
   return (

@@ -88,7 +88,7 @@ function StateScreen({
         <Image
           systemName={symbol}
           size={44}
-          color={colors.secondaryLabel as string}
+          color={colors.secondaryLabel}
         />
         <Text
           modifiers={[

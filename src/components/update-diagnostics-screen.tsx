@@ -69,7 +69,7 @@ const NATIVE_LOG_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
 function Icon({
   name,
   size = 20,
-  tint = colors.label as string,
+  tint = colors.label,
 }: {
   name: SFSymbol;
   size?: number;
@@ -228,10 +228,10 @@ function KnownUpdateCard({ entry }: { entry: UpdateEntry }) {
   const isCurrent = entry.state === "Running now";
   const isReady = entry.state === "Downloaded · launches next";
   const accent = isCurrent
-    ? (colors.systemGreen as string)
+    ? colors.systemGreen
     : isReady
-      ? (colors.systemBlue as string)
-      : (colors.systemOrange as string);
+      ? colors.systemBlue
+      : colors.systemOrange;
 
   return (
     <Card spacing={Spacing.three}>
@@ -401,8 +401,8 @@ function NativeLogDisclosure({ entry }: { entry: Updates.UpdatesLogEntry }) {
   const isProblem =
     entry.level === "error" || entry.level === "fatal" || entry.level === "warn";
   const accent = isProblem
-    ? (colors.systemOrange as string)
-    : (colors.systemBlue as string);
+    ? colors.systemOrange
+    : colors.systemBlue;
   const detailRows = [
     entry.updateId ? `Update ${entry.updateId}` : null,
     entry.assetId ? `Asset ${entry.assetId}` : null,
@@ -564,7 +564,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
       icon: "exclamationmark.triangle.fill",
       title: "Updates disabled",
       detail: "This build is not configured to use expo-updates.",
-      color: colors.systemOrange as string,
+      color: colors.systemOrange,
     };
   }
   if (state.isRestarting) {
@@ -572,7 +572,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
       icon: "arrow.clockwise",
       title: "Reloading",
       detail: "Switching to the newest downloaded update.",
-      color: colors.systemBlue as string,
+      color: colors.systemBlue,
     };
   }
   if (state.isDownloading) {
@@ -580,7 +580,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
       icon: "arrow.down.circle.fill",
       title: `Downloading ${Math.round((state.downloadProgress ?? 0) * 100)}%`,
       detail: "The update will be ready to launch when the download completes.",
-      color: colors.systemBlue as string,
+      color: colors.systemBlue,
     };
   }
   if (state.isChecking) {
@@ -588,7 +588,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
       icon: "magnifyingglass",
       title: "Checking for updates",
       detail: "Contacting the update server for this channel and runtime.",
-      color: colors.systemBlue as string,
+      color: colors.systemBlue,
     };
   }
   if (state.isUpdatePending) {
@@ -596,7 +596,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
       icon: "arrow.down.circle.fill",
       title: "Update ready",
       detail: "Downloaded and scheduled for the next reload or cold launch.",
-      color: colors.systemGreen as string,
+      color: colors.systemGreen,
     };
   }
   if (state.isUpdateAvailable) {
@@ -604,7 +604,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
       icon: "sparkles",
       title: "Update available",
       detail: "A compatible update is available but has not been downloaded.",
-      color: colors.systemOrange as string,
+      color: colors.systemOrange,
     };
   }
   return {
@@ -613,7 +613,7 @@ function statusFor(state: ReturnType<typeof Updates.useUpdates>): {
     detail: state.lastCheckForUpdateTimeSinceRestart
       ? "No newer compatible update was found at the last check."
       : "Use Check Now to ask the update server for the latest version.",
-    color: colors.systemGreen as string,
+    color: colors.systemGreen,
   };
 }
 

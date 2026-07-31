@@ -173,7 +173,7 @@ function Hero({
           <Image
             systemName={icon}
             size={26}
-            color={colors.systemBlue as string}
+            color={colors.systemBlue}
           />
         </ZStack>
         <Text
@@ -333,7 +333,7 @@ function ErrorNotice({ message }: { message: string }) {
       <Image
         systemName="exclamationmark.triangle.fill"
         size={18}
-        color={colors.systemOrange as string}
+        color={colors.systemOrange}
       />
       <Text
         modifiers={[
