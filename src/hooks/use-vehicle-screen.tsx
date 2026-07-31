@@ -6,6 +6,7 @@ import type { RedactionReason } from "@/components/redactable";
 import { StatusBanner } from "@/components/status-banner";
 import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
+import { describeFailure } from "@/data/load-error";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
@@ -56,6 +57,11 @@ export function useVehicleScreen() {
   const redaction: RedactionReason =
     forceSkeleton || isLoading ? "loading" : !data && !isOnline ? "unavailable" : null;
 
+  // Why the load failed, in words a person can act on ("a permission problem",
+  // "a server error", "the network connection failed"…), for both the
+  // full-screen error and the couldn't-refresh banner.
+  const failure = error ? describeFailure(error) : null;
+
   // Non-null exactly when there is nothing to render at all — the caller
   // returns it (under its own Stack.Screen title) instead of the content tree.
   const errorScreen =
@@ -63,7 +69,7 @@ export function useVehicleScreen() {
       error instanceof NoVehicleError ? (
         <NoVehicleState retry={() => refetch()} />
       ) : (
-        <VehicleError retry={() => refetch()} />
+        <VehicleError retry={() => refetch()} detail={failure?.advice} />
       )
     ) : null;
 
@@ -83,13 +89,13 @@ export function useVehicleScreen() {
       title="You're offline"
       detail={data ? "Showing the latest data we saved." : "Reconnect to see your vehicle."}
     />
-  ) : error && data ? (
+  ) : failure && data ? (
     // Online, the fetch failed, but there is cached data to keep showing. The
     // data-less version of this is `errorScreen` above.
     <StatusBanner
       symbol="exclamationmark.triangle.fill"
       title="Couldn't refresh"
-      detail="Showing the latest data we saved."
+      detail={`${failure.summary} Showing the latest data we saved.`}
     />
   ) : null;
 

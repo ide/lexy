@@ -104,7 +104,7 @@ function ControlButton({
  * real response is available.
  */
 export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
-  const { session } = useAuth();
+  const { session, runAuthorized } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const enabled = !busy && !!session;
@@ -132,7 +132,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
     };
     setBusy(true);
     haptic("impact-medium");
-    sendRemoteCommand(session, context, control.command, expoFetch)
+    runAuthorized((session) => sendRemoteCommand(session, context, control.command, expoFetch))
       .then(async () => {
         haptic("success");
         // Acceptance, not completion; the optimistic fold and the reconciling

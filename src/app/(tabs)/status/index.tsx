@@ -69,7 +69,7 @@ function FooterTimeRow({ label, timestamp }: { label: string; timestamp: string 
 export default function CarDashboard() {
   const { query, vehicle, redaction, headerRight, errorScreen, statusBanner } = useVehicleScreen();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = query;
-  const { session } = useAuth();
+  const { session, runAuthorized } = useAuth();
   // Set only while a pull-to-refresh is in flight, so its native spinner is the
   // sole indicator during a manual refresh (see autoRefreshing below).
   const [manualRefreshing, setManualRefreshing] = useState(false);
@@ -94,11 +94,17 @@ export default function CarDashboard() {
       // Read the context off `data`, never the placeholder: pulling on
       // the skeleton must not address a VIN that isn't a car.
       if (session && data) {
-        await refreshVehicleStatus(session, {
-          vin: data.vin,
-          brand: data.brand,
-          generation: data.generation,
-        });
+        // The prime signals auth failures (401/403) so runAuthorized can
+        // refresh the token and retry it once; any other failure — including a
+        // dead session — still falls through to the plain refetch below, which
+        // surfaces the real state.
+        await runAuthorized((session) =>
+          refreshVehicleStatus(session, {
+            vin: data.vin,
+            brand: data.brand,
+            generation: data.generation,
+          }),
+        ).catch(() => {});
       }
       // Climate settings live in their own query and can change out from
       // under us (the official Lexus app edits the same settings), so a

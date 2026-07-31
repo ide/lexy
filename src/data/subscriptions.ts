@@ -1,5 +1,5 @@
 import type { LexusSession, RequestLike } from "@/auth/lexus-auth";
-import { LEXUS_HOSTS, businessHeaders, type VehicleContext } from "./lexus-api";
+import { LEXUS_HOSTS, LexusApiError, businessHeaders, type VehicleContext } from "./lexus-api";
 
 // Connected-services subscription state for a vehicle: the "all services" list
 // (Remote/Safety/Service/Drive/Wi-Fi Connect), bucketed into paid/trial/
@@ -148,8 +148,9 @@ function subscriptionHeaders(
 async function readPayload<T>(response: Response): Promise<T> {
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(
+    throw new LexusApiError(
       `Lexus subscriptions request failed (${response.status}): ${text.slice(0, 300)}`,
+      response.status,
     );
   }
   return (JSON.parse(text) as { payload: T }).payload;

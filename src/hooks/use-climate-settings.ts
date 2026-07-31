@@ -11,7 +11,7 @@ import {
   type ClimateSettings,
   type DefrostName,
 } from "@/data/climate-settings";
-import { VEHICLE_CLIMATE_ENDPOINT, vehicleHeaders } from "@/data/lexus-api";
+import { LexusApiError, VEHICLE_CLIMATE_ENDPOINT, vehicleHeaders } from "@/data/lexus-api";
 import { PLACEHOLDER_CLIMATE_SETTINGS } from "@/data/placeholder-vehicle";
 import type { Vehicle } from "@/data/vehicle";
 
@@ -35,7 +35,7 @@ export function useClimateSettings(
    */
   { placeholder = false }: { placeholder?: boolean } = {},
 ) {
-  const { session } = useAuth();
+  const { session, runAuthorized } = useAuth();
   const queryClient = useQueryClient();
   // The vehicle-scoped headers need VIN + brand + generation, all of which the
   // loaded vehicle carries.
@@ -44,20 +44,24 @@ export function useClimateSettings(
   const query = useQuery({
     queryKey: CLIMATE_SETTINGS_QUERY_KEY,
     enabled: session !== null && !placeholder,
-    queryFn: async ({ signal }): Promise<ClimateSettings> => {
-      const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
-        headers: vehicleHeaders(session!, context),
-        signal,
-      });
-      if (!response.ok) {
-        throw new Error(`Climate settings request failed (${response.status})`);
-      }
-      const settings = parseClimateSettings(await response.json());
-      if (!settings) {
-        throw new Error("Unrecognized climate settings response");
-      }
-      return settings;
-    },
+    queryFn: ({ signal }): Promise<ClimateSettings> =>
+      runAuthorized(async (session) => {
+        const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
+          headers: vehicleHeaders(session, context),
+          signal,
+        });
+        if (!response.ok) {
+          throw new LexusApiError(
+            `Climate settings request failed (${response.status})`,
+            response.status,
+          );
+        }
+        const settings = parseClimateSettings(await response.json());
+        if (!settings) {
+          throw new Error("Unrecognized climate settings response");
+        }
+        return settings;
+      }),
   });
 
   // Writes are optimistic: the cache takes the new settings immediately (the
@@ -65,29 +69,30 @@ export function useClimateSettings(
   // back only if the server rejects the change.
   const mutation = useMutation({
     mutationKey: CLIMATE_SETTINGS_QUERY_KEY,
-    mutationFn: async (updated: ClimateSettings) => {
-      if (!session) {
-        throw new Error("Sign in to change climate settings");
-      }
-      const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
-        method: "PUT",
-        headers: {
-          ...vehicleHeaders(session, context),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updated),
-      });
-      if (!response.ok) {
-        throw new Error(`Saving climate settings failed (${response.status})`);
-      }
-      // The PUT response echoes the settings, but re-read to confirm the
-      // server stored them rather than trusting the echo.
-      const confirm = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
-        headers: vehicleHeaders(session, context),
-      });
-      const confirmed = confirm.ok ? parseClimateSettings(await confirm.json()) : null;
-      return confirmed ?? updated;
-    },
+    mutationFn: (updated: ClimateSettings) =>
+      runAuthorized(async (session) => {
+        const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
+          method: "PUT",
+          headers: {
+            ...vehicleHeaders(session, context),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updated),
+        });
+        if (!response.ok) {
+          throw new LexusApiError(
+            `Saving climate settings failed (${response.status})`,
+            response.status,
+          );
+        }
+        // The PUT response echoes the settings, but re-read to confirm the
+        // server stored them rather than trusting the echo.
+        const confirm = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
+          headers: vehicleHeaders(session, context),
+        });
+        const confirmed = confirm.ok ? parseClimateSettings(await confirm.json()) : null;
+        return confirmed ?? updated;
+      }),
     onMutate: async (updated: ClimateSettings) => {
       await queryClient.cancelQueries({ queryKey: CLIMATE_SETTINGS_QUERY_KEY });
       const previous = queryClient.getQueryData<ClimateSettings>(CLIMATE_SETTINGS_QUERY_KEY);

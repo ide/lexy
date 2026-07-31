@@ -3,6 +3,7 @@ import { fetch } from "expo/fetch";
 
 import type { LexusSession } from "@/auth/lexus-auth";
 import {
+  LexusApiError,
   VEHICLE_CLIMATE_ENDPOINT,
   VEHICLE_DISCOVERY_ENDPOINT,
   VEHICLE_SPEC_ENDPOINT,
@@ -26,7 +27,7 @@ import {
 async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   const response = await fetch(url, { headers, signal });
   if (!response.ok) {
-    throw new Error(`Lexus request failed (${response.status})`);
+    throw new LexusApiError(`Lexus request failed (${response.status})`, response.status);
   }
   return response.json();
 }
