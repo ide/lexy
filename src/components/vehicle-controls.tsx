@@ -1,12 +1,10 @@
 import {
   Button,
-  Capsule,
   GlassEffectContainer,
   HStack,
   Host,
   Image as SFImage,
   Namespace,
-  RoundedRectangle,
   Text as SFText,
   VStack,
 } from "@expo/ui/swift-ui";
@@ -17,9 +15,9 @@ import {
   foregroundColor,
   frame,
   glassEffectId,
+  hidden,
   padding,
   redacted,
-  unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useState } from "react";
@@ -100,12 +98,6 @@ const ENGINE_STOP: Control = {
   destructive: false,
   actionLabel: "Stop engine",
 };
-
-// The redacted stand-ins for a button's icon and label, sized to the real
-// thing. Generously rounded on purpose — the sharp corners are what make a
-// default placeholder read as a rectangle rather than as content.
-const PLACEHOLDER_ICON = { size: { width: 24, height: 24 }, radius: 9 };
-const PLACEHOLDER_LABEL = { width: 42, height: 11 };
 
 /** The window a just-issued engine command has to show up in engine-status. */
 const ENGINE_PENDING_MS = ENGINE_POLL_COUNT * ENGINE_POLL_INTERVAL_MS;
@@ -272,8 +264,10 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           redaction the way the cards around it do — left alone it renders fully
           live (real icons, real labels, real glass) against a screen of grey
           skeleton bars. `redacted` is SwiftUI's own modifier, so the glass
-          shells keep their shape and only their contents become placeholders;
-          `disabled` keeps them from actuating a car we have no data for. */}
+          shells keep their shape; their contents are hidden rather than
+          placeholdered (see below), so what is left is the buttons' own
+          outlines at their own size. `disabled` keeps them from actuating a car
+          we have no data for. */}
       <Host
         style={styles.row}
         modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
@@ -309,47 +303,30 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
                     spacing={Spacing.one}
                     modifiers={[padding({ vertical: Spacing.two }), frame({ maxWidth: Infinity })]}
                   >
-                    {isRedacted ? (
-                      // Drawn by hand rather than left to `redacted`, which
-                      // placeholders a symbol as a hard-cornered rect in the
-                      // symbol's own color — three sharp, faintly tinted specks.
-                      // `unredacted` exempts these from the Host's redaction so
-                      // they render exactly as specified; the shells above still
-                      // redact, which is what keeps the button outlines.
-                      <>
-                        <RoundedRectangle
-                          cornerRadius={PLACEHOLDER_ICON.radius}
-                          modifiers={[
-                            unredacted(),
-                            frame(PLACEHOLDER_ICON.size),
-                            foregroundColor(colors.fill),
-                          ]}
-                        />
-                        <Capsule
-                          modifiers={[
-                            unredacted(),
-                            frame(PLACEHOLDER_LABEL),
-                            foregroundColor(colors.fill),
-                          ]}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <SFImage systemName={control.symbol} size={22} color={control.tint} />
-                        {/* A glass button tints its label with the accent color,
-                            which turns every label blue. The label is text, not
-                            an action color — the icon already carries the
-                            action. */}
-                        <SFText
-                          modifiers={[
-                            font({ textStyle: "footnote", weight: "semibold" }),
-                            foregroundColor(colors.label),
-                          ]}
-                        >
-                          {control.label}
-                        </SFText>
-                      </>
-                    )}
+                    {/* The real icon and label, drawn or not. `hidden` keeps
+                        a view in the layout while suppressing its drawing, so
+                        the redacted row is laid out by exactly the content it
+                        is standing in for — the shells are the live shells,
+                        to the point, with no stand-in geometry to keep in sync
+                        and nothing to jump when the data lands. */}
+                    <SFImage
+                      systemName={control.symbol}
+                      size={22}
+                      color={control.tint}
+                      modifiers={[hidden(isRedacted)]}
+                    />
+                    {/* A glass button tints its label with the accent color,
+                        which turns every label blue. The label is text, not an
+                        action color — the icon already carries the action. */}
+                    <SFText
+                      modifiers={[
+                        font({ textStyle: "footnote", weight: "semibold" }),
+                        foregroundColor(colors.label),
+                        hidden(isRedacted),
+                      ]}
+                    >
+                      {control.label}
+                    </SFText>
                   </VStack>
                 </Button>
               ))}
