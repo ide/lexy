@@ -166,46 +166,35 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
           </HStack>
         </DisclosureGroup.Label>
 
+        {/* The detail breathes on the card itself — the corner titles carry
+            the grouping, so no surface or border boxes the grid in. */}
         <VStack
           alignment="leading"
-          spacing={Spacing.two}
+          spacing={Spacing.three}
           modifiers={[
             frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({ top: Spacing.one }),
+            padding({ top: Spacing.one, bottom: Spacing.one }),
           ]}
         >
-          {rows.length > 0 ? (
-            // One quiet surface for all four corners, keeping the spatial
-            // driver/passenger × front/rear arrangement.
-            <VStack
-              alignment="leading"
+          {rows.map((rowCorners) => (
+            <HStack
+              key={rowCorners[0].row}
+              alignment="top"
               spacing={Spacing.three}
-              modifiers={[
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-                padding({ all: Spacing.three - Spacing.one }),
-                background(
-                  colors.subtleFill,
-                  shapes.roundedRectangle({ cornerRadius: 12, roundedCornerStyle: "continuous" }),
-                ),
-              ]}
+              modifiers={[frame({ maxWidth: Infinity })]}
             >
-              {rows.map((rowCorners) => (
-                <HStack
-                  key={rowCorners[0].row}
-                  alignment="top"
-                  spacing={Spacing.three}
-                  modifiers={[frame({ maxWidth: Infinity })]}
-                >
-                  {rowCorners.map((corner) => (
-                    <CornerCell key={corner.key} corner={corner} />
-                  ))}
-                </HStack>
+              {rowCorners.map((corner) => (
+                <CornerCell key={corner.key} corner={corner} />
+              ))}
+            </HStack>
+          ))}
+          {openings.length > 0 ? (
+            <VStack alignment="leading" spacing={Spacing.two}>
+              {openings.map((opening) => (
+                <StatusLine key={opening.label} status={openingStatus(opening)} />
               ))}
             </VStack>
           ) : null}
-          {openings.map((opening) => (
-            <StatusLine key={opening.label} status={openingStatus(opening)} />
-          ))}
         </VStack>
       </DisclosureGroup>
     </Host>
