@@ -1,9 +1,7 @@
 import {
   Button,
   Divider,
-  HStack,
   Host,
-  Image,
   ScrollView,
   SecureField,
   type SecureFieldRef,
@@ -11,16 +9,13 @@ import {
   Text,
   TextField,
   VStack,
-  ZStack,
 } from "@expo/ui/swift-ui";
 import {
   Animation,
   animation,
   autocorrectionDisabled,
   background,
-  bold,
   buttonStyle,
-  contentShape,
   controlSize,
   disabled as disabledModifier,
   fixedSize,
@@ -39,320 +34,29 @@ import {
   textInputAutocapitalization,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
-import * as Haptics from "expo-haptics";
-import * as Linking from "expo-linking";
 import { useObserve } from "expo-observe";
 import { useEffect, useRef, useState } from "react";
-import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
-import type { AuthenticationStep } from "@/auth/lexus-auth";
+import {
+  choiceIcon,
+  otpCopy,
+  signInHero,
+  signInScreenFor,
+} from "@/auth/sign-in-copy";
+import {
+  ErrorNotice,
+  Hero,
+  NewToLexusCallout,
+  PrimaryButton,
+  SecondaryAction,
+} from "@/components/sign-in/sign-in-elements";
 import { Spacing, colors } from "@/constants/theme";
+import { haptic } from "@/utils/haptics";
 
-/**
- * The slice of auth state the sign-in UI renders. The real screen wires this to
- * `useAuth()`, but the Development tab's login preview supplies a mock so the
- * flow can be walked without any network calls or session changes.
- */
-export type SignInController = {
-  busy: boolean;
-  canChangeMethod: boolean;
-  changeMethod: () => void | Promise<void>;
-  choices: string[];
-  error: string | null;
-  method: string | null;
-  prompt: string | null;
-  resendCode: () => void | Promise<void>;
-  step: AuthenticationStep | null;
-  submit: (value: string | number) => void | Promise<void>;
-  submitCredentials: (username: string, password: string) => void | Promise<void>;
-};
-
-type Screen = "credentials" | "choice" | "otp";
-
-// The official Lexus app (Toyota Motor Sales) — where drivers create their
-// Lexus account and enroll a vehicle. Lexy signs in with those credentials.
-const LEXUS_APP_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
-
-function tapImpact() {
-  if (process.env.EXPO_OS === "ios") {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
-}
-
-function openLexusApp() {
-  tapImpact();
-  Linking.openURL(LEXUS_APP_URL);
-}
-
-// The OTP node's server prompt is often generic, so the copy (and icon) are
-// derived from the verification method the user actually chose. This is what
-// keeps an email selection from mislabeling its screen as an SMS code.
-function otpCopy(method: string | null): {
-  icon: SFSymbol;
-  title: string;
-  subtitle: string;
-  placeholder: string;
-} {
-  const normalized = (method ?? "").toLowerCase();
-  if (normalized.includes("email") || normalized.includes("e-mail")) {
-    return {
-      icon: "envelope.fill",
-      title: "Enter your email code",
-      subtitle: "We sent a verification code to your email.",
-      placeholder: "Email code",
-    };
-  }
-  if (
-    normalized.includes("sms") ||
-    normalized.includes("text") ||
-    normalized.includes("phone") ||
-    normalized.includes("mobile") ||
-    normalized.includes("call")
-  ) {
-    return {
-      icon: "message.fill",
-      title: "Enter your SMS code",
-      subtitle: "We texted a verification code to your phone.",
-      placeholder: "SMS code",
-    };
-  }
-  return {
-    icon: "number",
-    title: "Enter your verification code",
-    subtitle: "Enter the code from your chosen verification method.",
-    placeholder: "Verification code",
-  };
-}
-
-function choiceIcon(choice: string): SFSymbol {
-  const normalized = choice.toLowerCase();
-  if (normalized.includes("email") || normalized.includes("e-mail")) {
-    return "envelope";
-  }
-  if (
-    normalized.includes("sms") ||
-    normalized.includes("text") ||
-    normalized.includes("phone") ||
-    normalized.includes("mobile") ||
-    normalized.includes("call")
-  ) {
-    return "message";
-  }
-  return "shield.lefthalf.filled";
-}
-
-function Hero({
-  icon,
-  title,
-  subtitle,
-}: {
-  icon: SFSymbol;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <VStack
-      alignment="leading"
-      spacing={Spacing.three}
-      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-    >
-      <HStack alignment="center" spacing={Spacing.three}>
-        <ZStack
-          modifiers={[
-            frame({ width: 56, height: 56 }),
-            background(
-              colors.card,
-              shapes.roundedRectangle({
-                cornerRadius: 18,
-                roundedCornerStyle: "continuous",
-              }),
-            ),
-          ]}
-        >
-          <Image
-            systemName={icon}
-            size={26}
-            color={colors.systemBlue}
-          />
-        </ZStack>
-        <Text
-          modifiers={[
-            font({ textStyle: "title", weight: "bold" }),
-            fixedSize({ horizontal: false, vertical: true }),
-          ]}
-        >
-          {title}
-        </Text>
-      </HStack>
-      <Text
-        modifiers={[
-          font({ textStyle: "subheadline", weight: "medium" }),
-          foregroundStyle({ type: "hierarchical", style: "secondary" }),
-          fixedSize({ horizontal: false, vertical: true }),
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-        ]}
-      >
-        {subtitle}
-      </Text>
-    </VStack>
-  );
-}
-
-function PrimaryButton({
-  busy,
-  disabled,
-  label,
-  onPress,
-}: {
-  busy: boolean;
-  disabled: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Button
-      onPress={onPress}
-      modifiers={[
-        buttonStyle("borderedProminent"),
-        controlSize("large"),
-        tint(colors.systemBlue),
-        disabledModifier(disabled),
-        frame({ maxWidth: Infinity }),
-      ]}
-    >
-      {/* A full-width *label* is what stretches a bordered button edge to edge;
-          `frame(maxWidth: Infinity)` on the Button alone leaves it hugging its
-          text and centered in the column. */}
-      <Text
-        modifiers={[
-          font({ textStyle: "body", weight: "semibold" }),
-          foregroundStyle("white"),
-          frame({ maxWidth: Infinity }),
-          padding({ vertical: Spacing.one }),
-        ]}
-      >
-        {busy ? `${label}…` : label}
-      </Text>
-    </Button>
-  );
-}
-
-function SecondaryAction({
-  disabled,
-  label,
-  onPress,
-}: {
-  disabled: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Button
-      label={label}
-      onPress={onPress}
-      modifiers={[
-        buttonStyle("plain"),
-        controlSize("large"),
-        tint(colors.systemBlue),
-        disabledModifier(disabled),
-        frame({ maxWidth: Infinity }),
-      ]}
-    />
-  );
-}
-
-function NewToLexusCallout() {
-  return (
-    <Button
-      onPress={openLexusApp}
-      modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
-    >
-      <VStack
-        alignment="leading"
-        spacing={Spacing.two}
-        modifiers={[
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-          contentShape(shapes.rectangle()),
-          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
-          background(
-            colors.card,
-            shapes.roundedRectangle({
-              cornerRadius: 14,
-              roundedCornerStyle: "continuous",
-            }),
-          ),
-        ]}
-      >
-        <Text
-          modifiers={[
-            font({ textStyle: "footnote", weight: "bold" }),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
-          Don't have a Lexus account yet?
-        </Text>
-        {/* One paragraph. "your" stays bold; the App Store line flows inline in
-            blue (same weight as the sentence) via nested Text concatenation. */}
-        <Text
-          modifiers={[
-            font({ textStyle: "footnote", weight: "medium" }),
-            foregroundStyle({ type: "hierarchical", style: "secondary" }),
-            fixedSize({ horizontal: false, vertical: true }),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
-          Create <Text modifiers={[bold()]}>your</Text> account and add your car
-          in the Lexus app, then come back here to sign in.{" "}
-          <Text modifiers={[foregroundStyle(colors.systemBlue)]}>
-            Get the Lexus app from the App Store.
-          </Text>
-        </Text>
-      </VStack>
-    </Button>
-  );
-}
-
-function ErrorNotice({ message }: { message: string }) {
-  return (
-    <HStack
-      alignment="center"
-      spacing={Spacing.two}
-      modifiers={[
-        frame({ maxWidth: Infinity, alignment: "leading" }),
-        padding({ horizontal: Spacing.three, vertical: Spacing.three }),
-        background(
-          colors.card,
-          shapes.roundedRectangle({
-            cornerRadius: 14,
-            roundedCornerStyle: "continuous",
-          }),
-        ),
-      ]}
-    >
-      <Image
-        systemName="exclamationmark.triangle.fill"
-        size={18}
-        color={colors.systemOrange}
-      />
-      <Text
-        modifiers={[
-          font({ textStyle: "footnote", weight: "medium" }),
-          fixedSize({ horizontal: false, vertical: true }),
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-        ]}
-      >
-        {message}
-      </Text>
-    </HStack>
-  );
-}
+const SCREEN_ORDER = ["credentials", "choice", "otp"] as const;
 
 export default function SignInScreen() {
-  return <SignInView controller={useAuth()} />;
-}
-
-export function SignInView({ controller }: { controller: SignInController }) {
   const {
     busy,
     canChangeMethod,
@@ -365,7 +69,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
     step,
     submit,
     submitCredentials,
-  } = controller;
+  } = useAuth();
   const { markInteractive } = useObserve();
 
   const [email, setEmail] = useState("");
@@ -398,71 +102,59 @@ export function SignInView({ controller }: { controller: SignInController }) {
     markInteractive();
   }, [markInteractive]);
 
-  const screen: Screen =
-    step === "choice" ? "choice" : step === "otp" ? "otp" : "credentials";
+  const screen = signInScreenFor(step);
   // A numeric key for the `animation(...)` dependency so switching screens
   // animates the relayout rather than snapping.
-  const screenIndex = screen === "credentials" ? 0 : screen === "choice" ? 1 : 2;
+  const screenIndex = SCREEN_ORDER.indexOf(screen);
 
-  const signIn = () => {
-    if (busy || email.trim().length === 0 || password.length === 0) {
-      return;
-    }
-    tapImpact();
-    dismissKeyboard();
-    submitCredentials(email.trim(), password);
-  };
-
-  const chooseMethod = (index: number) => {
+  // Every action ignores taps while busy and gives light impact feedback;
+  // callers add their own field-emptiness guards before this one.
+  const guarded = (run: () => void) => {
     if (busy) {
       return;
     }
-    tapImpact();
-    submit(index);
+    haptic("impact-light");
+    run();
   };
 
-  const verify = () => {
-    if (busy || code.trim().length === 0) {
+  const signIn = () => {
+    if (email.trim().length === 0 || password.length === 0) {
       return;
     }
-    tapImpact();
-    dismissKeyboard();
-    submit(code.trim());
+    guarded(() => {
+      dismissKeyboard();
+      submitCredentials(email.trim(), password);
+    });
+  };
+
+  const chooseMethod = (index: number) => guarded(() => submit(index));
+
+  const verify = () => {
+    if (code.trim().length === 0) {
+      return;
+    }
+    guarded(() => {
+      dismissKeyboard();
+      submit(code.trim());
+    });
   };
 
   // Resend a fresh code / switch delivery method by restarting verification. The
   // previously entered code is cleared since it's no longer the active one.
-  const resend = () => {
-    if (busy) {
-      return;
-    }
-    tapImpact();
-    setCode("");
-    resendCode();
-  };
+  const resend = () =>
+    guarded(() => {
+      setCode("");
+      resendCode();
+    });
 
-  const switchMethod = () => {
-    if (busy) {
-      return;
-    }
-    tapImpact();
-    setCode("");
-    changeMethod();
-  };
+  const switchMethod = () =>
+    guarded(() => {
+      setCode("");
+      changeMethod();
+    });
 
   const otp = otpCopy(method);
-  const hero =
-    screen === "choice"
-      ? { icon: "lock.shield.fill" as SFSymbol, title: "Verify it's you" }
-      : screen === "otp"
-        ? { icon: otp.icon, title: otp.title }
-        : { icon: "key.fill" as SFSymbol, title: "Sign in" };
-  const subtitle =
-    screen === "credentials"
-      ? "Sign in with your Lexus account."
-      : screen === "choice"
-        ? (prompt ?? "Choose how you'd like to receive your verification code.")
-        : (prompt ?? otp.subtitle);
+  const hero = signInHero(screen, method, prompt);
 
   return (
     <Host
@@ -486,7 +178,7 @@ export function SignInView({ controller }: { controller: SignInController }) {
             animation(Animation.spring({ duration: 0.35 }), screenIndex),
           ]}
         >
-          <Hero icon={hero.icon} title={hero.title} subtitle={subtitle} />
+          <Hero icon={hero.icon} title={hero.title} subtitle={hero.subtitle} />
 
           {screen === "credentials" ? (
             <VStack spacing={Spacing.three} modifiers={[frame({ maxWidth: Infinity })]}>
