@@ -286,9 +286,12 @@ export default function SignInScreen() {
                   ),
                 ]}
               />
+              {/* Like the sign-in button: only the empty-field state dims the
+                  button — while busy it stays prominent (verify() guards the
+                  double submit) instead of flickering to disabled grey. */}
               <PrimaryButton
                 busy={busy}
-                disabled={busy || code.trim().length === 0}
+                disabled={code.trim().length === 0}
                 label="Verify"
                 onPress={verify}
               />
