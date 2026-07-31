@@ -145,6 +145,11 @@ export function applyOptimisticLock(
   return { vin, closures, seq: base.seq };
 }
 
+/** Whether any closure still carries an unconfirmed optimistic lock prediction. */
+export function hasOptimisticLock(store: ClosureStore | null): boolean {
+  return Object.values(store?.closures ?? {}).some((record) => record.locked?.optimistic);
+}
+
 /**
  * The materialized display state: every closure ever observed, in first-seen
  * order, each field carrying its value and observation time. This is what the
