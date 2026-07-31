@@ -9,16 +9,13 @@ import {
   VStack,
 } from "@expo/ui/swift-ui";
 import {
-  background,
   buttonStyle,
-  frame,
   disabled as disabledModifier,
   font,
   foregroundColor,
-  padding,
-  redacted,
+  frame,
   glassEffectId,
-  shapes,
+  padding,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useState } from "react";
@@ -115,9 +112,9 @@ type EngineCommand = "engine-start" | "engine-stop";
  * These are real SwiftUI buttons rather than RN pressables: Liquid Glass gives
  * the row edge definition against the flat cards around it, and the native
  * control brings its own pressed/disabled/accessibility behavior instead of the
- * JS opacity swaps this used to fake. The glass is backed by an opaque card
- * fill — the effect is here for the rim and the specular edge, not to see
- * through to the background.
+ * JS opacity swaps this used to fake. The glass shell is the whole button — no
+ * fill behind it, or that fill's corners show around the shell and each button
+ * reads as sitting inside a container.
  *
  * Subscription/entitlement gating is intentionally not wired: the
  * `vehicle-subscriptions` response shape hasn't been captured, so there's no
@@ -262,77 +259,82 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           and three of those would collapse the row three times over. The height
           is pinned for the same reason — 76pt measured from the live row. */}
       {/* The row is SwiftUI, so it does not inherit the RN `Redactable` tree's
-          redaction the way the cards around it do — without this it renders
-          fully live (real icons, real labels, real glass) against a screen of
-          grey skeleton bars. `redacted` is the genuine SwiftUI modifier, so the
-          glass shells stay and only their contents become placeholders, which
-          is exactly the shape the other cards skeletonize into; `disabled`
-          keeps them from actuating a car we have no data for. */}
-      <Host style={styles.row} modifiers={isRedacted ? [redacted("placeholder")] : undefined}>
-        <Namespace id={namespaceId}>
-          <GlassEffectContainer spacing={Spacing.two}>
-            <HStack spacing={Spacing.two}>
-              {controls.map((control, slot) => (
-                <Button
-                  // Keyed by slot, not command: the engine button must stay the
-                  // same React element across the Start→Stop swap, or it is
-                  // torn down and rebuilt and there is nothing left to morph.
-                  key={slot}
-                  onPress={() => confirm(control)}
-                  modifiers={[
-                    buttonStyle("glass"),
-                    // An opaque card fill *behind* the glass shell. Liquid Glass
-                    // is here for the rim and the specular edge — the row sits
-                    // on a flat grouped background with nothing worth
-                    // refracting, so letting it show through would read as
-                    // washed out rather than present.
-                    background(
-                      colors.card,
-                      shapes.roundedRectangle({
-                        cornerRadius: 18,
-                        roundedCornerStyle: "continuous",
-                      }),
-                    ),
-                    // Identity is per *slot*, not per command, for the same
-                    // reason as the key: the engine slot keeps one id across
-                    // the Start→Stop swap so the glass morphs in place.
-                    glassEffectId(`control-${slot}`, namespaceId),
-                    disabledModifier(!enabled),
-                  ]}
-                >
-                  {/* The width lives on the *label*, not the Button: a glass
+          redaction the way the cards around it do — left alone it renders fully
+          live (real icons, real labels, real glass) against a screen of grey
+          skeleton bars.
+          
+          SwiftUI's own `redacted` modifier is the obvious lever, but it
+          placeholders each *element* — it leaves the glass shell drawn with two
+          small bars rattling around inside it, which is not the shape the rest
+          of the skeleton uses. The other cards skeletonize into one solid block
+          per card, so these do too: a flat fill the size of the button, built
+          from the same row layout so the bars land exactly where the buttons
+          will. (Same reasoning as the hero button's placeholder in
+          hero-card.tsx.) */}
+      {isRedacted ? (
+        <View style={styles.row}>
+          <View style={styles.placeholderRow}>
+            {controls.map((_control, slot) => (
+              <View key={slot} style={styles.placeholder} />
+            ))}
+          </View>
+        </View>
+      ) : (
+        <Host style={styles.row}>
+          <Namespace id={namespaceId}>
+            <GlassEffectContainer spacing={Spacing.two}>
+              <HStack spacing={Spacing.two}>
+                {controls.map((control, slot) => (
+                  <Button
+                    // Keyed by slot, not command: the engine button must stay the
+                    // same React element across the Start→Stop swap, or it is
+                    // torn down and rebuilt and there is nothing left to morph.
+                    key={slot}
+                    onPress={() => confirm(control)}
+                    modifiers={[
+                      // No separate background fill behind this: the glass shell
+                      // has its own shape and inset, so painting a rect across the
+                      // button's full frame leaves that rect's corners showing
+                      // around the shell — the button reads as sitting inside a
+                      // container. The shell *is* the button.
+                      buttonStyle("glass"),
+                      // Identity is per *slot*, not per command, for the same
+                      // reason as the key: the engine slot keeps one id across
+                      // the Start→Stop swap so the glass morphs in place.
+                      glassEffectId(`control-${slot}`, namespaceId),
+                      disabledModifier(!enabled),
+                    ]}
+                  >
+                    {/* The width lives on the *label*, not the Button: a glass
                       button's shell wraps its label, so sizing the button
                       leaves a content-sized pill floating in an empty frame. */}
-                  <VStack
-                    spacing={Spacing.one}
-                    modifiers={[padding({ vertical: Spacing.two }), frame({ maxWidth: Infinity })]}
-                  >
-                    {/* Redaction draws the symbol as a block in its own color,
-                        which would leave three tinted squares in a skeleton
-                        that is grey everywhere else. */}
-                    <SFImage
-                      systemName={control.symbol}
-                      size={22}
-                      color={isRedacted ? colors.secondaryLabel : control.tint}
-                    />
-                    {/* A glass button tints its label with the accent color,
-                        which turns every label blue. The label is text, not an
-                        action color — the icon already carries the action. */}
-                    <SFText
+                    <VStack
+                      spacing={Spacing.one}
                       modifiers={[
-                        font({ textStyle: "footnote", weight: "semibold" }),
-                        foregroundColor(colors.label),
+                        padding({ vertical: Spacing.two }),
+                        frame({ maxWidth: Infinity }),
                       ]}
                     >
-                      {control.label}
-                    </SFText>
-                  </VStack>
-                </Button>
-              ))}
-            </HStack>
-          </GlassEffectContainer>
-        </Namespace>
-      </Host>
+                      <SFImage systemName={control.symbol} size={22} color={control.tint} />
+                      {/* A glass button tints its label with the accent color,
+                        which turns every label blue. The label is text, not an
+                        action color — the icon already carries the action. */}
+                      <SFText
+                        modifiers={[
+                          font({ textStyle: "footnote", weight: "semibold" }),
+                          foregroundColor(colors.label),
+                        ]}
+                      >
+                        {control.label}
+                      </SFText>
+                    </VStack>
+                  </Button>
+                ))}
+              </HStack>
+            </GlassEffectContainer>
+          </Namespace>
+        </Host>
+      )}
     </View>
   );
 }
@@ -364,5 +366,20 @@ const styles = StyleSheet.create({
   row: {
     height: 76,
     backgroundColor: "transparent",
+  },
+  placeholderRow: {
+    flex: 1,
+    flexDirection: "row",
+    gap: Spacing.two,
+  },
+  // One solid block per button, matching the live button's footprint. The
+  // radius is the glass shell's, not the cards' 18pt — a glass button rounds
+  // much closer to a capsule, and an 18pt block reads as a different shape
+  // sitting where the button will be.
+  placeholder: {
+    flex: 1,
+    borderRadius: 26,
+    borderCurve: "continuous",
+    backgroundColor: colors.fill,
   },
 });
