@@ -1,5 +1,10 @@
 import type { LexusSession } from "@/auth/lexus-auth";
-import { VEHICLE_COMMAND_ENDPOINT, vehicleHeaders, type VehicleContext } from "@/data/lexus-api";
+import {
+  LexusApiError,
+  VEHICLE_COMMAND_ENDPOINT,
+  vehicleHeaders,
+  type VehicleContext,
+} from "@/data/lexus-api";
 
 // Structural fetch type so the caller can inject Expo's streaming `fetch` (the
 // app's standard) while the module stays free of an `expo/fetch` import — which
@@ -73,7 +78,7 @@ export async function sendRemoteCommand(
     body: JSON.stringify(commandBody(command)),
   });
   if (!response.ok) {
-    throw new Error(`Remote command failed (${response.status})`);
+    throw new LexusApiError(`Remote command failed (${response.status})`, response.status);
   }
   if (!isCommandAccepted(await response.json())) {
     throw new Error("The vehicle did not accept the command.");

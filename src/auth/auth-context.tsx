@@ -14,13 +14,13 @@ import {
   continueAuthentication,
   exchangeSsoToken,
   LexusAuthError,
-  refreshSession,
   startAuthentication,
   type AuthenticationNode,
   type AuthenticationStep,
   type LexusSession,
   type RequestLike,
 } from "@/auth/lexus-auth";
+import { createSessionManager, SessionInvalidError } from "@/auth/session-manager";
 import { secureTokenStore, type TokenStore } from "@/auth/token-store";
 import { clearVehicleCache } from "@/data/query-client";
 
@@ -49,6 +49,14 @@ type AuthContextValue = {
    * the OTP step once credentials have been accepted.
    */
   resendCode: () => Promise<void>;
+  /**
+   * Run an authorized Lexus call with a live session: the access token is
+   * refreshed first when it is at/near expiry, and a call that still fails with
+   * a 401/403 `LexusApiError` gets one refresh-and-retry. Concurrent callers
+   * share a single in-flight refresh. Throws `SessionInvalidError` (and signs
+   * the user out) once the refresh token itself is rejected.
+   */
+  runAuthorized: <T>(operation: (session: LexusSession) => Promise<T>) => Promise<T>;
   session: LexusSession | null;
   signOut: () => Promise<void>;
   step: AuthenticationStep | null;
@@ -129,20 +137,51 @@ export function AuthProvider({
     password: string;
   } | null>(null);
 
+  // Owns token freshness for the whole app: proactive refresh at/near expiry,
+  // one shared in-flight refresh, persistence of rotated tokens, and sign-out
+  // when the refresh token itself is rejected. React state only mirrors it.
+  const manager = useMemo(
+    () =>
+      createSessionManager({
+        store: tokenStore,
+        request: fetch,
+        onSession: (refreshed) => setSession(refreshed),
+        onInvalid: async () => {
+          // The refresh token is dead (rotation or server-side revocation):
+          // drop the stored session and cached vehicle data, and tell the user
+          // why they are back at sign-in.
+          await tokenStore.clear();
+          await clearVehicleCache();
+          setSession(null);
+          setError(new SessionInvalidError().message);
+        },
+      }),
+    [fetch, tokenStore],
+  );
+
+  // Keep the manager and React state in lockstep whenever the session changes
+  // hands outside of a refresh (restore, sign-in, sign-out).
+  const adoptSession = useCallback(
+    (next: LexusSession | null) => {
+      manager.setSession(next);
+      setSession(next);
+    },
+    [manager],
+  );
+
   useEffect(() => {
     let active = true;
     tokenStore
       .load()
-      .then(async (stored) => {
+      .then((stored) => {
         if (!stored) {
           return null;
         }
-        if (stored.expiresAt > Date.now() + 60_000) {
-          return stored;
-        }
-        const refreshed = await refreshSession(stored.refreshToken, fetch);
-        await tokenStore.save(refreshed);
-        return refreshed;
+        // getSession refreshes when the stored token is at/near expiry,
+        // persists any rotated tokens, and signs out via onInvalid when the
+        // grant was rejected while the app was gone.
+        manager.setSession(stored);
+        return manager.getSession();
       })
       .then((restored) => {
         if (active && restored) {
@@ -150,7 +189,8 @@ export function AuthProvider({
         }
       })
       .catch((cause) => {
-        if (active) {
+        // A rejected grant already set its own message via onInvalid.
+        if (active && !(cause instanceof SessionInvalidError)) {
           setError(errorMessage(cause));
         }
       })
@@ -162,7 +202,7 @@ export function AuthProvider({
     return () => {
       active = false;
     };
-  }, [fetch, tokenStore]);
+  }, [manager, tokenStore]);
 
   // Apply the next node: exchange for a session when authentication is
   // complete, otherwise advance the UI to the returned step.
@@ -171,7 +211,7 @@ export function AuthProvider({
       if (next.tokenId) {
         const authenticated = await exchangeSsoToken(next.tokenId, fetch);
         await tokenStore.save(authenticated);
-        setSession(authenticated);
+        adoptSession(authenticated);
         setNode(null);
         // Authentication is done — drop the in-memory credentials.
         setCredentials(null);
@@ -179,7 +219,7 @@ export function AuthProvider({
         setNode(next);
       }
     },
-    [fetch, tokenStore],
+    [adoptSession, fetch, tokenStore],
   );
 
   const submit = useCallback(
@@ -292,19 +332,24 @@ export function AuthProvider({
   const resendCode = useCallback(() => restartVerification(true), [restartVerification]);
   const changeMethod = useCallback(() => restartVerification(false), [restartVerification]);
 
+  const runAuthorized = useCallback(
+    <T,>(operation: (session: LexusSession) => Promise<T>) => manager.run(operation),
+    [manager],
+  );
+
   const signOut = useCallback(async () => {
     await tokenStore.clear();
     // Clear the persisted query cache too — clearing the token store alone
     // leaves the vehicle/account data on disk, which would leak to the next
     // signed-in user.
     await clearVehicleCache();
-    setSession(null);
+    adoptSession(null);
     setNode(null);
     setError(null);
     setMethod(null);
     setAvailableMethods([]);
     setCredentials(null);
-  }, []);
+  }, [adoptSession, tokenStore]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -317,6 +362,7 @@ export function AuthProvider({
       method,
       prompt: nodePrompt(node),
       resendCode,
+      runAuthorized,
       session,
       signOut,
       step: node ? classifyAuthenticationNode(node) : null,
@@ -332,6 +378,7 @@ export function AuthProvider({
       method,
       node,
       resendCode,
+      runAuthorized,
       session,
       signOut,
       submit,

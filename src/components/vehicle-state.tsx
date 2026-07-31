@@ -90,11 +90,12 @@ function StateScreen({
   );
 }
 
-export function VehicleError({ retry }: { retry: () => void }) {
+export function VehicleError({ retry, detail }: { retry: () => void; detail?: string }) {
   return (
     <StateScreen symbol="exclamationmark.triangle" title="Vehicle data unavailable">
       <Text modifiers={messageModifiers}>
-        We couldn&apos;t reach the Lexus vehicle service. Check your connection and try again.
+        {detail ??
+          "We couldn't reach the Lexus vehicle service. Check your connection and try again."}
       </Text>
       <RetryButton label="Try again" onPress={retry} />
     </StateScreen>

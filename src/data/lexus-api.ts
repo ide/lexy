@@ -61,6 +61,27 @@ const X_API_KEY_BYTES = [
 
 export const LEXUS_X_API_KEY = String.fromCharCode(...X_API_KEY_BYTES);
 
+// A failed HTTP response from a Lexus business endpoint. Carries the status so
+// the session layer can tell an auth failure (401/403 — refresh the token and
+// retry once, see src/auth/session-manager.ts) from other failures, and so the
+// UI can name the failure class (src/data/load-error.ts).
+export class LexusApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "LexusApiError";
+  }
+}
+
+// Whether an error is a rejected/expired-token response worth one
+// refresh-and-retry. The gateway answers 403 (and occasionally 401) once the
+// access token lapses.
+export function isAuthFailure(error: unknown): boolean {
+  return error instanceof LexusApiError && (error.status === 401 || error.status === 403);
+}
+
 // Per-vehicle context for vehicle-scoped calls, from the discovery record.
 export type VehicleContext = {
   vin: string;
