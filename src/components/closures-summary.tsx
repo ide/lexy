@@ -17,6 +17,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
@@ -51,12 +52,22 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
 
 const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 
+// Wide, landscape glyphs (window, hood, trunk) drawn at the same point size as
+// the portrait lock read much larger; a smaller point size brings their widths
+// in line with the lock's.
+const WIDE_SYMBOL_SIZE: Partial<Record<SFSymbol, number>> = {
+  "car.window.left": 12,
+  "car.window.right": 12,
+  "engine.combustion.fill": 12,
+  "car.side.rear.crop.trunk.partition.fill": 12,
+};
+
 function StatusLine({ status }: { status: ClosureStatus }) {
   return (
     <HStack spacing={Spacing.one}>
       <Image
         systemName={status.symbol}
-        size={15}
+        size={WIDE_SYMBOL_SIZE[status.symbol] ?? 15}
         color={TONE_COLORS[status.tone]}
         // SF Symbols vary in intrinsic width (a lock is narrow, a window
         // wide); a fixed slot keeps the texts of stacked lines aligned.
@@ -75,14 +86,14 @@ function CornerCell({ corner }: { corner: Corner }) {
   return (
     <VStack
       alignment="leading"
-      spacing={Spacing.half}
+      // The same line rhythm as the openings list below the grid.
+      spacing={Spacing.two}
       modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
     >
       <Text
-        modifiers={[
-          font({ textStyle: "footnote", weight: "semibold" }),
-          foregroundStyle(colors.secondaryLabel),
-        ]}
+        // The RN theme's smallBold heading (14pt bold, secondary), as worn by
+        // the odometer and tire cards' headings.
+        modifiers={[font({ size: 14, weight: "bold" }), foregroundStyle(colors.secondaryLabel)]}
       >
         {corner.title}
       </Text>

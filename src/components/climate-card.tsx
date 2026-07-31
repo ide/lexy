@@ -55,8 +55,10 @@ function DefrostToggle({
           ]}
         >
           <Icon name={symbol} size={17} tint={active ? blue : colors.secondaryLabel} />
+          {/* Medium weight, like a system button label — bold made the chips
+              shout compared to every real button on the screen. */}
           <ThemedText
-            type="smallBold"
+            type="small"
             themeColor={active ? undefined : "secondaryLabel"}
             style={active && { color: blue }}
           >
