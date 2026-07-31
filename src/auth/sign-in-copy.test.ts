@@ -83,7 +83,7 @@ describe("signInHero", () => {
     expect(signInHero("credentials", null, null)).toEqual({
       icon: "key.fill",
       title: "Welcome to Lexy",
-      subtitle: "Sign in with your Lexus account to see and control your car.",
+      subtitle: "Sign in with your Lexus account to see and control your vehicle.",
     });
   });
 });

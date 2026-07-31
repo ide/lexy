@@ -25,7 +25,7 @@ import {
 // the user why and what to do.
 const NO_APPS_TITLE = "No maps app installed";
 const NO_APPS_MESSAGE =
-  "Install Apple Maps, Google Maps, or Waze from the App Store to open your car's location for directions.";
+  "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions.";
 
 type UseMapsProvider = {
   /** `null` until the first installation probe resolves. */

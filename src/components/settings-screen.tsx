@@ -57,7 +57,7 @@ const DEV_ITEMS: DevItem[] = [
   },
 ];
 
-// Choose which navigation app the car-location map hands off to. The resolved
+// Choose which navigation app the vehicle-location map hands off to. The resolved
 // provider sits below the row title instead of in a trailing column, preserving
 // the full width for long app names and Dynamic Type. When no maps app is
 // installed the row reads "Unavailable" and taps explain how to fix it.
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
                 frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
-              The app used to open your car&apos;s location for directions.
+              The app used to open your vehicle&apos;s location for directions.
             </Text>
           </VStack>
 

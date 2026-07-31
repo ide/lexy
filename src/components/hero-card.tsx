@@ -6,7 +6,7 @@ import { useState } from "react";
 import { StyleSheet, View, type LayoutRectangle } from "react-native";
 
 import { Card } from "@/components/card";
-import { CarLocationMap } from "@/components/car-location-map";
+import { VehicleLocationMap } from "@/components/vehicle-location-map";
 import { useRedacted } from "@/components/redactable";
 import { Spacing, colors } from "@/constants/theme";
 import type { Vehicle } from "@/data/vehicle";
@@ -80,7 +80,7 @@ export function HeroCard({ vehicle }: { vehicle: Vehicle }) {
         }}
         style={styles.heroMap}
       >
-        <CarLocationMap
+        <VehicleLocationMap
           latitude={vehicle.location.latitude}
           longitude={vehicle.location.longitude}
           label={vehicle.nickname}
