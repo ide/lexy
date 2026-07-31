@@ -7,40 +7,33 @@ import type { TirePressure } from "@/data/vehicle";
 
 type TireReading = TirePressure["positions"][number];
 
-function TireCorner({
-  tire,
-  unit,
-  side,
-}: {
-  tire: TireReading | undefined;
-  unit: string;
-  side: "left" | "right";
-}) {
+function TireCorner({ tire, unit }: { tire: TireReading | undefined; unit: string }) {
   if (!tire) {
     return <View style={styles.corner} />;
   }
   return (
-    <View style={[styles.corner, side === "right" && styles.cornerRight]}>
+    <View style={styles.corner}>
       <ThemedText type="smallBold" themeColor="secondaryLabel">
         {tire.label}
       </ThemedText>
-      <View style={styles.valueRow}>
-        <ThemedText style={[styles.value, tire.low && { color: colors.systemOrange }]}>
-          {tire.value}
-        </ThemedText>
-        <ThemedText type="small" themeColor="secondaryLabel" style={styles.unit}>
+      {/* The unit rides inside the value's text run so the two share a
+          baseline instead of needing a manually offset row. */}
+      <ThemedText style={[styles.value, tire.low && { color: colors.systemOrange }]}>
+        {tire.value}
+        <ThemedText type="small" themeColor="secondaryLabel">
+          {" "}
           {unit}
         </ThemedText>
-      </View>
+      </ThemedText>
     </View>
   );
 }
 
 /**
  * All four tire readings in one card, laid out like the car itself: front row
- * on top, left and right readings aligned to their edges. One surface instead
- * of four keeps the spatial map while staying quiet next to the odometer card,
- * whose typography the readings share.
+ * on top, left readings in the left column. The columns cluster around the
+ * card's center line — close enough to compare at a glance — and the readings
+ * stay at label scale so the card reads as one quiet instrument.
  */
 export function TirePressureCard({ tires }: { tires: TirePressure }) {
   const corner = (front: boolean, left: boolean) =>
@@ -49,8 +42,8 @@ export function TirePressureCard({ tires }: { tires: TirePressure }) {
     <Card style={styles.card}>
       {[true, false].map((front) => (
         <View key={front ? "front" : "rear"} style={styles.axle}>
-          <TireCorner tire={corner(front, true)} unit={tires.unit} side="left" />
-          <TireCorner tire={corner(front, false)} unit={tires.unit} side="right" />
+          <TireCorner tire={corner(front, true)} unit={tires.unit} />
+          <TireCorner tire={corner(front, false)} unit={tires.unit} />
         </View>
       ))}
     </Card>
@@ -64,26 +57,20 @@ const styles = StyleSheet.create({
   },
   axle: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: Spacing.five,
   },
+  // Equal fixed-share columns so the rows align vertically; both columns are
+  // left-aligned for scanning, with the shared center gutter carrying the
+  // left/right split.
   corner: {
-    gap: Spacing.one,
-  },
-  cornerRight: {
-    alignItems: "flex-end",
-  },
-  valueRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 3,
+    width: "40%",
+    gap: Spacing.half,
   },
   value: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "600",
-    lineHeight: 22,
+    lineHeight: 20,
     fontVariant: ["tabular-nums"],
-  },
-  unit: {
-    marginBottom: 2,
   },
 });
