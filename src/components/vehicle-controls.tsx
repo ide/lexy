@@ -94,8 +94,8 @@ function ControlButton({
 
 /**
  * On-screen remote controls (lock / unlock / engine start). Always rendered,
- * including in production. Note the command codes are only partially confirmed
- * against Lexus's schema and the buttons actuate a real vehicle, so each action
+ * including in production. The command codes are confirmed against the official
+ * app's own enum, but the buttons actuate a real vehicle, so each action
  * confirms first (engine start carries the enclosed-space safety warning).
  *
  * Subscription/entitlement gating is intentionally not wired: the
