@@ -31,22 +31,18 @@ export function NativeScrollView({
         showsIndicators
         modifiers={onRefresh ? [refreshable(onRefresh)] : undefined}
       >
-        {nativeFooter ? (
-          <VStack
-            alignment="leading"
-            spacing={0}
-            modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-          >
-            <RNHostView matchContents>
-              <View style={contentContainerStyle}>{children}</View>
-            </RNHostView>
-            {nativeFooter}
-          </VStack>
-        ) : (
+        {/* One hierarchy whether or not a footer is present, so every screen
+            (and its skeleton state) lays out through the same SwiftUI tree. */}
+        <VStack
+          alignment="leading"
+          spacing={0}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        >
           <RNHostView matchContents>
             <View style={contentContainerStyle}>{children}</View>
           </RNHostView>
-        )}
+          {nativeFooter}
+        </VStack>
       </SwiftUIScrollView>
     </Host>
   );

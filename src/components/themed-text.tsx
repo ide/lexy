@@ -61,7 +61,9 @@ const styles = StyleSheet.create({
   linkPrimary: {
     lineHeight: 30,
     fontSize: 14,
-    color: '#3c87f7',
+    // The one link style in the app: system blue so it adapts to dark mode
+    // and accessibility tints like every other semantic color here.
+    color: colors.systemBlue,
   },
   code: {
     fontFamily: Fonts.mono,

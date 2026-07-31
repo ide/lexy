@@ -50,9 +50,10 @@ export default function CarLocationSheet() {
       {/* The screen title ("Last Parked") lives in the native stack header; this
           is the address subtitle and the freshness line beneath it. */}
       <View style={styles.subheader}>
-        {parkingAddress ? (
-          <ThemedText style={styles.address}>{parkingAddress}</ThemedText>
-        ) : null}
+        {/* The address line always occupies its slot — a blank line while
+            reverse geocoding resolves — so the map and button don't shift
+            down when the text arrives a beat after the sheet opens. */}
+        <ThemedText style={styles.address}>{parkingAddress ?? " "}</ThemedText>
         <ThemedText type="small" themeColor="secondaryLabel">
           {`Location as of ${relativeTime(vehicle.updatedAt)}`}
         </ThemedText>
