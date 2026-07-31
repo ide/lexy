@@ -657,6 +657,7 @@ function HeroCard({ vehicle }: { vehicle: Vehicle }) {
           longitude={vehicle.location.longitude}
           label={vehicle.nickname}
           showMarker={false}
+          showPlaces={false}
         />
       </View>
       <View pointerEvents="none" style={styles.heroMapVeil} />
