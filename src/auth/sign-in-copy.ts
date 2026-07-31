@@ -45,23 +45,23 @@ export function otpCopy(method: string | null): {
     case "email":
       return {
         icon: "envelope.fill",
-        title: "Enter your email code",
-        subtitle: "We sent a verification code to your email.",
-        placeholder: "Email code",
+        title: "Check Your Email",
+        subtitle: "We sent a verification code to your email address.",
+        placeholder: "Verification Code",
       };
     case "sms":
       return {
         icon: "message.fill",
-        title: "Enter your SMS code",
+        title: "Check Your Messages",
         subtitle: "We texted a verification code to your phone.",
-        placeholder: "SMS code",
+        placeholder: "Verification Code",
       };
     default:
       return {
         icon: "number",
-        title: "Enter your verification code",
-        subtitle: "Enter the code from your chosen verification method.",
-        placeholder: "Verification code",
+        title: "Enter Your Code",
+        subtitle: "Enter the verification code you received.",
+        placeholder: "Verification Code",
       };
   }
 }
@@ -87,16 +87,19 @@ export function signInHero(
   if (screen === "choice") {
     return {
       icon: "lock.shield.fill",
-      title: "Verify it's you",
+      title: "Verify It's You",
       subtitle: prompt ?? "Choose how you'd like to receive your verification code.",
     };
   }
   if (screen === "otp") {
-    return { icon: otp.icon, title: otp.title, subtitle: prompt ?? otp.subtitle };
+    // The server's OTP prompt is boilerplate ("Enter the verification code…"),
+    // so the friendlier copy derived from the chosen method wins here; the
+    // choice step still surfaces the prompt since it can carry real context.
+    return { icon: otp.icon, title: otp.title, subtitle: otp.subtitle };
   }
   return {
     icon: "key.fill",
-    title: "Sign in",
-    subtitle: "Sign in with your Lexus account.",
+    title: "Welcome to Lexy",
+    subtitle: "Sign in with your Lexus account to see and control your car.",
   };
 }

@@ -1,7 +1,6 @@
-import { Button, HStack, Image, Text, VStack, ZStack } from "@expo/ui/swift-ui";
+import { Button, HStack, Image, Text, VStack } from "@expo/ui/swift-ui";
 import {
   background,
-  bold,
   buttonStyle,
   contentShape,
   controlSize,
@@ -10,6 +9,7 @@ import {
   font,
   foregroundStyle,
   frame,
+  multilineTextAlignment,
   padding,
   shapes,
   tint,
@@ -32,42 +32,33 @@ export function Hero({
   title: string;
   subtitle: string;
 }) {
+  // The centered icon → title → description column Apple uses for sign-in and
+  // feature-introduction screens.
   return (
-    <VStack
-      alignment="leading"
-      spacing={Spacing.three}
-      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-    >
-      <HStack alignment="center" spacing={Spacing.three}>
-        <ZStack
-          modifiers={[
-            frame({ width: 56, height: 56 }),
-            background(
-              colors.card,
-              shapes.roundedRectangle({
-                cornerRadius: 18,
-                roundedCornerStyle: "continuous",
-              }),
-            ),
-          ]}
-        >
-          <Image systemName={icon} size={26} color={colors.systemBlue} />
-        </ZStack>
-        <Text
-          modifiers={[
-            font({ textStyle: "title", weight: "bold" }),
-            fixedSize({ horizontal: false, vertical: true }),
-          ]}
-        >
-          {title}
-        </Text>
-      </HStack>
+    <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
+      <Image
+        systemName={icon}
+        size={44}
+        color={colors.systemBlue}
+        modifiers={[padding({ bottom: Spacing.one })]}
+      />
       <Text
         modifiers={[
-          font({ textStyle: "subheadline", weight: "medium" }),
-          foregroundStyle({ type: "hierarchical", style: "secondary" }),
+          font({ textStyle: "title", weight: "bold" }),
+          multilineTextAlignment("center"),
           fixedSize({ horizontal: false, vertical: true }),
-          frame({ maxWidth: Infinity, alignment: "leading" }),
+        ]}
+      >
+        {title}
+      </Text>
+      <Text
+        modifiers={[
+          font({ textStyle: "subheadline" }),
+          foregroundStyle({ type: "hierarchical", style: "secondary" }),
+          multilineTextAlignment("center"),
+          fixedSize({ horizontal: false, vertical: true }),
+          frame({ maxWidth: Infinity }),
+          padding({ horizontal: Spacing.two }),
         ]}
       >
         {subtitle}
@@ -78,11 +69,14 @@ export function Hero({
 
 export function PrimaryButton({
   busy,
+  busyLabel,
   disabled,
   label,
   onPress,
 }: {
   busy: boolean;
+  /** Progressive label shown while busy, e.g. "Signing In…" for "Sign In". */
+  busyLabel: string;
   disabled: boolean;
   label: string;
   onPress: () => void;
@@ -109,8 +103,54 @@ export function PrimaryButton({
           padding({ vertical: Spacing.one }),
         ]}
       >
-        {busy ? `${label}…` : label}
+        {busy ? busyLabel : label}
       </Text>
+    </Button>
+  );
+}
+
+/**
+ * A verification-method choice: a full-width bordered button whose label —
+ * icon and text — is what stretches edge to edge (see PrimaryButton), so every
+ * choice renders at the same size instead of hugging its own text.
+ */
+export function ChoiceButton({
+  disabled,
+  icon,
+  label,
+  onPress,
+}: {
+  disabled: boolean;
+  icon: SFSymbol;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Button
+      onPress={onPress}
+      modifiers={[
+        buttonStyle("bordered"),
+        controlSize("large"),
+        tint(colors.systemBlue),
+        disabledModifier(disabled),
+        frame({ maxWidth: Infinity }),
+      ]}
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.two}
+        modifiers={[frame({ maxWidth: Infinity }), padding({ vertical: Spacing.one })]}
+      >
+        <Image systemName={icon} size={17} color={colors.systemBlue} />
+        <Text
+          modifiers={[
+            font({ textStyle: "body", weight: "semibold" }),
+            foregroundStyle(colors.systemBlue),
+          ]}
+        >
+          {label}
+        </Text>
+      </HStack>
     </Button>
   );
 }
@@ -129,7 +169,9 @@ export function SecondaryAction({
       label={label}
       onPress={onPress}
       modifiers={[
-        buttonStyle("plain"),
+        // Borderless (not plain) so the label picks up the blue tint and reads
+        // as tappable rather than as static text.
+        buttonStyle("borderless"),
         controlSize("large"),
         tint(colors.systemBlue),
         disabledModifier(disabled),
@@ -169,27 +211,30 @@ export function NewToLexusCallout() {
       >
         <Text
           modifiers={[
-            font({ textStyle: "footnote", weight: "bold" }),
+            font({ textStyle: "footnote", weight: "semibold" }),
             frame({ maxWidth: Infinity, alignment: "leading" }),
           ]}
         >
-          Don't have a Lexus account yet?
+          New to Lexus?
         </Text>
-        {/* One paragraph. "your" stays bold; the App Store line flows inline in
-            blue (same weight as the sentence) via nested Text concatenation. */}
         <Text
           modifiers={[
-            font({ textStyle: "footnote", weight: "medium" }),
+            font({ textStyle: "footnote" }),
             foregroundStyle({ type: "hierarchical", style: "secondary" }),
             fixedSize({ horizontal: false, vertical: true }),
             frame({ maxWidth: Infinity, alignment: "leading" }),
           ]}
         >
-          Create <Text modifiers={[bold()]}>your</Text> account and add your car in the Lexus app,
-          then come back here to sign in.{" "}
-          <Text modifiers={[foregroundStyle(colors.systemBlue)]}>
-            Get the Lexus app from the App Store.
-          </Text>
+          Create an account and add your car in the Lexus app, then come back here to sign in.
+        </Text>
+        <Text
+          modifiers={[
+            font({ textStyle: "footnote", weight: "semibold" }),
+            foregroundStyle(colors.systemBlue),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          Get the Lexus App
         </Text>
       </VStack>
     </Button>
