@@ -104,7 +104,7 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
     return {
       kind: "busy",
       headline: locking ? "Locking…" : "Unlocking…",
-      subline: rest.length > 0 ? `${capitalize(humanList(rest))} closed` : null,
+      subline: restSubline(rest),
       symbol: locking ? "lock.fill" : "lock.open.fill",
       exceptions,
     };
@@ -147,7 +147,8 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
       kind: "attention",
       headline,
       subline,
-      symbol: "exclamationmark.triangle.fill",
+      // All-unlocked wears the open lock; a mix of kinds has no single glyph.
+      symbol: open === 0 ? "lock.open.fill" : "exclamationmark.triangle.fill",
       exceptions,
     };
   }
@@ -155,16 +156,7 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
   // All clear. "All secure" only when every shown door is confirmed locked;
   // position-only data honestly claims closed, not locked.
   const secure = doorsPart === "Doors locked";
-  // With full data the tail collapses to "everything else closed"; with
-  // partial data it names exactly what was read, and claims nothing more.
-  const restPart =
-    rest.length === 0
-      ? null
-      : doorsPart && rest.length >= 3
-        ? "everything else closed"
-        : `${humanList(rest)} closed`;
-  const parts = doorsPart ? [doorsPart, restPart] : [restPart ? capitalize(restPart) : null];
-  const subline = parts.filter(Boolean).join(" · ") || null;
+  const subline = [doorsPart, restSubline(rest)].filter(Boolean).join(" · ") || null;
   return {
     kind: "secure",
     headline: secure ? "All secure" : "All closed",
@@ -172,6 +164,16 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
     symbol: secure ? "checkmark.shield.fill" : "checkmark.circle.fill",
     exceptions: [],
   };
+}
+
+// The settled tail of a subline. With full data it collapses to "Everything
+// else closed"; with partial data it names exactly what was read, and claims
+// nothing more.
+function restSubline(rest: string[]): string | null {
+  if (rest.length === 0) {
+    return null;
+  }
+  return rest.length >= 3 ? "Everything else closed" : `${capitalize(humanList(rest))} closed`;
 }
 
 function collectExceptions(shown: Shown, openings: Closure[]): SummaryException[] {

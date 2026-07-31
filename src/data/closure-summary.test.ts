@@ -44,7 +44,7 @@ describe("closuresSummary", () => {
     expect(summary).toEqual({
       kind: "secure",
       headline: "All secure",
-      subline: "Doors locked · everything else closed",
+      subline: "Doors locked · Everything else closed",
       symbol: "checkmark.shield.fill",
       exceptions: [],
     });
@@ -57,14 +57,14 @@ describe("closuresSummary", () => {
     }));
     const summary = closuresSummary(corners, []);
     expect(summary.headline).toBe("All closed");
-    expect(summary.subline).toBe("Doors closed · windows closed");
+    expect(summary.subline).toBe("Doors closed · Windows closed");
   });
 
   it("names exactly what was read when data is partial", () => {
     // Doors and trunk only — no window or moonroof readings to vouch for.
     const corners = allClearCorners().map((c) => ({ ...c, window: undefined }));
     const summary = closuresSummary(corners, [{ label: "Trunk", state: "Closed" }]);
-    expect(summary.subline).toBe("Doors locked · trunk closed");
+    expect(summary.subline).toBe("Doors locked · Trunk closed");
   });
 
   it("promotes a single exception to the headline", () => {
@@ -133,6 +133,7 @@ describe("closuresSummary", () => {
     corners[1].door = { label: "door", state: "Closed", locked: false };
     const unlockedTwo = closuresSummary(corners, []);
     expect(unlockedTwo.headline).toBe("2 doors unlocked");
+    expect(unlockedTwo.symbol).toBe("lock.open.fill");
   });
 
   it("does not promise locked doors in the subline when a door lacks a lock reading", () => {
@@ -150,7 +151,7 @@ describe("closuresSummary", () => {
     expect(summary).toMatchObject({
       kind: "busy",
       headline: "Locking…",
-      subline: "Windows, moonroof, trunk and hood closed",
+      subline: "Everything else closed",
       symbol: "lock.fill",
     });
   });
