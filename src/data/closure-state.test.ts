@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyObservation,
   applyOptimisticLock,
+  hasOptimisticLock,
   parseClosureStore,
   readClosures,
   type ClosureStore,
@@ -155,6 +156,32 @@ describe("applyOptimisticLock", () => {
       { label: "Passenger Window", state: "Closed", stateAt: FULL_AT },
       { label: "Trunk", state: "Closed", stateAt: FULL_AT },
     ]);
+  });
+
+  it("hasOptimisticLock tracks pending predictions across folds", () => {
+    let store = applyObservation(null, VIN, full);
+    expect(hasOptimisticLock(store)).toBe(false);
+    store = applyOptimisticLock(store, VIN, false, OPT_AT);
+    expect(hasOptimisticLock(store)).toBe(true);
+    // A stale disagreeing reading leaves the prediction pending...
+    store = applyObservation(store, VIN, {
+      occurredAt: FULL_AT,
+      closures: [
+        { label: "Driver Door", locked: true },
+        { label: "Passenger Door", locked: true },
+      ],
+    });
+    expect(hasOptimisticLock(store)).toBe(true);
+    // ...and a newer confirming one settles every door.
+    store = applyObservation(store, VIN, {
+      occurredAt: "2026-07-30T00:00:00Z",
+      closures: [
+        { label: "Driver Door", locked: false },
+        { label: "Passenger Door", locked: false },
+      ],
+    });
+    expect(hasOptimisticLock(store)).toBe(false);
+    expect(hasOptimisticLock(null)).toBe(false);
   });
 
   it("a confirming server reading clears the optimistic flag even when its timestamp is older", () => {

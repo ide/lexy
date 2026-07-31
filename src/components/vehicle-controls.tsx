@@ -32,6 +32,7 @@ import { useAuth } from "@/auth/auth-context";
 import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
 import type { VehicleContext } from "@/data/lexus-api";
+import { refreshVehicleStatus } from "@/data/refresh-status-sender";
 import { sendRemoteCommand, type RemoteCommand } from "@/data/remote-command";
 import { reflectAcceptedCommand } from "@/data/remote-command-effects";
 import type { Vehicle } from "@/data/vehicle";
@@ -211,8 +212,12 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
         }
         // Acceptance, not completion; the optimistic fold and the reconciling
         // refetches live in remote-command-effects.ts. No success alert: the
-        // section title already shows the pending state ("Locking…").
-        await reflectAcceptedCommand(vehicle.vin, control.command);
+        // section title already shows the pending state ("Locking…"). The
+        // prime callback is its escalation path when plain re-reads keep
+        // returning the pre-command snapshot.
+        await reflectAcceptedCommand(vehicle.vin, control.command, () =>
+          runAuthorized((session) => refreshVehicleStatus(session, context)),
+        );
       })
       .catch((error: unknown) => {
         haptic("error");
