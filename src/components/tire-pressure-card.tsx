@@ -31,9 +31,9 @@ function TireCorner({ tire, unit }: { tire: TireReading | undefined; unit: strin
 
 /**
  * All four tire readings in one card, laid out like the car itself: front row
- * on top, left readings in the left column. Each column shrink-wraps its text
- * — no fixed widths — so the centered pair carries no trailing dead space and
- * the whole block sits visually balanced on the card's center line.
+ * on top, left readings in the left column. The card shrink-wraps the grid —
+ * normal padding, no stretched interior — and sits on the screen's left edge
+ * like any other left-aligned content.
  */
 export function TirePressureCard({ tires }: { tires: TirePressure }) {
   const corner = (front: boolean, left: boolean) =>
@@ -55,11 +55,11 @@ export function TirePressureCard({ tires }: { tires: TirePressure }) {
 const styles = StyleSheet.create({
   card: {
     padding: Spacing.three,
+    alignSelf: "flex-start",
   },
   columns: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: Spacing.five + Spacing.three,
+    gap: Spacing.five,
   },
   column: {
     gap: Spacing.three,
