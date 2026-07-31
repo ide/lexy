@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetKvStore } from "@/test-support/expo-sqlite-kv-store";
 import {
   clearSavedMapsProviderId,
   getSavedMapsProviderIdSnapshot,
@@ -7,30 +8,13 @@ import {
   subscribeToMapsProvider,
 } from "./maps-preference";
 
-const storage = vi.hoisted(() => {
-  let value: string | null = null;
-
-  return {
-    getItemSync: vi.fn(() => value),
-    setItemSync: vi.fn((_key: string, next: string) => {
-      value = next;
-    }),
-    removeItemSync: vi.fn(() => {
-      value = null;
-    }),
-    reset: () => {
-      value = null;
-    },
-  };
-});
-
-vi.mock("expo-sqlite/kv-store", () => ({ default: storage }));
+// `expo-sqlite/kv-store` resolves to the in-memory fake via vitest.config.ts.
 vi.mock("expo-linking", () => ({ canOpenURL: vi.fn() }));
 
 describe("maps provider preference", () => {
   beforeEach(() => {
     clearSavedMapsProviderId();
-    storage.reset();
+    resetKvStore();
     vi.clearAllMocks();
   });
 
