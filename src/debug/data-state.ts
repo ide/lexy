@@ -1,7 +1,6 @@
-import type { UseQueryResult } from "@tanstack/react-query";
-
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
-import { NoVehicleError, type Vehicle } from "@/data/vehicle";
+import { NoVehicleError, vehicleContext, type Vehicle } from "@/data/vehicle";
+import type { VehicleQuery } from "@/hooks/use-vehicle";
 
 /**
  * The vehicle the forced cached states show. Unlike the loading placeholder —
@@ -33,90 +32,70 @@ export type DataStateOverride =
   | "error-empty"
   | "no-vehicle";
 
-type VehicleResult = UseQueryResult<Vehicle, Error>;
+const FORCED_ERROR = new Error("Forced fetch error (dev override)");
 
 /**
  * Rewrite the `useVehicle` result so the real screens render `state` as if it
- * had come from the network. We keep everything else the hook returns
- * (`refetch`, etc.) and only swap the fields the screens branch on — `data`,
- * `error`, and the loading/settled flags — so each state drives the exact same
- * code path production does. `live` is returned untouched.
+ * had come from the network. Only the fields the screens branch on are swapped,
+ * so each state drives the same code path production does; `refetch` and the
+ * rest pass through. `live` is returned untouched.
  */
-export function overrideVehicleResult(
-  query: VehicleResult,
-  state: DataStateOverride,
-): VehicleResult {
-  if (state === "live") {
-    return query;
-  }
+export function overrideVehicleResult(query: VehicleQuery, state: DataStateOverride): VehicleQuery {
   switch (state) {
-    // First-load: no data yet, still loading. The screens show the skeleton /
-    // redacted layout.
+    case "live":
+      return query;
+    // First load: nothing to show yet. `skeleton` is mid-flight;
+    // `offline-empty` is settled (nothing will load while offline). Either way
+    // there is no data — the offline banner is what tells them apart, driven by
+    // the online override below.
     case "skeleton":
     case "offline-empty":
       return {
         ...query,
-        data: undefined,
+        vehicle: undefined,
         error: null,
-        // `offline-empty` is settled (nothing will load while offline);
-        // `skeleton` is mid-flight. Either way there is no data — the offline
-        // banner is what tells them apart, driven by the online override below.
         isLoading: state === "skeleton",
-        isPending: true,
         isFetching: state === "skeleton",
-        isError: false,
-        isSuccess: false,
-        status: "pending",
-      } as VehicleResult;
+      };
     // Settled with data — paired with a forced-offline online state so the
     // screens show the cached dashboard behind the offline banner.
     case "offline-cached":
-      return {
-        ...query,
-        data: MOCK_VEHICLE,
-        error: null,
-        isLoading: false,
-        isPending: false,
-        isFetching: false,
-        isError: false,
-        isSuccess: true,
-        status: "success",
-        dataUpdatedAt: query.dataUpdatedAt || Date.now(),
-      } as VehicleResult;
-    // A failed refresh that still has cached data behind it — React Query
-    // keeps `data` and reports the error alongside it. The screens render the
+      return { ...query, ...cached(query), error: null };
+    // A failed refresh that still has cached data behind it: React Query keeps
+    // `data` and reports the error alongside it, and the screens render the
     // cached dashboard under the "Couldn't refresh" banner.
     case "error-cached":
-      return {
-        ...failed(query, FORCED_ERROR),
-        data: MOCK_VEHICLE,
-        dataUpdatedAt: query.dataUpdatedAt || Date.now(),
-      } as VehicleResult;
-    // Settled failure (online) with nothing cached, so the screens show the
-    // full-screen "Vehicle data unavailable" error rather than a skeleton.
+      return { ...query, ...cached(query), error: FORCED_ERROR };
+    // Settled failures with nothing cached: the screens show the full-screen
+    // error, or — for NoVehicleError — the distinct "No vehicle found" state.
     case "error-empty":
       return failed(query, FORCED_ERROR);
-    // A settled NoVehicleError, which the screens render as the distinct
-    // "No vehicle found" empty state.
     case "no-vehicle":
       return failed(query, new NoVehicleError());
   }
 }
 
-const FORCED_ERROR = new Error("Forced fetch error (dev override)");
+// The mock car, settled, with a plausible freshness stamp. A context to match,
+// so anything the screens address at the shown vehicle addresses the same one.
+function cached(query: VehicleQuery) {
+  return {
+    vehicle: MOCK_VEHICLE,
+    context: vehicleContext(MOCK_VEHICLE),
+    dataUpdatedAt: query.dataUpdatedAt || Date.now(),
+    isLoading: false,
+    isFetching: false,
+  };
+}
 
-function failed(query: VehicleResult, error: Error): VehicleResult {
+function failed(query: VehicleQuery, error: Error): VehicleQuery {
   return {
     ...query,
-    data: undefined,
+    vehicle: undefined,
+    context: undefined,
     error,
     isLoading: false,
-    isPending: false,
     isFetching: false,
-    isError: true,
-    isSuccess: false,
-    status: "error",
-  } as VehicleResult;
+  };
 }
 
 /**

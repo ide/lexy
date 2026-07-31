@@ -35,7 +35,7 @@ import type { VehicleContext } from "@/data/lexus-api";
 import { refreshVehicleStatus } from "@/data/refresh-status-sender";
 import { sendRemoteCommand, type RemoteCommand } from "@/data/remote-command";
 import { reflectAcceptedCommand } from "@/data/remote-command-effects";
-import type { Vehicle } from "@/data/vehicle";
+import { vehicleContext, type Vehicle } from "@/data/vehicle";
 import { useEngineStatus } from "@/hooks/use-engine-status";
 import { haptic } from "@/utils/haptics";
 
@@ -203,11 +203,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
     if (!session) {
       return;
     }
-    const context: VehicleContext = {
-      vin: vehicle.vin,
-      brand: vehicle.brand,
-      generation: vehicle.generation,
-    };
+    const context: VehicleContext = vehicleContext(vehicle);
     setBusy(true);
     haptic("impact-medium");
     runAuthorized((session) => sendRemoteCommand(session, context, control.command, expoFetch))
@@ -221,7 +217,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
         // section title already shows the pending state ("Locking…"). The
         // prime callback is its escalation path when plain re-reads keep
         // returning the pre-command snapshot.
-        await reflectAcceptedCommand(vehicle.vin, control.command, () =>
+        await reflectAcceptedCommand(context, control.command, () =>
           runAuthorized((session) => refreshVehicleStatus(session, context)),
         );
       })

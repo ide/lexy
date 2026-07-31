@@ -1,25 +1,21 @@
-import type { UseQueryResult } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { MOCK_VEHICLE, overrideIsOnline, overrideVehicleResult } from "@/debug/data-state";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
-import { NoVehicleError, type Vehicle } from "@/data/vehicle";
+import { NoVehicleError, vehicleContext } from "@/data/vehicle";
+import type { VehicleQuery } from "@/hooks/use-vehicle";
 
-// A stand-in for a live, successful query result. Only the fields the vehicle
-// screens read matter; the override rewrites the rest.
+// A stand-in for a live, successful result.
 const refetch = vi.fn();
-const live = {
-  data: PLACEHOLDER_VEHICLE,
+const live: VehicleQuery = {
+  vehicle: PLACEHOLDER_VEHICLE,
+  context: vehicleContext(PLACEHOLDER_VEHICLE),
+  dataUpdatedAt: 123,
   error: null,
   isLoading: false,
-  isPending: false,
   isFetching: false,
-  isError: false,
-  isSuccess: true,
-  status: "success",
-  dataUpdatedAt: 123,
   refetch,
-} as unknown as UseQueryResult<Vehicle, Error>;
+};
 
 describe("overrideVehicleResult", () => {
   it("returns the query untouched for live", () => {
@@ -39,28 +35,42 @@ describe("overrideVehicleResult", () => {
     }
   });
 
-  it("skeleton clears data and reports loading", () => {
+  it("skeleton clears the vehicle and reports loading", () => {
     const result = overrideVehicleResult(live, "skeleton");
-    expect(result.data).toBeUndefined();
+    expect(result.vehicle).toBeUndefined();
     expect(result.error).toBeNull();
     expect(result.isLoading).toBe(true);
   });
 
-  it("offline-empty clears data but is settled (not loading)", () => {
+  it("offline-empty clears the vehicle but is settled (not loading)", () => {
     const result = overrideVehicleResult(live, "offline-empty");
-    expect(result.data).toBeUndefined();
+    expect(result.vehicle).toBeUndefined();
     expect(result.isLoading).toBe(false);
     expect(result.error).toBeNull();
   });
 
-  it("offline-cached surfaces the mock vehicle as a success", () => {
-    const result = overrideVehicleResult(
-      { ...live, data: undefined } as typeof live,
-      "offline-cached",
-    );
-    expect(result.data).toBe(MOCK_VEHICLE);
-    expect(result.isSuccess).toBe(true);
+  it("offline-cached surfaces the mock vehicle, settled and error-free", () => {
+    const result = overrideVehicleResult({ ...live, vehicle: undefined }, "offline-cached");
+    expect(result.vehicle).toBe(MOCK_VEHICLE);
+    expect(result.isLoading).toBe(false);
+    expect(result.isFetching).toBe(false);
     expect(result.error).toBeNull();
+  });
+
+  // Anything the screens address at the shown car has to address that same car:
+  // a cached state whose context still pointed elsewhere would send commands and
+  // primes to a vehicle the user isn't looking at.
+  it("cached states carry a context matching the vehicle they show", () => {
+    for (const state of ["offline-cached", "error-cached"] as const) {
+      expect(overrideVehicleResult(live, state).context).toEqual(vehicleContext(MOCK_VEHICLE));
+    }
+  });
+
+  // Nothing to address when there is no car to show.
+  it("empty states clear the context", () => {
+    for (const state of ["error-empty", "no-vehicle"] as const) {
+      expect(overrideVehicleResult(live, state).context).toBeUndefined();
+    }
   });
 
   // The mock vehicle renders unredacted, so unlike the loading placeholder it
@@ -78,30 +88,26 @@ describe("overrideVehicleResult", () => {
 
   it("error-empty surfaces a generic error, not a NoVehicleError", () => {
     const result = overrideVehicleResult(live, "error-empty");
-    expect(result.data).toBeUndefined();
+    expect(result.vehicle).toBeUndefined();
     expect(result.error).toBeInstanceOf(Error);
     expect(result.error).not.toBeInstanceOf(NoVehicleError);
-    expect(result.isError).toBe(true);
+    expect(result.isLoading).toBe(false);
   });
 
-  // The banner-over-cached-data case: React Query keeps `data` when a refetch
-  // fails, so the override has to report both at once.
-  it("error-cached keeps data alongside the error", () => {
-    const result = overrideVehicleResult(
-      { ...live, data: undefined } as typeof live,
-      "error-cached",
-    );
-    expect(result.data).toBe(MOCK_VEHICLE);
+  // The banner-over-cached-data case: a failed refresh keeps the last good data
+  // on screen, so the override has to report both at once.
+  it("error-cached keeps the vehicle alongside the error", () => {
+    const result = overrideVehicleResult({ ...live, vehicle: undefined }, "error-cached");
+    expect(result.vehicle).toBe(MOCK_VEHICLE);
     expect(result.error).toBeInstanceOf(Error);
     expect(result.error).not.toBeInstanceOf(NoVehicleError);
-    expect(result.isError).toBe(true);
     expect(result.isLoading).toBe(false);
   });
 
   it("no-vehicle surfaces a NoVehicleError so the empty state shows", () => {
     const result = overrideVehicleResult(live, "no-vehicle");
     expect(result.error).toBeInstanceOf(NoVehicleError);
-    expect(result.data).toBeUndefined();
+    expect(result.vehicle).toBeUndefined();
   });
 });
 

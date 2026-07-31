@@ -16,7 +16,7 @@
 //             likely as old as ours — which, after this long away, it is.
 //
 // (What the user sees while this runs is deliberately quiet — see
-// RefreshingPill — because they didn't ask for it.)
+// RefreshingNote — because they didn't ask for it.)
 
 /** Under this, the cached data is current enough to leave alone. */
 export const RESUME_REFETCH_AFTER_MS = 60 * 1000;

@@ -56,7 +56,13 @@ export type Subscription = {
  */
 export type DistanceUnit = "mi" | "km";
 
-export type Vehicle = {
+/**
+ * Who the car is: identity, spec-sheet facts, and account-level services. This
+ * changes on the timescale of ownership (a renamed vehicle, a renewed
+ * subscription), so it loads and refreshes separately from — and much less
+ * often than — `VehicleStatus`.
+ */
+export type VehicleProfile = {
   nickname: string;
   fullName: string;
   model: string;
@@ -74,6 +80,20 @@ export type Vehicle = {
   imageUrl: string;
   inServiceDate: string;
   manufacturedDate: string;
+  capabilities: Capability[];
+  subscriptions: Subscription[];
+};
+
+/**
+ * What the car reports about itself right now: the live state the dashboard
+ * renders and the only part of the vehicle data that goes stale in minutes.
+ * Everything that a refresh, a telematics prime, or a lock-command
+ * reconciliation needs to re-read lives here — and nothing else does, so those
+ * paths never drag the profile's discovery/spec/subscription reads along.
+ */
+export type VehicleStatus = {
+  /** The car this snapshot describes — a status is never joined across VINs. */
+  vin: string;
   updatedAt: string;
   fuelPercent: number;
   distanceUnit: DistanceUnit;
@@ -86,16 +106,24 @@ export type Vehicle = {
     latitude: number;
     longitude: number;
   };
-  climate: {
-    temperatureF: number;
-    minF: number;
-    maxF: number;
-  };
   closures: Closure[];
-  capabilities: Capability[];
-  subscriptions: Subscription[];
   tires?: TirePressure;
 };
+
+/**
+ * The merged view the screens render. Purely a join of the two halves —
+ * see `composeVehicle`.
+ */
+export type Vehicle = VehicleProfile & VehicleStatus;
+
+/**
+ * Join a profile with a status snapshot, or refuse when the snapshot describes
+ * a different car (a stale cache entry from before an account switch, say) —
+ * the caller treats null as "still loading" rather than render a chimera.
+ */
+export function composeVehicle(profile: VehicleProfile, status: VehicleStatus): Vehicle | null {
+  return profile.vin === status.vin ? { ...profile, ...status } : null;
+}
 
 export type TirePressure = {
   status: string;
@@ -103,7 +131,7 @@ export type TirePressure = {
   positions: { label: string; value: number; low: boolean }[];
 };
 
-const stringFields = [
+const profileStringFields = [
   "nickname",
   "fullName",
   "model",
@@ -121,10 +149,9 @@ const stringFields = [
   "imageUrl",
   "inServiceDate",
   "manufacturedDate",
-  "updatedAt",
 ] as const;
 
-const numberFields = [
+const statusNumberFields = [
   "fuelPercent",
   "range",
   "odometer",
@@ -141,27 +168,33 @@ function hasNumber(record: Record<string, unknown>, field: string): boolean {
   return typeof record[field] === "number" && Number.isFinite(record[field]);
 }
 
-export function parseVehicle(value: unknown): Vehicle {
+export function parseVehicleProfile(value: unknown): VehicleProfile {
   if (
     !isRecord(value) ||
-    !stringFields.every((field) => typeof value[field] === "string") ||
-    !numberFields.every((field) => hasNumber(value, field)) ||
+    !profileStringFields.every((field) => typeof value[field] === "string") ||
+    !Array.isArray(value.capabilities) ||
+    !Array.isArray(value.subscriptions)
+  ) {
+    throw new Error("Invalid vehicle profile");
+  }
+  return value as VehicleProfile;
+}
+
+export function parseVehicleStatus(value: unknown): VehicleStatus {
+  if (
+    !isRecord(value) ||
+    typeof value.vin !== "string" ||
+    typeof value.updatedAt !== "string" ||
+    !statusNumberFields.every((field) => hasNumber(value, field)) ||
     (value.distanceUnit !== "mi" && value.distanceUnit !== "km") ||
     !isRecord(value.location) ||
     !hasNumber(value.location, "latitude") ||
     !hasNumber(value.location, "longitude") ||
-    !isRecord(value.climate) ||
-    !hasNumber(value.climate, "temperatureF") ||
-    !hasNumber(value.climate, "minF") ||
-    !hasNumber(value.climate, "maxF") ||
-    !Array.isArray(value.closures) ||
-    !Array.isArray(value.capabilities) ||
-    !Array.isArray(value.subscriptions)
+    !Array.isArray(value.closures)
   ) {
-    throw new Error("Invalid vehicle response");
+    throw new Error("Invalid vehicle status");
   }
-
-  return value as Vehicle;
+  return value as VehicleStatus;
 }
 
 function firstString(record: Record<string, unknown>, keys: string[]): string | undefined {
@@ -193,7 +226,7 @@ export class NoVehicleError extends Error {
  * The vehicle-scoped request headers' worth of a loaded vehicle — what every
  * command, prime, and engine read needs to address this car.
  */
-export function vehicleContext(vehicle: Vehicle): VehicleContext {
+export function vehicleContext(vehicle: VehicleProfile): VehicleContext {
   return { vin: vehicle.vin, brand: vehicle.brand, generation: vehicle.generation };
 }
 
@@ -238,10 +271,11 @@ export function parseSubscriptionVehicle(value: unknown): SubscriptionVehicle | 
 }
 
 // ---- Production response mapping --------------------------------------------
-// Composes the live Lexus responses (discovery + status + climate + spec) into
-// the normalized Vehicle the UI renders. Field sources are noted inline; a few
-// UI labels (headUnit) are derived from the telematics generation because the
-// API does not expose them directly.
+// Composes the live Lexus responses into the two normalized halves the UI
+// renders: discovery + spec + subscriptions into the profile, status + tires
+// into the status snapshot. Field sources are noted inline; a few UI labels
+// (headUnit) are derived from the telematics generation because the API does
+// not expose them directly.
 
 function asRecord(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
@@ -409,21 +443,13 @@ function mapSubscriptions(subscriptions: unknown): Subscription[] {
   });
 }
 
-export function mapVehicle(
+export function mapVehicleProfile(
   discovery: unknown,
-  status: unknown,
-  climate: unknown,
   spec: unknown,
-  tires?: unknown,
   subscriptions?: unknown,
-): Vehicle {
+): VehicleProfile {
   const list = asRecord(discovery).payload;
   const d = asRecord(Array.isArray(list) ? list[0] : undefined);
-  const s = asRecord(asRecord(status).payload).status;
-  const st = asRecord(s);
-  const telemetry = asRecord(st.telemetry);
-  const c = asRecord(asRecord(climate).payload);
-  const vehicleStatus = Array.isArray(st.vehicleStatus) ? st.vehicleStatus : [];
   const generation = str(d.generation);
 
   return {
@@ -444,6 +470,29 @@ export function mapVehicle(
     imageUrl: str(d.image),
     inServiceDate: specValue(spec, "Date of First Use") || "—",
     manufacturedDate: specValue(spec, "Order Date") || "—",
+    capabilities: [
+      { label: "Lock & unlock", symbol: "lock.fill" },
+      { label: "Engine start", symbol: "power" },
+      { label: "Climate", symbol: "thermometer.medium" },
+      { label: "Location", symbol: "location.fill" },
+    ],
+    subscriptions: mapSubscriptions(subscriptions),
+  };
+}
+
+/**
+ * `vin` comes from the request context (the car the status endpoint was asked
+ * about), not from the payload — the response doesn't reliably echo it, and the
+ * stamp exists to say who was *asked*.
+ */
+export function mapVehicleStatus(vin: string, status: unknown, tires?: unknown): VehicleStatus {
+  const s = asRecord(asRecord(status).payload).status;
+  const st = asRecord(s);
+  const telemetry = asRecord(st.telemetry);
+  const vehicleStatus = Array.isArray(st.vehicleStatus) ? st.vehicleStatus : [];
+
+  return {
+    vin,
     updatedAt: str(st.occurrenceDate, new Date().toISOString()),
     fuelPercent: Math.round(num(asRecord(telemetry.fugage).value)),
     distanceUnit: mapDistanceUnit(telemetry),
@@ -455,19 +504,7 @@ export function mapVehicle(
     tripA: tripDistance(vehicleStatus, "Trip A"),
     tripB: tripDistance(vehicleStatus, "Trip B"),
     location: { latitude: num(st.latitude), longitude: num(st.longitude) },
-    climate: {
-      temperatureF: num(c.temperature),
-      minF: num(c.minTemp),
-      maxF: num(c.maxTemp),
-    },
     closures: mapClosures(vehicleStatus),
-    capabilities: [
-      { label: "Lock & unlock", symbol: "lock.fill" },
-      { label: "Engine start", symbol: "power" },
-      { label: "Climate", symbol: "thermometer.medium" },
-      { label: "Location", symbol: "location.fill" },
-    ],
-    subscriptions: mapSubscriptions(subscriptions),
     tires: mapTires(tires),
   };
 }

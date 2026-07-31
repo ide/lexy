@@ -27,8 +27,9 @@ import { Spacing } from "@/constants/theme";
 import { cornerShownAts, oldestStale } from "@/data/closure-display";
 import { groupClosures } from "@/data/closures";
 import { fuelGauge } from "@/data/fuel";
-import { absoluteLocalTime, relativeTime, vehicleContext } from "@/data/vehicle";
+import { absoluteLocalTime, relativeTime } from "@/data/vehicle";
 import { refreshVehicleData } from "@/data/vehicle-refresh";
+import { useIsAutoRefreshing } from "@/hooks/use-vehicle-auto-refresh";
 import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 import { useAuth } from "@/auth/auth-context";
 
@@ -65,41 +66,31 @@ function FooterTimeRow({ label, timestamp }: { label: string; timestamp: string 
 }
 
 export default function CarDashboard() {
-  const { query, vehicle, redaction, headerRight, errorScreen, statusBanner, isRefreshing } =
+  const { query, vehicle, dataUpdatedAt, redaction, headerRight, errorScreen, statusBanner } =
     useVehicleScreen();
-  const { data, dataUpdatedAt } = query;
   const { session, runAuthorized } = useAuth();
-  // Set only while a pull-to-refresh is in flight, so its native spinner is the
-  // sole indicator during a manual refresh (see autoRefreshing below).
-  const [manualRefreshing, setManualRefreshing] = useState(false);
+  // Only refreshes the app started on its own get our own cues — the floating
+  // note and the "Updating…" footer line. A pull-to-refresh already shows the
+  // scroll view's native refresh control, and the re-reads that confirm a lock
+  // command aren't a refresh of stale data at all; announcing either would be
+  // describing something the user is already watching, or something that isn't
+  // happening.
+  const autoRefreshing = useIsAutoRefreshing();
 
-  // Tell a user-initiated pull-to-refresh apart from an automatic (foreground /
-  // stale) refetch: pull-to-refresh already shows the native refresh control,
-  // so only an *automatic* refetch gets our own cues — the floating
-  // "Refreshing…" note and the "Updating…" footer — with no double indicator,
-  // and nothing crammed into the nav bar's button slot.
-  const autoRefreshing = isRefreshing && !manualRefreshing;
-
-  const refresh = async () => {
-    // Mark this as a manual refresh so our own cues stay quiet and only the
-    // native pull-to-refresh spinner shows.
-    setManualRefreshing(true);
-    try {
-      // A pull is explicit user intent, so it primes: refreshVehicleData wakes
-      // the car for a fresh full snapshot (rate-limited) before re-reading, so
-      // the GET returns complete state instead of the last sparse push.
-      //
-      // Read the context off `data`, never the placeholder: pulling on
-      // the skeleton must not address a VIN that isn't a car.
-      await refreshVehicleData({
-        prime: true,
-        context: data ? vehicleContext(data) : null,
-        runAuthorized: session ? runAuthorized : null,
-      });
-    } finally {
-      setManualRefreshing(false);
-    }
-  };
+  const refresh = () =>
+    // A pull is explicit user intent, so it primes: refreshVehicleData wakes
+    // the car for a fresh full snapshot (rate-limited) before re-reading, so
+    // the GET returns complete state instead of the last sparse push.
+    //
+    // The context comes from the query, never from the rendered vehicle: while
+    // redacted that is the placeholder, and pulling on a skeleton must not
+    // address a VIN that isn't a car.
+    refreshVehicleData({
+      trigger: "manual",
+      prime: true,
+      context: query.context ?? null,
+      runAuthorized: session ? runAuthorized : null,
+    });
 
   if (errorScreen) {
     return (

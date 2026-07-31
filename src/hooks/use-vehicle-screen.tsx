@@ -11,7 +11,6 @@ import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
-import { useVehicleResume } from "@/hooks/use-vehicle-resume";
 
 /**
  * The scaffolding every vehicle screen (Status, Specs) shares: the vehicle
@@ -24,22 +23,21 @@ import { useVehicleResume } from "@/hooks/use-vehicle-resume";
  * offline shows a still redacted tree (the data can still arrive on its own,
  * once the network returns) and a failure shows the full-screen error with
  * its retry (nothing will change until the user asks again).
+ *
+ * Keeping the data fresh is deliberately *not* this hook's job — the tabs
+ * layout owns that (see use-vehicle-auto-refresh.ts), so the policy runs once
+ * for the app rather than once per mounted screen.
  */
 export function useVehicleScreen() {
   const query = useVehicle();
-  const { data, dataUpdatedAt, error, isFetching, isLoading, refetch } = query;
+  const { vehicle: data, dataUpdatedAt, error, isLoading, refetch } = query;
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
   const [forceSkeleton, setForceSkeleton] = useState(false);
 
-  // Cached data that has aged past the point of being worth showing as-is
-  // refreshes itself here, rather than waiting for a pull the user has no
-  // reason to think is needed. See resume-refresh.ts.
-  useVehicleResume(dataUpdatedAt);
-
   useEffect(() => {
     // TTI marks the UI shell becoming interactive; data readiness is tracked
-    // separately by the vehicle.load events.
+    // separately by the vehicle load events.
     markInteractive();
   }, [markInteractive]);
 
@@ -73,9 +71,9 @@ export function useVehicleScreen() {
   const errorScreen =
     !redaction && !data ? (
       error instanceof NoVehicleError ? (
-        <NoVehicleState retry={() => refetch()} />
+        <NoVehicleState retry={refetch} />
       ) : (
-        <VehicleError retry={() => refetch()} detail={failure?.advice} />
+        <VehicleError retry={refetch} detail={failure?.advice} />
       )
     ) : null;
 
@@ -106,21 +104,16 @@ export function useVehicleScreen() {
   ) : null;
 
   return {
-    /** The underlying vehicle query, for screens that need more than `data`. */
+    /** The underlying vehicle query, for screens that need more than `vehicle`. */
     query,
     vehicle,
+    /** When the status on screen was written — the freshness the footer shows. */
+    dataUpdatedAt,
     /** Why the content tree is redacted, or null when it shows real data. */
     redaction,
     isOnline,
     headerRight,
     errorScreen,
     statusBanner,
-    /**
-     * A refresh is running over data already on screen — the quiet cue's cue
-     * (`RefreshingPill`). The first load is `redaction`/`isLoading`'s job, and
-     * a screen with its own pull-to-refresh should suppress this while that
-     * gesture's native spinner is up.
-     */
-    isRefreshing: isFetching && !isLoading,
   };
 }

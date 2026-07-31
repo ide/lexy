@@ -11,6 +11,7 @@ import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import { openLexusApp } from "@/data/lexus-app";
+import { useIsAutoRefreshing } from "@/hooks/use-vehicle-auto-refresh";
 import { useVehicleScreen } from "@/hooks/use-vehicle-screen";
 
 function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
@@ -35,8 +36,8 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
 }
 
 export default function CarDetails() {
-  const { vehicle, redaction, headerRight, errorScreen, statusBanner, isRefreshing } =
-    useVehicleScreen();
+  const { vehicle, redaction, headerRight, errorScreen, statusBanner } = useVehicleScreen();
+  const autoRefreshing = useIsAutoRefreshing();
 
   if (errorScreen) {
     return (
@@ -159,8 +160,8 @@ export default function CarDetails() {
           </Redactable>
         </NativeScrollView>
         {/* This screen has no pull-to-refresh of its own, so the note is the
-          only sign that the specs are being re-read. */}
-        <RefreshingNote visible={isRefreshing} />
+          only sign that the vehicle data is being re-read. */}
+        <RefreshingNote visible={autoRefreshing} />
       </View>
     </>
   );

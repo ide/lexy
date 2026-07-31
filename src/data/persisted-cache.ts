@@ -1,7 +1,7 @@
-import { hashKey, type QueryKey } from "@tanstack/react-query";
 import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
 
-import { parseVehicle } from "@/data/vehicle";
+import { parseVehicleProfile, parseVehicleStatus } from "@/data/vehicle";
+import { isVehicleProfileKey, isVehicleStatusKey } from "@/data/vehicle-keys";
 
 /**
  * Version stamp for the on-disk query cache. React Query's persister discards a
@@ -16,29 +16,47 @@ import { parseVehicle } from "@/data/vehicle";
  * cannot catch, because the shape still looks valid, so the version bump is the
  * only safety net for it.
  *
- * History: v2 renamed the distance fields and added `distanceUnit`.
+ * History: v2 renamed the distance fields and added `distanceUnit`. v3 split
+ * the single `['vehicle']` blob into a profile and a VIN-keyed status snapshot.
  */
-export const CACHE_VERSION = "vehicle-v2";
+export const CACHE_VERSION = "vehicle-v3";
 
-// Per-query validators, keyed by the hash React Query stores next to each
-// persisted query (`hashKey`, so the keys track the real query keys). A
-// persisted query whose key has a validator is dropped on restore if its data
-// no longer parses; keys without one pass through untouched.
-const VALIDATORS: Record<string, (data: unknown) => void> = {
-  [hashKey(["vehicle"] satisfies QueryKey)]: (data) => {
-    parseVehicle(data);
-  },
+type Validator = {
+  /** Whether this validator is the one for a given persisted query key. */
+  claims: (key: readonly unknown[]) => boolean;
+  /** Throws when the persisted data can no longer be trusted. */
+  validate: (data: unknown) => void;
 };
+
+// Matched against the query key rather than its hash, because the status key
+// carries a VIN and so cannot be enumerated ahead of time. A persisted query a
+// validator claims is dropped on restore if its data no longer parses; keys no
+// validator claims pass through untouched.
+const VALIDATORS: Validator[] = [
+  {
+    claims: isVehicleProfileKey,
+    // The profile query caches the request context alongside the profile.
+    validate: (data) => {
+      parseVehicleProfile((data as { profile?: unknown } | null)?.profile);
+    },
+  },
+  {
+    claims: isVehicleStatusKey,
+    validate: (data) => {
+      parseVehicleStatus(data);
+    },
+  },
+];
 
 /**
  * Wrap a persister so restored queries are re-validated before they hydrate.
  *
  * React Query rehydrates persisted data as-is: it does not re-run the `queryFn`
- * parse path on restore, so without this a `Vehicle` written by an older build
- * with an incompatible shape would be handed straight to the UI (a crash or a
- * mis-render, not a refetch). Any `['vehicle']` blob that fails `parseVehicle`
- * is dropped here, so the worst case for a shape mismatch the version bump
- * missed is a cold load (skeleton → data) rather than broken UI.
+ * parse path on restore, so without this a vehicle blob written by an older
+ * build with an incompatible shape would be handed straight to the UI (a crash
+ * or a mis-render, not a refetch). Any blob that fails its validator is dropped
+ * here, so the worst case for a shape mismatch the version bump missed is a
+ * cold load (skeleton → data) rather than broken UI.
  *
  * This is a second line of defense behind {@link CACHE_VERSION}: the version
  * bump is the intended lever for breaking changes; this catches the ones that
@@ -54,12 +72,12 @@ export function createValidatingPersister(base: Persister): Persister {
         return restored;
       }
       const queries = restored.clientState.queries.filter((query) => {
-        const validate = VALIDATORS[query.queryHash];
-        if (!validate) {
+        const validator = VALIDATORS.find((candidate) => candidate.claims(query.queryKey));
+        if (!validator) {
           return true;
         }
         try {
-          validate(query.state.data);
+          validator.validate(query.state.data);
           return true;
         } catch {
           return false;

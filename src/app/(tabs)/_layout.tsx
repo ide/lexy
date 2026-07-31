@@ -1,6 +1,7 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 
 import { colors } from "@/constants/theme";
+import { useVehicleAutoRefresh } from "@/hooks/use-vehicle-auto-refresh";
 import { appTabs, tabBarMinimizeBehavior } from "@/navigation/tab-config";
 
 export const unstable_settings = {
@@ -8,6 +9,13 @@ export const unstable_settings = {
 };
 
 export default function TabLayout() {
+  // The whole signed-in vehicle section, and nothing narrower, is the right
+  // scope for "keep this data fresh": it stays mounted across tab switches and
+  // pushed routes, so the policy runs once and covers every screen showing
+  // vehicle data — including ones that read the query directly, like the
+  // location sheet.
+  useVehicleAutoRefresh();
+
   return (
     <NativeTabs
       disableTransparentOnScrollEdge

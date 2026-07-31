@@ -14,7 +14,7 @@ import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
 
 export default function VehicleLocationSheet() {
-  const { data: vehicle } = useVehicle();
+  const { vehicle } = useVehicle();
   const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { resolved, openInMaps } = useMapsProvider();
   const { markInteractive } = useObserve();

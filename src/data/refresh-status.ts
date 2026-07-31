@@ -3,10 +3,19 @@
 // native import and unit-testable in Node).
 //
 // `refresh-status` wakes the car's telematics unit and asks every body module
-// to report — expensive for the 12V battery and cellular link, so it is gated
-// to an explicit user pull-to-refresh and rate-limited per vehicle. Between
-// primes, the normal status GET (plus the materialized closure store) keeps the
-// dashboard populated.
+// to report — expensive for the 12V battery and cellular link, so it is
+// rate-limited per vehicle. Between primes, the normal status GET (plus the
+// materialized closure store) keeps the dashboard populated.
+//
+// Three things prime, and this one window bounds all of them: a pull-to-
+// refresh, an app open onto data old enough that the plain GET would likely
+// return the same stale snapshot (resume-refresh.ts), and a lock command whose
+// outcome plain re-reads can't settle (lock-reconcile.ts). Only the first is a
+// deliberate gesture, so the window is what keeps the other two from spending
+// the user's battery on their own initiative — and a prime that the limiter
+// declines is recorded (vehicle.prime, with its trigger) so how often the
+// automatic ones take the window from a later pull is measurable rather than
+// assumed.
 export const REFRESH_STATUS_MIN_INTERVAL_MS = 3 * 60 * 1000;
 
 // Last prime time per VIN, in memory. A cold start resets it, which is fine —

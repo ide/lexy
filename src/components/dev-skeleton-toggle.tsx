@@ -3,6 +3,7 @@ import { Pressable } from "react-native-gesture-handler";
 
 import { colors } from "@/constants/theme";
 import { queryClient } from "@/data/query-client";
+import { VEHICLE_QUERY_PREFIX } from "@/data/vehicle-keys";
 import { haptic } from "@/utils/haptics";
 
 const blue = colors.systemBlue;
@@ -27,7 +28,9 @@ export function DevSkeletonToggle({ active, onToggle }: { active: boolean; onTog
       }}
       onLongPress={() => {
         haptic("impact-medium");
-        queryClient.resetQueries({ queryKey: ["vehicle"] });
+        // The prefix, so both halves reset together — a profile with no status
+        // (or the reverse) is a state the cold-start path never produces.
+        queryClient.resetQueries({ queryKey: VEHICLE_QUERY_PREFIX });
       }}
     >
       <Image

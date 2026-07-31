@@ -3,6 +3,7 @@ import { fetch } from "expo/fetch";
 
 import { useAuth } from "@/auth/auth-context";
 import {
+  CLIMATE_SETTINGS_QUERY_KEY,
   defrostParameters,
   parseClimateSettings,
   withDefrost,
@@ -13,9 +14,7 @@ import {
 } from "@/data/climate-settings";
 import { LexusApiError, VEHICLE_CLIMATE_ENDPOINT, vehicleHeaders } from "@/data/lexus-api";
 import { PLACEHOLDER_CLIMATE_SETTINGS } from "@/data/placeholder-vehicle";
-import type { Vehicle } from "@/data/vehicle";
-
-export const CLIMATE_SETTINGS_QUERY_KEY = ["climate-settings"] as const;
+import { vehicleContext, type Vehicle } from "@/data/vehicle";
 
 /**
  * Remote-start climate configuration (setpoint, master switch, defrost).
@@ -37,13 +36,15 @@ export function useClimateSettings(
 ) {
   const { session, runAuthorized } = useAuth();
   const queryClient = useQueryClient();
-  // The vehicle-scoped headers need VIN + brand + generation, all of which the
-  // loaded vehicle carries.
-  const context = { vin: vehicle.vin, brand: vehicle.brand, generation: vehicle.generation };
+  const context = vehicleContext(vehicle);
 
   const query = useQuery({
     queryKey: CLIMATE_SETTINGS_QUERY_KEY,
     enabled: session !== null && !placeholder,
+    // Refreshed alongside the vehicle status, by whoever refreshes it (see
+    // vehicle-refresh.ts) — so React Query's own focus refetch would only
+    // duplicate that read on every foreground.
+    refetchOnWindowFocus: false,
     queryFn: ({ signal }): Promise<ClimateSettings> =>
       runAuthorized(async (session) => {
         const response = await fetch(VEHICLE_CLIMATE_ENDPOINT, {
