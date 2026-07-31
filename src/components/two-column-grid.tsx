@@ -4,9 +4,9 @@ import { StyleSheet, View } from "react-native";
 import { Spacing } from "@/constants/theme";
 
 /**
- * The two-column card grid used by the closures, openings, and tire sections.
- * Callers decide the split (by side, by parity, by label); this owns the
- * shared column layout so the three grids cannot drift.
+ * The two-column card grid used by the closures and openings sections.
+ * Callers decide the split (by side or by parity); this owns the shared
+ * column layout so the grids cannot drift.
  */
 export function TwoColumnGrid<T>({
   left,

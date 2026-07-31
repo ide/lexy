@@ -74,34 +74,6 @@ export function OdometerCard({
   );
 }
 
-export function TireCell({
-  label,
-  value,
-  unit,
-  low,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  low: boolean;
-}) {
-  return (
-    <Card style={styles.tireCard}>
-      <ThemedText type="smallBold" themeColor="secondaryLabel">
-        {label}
-      </ThemedText>
-      <View style={styles.metricValueRow}>
-        <ThemedText style={[styles.tireValue, low && { color: colors.systemOrange }]}>
-          {value}
-        </ThemedText>
-        <ThemedText type="small" themeColor="secondaryLabel" style={styles.metricUnit}>
-          {unit}
-        </ThemedText>
-      </View>
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   odometerCard: {
     padding: Spacing.three,
@@ -141,18 +113,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 3,
-  },
-  metricUnit: {
-    marginBottom: 4,
-  },
-  tireCard: {
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  tireValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 28,
-    fontVariant: ["tabular-nums"],
   },
 });
