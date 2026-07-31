@@ -2,7 +2,6 @@ import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useRedacted } from '@/components/redacted';
 import { Fonts, ThemeColor, colors } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
@@ -10,21 +9,13 @@ export type ThemedTextProps = TextProps & {
 };
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
-  const theme = useTheme();
   const redacted = useRedacted();
 
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? 'label'] },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
-        type === 'code' && styles.code,
+        { color: colors[themeColor ?? 'label'] },
+        styles[type],
         style,
         // Inside a `Redacted` subtree the text keeps its exact metrics (font,
         // line height, width from the placeholder string) but draws as a

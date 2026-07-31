@@ -33,17 +33,11 @@ const NO_APPS_TITLE = "No maps app installed";
 const NO_APPS_MESSAGE =
   "Install Apple Maps, Google Maps, or Waze from the App Store to open your car's location for directions.";
 
-export type UseMapsProvider = {
+type UseMapsProvider = {
   /** `null` until the first installation probe resolves. */
   resolved: ResolvedMapsProvider | null;
-  /** Installed providers, in canonical order (empty until probed). */
-  installed: MapsProvider[];
   /** The currently saved preference, if any. */
   saved: MapsProvider | null;
-  /** Re-run the installation probe (e.g. on screen focus). */
-  refresh: () => void;
-  /** Persist a deliberate choice and return it. */
-  choose: (id: MapsProviderId) => void;
   /** Forget the saved choice. */
   clear: () => void;
   /**
@@ -55,8 +49,6 @@ export type UseMapsProvider = {
   openInMaps: (target: MapsTarget) => void;
   /** Present the provider chooser (installed apps) and persist the pick. */
   promptChoice: () => void;
-  /** Explain, in an alert, that no maps apps are installed. */
-  explainNoApps: () => void;
 };
 
 function haptic(style: "select" | "tap") {
@@ -196,14 +188,10 @@ export function useMapsProvider(): UseMapsProvider {
 
   return {
     resolved,
-    installed: installedProviders(installedIds),
     saved: savedId === null ? null : getMapsProvider(savedId),
-    refresh: probe,
-    choose,
     clear,
     openInMaps,
     promptChoice,
-    explainNoApps,
   };
 }
 

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { useTheme } from "@/hooks/use-theme";
+import { colors } from "@/constants/theme";
 
 /**
  * The grouped-list card shape shared by the RN-rendered screens: continuous
@@ -16,9 +16,8 @@ export function Card({
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const theme = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: theme.card }, style]}>
+    <View style={[styles.card, { backgroundColor: colors.card }, style]}>
       {children}
     </View>
   );

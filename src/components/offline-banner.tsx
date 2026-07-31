@@ -20,7 +20,7 @@ export function OfflineBanner({
   title?: string;
   detail?: string;
 }) {
-  const orange = colors.systemOrange as string;
+  const orange = colors.systemOrange;
   return (
     <View style={[styles.banner, { backgroundColor: "rgba(255,149,0,0.15)" }]}>
       <Image

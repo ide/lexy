@@ -5,10 +5,8 @@ import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 
 import { Card } from "@/components/card";
-import {
-  DevSkeletonToggle,
-  SHOW_DEV_SKELETON_TOGGLE,
-} from "@/components/dev-skeleton-toggle";
+import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
+import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -21,7 +19,6 @@ import { openLexusApp } from "@/data/lexus-app";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
-import { useTheme } from "@/hooks/use-theme";
 import { useVehicle } from "@/hooks/use-vehicle";
 
 function InfoRow({
@@ -33,14 +30,13 @@ function InfoRow({
   value: string;
   last?: boolean;
 }) {
-  const theme = useTheme();
   return (
     <View
       style={[
         styles.row,
         !last && {
           borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: theme.separator,
+          borderBottomColor: colors.separator,
         },
       ]}
     >
@@ -55,7 +51,6 @@ function InfoRow({
 }
 
 export default function CarDetails() {
-  const theme = useTheme();
   const { data, error, isLoading, refetch } = useVehicle();
   const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
@@ -68,9 +63,9 @@ export default function CarDetails() {
   }, [markInteractive]);
 
   // Affordance to hold the real loading skeleton on the real screen. Available
-  // in dev and preview builds (see SHOW_DEV_SKELETON_TOGGLE); kept out of
+  // in dev and preview builds (see SHOW_DEV_TOOLS); kept out of
   // production.
-  const headerRight = SHOW_DEV_SKELETON_TOGGLE
+  const headerRight = SHOW_DEV_TOOLS
     ? () => (
         <DevSkeletonToggle
           active={forceSkeleton}
@@ -120,7 +115,7 @@ export default function CarDetails() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Details", headerRight }} />
+      <Stack.Screen options={{ title: "Specs", headerRight }} />
       <NativeScrollView contentContainerStyle={styles.content}>
         {!isOnline ? (
           <OfflineBanner
@@ -151,7 +146,7 @@ export default function CarDetails() {
             <Card style={[styles.rowCard, styles.grid]}>
               {vehicle.capabilities.map((c) => (
                 <View key={c.label} style={styles.capability}>
-                  <Icon name={c.symbol} size={20} tint={colors.systemBlue as string} />
+                  <Icon name={c.symbol} size={20} tint={colors.systemBlue} />
                   <ThemedText type="small" style={styles.capabilityLabel}>
                     {c.label}
                   </ThemedText>
@@ -181,7 +176,7 @@ export default function CarDetails() {
                         styles.serviceRow,
                         {
                           borderBottomWidth: StyleSheet.hairlineWidth,
-                          borderBottomColor: theme.separator,
+                          borderBottomColor: colors.separator,
                         },
                       ]}
                     >

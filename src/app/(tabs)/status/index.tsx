@@ -36,10 +36,8 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
 import { CarLocationMap } from "@/components/car-location-map";
-import {
-  DevSkeletonToggle,
-  SHOW_DEV_SKELETON_TOGGLE,
-} from "@/components/dev-skeleton-toggle";
+import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
+import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Icon } from "@/components/icon";
 import { NativeScrollView } from "@/components/native-scroll-view";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -71,18 +69,18 @@ import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
 import { useAuth } from "@/auth/auth-context";
 
-const green = colors.systemGreen as string;
-const blue = colors.systemBlue as string;
-const orange = colors.systemOrange as string;
+const green = colors.systemGreen;
+const blue = colors.systemBlue;
+const orange = colors.systemOrange;
 
 // Readout tint by level: green rewards a full tank, a healthy level stays
 // neutral, and the warning colors escalate as it drains.
 const FUEL_COLORS: Record<FuelLevel, string> = {
   full: green,
-  high: colors.label as string,
-  medium: colors.systemYellow as string,
+  high: colors.label,
+  medium: colors.systemYellow,
   low: orange,
-  critical: colors.systemRed as string,
+  critical: colors.systemRed,
 };
 
 // The bar (and icon) stay green at any healthy level — only the warning
@@ -111,7 +109,7 @@ function FuelBar({
   // reporting a confident full tank.
   const isRedacted = useRedacted();
   const barColor = isRedacted
-    ? (colors.fill as string)
+    ? colors.fill
     : FUEL_BAR_COLORS[gauge.level];
   const valueColor = FUEL_COLORS[gauge.level];
   const rangeText = `${range.toLocaleString()} ${unit}`;
@@ -203,7 +201,7 @@ function OdometerCard({
           <Icon
             name="gauge.with.dots.needle.67percent"
             size={17}
-            tint={colors.secondaryLabel as string}
+            tint={colors.secondaryLabel}
           />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
             Total
@@ -330,7 +328,7 @@ function oldestStale(freshAt: string, ats: (string | undefined)[]): string | nul
 function StaleNote({ at }: { at: string }) {
   return (
     <View style={styles.staleNote}>
-      <Icon name="clock.arrow.circlepath" size={12} tint={colors.secondaryLabel as string} />
+      <Icon name="clock.arrow.circlepath" size={12} tint={colors.secondaryLabel} />
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.staleText}>
         Some readings as of {relativeTime(at)}
       </ThemedText>
@@ -469,7 +467,7 @@ function DefrostToggle({
           <Icon
             name={symbol}
             size={17}
-            tint={active ? blue : (colors.secondaryLabel as string)}
+            tint={active ? blue : colors.secondaryLabel}
           />
           <ThemedText
             type="smallBold"
@@ -779,9 +777,9 @@ export default function CarDashboard() {
   const autoRefreshing = isFetching && !isLoading && !manualRefreshing;
 
   // Affordance to hold the real loading skeleton on the real screen. Available
-  // in dev and preview builds (see SHOW_DEV_SKELETON_TOGGLE); kept out of
+  // in dev and preview builds (see SHOW_DEV_TOOLS); kept out of
   // production.
-  const headerRight = SHOW_DEV_SKELETON_TOGGLE
+  const headerRight = SHOW_DEV_TOOLS
     ? () => (
         <DevSkeletonToggle
           active={forceSkeleton}
@@ -1161,8 +1159,8 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: "transparent",
   },
-  // The redacted stand-ins for the two SwiftUI controls, sized from the same
-  // styles as the real ones (the switch's 51x31 is UIKit's fixed metric).
+  // The redacted stand-in for the SwiftUI slider, sized from the same style
+  // as the real one.
   sliderPlaceholder: {
     justifyContent: "center",
   },
@@ -1231,10 +1229,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.subtleFill,
     borderRadius: 12,
     borderCurve: "continuous",
-  },
-  tripRow: {
-    flexDirection: "row",
-    gap: Spacing.two,
   },
   tripCell: {
     flex: 1,

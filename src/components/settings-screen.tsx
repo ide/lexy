@@ -45,21 +45,21 @@ type DevItem = {
 const DEV_ITEMS: DevItem[] = [
   {
     icon: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
-    tint: colors.systemBlue as string,
+    tint: colors.systemBlue,
     title: "Updates",
     subtitle: "expo-updates status, controls, and activity log.",
     href: "/settings/updates",
   },
   {
     icon: "person.badge.key.fill",
-    tint: colors.systemGreen as string,
+    tint: colors.systemGreen,
     title: "Login Flow",
     subtitle: "Walk the sign-in screens without signing out.",
     href: "/settings/login",
   },
   {
     icon: "square.stack.3d.up.fill",
-    tint: colors.systemOrange as string,
+    tint: colors.systemOrange,
     title: "Data State",
     subtitle: "Force loading, offline, error, and empty states.",
     href: "/settings/data-state",
@@ -149,7 +149,7 @@ function DevRow({
           <Image
             systemName="chevron.right"
             size={14}
-            color={colors.secondaryLabel as string}
+            color={colors.secondaryLabel}
           />
         </HStack>
       </Button>
@@ -200,7 +200,7 @@ function MapsProviderRow() {
         <Image
           systemName="map.fill"
           size={22}
-          color={colors.systemBlue as string}
+          color={colors.systemBlue}
         />
         <VStack
           alignment="leading"
@@ -225,7 +225,7 @@ function MapsProviderRow() {
         <Image
           systemName="chevron.right"
           size={14}
-          color={colors.secondaryLabel as string}
+          color={colors.secondaryLabel}
         />
       </HStack>
     </Button>
@@ -234,7 +234,7 @@ function MapsProviderRow() {
 
 function SignOutRow() {
   const { signOut } = useAuth();
-  const red = colors.systemRed as string;
+  const red = colors.systemRed;
 
   const onPress = () => {
     if (process.env.EXPO_OS === "ios") {

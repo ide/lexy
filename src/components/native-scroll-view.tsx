@@ -16,13 +16,11 @@ export function NativeScrollView({
   contentContainerStyle,
   nativeFooter,
   onRefresh,
-  showsIndicators = true,
 }: {
   children: ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
   nativeFooter?: ReactNode;
   onRefresh?: () => Promise<void>;
-  showsIndicators?: boolean;
 }) {
   return (
     <Host
@@ -30,7 +28,7 @@ export function NativeScrollView({
       style={{ flex: 1, backgroundColor: colors.groupedBackground }}
     >
       <SwiftUIScrollView
-        showsIndicators={showsIndicators}
+        showsIndicators
         modifiers={onRefresh ? [refreshable(onRefresh)] : undefined}
       >
         {nativeFooter ? (

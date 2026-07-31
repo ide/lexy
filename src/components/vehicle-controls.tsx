@@ -29,9 +29,9 @@ type Control = {
   actionLabel: string;
 };
 
-const blue = colors.systemBlue as string;
-const green = colors.systemGreen as string;
-const orange = colors.systemOrange as string;
+const blue = colors.systemBlue;
+const green = colors.systemGreen;
+const orange = colors.systemOrange;
 
 const CONTROLS: Control[] = [
   {

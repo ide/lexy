@@ -59,7 +59,7 @@ export function CarLocationMap({
                 coordinates: { latitude, longitude },
                 title: label,
                 systemImage: "car.fill",
-                tintColor: colors.systemBlue as string,
+                tintColor: colors.systemBlue,
               },
             ]
           : []

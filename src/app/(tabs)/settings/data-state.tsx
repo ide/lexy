@@ -122,7 +122,7 @@ function OptionRow({
           <Image
             systemName="checkmark"
             size={16}
-            color={colors.systemBlue as string}
+            color={colors.systemBlue}
             modifiers={[opacity(selected ? 1 : 0)]}
           />
         </HStack>
@@ -160,7 +160,7 @@ function ClearMapsProviderRow({
         <Image
           systemName="trash.fill"
           size={22}
-          color={colors.systemRed as string}
+          color={colors.systemRed}
         />
         <VStack
           alignment="leading"

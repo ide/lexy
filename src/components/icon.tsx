@@ -35,7 +35,7 @@ export function Icon({
   return (
     <Image
       source={`sf:${name}`}
-      tintColor={tint ?? (colors.label as string)}
+      tintColor={tint ?? colors.label}
       style={{ width: size, height: size }}
       contentFit="contain"
     />
