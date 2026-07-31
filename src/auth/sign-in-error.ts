@@ -112,13 +112,13 @@ export function signInErrorMessage(error: unknown, stage: SignInStage): string {
     case "network":
       if (stage === "restore") {
         return (
-          "Couldn't reach Lexus to reconnect your saved session. Your iPhone " +
+          "Couldn't reach Lexus to reconnect your saved session. Your device " +
           "looks offline, or the connection dropped. Your sign-in is still " +
           "saved: get back online and reopen the app, or sign in again now."
         );
       }
       return (
-        "Couldn't reach Lexus. Your iPhone looks offline, or the connection " +
+        "Couldn't reach Lexus. Your device looks offline, or the connection " +
         `dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.`
       );
     case "rejected":
