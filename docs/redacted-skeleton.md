@@ -121,10 +121,12 @@ Four things Details didn't have to deal with:
   climate card would render its header alone and then grow by ~110pt when the
   real settings landed — the `available` flags decide whether the slider and
   defrost rows exist at all, so the placeholder turns them on.
-- **The hero, and anything else drawn in raw color.** The map and car render
-  give way to a single `colors.fill` block in the same `heroImageFrame`, since
-  `imageUrl` is empty on placeholder data and the map would otherwise animate to
-  null island. The fuel gauge needed the same treatment for a different reason:
+- **The hero, and anything else drawn in raw color.** The car render is simply
+  absent while redacted, and the map draws in both states — the placeholder
+  carries the real IS 350 render URL and parks the car at Apple Park, so the
+  forced offline/error mock states (which show the placeholder as if it were
+  cached data) look like the live dashboard instead of an empty frame over null
+  island. The fuel gauge needed the same treatment for a different reason:
   its segment fills are plain colored views, not text or icons, so an unmodified
   skeleton reported a confident green full tank. They take the track color while
   redacted, leaving the gauge as its own empty tracks.

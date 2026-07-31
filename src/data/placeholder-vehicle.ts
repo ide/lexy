@@ -25,7 +25,12 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
   drivetrain: "2WD",
   headUnit: "Lexus Multimedia",
   trim: "F SPORT",
-  imageUrl: "",
+  // The real IS 350 render from the discovery record, so the forced
+  // offline/error mock states (which show this vehicle as if it were cached
+  // data) look like the live dashboard. Never drawn while redacted — the hero
+  // omits the image entirely in that state.
+  imageUrl:
+    "https://delivery.vcr.assetscs.toyota.com/adobe/assets/urn:aaid:aem:06327492-1484-4909-af33-b7c14b21edda/as/image.png?size=700,700",
   inServiceDate: "April 1, 2026",
   manufacturedDate: "03/2026",
   updatedAt: "2026-01-01T00:00:00Z",
@@ -36,7 +41,9 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
   cautionCount: 0,
   tripA: 120,
   tripB: 450,
-  location: { latitude: 0, longitude: 0 },
+  // Apple Park, so the hero map behind the mock states shows a real, obviously
+  // stand-in parking spot instead of animating to null island.
+  location: { latitude: 37.334606, longitude: -122.009102 },
   climate: { temperatureF: 72, minF: 60, maxF: 85 },
   closures: [
     { label: "Front driver door", state: "Closed", locked: true },
