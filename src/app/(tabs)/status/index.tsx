@@ -195,12 +195,13 @@ export default function CarDashboard() {
               />
             </RNSection>
 
-            {/* SwiftUI, in the scroll view's own stack rather than an RN section
-              — the disclosure inside it changes height, and a nested host is
-              what made that jump. */}
-            <VehicleControls vehicle={vehicle} />
-
             <RNSection style={styles.contentBottom}>
+              {/* Back in the RN content. It was hoisted into the SwiftUI stack
+                to escape a host that resized itself; nothing here resizes a
+                host any more, and the expansion is a Reanimated clip like the
+                closures card's, which has no bridge to cross at all. */}
+              <VehicleControls vehicle={vehicle} />
+
               <ClimateCard vehicle={vehicle} />
 
               {corners.length > 0 || openings.length > 0 ? (

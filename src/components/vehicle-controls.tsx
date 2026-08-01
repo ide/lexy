@@ -1,6 +1,7 @@
 import {
   Button,
   GlassEffectContainer,
+  Host,
   HStack,
   Image as SFImage,
   Namespace,
@@ -10,41 +11,41 @@ import {
   ZStack,
 } from "@expo/ui/swift-ui";
 import {
-  Animation,
-  animation,
-  background,
   buttonBorderShape,
   buttonStyle,
-  clipped,
-  contentShape,
   disabled as disabledModifier,
-  fixedSize,
   font,
   foregroundColor,
   frame,
   glassEffectId,
   hidden,
-  kerning,
   lineLimit,
   minimumScaleFactor,
   multilineTextAlignment,
-  onGeometryChange,
   opacity,
   padding,
   redacted,
-  rotationEffect,
-  shapes,
-  textCase,
   tint,
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
-import { useEffect, useId, useState } from "react";
-import { Alert } from "react-native";
+import { useEffect, useId, useRef, useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/pulsing-text";
+import { Card } from "@/components/card";
+import { Icon } from "@/components/icon";
+import { PulsingText } from "@/components/pulsing-text";
 import { useRedacted } from "@/components/redactable";
+import { SectionTitle } from "@/components/section-title";
+import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/auth/auth-context";
 import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
@@ -213,16 +214,12 @@ const HORN: Control = {
 
 /** Buttons per row, matching the three of the main row above. */
 const CONTROLS_PER_ROW = 3;
-/**
- * One row of chips, measured from the live layout (170.67pt for two rows plus
- * the gap and the top padding).
- *
- * This only has to be close. It seeds the reveal's height so the first tap has
- * somewhere to animate to — the content cannot be measured while it is clipped
- * to nothing, which is the one thing a purely measured version cannot do. Once
- * open, the real height arrives from `onGeometryChange` and corrects it.
- */
-const CHIP_ROW_HEIGHT = 73.5;
+/** The main row's height, measured from the live layout. */
+const CONTROL_ROW_HEIGHT = 76;
+/** One row of chips, likewise — the host holding them is sized, not measured. */
+const CHIP_ROW_HEIGHT = 64;
+
+const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 /** The default glyph size; a few symbols override it (see `Control.iconSize`). */
 const CONTROL_ICON_SIZE = 22;
 
@@ -410,74 +407,63 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   };
 
   return (
-    <VStack
-      alignment="leading"
-      spacing={Spacing.three}
-      modifiers={[
-        frame({ maxWidth: Infinity, alignment: "leading" }),
-        padding({ horizontal: Spacing.three }),
-        ...(isRedacted ? [disabledModifier(true)] : []),
-      ]}
-    >
-      <HStack
-        alignment="center"
-        spacing={Spacing.three}
-        modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-      >
-        <SFText
-          modifiers={[
-            font({ textStyle: "footnote", weight: "semibold" }),
-            foregroundColor(colors.secondaryLabel),
-            kerning(0.5),
-            textCase("uppercase"),
-            ...(isRedacted ? [redacted("placeholder")] : []),
-          ]}
-        >
-          Remote Controls
-        </SFText>
-        <Spacer />
+    <View>
+      <View style={styles.titleRow}>
+        <SectionTitle style={styles.title}>REMOTE CONTROLS</SectionTitle>
         {/* Lock state before engine state, matching the button order below
             (Lock, Unlock, then Start/Stop). */}
-        <StatusIndicator
-          symbol={locked ? "lock.fill" : "lock.open.fill"}
-          tint={lockColor}
-          label={lockPending ? (locked ? "Locking" : "Unlocking") : locked ? "Locked" : "Unlocked"}
-          pulsing={lockPending}
-          isRedacted={isRedacted}
-        />
-        {engineLabel ? (
-          <StatusIndicator
-            symbol="power"
-            tint={engineColor}
-            label={engineLabel}
-            pulsing={pending !== null}
-            isRedacted={isRedacted}
-          />
-        ) : null}
-      </HStack>
-      {/* No `Host` of its own — these lay out in the scroll view's own SwiftUI
-          stack (see swiftui-scroll-view.tsx). A nested host is measured on the
-          RN side, so a disclosure opening inside one reports its new height
-          across the bridge a frame before SwiftUI has finished laying the old
-          content out, and every control sharing that host jumps and settles.
-          Here there is no boundary to cross and nothing to re-measure.
+        <View style={styles.status}>
+          {/* Mid-command the word pulses instead of trailing an ellipsis —
+              the wait has no length to promise, only a state to report. */}
+          <View style={styles.statusItem}>
+            <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
+            <PulsingText pulsing={lockPending}>
+              <ThemedText type="smallBold" style={{ color: lockColor }}>
+                {lockPending ? (locked ? "Locking" : "Unlocking") : locked ? "Locked" : "Unlocked"}
+              </ThemedText>
+            </PulsingText>
+          </View>
+          {engineLabel ? (
+            <View style={styles.statusItem}>
+              <Icon name="power" size={13} tint={engineColor} />
+              <PulsingText pulsing={pending !== null}>
+                <ThemedText type="smallBold" style={{ color: engineColor }}>
+                  {engineLabel}
+                </ThemedText>
+              </PulsingText>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      {/* A fixed height, so this host never re-measures. That is the whole
+          reason it can sit in the RN content without the jump an earlier
+          version had: nothing here changes size, so nothing has to be
+          re-reported across the bridge.
 
-          `redacted` is SwiftUI's own modifier, so the glass shells keep their
-          shape while their contents are hidden rather than placeholdered (see
-          below) — what is left is the buttons' own outlines at their own size.
-          `disabled` keeps them from actuating a car we have no data for. */}
-      <Namespace id={namespaceId}>
-        <GlassEffectContainer spacing={Spacing.two}>
-          <ControlRow
-            controls={controls}
-            enabled={enabled}
-            isRedacted={isRedacted}
-            namespaceId={namespaceId}
-            slotOffset={0}
-            onPress={confirm}
-          />
-        </GlassEffectContainer>
-      </Namespace>
+          The row is SwiftUI, so it does not inherit the RN `Redactable` tree's
+          redaction the way the cards around it do — left alone it renders fully
+          live against a screen of grey skeleton bars. `redacted` is SwiftUI's
+          own modifier, so the glass shells keep their shape; their contents are
+          hidden rather than placeholdered, so what is left is the buttons' own
+          outlines at their own size. `disabled` keeps them from actuating a car
+          we have no data for. */}
+      <Host
+        style={styles.row}
+        modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
+      >
+        <Namespace id={namespaceId}>
+          <GlassEffectContainer spacing={Spacing.two}>
+            <ControlRow
+              controls={controls}
+              enabled={enabled}
+              isRedacted={isRedacted}
+              namespaceId={namespaceId}
+              slotOffset={0}
+              onPress={confirm}
+            />
+          </GlassEffectContainer>
+        </Namespace>
+      </Host>
       {/* Nothing to disclose on a car that reports none of these. */}
       {extras.length > 0 ? (
         <MoreControls
@@ -488,80 +474,33 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           onPress={confirm}
         />
       ) : null}
-    </VStack>
+    </View>
   );
 }
 
 /**
- * A lock or engine state, as a glyph and a word.
+ * The extra controls, built the way the Doors & Windows card is built —
+ * structurally, not approximately.
  *
- * Mid-command the word pulses instead of trailing an ellipsis — the wait has no
- * length to promise, only a state to report. The pulse is SwiftUI's own here
- * rather than the RN `PulsingText`, since these no longer live on the RN side;
- * `repeat` stands in for a `repeatForever` @expo/ui doesn't expose, at a count
- * no one will outlast.
- */
-function StatusIndicator({
-  symbol,
-  tint,
-  label,
-  pulsing,
-  isRedacted,
-}: {
-  symbol: SFSymbol;
-  tint: string;
-  label: string;
-  pulsing: boolean;
-  isRedacted: boolean;
-}) {
-  return (
-    <HStack
-      alignment="center"
-      spacing={Spacing.one}
-      modifiers={[
-        opacity(pulsing ? PULSE_MIN_OPACITY : 1),
-        animation(
-          Animation.easeInOut({ duration: PULSE_DURATION_MS / 1000 }).repeat({
-            repeatCount: 100_000,
-            autoreverses: true,
-          }),
-          pulsing,
-        ),
-        ...(isRedacted ? [redacted("placeholder")] : []),
-      ]}
-    >
-      {/* SwiftUI's placeholder redaction fills each view with its *own* colour,
-          so the live green of "Locked" skeletonizes as a green pill. The RN
-          text this replaced drew a neutral bar; a neutral tint while redacted
-          keeps that. */}
-      <SFImage systemName={symbol} size={13} color={isRedacted ? colors.fill : tint} />
-      <SFText
-        modifiers={[
-          font({ textStyle: "footnote", weight: "semibold" }),
-          foregroundColor(isRedacted ? colors.fill : tint),
-        ]}
-      >
-        {label}
-      </SFText>
-    </HStack>
-  );
-}
-
-/**
- * The extra controls, behind a disclosure row built the way the Doors & Windows
- * card is built.
+ * Everything about the interaction is React Native and Reanimated, and the only
+ * SwiftUI here is content that draws:
  *
- * Not a `DisclosureGroup`. The group presses its *whole* label — card
- * background included — so a quick tap flashed the row, and there is no way to
- * quiet that from outside: a `buttonStyle` on the group doesn't reach it.
- * Owning the tap means owning the press, which is the whole reason the closures
- * card feels better.
+ * - The tap is a `Pressable`, so the press dims the header's own content and
+ *   not the card under it. A `DisclosureGroup` presses its whole label instead,
+ *   which is what made the row flash.
+ * - The header's SwiftUI host is `pointerEvents="none"`, or it would swallow
+ *   the tap before the Pressable saw it.
+ * - The chevron is RN, rotated by a shared value on the UI thread. Driving a
+ *   SwiftUI `rotationEffect` from React state is why it never animated.
+ * - The reveal is an animated height with `overflow: hidden`, and the content
+ *   inside is **absolutely positioned** — which is the piece that matters. Out
+ *   of the clip's layout flow, it keeps its natural size and is merely revealed.
+ *   Every version that laid the content out *inside* the animating box had it
+ *   squeezed to nothing and re-expanded instead, which is the empty box that
+ *   filled all at once and the collapse with nothing left to animate.
  *
- * The reveal is the closures card's mechanic too, in SwiftUI rather than RN: the
- * content is always mounted and always laid out, and an animated height clips
- * it. That is what makes it slide rather than appear, and — because nothing is
- * ever unmounted — what makes it slide back out on the way in rather than
- * blinking off the moment a collapse starts.
+ * None of it is driven by React state mid-flight, so an unrelated re-render
+ * cannot interrupt it. That is why this card has never glitched.
  */
 function MoreControls({
   controls,
@@ -576,118 +515,119 @@ function MoreControls({
   subtitle: string;
   onPress: (control: Control) => void;
 }) {
-  const rows = chunk(controls, CONTROLS_PER_ROW);
   const [expanded, setExpanded] = useState(false);
-  const [contentHeight, setContentHeight] = useState(
-    () => Spacing.three + rows.length * CHIP_ROW_HEIGHT + (rows.length - 1) * Spacing.two,
-  );
+  const expandedRef = useRef(expanded);
+  const measured = useRef(0);
+  const detailHeight = useSharedValue(0);
+  const rotation = useSharedValue(0);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+  const clipStyle = useAnimatedStyle(() => ({ height: detailHeight.value }));
+
+  const toggle = () => {
+    const next = !expanded;
+    expandedRef.current = next;
+    setExpanded(next);
+    rotation.value = withTiming(next ? 90 : 0, EXPAND_TIMING);
+    detailHeight.value = withTiming(next ? measured.current : 0, EXPAND_TIMING);
+  };
+
+  const rows = chunk(controls, CONTROLS_PER_ROW);
 
   return (
-    <VStack
-      spacing={0}
-      modifiers={[
-        frame({ maxWidth: Infinity }),
-        padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-        background(
-          colors.card,
-          shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
-        ),
-        ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
-      ]}
-    >
-      <Button
-        onPress={() => setExpanded((open) => !open)}
-        modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
+    <Card style={styles.moreCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityHint="Shows the vehicle's other remote controls"
+        disabled={isRedacted}
+        onPress={toggle}
       >
-        {/* Without a content shape the row is only tappable where it has
-            something drawn — the gap between the subtitle and the chevron did
-            nothing. This makes the whole row the target, the way the closures
-            header is. */}
-        <HStack
-          spacing={Spacing.three - Spacing.one}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            contentShape(shapes.rectangle()),
-          ]}
-        >
-          <ZStack>
-            {/* Same treatment as the closures badge: a wash of the tint rather
-                than the tint itself, so the glyph stays the loudest thing in
-                it — and, while redacted, the neutral fill circle the RN `Icon`
-                uses, because placeholder redaction masks an image into a
-                rounded rect in its own colour and turns the circle square. */}
-            <SFImage
-              systemName="circle.fill"
-              size={36}
-              color={isRedacted ? colors.fill : blue}
-              modifiers={isRedacted ? [unredacted()] : [opacity(0.15)]}
-            />
-            {isRedacted ? null : (
-              <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
-            )}
-          </ZStack>
-          <VStack alignment="leading" spacing={Spacing.half}>
-            <SFText
-              modifiers={[
-                font({ textStyle: "body", weight: "semibold" }),
-                foregroundColor(colors.label),
-              ]}
+        {({ pressed }) => (
+          <View style={[styles.moreHeader, pressed && styles.pressed]}>
+            <Host
+              matchContents={{ vertical: true }}
+              style={styles.moreHeaderHost}
+              pointerEvents="none"
             >
-              More Controls
-            </SFText>
-            {/* The list wraps at this width, and a wrapped line centres itself
-                by default — which left "and buzzer" floating under the middle
-                of the line above it. */}
-            <SFText
-              modifiers={[
-                font({ textStyle: "footnote", weight: "regular" }),
-                foregroundColor(colors.secondaryLabel),
-                multilineTextAlignment("leading"),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-              ]}
-            >
-              {subtitle}
-            </SFText>
-          </VStack>
-          <Spacer />
-          <SFImage
-            systemName="chevron.right"
-            size={14}
-            color={colors.secondaryLabel}
-            modifiers={[rotationEffect(expanded ? 90 : 0)]}
-          />
-        </HStack>
-      </Button>
-      <VStack
-        modifiers={[
-          frame({ maxWidth: Infinity, height: expanded ? contentHeight : 0, alignment: "top" }),
-          clipped(),
-          animation(Animation.easeInOut({ duration: 0.28 }), expanded),
-        ]}
-      >
-        {/* `fixedSize` vertically is what makes this a clip rather than a
-            squeeze. Without it the height frame above *proposes* its height to
-            this stack, so at zero the buttons are laid out into nothing and at
-            full height they are laid out again — which is the empty box that
-            opened and then filled with buttons all at once, and the collapse
-            that had nothing to animate because the content had already
-            resized. Held at its natural height, the frame can only reveal and
-            hide it. */}
-        <VStack
-          spacing={Spacing.two}
-          modifiers={[
-            padding({ top: Spacing.three }),
-            frame({ maxWidth: Infinity }),
-            fixedSize({ horizontal: false, vertical: true }),
-            onGeometryChange((geometry) => setContentHeight(geometry.height)),
-          ]}
+              <HStack
+                spacing={Spacing.three - Spacing.one}
+                modifiers={[
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
+                  ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
+                ]}
+              >
+                <ZStack>
+                  {/* A wash of the tint rather than the tint itself, so the
+                      glyph stays the loudest thing in it — and, while redacted,
+                      the neutral fill circle the RN `Icon` uses, because
+                      placeholder redaction masks an image into a rounded rect
+                      in its own colour and turns the circle square. */}
+                  <SFImage
+                    systemName="circle.fill"
+                    size={36}
+                    color={isRedacted ? colors.fill : blue}
+                    modifiers={isRedacted ? [unredacted()] : [opacity(0.15)]}
+                  />
+                  {isRedacted ? null : (
+                    <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
+                  )}
+                </ZStack>
+                <VStack alignment="leading" spacing={Spacing.half}>
+                  <SFText
+                    modifiers={[
+                      font({ textStyle: "body", weight: "semibold" }),
+                      foregroundColor(colors.label),
+                    ]}
+                  >
+                    More Controls
+                  </SFText>
+                  {/* The list wraps at this width, and a wrapped line centres
+                      itself by default — which left "and buzzer" floating under
+                      the middle of the line above it. */}
+                  <SFText
+                    modifiers={[
+                      font({ textStyle: "footnote", weight: "regular" }),
+                      foregroundColor(colors.secondaryLabel),
+                      multilineTextAlignment("leading"),
+                      frame({ maxWidth: Infinity, alignment: "leading" }),
+                    ]}
+                  >
+                    {subtitle}
+                  </SFText>
+                </VStack>
+              </HStack>
+            </Host>
+            <Animated.View style={chevronStyle}>
+              <Icon name="chevron.right" size={14} tint={colors.secondaryLabel} />
+            </Animated.View>
+          </View>
+        )}
+      </Pressable>
+
+      <Animated.View style={[styles.detailClip, clipStyle]}>
+        <View
+          style={styles.detailContent}
+          onLayout={(event) => {
+            measured.current = event.nativeEvent.layout.height;
+            // A capability change can reflow the open detail; track it
+            // unanimated.
+            if (expandedRef.current) {
+              detailHeight.value = event.nativeEvent.layout.height;
+            }
+          }}
         >
-          {rows.map((row, index) => (
-            <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
-          ))}
-        </VStack>
-      </VStack>
-    </VStack>
+          <Host style={{ height: rows.length * CHIP_ROW_HEIGHT }}>
+            <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
+              {rows.map((row, index) => (
+                <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
+              ))}
+            </VStack>
+          </Host>
+        </View>
+      </Animated.View>
+    </Card>
   );
 }
 
@@ -811,3 +751,64 @@ function ControlRow({
     </HStack>
   );
 }
+
+const styles = StyleSheet.create({
+  title: {
+    marginTop: Spacing.one,
+  },
+  // Title on the leading edge, indicators on the trailing one, each inset the
+  // same amount (see `status`).
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.three,
+  },
+  status: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+    marginRight: Spacing.two,
+    marginBottom: Spacing.two,
+  },
+  statusItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+  },
+  row: {
+    height: CONTROL_ROW_HEIGHT,
+    backgroundColor: "transparent",
+  },
+  moreCard: {
+    marginTop: Spacing.three,
+    padding: 0,
+  },
+  moreHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two + Spacing.one,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  moreHeaderHost: {
+    flex: 1,
+  },
+  detailClip: {
+    overflow: "hidden",
+  },
+  // Rendered (and measured) at natural size even while the clip is closed —
+  // absolute, so the clip's height never lays it out.
+  detailContent: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.three,
+  },
+});
