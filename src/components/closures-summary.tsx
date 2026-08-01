@@ -37,6 +37,17 @@ import { closuresSummary, type ClosuresSummary } from "@/data/closure-summary";
 import type { Corner, Row } from "@/data/closures";
 import { relativeTime, type Closure } from "@/data/vehicle";
 
+// What primary-colored SwiftUI text is drawn in while redacted.
+//
+// SwiftUI's placeholder redaction fills its bar with the view's own foreground
+// color, so text carries its weight into the skeleton: `colors.label` comes out
+// markedly darker than the neutral bars the RN side draws (ThemedText fills
+// those with `colors.fill`), and the verdict headline was the darkest thing on
+// an otherwise even screen. Rendered against those bars, `secondaryLabel` is
+// the one that lands on the same tone — `colors.fill` itself is already
+// translucent and fades a second time under redaction, landing too light.
+const PLACEHOLDER_TEXT = colors.secondaryLabel;
+
 // "attention" draws the warning orange, "settled" the reassuring green.
 const TONE_COLORS: Record<ClosureTone, string> = {
   attention: colors.systemOrange,
@@ -100,8 +111,14 @@ function StatusLine({ status }: { status: ClosureStatus }) {
         modifiers={[frame({ width: 22 }), ...(isRedacted ? [unredacted()] : [])]}
       />
       {/* Redacts to a bar of its own width, which is why the placeholder's
-          closures are worth keeping the shape of real ones. */}
-      <Text modifiers={[font({ textStyle: "subheadline" }), foregroundStyle(colors.label)]}>
+          closures are worth keeping the shape of real ones — and to a bar of
+          its own color, which is why it lightens first. */}
+      <Text
+        modifiers={[
+          font({ textStyle: "subheadline" }),
+          foregroundStyle(isRedacted ? PLACEHOLDER_TEXT : colors.label),
+        ]}
+      >
         {status.text}
       </Text>
     </HStack>
@@ -218,7 +235,9 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
                   <Text
                     modifiers={[
                       font({ textStyle: "body", weight: "semibold" }),
-                      foregroundStyle(colors.label),
+                      // Semibold body in the primary color is the heaviest text
+                      // on the card, so its placeholder was the heaviest bar.
+                      foregroundStyle(redacted ? PLACEHOLDER_TEXT : colors.label),
                       lineLimit(1),
                     ]}
                   >
