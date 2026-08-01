@@ -22,6 +22,14 @@ export type SummaryException = {
 export type ClosuresSummary = {
   /** secure = green, attention = orange, busy = a lock command in flight. */
   kind: "secure" | "attention" | "busy";
+  /**
+   * Sentence case, not title case like the app's labels. This slot holds a
+   * *status*, and most of what can land in it is a phrase rather than a name:
+   * "Front driver door unlocked", "2 open, 1 unlocked", "Trunk open". Title
+   * case would make those read as shouting, so the two fixed verdicts —
+   * "All secure", "All closed" — follow the dynamic ones rather than the
+   * other way round.
+   */
   headline: string;
   subline: string | null;
   symbol: SFSymbol;
@@ -153,13 +161,13 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
     };
   }
 
-  // All clear. "All Secure" only when every shown door is confirmed locked;
+  // All clear. "All secure" only when every shown door is confirmed locked;
   // position-only data honestly claims closed, not locked.
   const secure = doorsPart === "Doors locked";
   const subline = [doorsPart, restSubline(rest)].filter(Boolean).join(" · ") || null;
   return {
     kind: "secure",
-    headline: secure ? "All Secure" : "All Closed",
+    headline: secure ? "All secure" : "All closed",
     subline,
     symbol: secure ? "checkmark.shield.fill" : "checkmark.circle.fill",
     exceptions: [],
