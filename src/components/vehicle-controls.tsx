@@ -16,7 +16,9 @@ import {
   buttonBorderShape,
   buttonStyle,
   clipped,
+  contentShape,
   disabled as disabledModifier,
+  fixedSize,
   font,
   foregroundColor,
   frame,
@@ -594,15 +596,19 @@ function MoreControls({
       ]}
     >
       <Button
-        onPress={() => {
-          haptic("selection");
-          setExpanded((open) => !open);
-        }}
+        onPress={() => setExpanded((open) => !open)}
         modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
       >
+        {/* Without a content shape the row is only tappable where it has
+            something drawn — the gap between the subtitle and the chevron did
+            nothing. This makes the whole row the target, the way the closures
+            header is. */}
         <HStack
           spacing={Spacing.three - Spacing.one}
-          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+          modifiers={[
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+            contentShape(shapes.rectangle()),
+          ]}
         >
           <ZStack>
             {/* Same treatment as the closures badge: a wash of the tint rather
@@ -659,11 +665,20 @@ function MoreControls({
           animation(Animation.easeInOut({ duration: 0.28 }), expanded),
         ]}
       >
+        {/* `fixedSize` vertically is what makes this a clip rather than a
+            squeeze. Without it the height frame above *proposes* its height to
+            this stack, so at zero the buttons are laid out into nothing and at
+            full height they are laid out again — which is the empty box that
+            opened and then filled with buttons all at once, and the collapse
+            that had nothing to animate because the content had already
+            resized. Held at its natural height, the frame can only reveal and
+            hide it. */}
         <VStack
           spacing={Spacing.two}
           modifiers={[
             padding({ top: Spacing.three }),
             frame({ maxWidth: Infinity }),
+            fixedSize({ horizontal: false, vertical: true }),
             onGeometryChange((geometry) => setContentHeight(geometry.height)),
           ]}
         >
@@ -726,11 +741,12 @@ function ControlRow({
             // frame leaves that rect's corners showing around the shell — the
             // button reads as sitting inside a container. The shell *is* the
             // button.
-            buttonStyle(onCard ? "bordered" : "glass"),
-            // A bordered button fills with the accent colour by default, which
-            // turned every one of these blue. The tint is the fill here, not
-            // the content: the icons keep their own colours.
-            ...(onCard ? [buttonBorderShape("capsule"), tint(colors.fill)] : []),
+            buttonStyle(onCard ? "borderedProminent" : "glass"),
+            // Prominent, so the tint is the fill at full strength rather than
+            // the wash `bordered` applies — which left these barely visible.
+            // The grey is the climate card's defrost chip, which is the same
+            // control on the same kind of card.
+            ...(onCard ? [buttonBorderShape("capsule"), tint(colors.subtleFill)] : []),
             // Identity is per *slot*, not per command, for the same reason as
             // the key: a swapping slot keeps one id so the glass morphs in
             // place.
