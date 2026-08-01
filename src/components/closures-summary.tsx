@@ -76,20 +76,31 @@ const SYMBOL_POINT_SIZE: Partial<Record<SFSymbol, number>> = {
 };
 
 function StatusLine({ status }: { status: ClosureStatus }) {
+  const isRedacted = useRedacted();
   return (
     <HStack spacing={Spacing.one}>
+      {/* The glyph is the reading — a closed padlock in green says "locked" on
+          its own — so while redacted it gives way to the same neutral dot for
+          every row. Left to redact itself it would be worse than useless:
+          placeholder redaction masks an image into a rounded rect in its own
+          color (see the badge above), so the row would claim a verdict in
+          green or orange without even looking like an icon. Exempted from the
+          surrounding redaction for that reason, and neutral so it claims
+          nothing. */}
       <Image
-        systemName={status.symbol}
-        size={SYMBOL_POINT_SIZE[status.symbol] ?? 15}
-        color={TONE_COLORS[status.tone]}
+        systemName={isRedacted ? "circle.fill" : status.symbol}
+        size={isRedacted ? 13 : (SYMBOL_POINT_SIZE[status.symbol] ?? 15)}
+        color={isRedacted ? colors.fill : TONE_COLORS[status.tone]}
         // SF Symbols vary in intrinsic width (a lock is narrow, a window
         // wide); a fixed slot keeps the texts of stacked lines aligned. It is
         // also what makes the sizes above safe to change: the text starts at
         // the same x whatever the glyph does, as long as the glyph stays
         // inside the slot. Nothing here is tall enough to drive the row's
         // height either — the subheadline's line box is.
-        modifiers={[frame({ width: 22 })]}
+        modifiers={[frame({ width: 22 }), ...(isRedacted ? [unredacted()] : [])]}
       />
+      {/* Redacts to a bar of its own width, which is why the placeholder's
+          closures are worth keeping the shape of real ones. */}
       <Text modifiers={[font({ textStyle: "subheadline" }), foregroundStyle(colors.label)]}>
         {status.text}
       </Text>
@@ -251,7 +262,18 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
             <VStack
               alignment="leading"
               spacing={Spacing.three}
-              modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+              modifiers={[
+                frame({ maxWidth: Infinity, alignment: "leading" }),
+                // The detail is SwiftUI, so it does not inherit the RN
+                // `Redactable` tree's redaction the way the cards around it do
+                // — left alone it renders every door and window state in full
+                // against a screen of skeleton bars, which is exactly what a
+                // card that was already expanded when the data went away used
+                // to do. `redacted` is SwiftUI's own, and reaches the corner
+                // titles and status text; the glyphs opt back out of it
+                // individually (see StatusLine).
+                ...(redacted ? [redactedModifier()] : []),
+              ]}
             >
               {rows.map((rowCorners) => (
                 <HStack
