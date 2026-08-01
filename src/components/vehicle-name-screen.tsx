@@ -108,9 +108,7 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
             ),
           ]}
         />
-        <Footnote>
-          The name your Lexus account uses for this car. It also shows in the official Lexus app.
-        </Footnote>
+        <Footnote>The name your Lexus account uses for this car.</Footnote>
       </VStack>
 
       {error ? <ErrorNotice message={error.message} /> : null}
