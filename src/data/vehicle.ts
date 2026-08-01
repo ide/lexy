@@ -453,7 +453,7 @@ export function mapVehicleProfile(
   const generation = str(d.generation);
 
   return {
-    nickname: str(d.nickName, str(d.modelName, "My Lexus")),
+    nickname: str(d.nickName, str(d.modelName, "My Vehicle")),
     fullName: str(d.displayModelDescription, `${str(d.modelYear)} ${str(d.modelName)}`.trim()),
     model: str(d.modelName),
     brand: str(d.brand, "L"),

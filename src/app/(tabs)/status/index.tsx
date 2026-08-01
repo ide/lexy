@@ -103,7 +103,7 @@ export default function CarDashboard() {
   if (errorScreen) {
     return (
       <>
-        <Stack.Screen options={{ title: "My Lexus", headerRight }} />
+        <Stack.Screen options={{ title: "My Vehicle", headerRight }} />
         {errorScreen}
       </>
     );
@@ -124,7 +124,7 @@ export default function CarDashboard() {
   return (
     <>
       {/* The title is native chrome outside the redacted tree, so it reads the
-          placeholder's nickname while loading — "My Lexus", the generic
+          placeholder's nickname while loading — "My Vehicle", the generic
           fallback, rather than the tab's "Status" label, which reads oddly as a
           large screen title. */}
       <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />

@@ -11,7 +11,7 @@ import type { Vehicle } from "@/data/vehicle";
  * drift.
  */
 export const PLACEHOLDER_VEHICLE: Vehicle = {
-  nickname: "My Lexus",
+  nickname: "My Vehicle",
   fullName: "2026 Lexus IS 350",
   model: "IS 350",
   brand: "L",
