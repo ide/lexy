@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseRemoteCapabilities } from "./remote-capabilities";
+import { describeExtraControls, parseRemoteCapabilities } from "./remote-capabilities";
 
 // The block as a 2026 IS 350 reports it: only the true flags are present.
 const IS350 = {
@@ -69,5 +69,28 @@ describe("parseRemoteCapabilities", () => {
     // A flag has to be exactly `true` — a truthy string is a shape we don't
     // understand, not a yes.
     expect(parseRemoteCapabilities({ extendedCapabilities: { hornCapable: "Y" } })).toEqual([]);
+  });
+});
+
+describe("describeExtraControls", () => {
+  it("names what the disclosure hides, in reading order", () => {
+    expect(describeExtraControls(parseRemoteCapabilities(IS350))).toBe(
+      "Trunk, headlights, hazards, horn, and buzzer",
+    );
+  });
+
+  it("never names the controls already on screen above it", () => {
+    const sentence = describeExtraControls(["doors", "engine", "horn"]);
+    expect(sentence).toBe("Horn");
+  });
+
+  it("joins two without a comma and one on its own", () => {
+    expect(describeExtraControls(["horn", "buzzer"])).toBe("Horn and buzzer");
+    expect(describeExtraControls(["buzzer"])).toBe("Buzzer");
+  });
+
+  it("says nothing when there is nothing to disclose", () => {
+    expect(describeExtraControls([])).toBe("");
+    expect(describeExtraControls(["doors", "engine"])).toBe("");
   });
 });
