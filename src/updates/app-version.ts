@@ -79,7 +79,7 @@ export function describeAppVersion(facts: AppVersionFacts): AppVersionDisplay {
   // recovered by running the copy inside the binary. Everything looks normal;
   // it is not, and the newest code is not what is running.
   const emergency = facts.isEmergencyLaunch
-    ? "An update failed to start, so Lexy is running the version built into this app."
+    ? "Lexy couldn't run its latest update and is using the version built into this app."
     : null;
   // The reason is the runtime's own words — technical, but it is exactly what
   // makes the report actionable, so it rides along with the pasted line.

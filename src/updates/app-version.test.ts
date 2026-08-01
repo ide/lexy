@@ -64,7 +64,7 @@ describe("describeAppVersion", () => {
       emergencyLaunchReason: "Failed to load the update bundle",
     });
     expect(shown.emergency).toBe(
-      "An update failed to start, so Lexy is running the version built into this app.",
+      "Lexy couldn't run its latest update and is using the version built into this app.",
     );
     expect(shown.report).toBe(
       "Lexy 1.0.0 (24) · Embedded in this build · preview · emergency launch: Failed to load the update bundle",
