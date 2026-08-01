@@ -6,6 +6,7 @@ import {
   Image as SFImage,
   Namespace,
   Text as SFText,
+  Spacer,
   VStack,
 } from "@expo/ui/swift-ui";
 import {
@@ -22,9 +23,12 @@ import {
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
+import { Pressable } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Icon } from "@/components/icon";
+import { PulsingText } from "@/components/pulsing-text";
 import { useRedacted } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
@@ -33,6 +37,7 @@ import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
 import type { VehicleContext } from "@/data/lexus-api";
 import { refreshVehicleStatus } from "@/data/refresh-status-sender";
+import type { RemoteCapability } from "@/data/remote-capabilities";
 import { sendRemoteCommand, type RemoteCommand } from "@/data/remote-command";
 import { reflectAcceptedCommand } from "@/data/remote-command-effects";
 import { vehicleContext, type Vehicle } from "@/data/vehicle";
@@ -99,6 +104,119 @@ const ENGINE_STOP: Control = {
   destructive: false,
   actionLabel: "Stop engine",
 };
+
+// ---- More Controls ----------------------------------------------------------
+// The rest of what this plane can actuate. Kept behind a disclosure because
+// none of it is a daily action and two of them make noise, and gated per
+// capability so a car is only ever offered what it will accept.
+
+const TRUNK_UNLOCK: Control = {
+  command: "trunk-unlock",
+  label: "Trunk",
+  symbol: "car.side.rear.crop.trunk.partition",
+  tint: orange,
+  confirmTitle: "Unlock the trunk?",
+  confirmMessage: "This unlocks the trunk. Only do this when you're near the vehicle.",
+  destructive: true,
+  actionLabel: "Unlock trunk",
+};
+
+const TRUNK_LOCK: Control = {
+  command: "trunk-lock",
+  label: "Lock trunk",
+  symbol: "car.side.rear.crop.trunk.partition.fill",
+  tint: green,
+  confirmTitle: "Lock the trunk?",
+  confirmMessage: "This locks the trunk.",
+  destructive: false,
+  actionLabel: "Lock trunk",
+};
+
+const HORN: Control = {
+  command: "sound-horn",
+  label: "Horn",
+  symbol: "horn.blast.fill",
+  tint: red,
+  confirmTitle: "Sound the horn?",
+  confirmMessage: "The vehicle will sound its horn. Don't use this to startle anyone.",
+  destructive: true,
+  actionLabel: "Sound horn",
+};
+
+const BUZZER: Control = {
+  command: "buzzer-warning",
+  label: "Buzzer",
+  symbol: "bell.and.waves.left.and.right.fill",
+  tint: orange,
+  confirmTitle: "Sound the buzzer?",
+  confirmMessage: "The vehicle beeps ten times.",
+  destructive: false,
+  actionLabel: "Sound buzzer",
+};
+
+const HAZARDS_ON: Control = {
+  command: "hazard-on",
+  label: "Hazards",
+  symbol: "car.rear.hazardsign.fill",
+  tint: orange,
+  confirmTitle: "Flash the hazards?",
+  confirmMessage: "The hazard lights start flashing until you turn them off.",
+  destructive: false,
+  actionLabel: "Turn on",
+};
+
+const HAZARDS_OFF: Control = {
+  command: "hazard-off",
+  label: "Hazards off",
+  symbol: "car.rear.hazardsign",
+  tint: blue,
+  confirmTitle: "Turn off the hazards?",
+  confirmMessage: "This stops the hazard lights.",
+  destructive: false,
+  actionLabel: "Turn off",
+};
+
+const HEADLIGHTS: Control = {
+  command: "headlight-on",
+  label: "Lights",
+  symbol: "headlight.low.beam.fill",
+  tint: blue,
+  confirmTitle: "Flash the headlights?",
+  confirmMessage: "The headlights come on to help you find the vehicle.",
+  destructive: false,
+  actionLabel: "Turn on",
+};
+
+/**
+ * Extra controls in display order, each with the capability that has to be
+ * present for it to appear. There is no `headlight-off`: the app's own enum
+ * doesn't define one, so the lights are a find-my-car flash rather than a
+ * switch, and offering an "off" that can't be sent would be a lie.
+ */
+const MORE_CONTROLS: { capability: RemoteCapability; control: Control }[] = [
+  { capability: "trunk", control: TRUNK_UNLOCK },
+  { capability: "trunk", control: TRUNK_LOCK },
+  { capability: "horn", control: HORN },
+  { capability: "buzzer", control: BUZZER },
+  { capability: "hazards", control: HAZARDS_ON },
+  { capability: "hazards", control: HAZARDS_OFF },
+  { capability: "headlights", control: HEADLIGHTS },
+];
+
+/** Buttons per row, matching the three of the main row above. */
+const CONTROLS_PER_ROW = 3;
+/** The main row's height, which these rows match so the grid reads as one. */
+const CONTROL_ROW_HEIGHT = 76;
+
+const EXPAND_TIMING = { duration: 260 } as const;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    rows.push(items.slice(index, index + size));
+  }
+  return rows;
+}
 
 /** The window a just-issued engine command has to show up in engine-status. */
 const ENGINE_PENDING_MS = ENGINE_POLL_COUNT * ENGINE_POLL_INTERVAL_MS;
@@ -179,6 +297,11 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   // running, Start otherwise.
   const engineControl = engine?.running ? ENGINE_STOP : ENGINE_START;
   const controls = [LOCK, UNLOCK, engineControl];
+  // Only what this car says it will accept. Doors and the engine are the two
+  // the main row assumes; everything else has to earn its place.
+  const extras = MORE_CONTROLS.filter(({ capability }) =>
+    vehicle.remoteCapabilities.includes(capability),
+  ).map(({ control }) => control);
 
   // No reading yet means no claim — the indicator stays absent rather than
   // asserting "Stopped" about an engine we haven't asked about. The redacted
@@ -188,8 +311,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   // lands. It draws as a bar either way, so the word only sets the width.
   const engineLabel = pending
     ? pending.command === "engine-start"
-      ? "Starting…"
-      : "Stopping…"
+      ? "Starting"
+      : "Stopping"
     : engine
       ? engine.running
         ? "Started"
@@ -249,18 +372,24 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
         {/* Lock state before engine state, matching the button order below
             (Lock, Unlock, then Start/Stop). */}
         <View style={styles.status}>
+          {/* Mid-command the word pulses instead of trailing an ellipsis —
+              the wait has no length to promise, only a state to report. */}
           <View style={styles.statusItem}>
             <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
-            <ThemedText type="smallBold" style={{ color: lockColor }}>
-              {lockPending ? (locked ? "Locking…" : "Unlocking…") : locked ? "Locked" : "Unlocked"}
-            </ThemedText>
+            <PulsingText pulsing={lockPending}>
+              <ThemedText type="smallBold" style={{ color: lockColor }}>
+                {lockPending ? (locked ? "Locking" : "Unlocking") : locked ? "Locked" : "Unlocked"}
+              </ThemedText>
+            </PulsingText>
           </View>
           {engineLabel ? (
             <View style={styles.statusItem}>
               <Icon name="power" size={13} tint={engineColor} />
-              <ThemedText type="smallBold" style={{ color: engineColor }}>
-                {engineLabel}
-              </ThemedText>
+              <PulsingText pulsing={pending !== null}>
+                <ThemedText type="smallBold" style={{ color: engineColor }}>
+                  {engineLabel}
+                </ThemedText>
+              </PulsingText>
             </View>
           ) : null}
         </View>
@@ -277,72 +406,185 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           placeholdered (see below), so what is left is the buttons' own
           outlines at their own size. `disabled` keeps them from actuating a car
           we have no data for. */}
-      <Host
-        style={styles.row}
-        modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
-      >
-        <Namespace id={namespaceId}>
-          <GlassEffectContainer spacing={Spacing.two}>
-            <HStack spacing={Spacing.two}>
-              {controls.map((control, slot) => (
-                <Button
-                  // Keyed by slot, not command: the engine button must stay the
-                  // same React element across the Start→Stop swap, or it is
-                  // torn down and rebuilt and there is nothing left to morph.
-                  key={slot}
-                  onPress={() => confirm(control)}
-                  modifiers={[
-                    // No separate background fill behind this: the glass shell
-                    // has its own shape and inset, so painting a rect across the
-                    // button's full frame leaves that rect's corners showing
-                    // around the shell — the button reads as sitting inside a
-                    // container. The shell *is* the button.
-                    buttonStyle("glass"),
-                    // Identity is per *slot*, not per command, for the same
-                    // reason as the key: the engine slot keeps one id across
-                    // the Start→Stop swap so the glass morphs in place.
-                    glassEffectId(`control-${slot}`, namespaceId),
-                    disabledModifier(!enabled),
-                  ]}
+      <ControlRow
+        controls={controls}
+        enabled={enabled}
+        isRedacted={isRedacted}
+        namespaceId={namespaceId}
+        onPress={confirm}
+      />
+      {/* Nothing to disclose on a car that reports none of these — and the
+          placeholder reports none, so the skeleton never shows a row it might
+          have to take away. */}
+      {extras.length > 0 ? (
+        <MoreControls controls={extras} enabled={enabled} onPress={confirm} />
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * One row of glass control buttons. Shared by the main row and each row of the
+ * More Controls grid so the two are the same button at the same size, not two
+ * things that resemble each other.
+ */
+function ControlRow({
+  controls,
+  enabled,
+  isRedacted = false,
+  namespaceId,
+  onPress,
+}: {
+  controls: Control[];
+  enabled: boolean;
+  isRedacted?: boolean;
+  namespaceId: string;
+  onPress: (control: Control) => void;
+}) {
+  return (
+    <Host
+      style={styles.row}
+      modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
+    >
+      <Namespace id={namespaceId}>
+        <GlassEffectContainer spacing={Spacing.two}>
+          <HStack spacing={Spacing.two}>
+            {controls.map((control, slot) => (
+              <Button
+                // Keyed by slot, not command: the engine button must stay the
+                // same React element across the Start→Stop swap, or it is
+                // torn down and rebuilt and there is nothing left to morph.
+                key={slot}
+                onPress={() => onPress(control)}
+                modifiers={[
+                  // No separate background fill behind this: the glass shell
+                  // has its own shape and inset, so painting a rect across the
+                  // button's full frame leaves that rect's corners showing
+                  // around the shell — the button reads as sitting inside a
+                  // container. The shell *is* the button.
+                  buttonStyle("glass"),
+                  // Identity is per *slot*, not per command, for the same
+                  // reason as the key: the engine slot keeps one id across
+                  // the Start→Stop swap so the glass morphs in place.
+                  glassEffectId(`control-${slot}`, namespaceId),
+                  disabledModifier(!enabled),
+                ]}
+              >
+                {/* The width lives on the *label*, not the Button: a glass
+                    button's shell wraps its label, so sizing the button
+                    leaves a content-sized pill floating in an empty frame. */}
+                <VStack
+                  spacing={Spacing.one}
+                  modifiers={[padding({ vertical: Spacing.two }), frame({ maxWidth: Infinity })]}
                 >
-                  {/* The width lives on the *label*, not the Button: a glass
-                      button's shell wraps its label, so sizing the button
-                      leaves a content-sized pill floating in an empty frame. */}
-                  <VStack
-                    spacing={Spacing.one}
-                    modifiers={[padding({ vertical: Spacing.two }), frame({ maxWidth: Infinity })]}
+                  {/* The real icon and label, drawn or not. `hidden` keeps
+                      a view in the layout while suppressing its drawing, so
+                      the redacted row is laid out by exactly the content it
+                      is standing in for — the shells are the live shells,
+                      to the point, with no stand-in geometry to keep in sync
+                      and nothing to jump when the data lands. */}
+                  <SFImage
+                    systemName={control.symbol}
+                    size={22}
+                    color={control.tint}
+                    modifiers={[hidden(isRedacted)]}
+                  />
+                  {/* A glass button tints its label with the accent color,
+                      which turns every label blue. The label is text, not an
+                      action color — the icon already carries the action. */}
+                  <SFText
+                    modifiers={[
+                      font({ textStyle: "footnote", weight: "semibold" }),
+                      foregroundColor(colors.label),
+                      hidden(isRedacted),
+                    ]}
                   >
-                    {/* The real icon and label, drawn or not. `hidden` keeps
-                        a view in the layout while suppressing its drawing, so
-                        the redacted row is laid out by exactly the content it
-                        is standing in for — the shells are the live shells,
-                        to the point, with no stand-in geometry to keep in sync
-                        and nothing to jump when the data lands. */}
-                    <SFImage
-                      systemName={control.symbol}
-                      size={22}
-                      color={control.tint}
-                      modifiers={[hidden(isRedacted)]}
-                    />
-                    {/* A glass button tints its label with the accent color,
-                        which turns every label blue. The label is text, not an
-                        action color — the icon already carries the action. */}
-                    <SFText
-                      modifiers={[
-                        font({ textStyle: "footnote", weight: "semibold" }),
-                        foregroundColor(colors.label),
-                        hidden(isRedacted),
-                      ]}
-                    >
-                      {control.label}
-                    </SFText>
-                  </VStack>
-                </Button>
-              ))}
-            </HStack>
-          </GlassEffectContainer>
-        </Namespace>
-      </Host>
+                    {control.label}
+                  </SFText>
+                </VStack>
+              </Button>
+            ))}
+            {/* A short final row keeps the grid: without these the two buttons
+                of a 2-of-3 row would split the width and sit wider than the
+                six above them. */}
+            {Array.from({ length: CONTROLS_PER_ROW - controls.length }, (_, index) => (
+              <Spacer key={`spacer-${index}`} modifiers={[frame({ maxWidth: Infinity })]} />
+            ))}
+          </HStack>
+        </GlassEffectContainer>
+      </Namespace>
+    </Host>
+  );
+}
+
+/**
+ * The capability-gated extras, behind a disclosure.
+ *
+ * Same expansion mechanic as the Doors & Windows card: a Reanimated height clip
+ * on the UI thread, because a SwiftUI animation cannot span the host boundary
+ * (the RN side snaps to the new size instead of growing). The height is
+ * computed rather than measured — every row is exactly one `CONTROL_ROW_HEIGHT`
+ * — so the first expansion already knows where to land.
+ */
+function MoreControls({
+  controls,
+  enabled,
+  onPress,
+}: {
+  controls: Control[];
+  enabled: boolean;
+  onPress: (control: Control) => void;
+}) {
+  const namespaceId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const rows = chunk(controls, CONTROLS_PER_ROW);
+  const openHeight = rows.length * CONTROL_ROW_HEIGHT;
+
+  const height = useSharedValue(0);
+  const rotation = useSharedValue(0);
+  const clipStyle = useAnimatedStyle(() => ({ height: height.value }));
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  const toggle = () => {
+    const next = !expanded;
+    setExpanded(next);
+    haptic("selection");
+    rotation.value = withTiming(next ? 90 : 0, EXPAND_TIMING);
+    height.value = withTiming(next ? openHeight : 0, EXPAND_TIMING);
+  };
+
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityHint="Shows the vehicle's other remote controls"
+        onPress={toggle}
+      >
+        {({ pressed }) => (
+          <View style={[styles.moreHeader, pressed && styles.pressed]}>
+            <ThemedText type="smallBold" style={styles.moreLabel}>
+              More Controls
+            </ThemedText>
+            <Animated.View style={chevronStyle}>
+              <Icon name="chevron.right" size={12} tint={colors.secondaryLabel} />
+            </Animated.View>
+          </View>
+        )}
+      </Pressable>
+      <Animated.View style={[styles.moreClip, clipStyle]}>
+        {rows.map((row, index) => (
+          <ControlRow
+            key={index}
+            controls={row}
+            enabled={enabled}
+            namespaceId={`${namespaceId}-${index}`}
+            onPress={onPress}
+          />
+        ))}
+      </Animated.View>
     </View>
   );
 }
@@ -379,7 +621,27 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   row: {
-    height: 76,
+    height: CONTROL_ROW_HEIGHT,
     backgroundColor: "transparent",
+  },
+  // Reads as a quiet continuation of the row above rather than a second
+  // section: same small-bold type as the status indicators, not a SectionTitle.
+  moreHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+  },
+  moreLabel: {
+    color: colors.secondaryLabel,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  // Clips the rows to the animated height; without this they spill out of the
+  // collapsed box instead of being hidden by it.
+  moreClip: {
+    overflow: "hidden",
   },
 });

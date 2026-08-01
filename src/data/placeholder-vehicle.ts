@@ -60,6 +60,11 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
     { label: "Climate", symbol: "thermometer.medium" },
     { label: "Location", symbol: "location.fill" },
   ],
+  // The controls the stand-in row draws while the real set is still loading.
+  // Doors and engine only: those two are the always-present buttons, so the
+  // skeleton reserves the row that every car has and never a More Controls
+  // disclosure that might not appear.
+  remoteCapabilities: ["doors", "engine"],
   // Representative rows so the Connected Services skeleton reserves the right
   // space during first load. Values are never readable (they draw as redacted
   // bars) — only their lengths and count matter, so keep them the shape of a

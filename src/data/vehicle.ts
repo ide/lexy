@@ -1,6 +1,7 @@
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import type { VehicleContext } from "@/data/lexus-api";
+import { parseRemoteCapabilities, type RemoteCapability } from "@/data/remote-capabilities";
 import {
   summarizeSubscriptions,
   type SubscriptionVehicle,
@@ -81,6 +82,12 @@ export type VehicleProfile = {
   inServiceDate: string;
   manufacturedDate: string;
   capabilities: Capability[];
+  /**
+   * Which remote actions this car will accept, from its discovery record —
+   * what the controls are gated on, so a button is never offered for something
+   * the vehicle would reject (remote-capabilities.ts).
+   */
+  remoteCapabilities: RemoteCapability[];
   subscriptions: Subscription[];
 };
 
@@ -173,6 +180,7 @@ export function parseVehicleProfile(value: unknown): VehicleProfile {
     !isRecord(value) ||
     !profileStringFields.every((field) => typeof value[field] === "string") ||
     !Array.isArray(value.capabilities) ||
+    !Array.isArray(value.remoteCapabilities) ||
     !Array.isArray(value.subscriptions)
   ) {
     throw new Error("Invalid vehicle profile");
@@ -476,6 +484,7 @@ export function mapVehicleProfile(
       { label: "Climate", symbol: "thermometer.medium" },
       { label: "Location", symbol: "location.fill" },
     ],
+    remoteCapabilities: parseRemoteCapabilities(d),
     subscriptions: mapSubscriptions(subscriptions),
   };
 }

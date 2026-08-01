@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { LexusSession } from "@/auth/lexus-auth";
 import type { VehicleContext } from "@/data/lexus-api";
 import {
+  BUZZER_BEEP_COUNT,
   commandBody,
   isCommandAccepted,
   REMOTE_COMMAND_ACCEPTED,
@@ -22,6 +23,16 @@ const context: VehicleContext = { vin: "VIN1", brand: "L", generation: "21MM" };
 describe("commandBody", () => {
   it("wraps the command with autoFixPopup disabled", () => {
     expect(commandBody("door-lock")).toEqual({ command: "door-lock", autoFixPopup: false });
+  });
+
+  it("sends the app's beep count with the buzzer, and with nothing else", () => {
+    expect(commandBody("buzzer-warning")).toEqual({
+      command: "buzzer-warning",
+      autoFixPopup: false,
+      beepCount: BUZZER_BEEP_COUNT,
+    });
+    expect(commandBody("sound-horn")).not.toHaveProperty("beepCount");
+    expect(commandBody("trunk-unlock")).not.toHaveProperty("beepCount");
   });
 });
 
