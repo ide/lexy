@@ -8,6 +8,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/pulsing-text";
+
 /**
  * React Native analog of SwiftUI's `.redacted(reason:)` for content that lives
  * on the RN side of an `RNHostView` (where the SwiftUI redaction environment
@@ -63,9 +65,10 @@ export function Redactable({
   useEffect(() => {
     if (reason === "loading") {
       // Same treatment as the previous hand-built skeletons: a shared opacity
-      // pulse over the whole placeholder group.
-      opacity.value = 0.4;
-      opacity.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+      // pulse over the whole placeholder group. The numbers live in
+      // pulsing-text.ts because a status label mid-command uses them too.
+      opacity.value = PULSE_MIN_OPACITY;
+      opacity.value = withRepeat(withTiming(1, { duration: PULSE_DURATION_MS }), -1, true);
     } else {
       // Covers both settling back to real content and going still mid-pulse
       // (e.g. the network drops during a first load).

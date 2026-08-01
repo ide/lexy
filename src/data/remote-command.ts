@@ -16,26 +16,54 @@ export type CommandFetch = (
 
 /**
  * Remote actuation commands for the 21MM REST plane
- * (docs/vehicle-status-and-control.md, "Command codes"). All three codes are
- * confirmed: they're verbatim from the official app's own `RemoteCommand` enum,
- * recovered from the OneApp 3.4.0 Android build. That enum holds twelve more
- * (`hazard-on`, `sound-horn`, windows, moonroof…) — see the doc — but only the
- * ones this app actually sends belong in this union.
+ * (docs/vehicle-status-and-control.md, "Command codes"). Every code is
+ * verbatim from the official app's own `RemoteCommand` enum, recovered from
+ * the OneApp 3.4.0 Android build. The enum holds a few more (windows, moonroof,
+ * `add-runtime`) — see the doc — but only the ones this app actually sends
+ * belong in this union.
+ *
+ * What a given car will *accept* is a separate question from what the plane
+ * defines: gate each control on the vehicle's own capability set
+ * (remote-capabilities.ts) rather than sending one and reading the rejection.
  */
-export type RemoteCommand = "door-lock" | "door-unlock" | "engine-start" | "engine-stop";
+export type RemoteCommand =
+  | "door-lock"
+  | "door-unlock"
+  | "engine-start"
+  | "engine-stop"
+  | "trunk-lock"
+  | "trunk-unlock"
+  | "sound-horn"
+  | "buzzer-warning"
+  | "hazard-on"
+  | "hazard-off"
+  | "headlight-on";
 
 export const REMOTE_COMMAND_ACCEPTED = "000000";
+
+/**
+ * How many times the buzzer sounds. The official app hard-codes 10 and offers
+ * no control over it; the field is only read for `buzzer-warning`.
+ */
+export const BUZZER_BEEP_COUNT = 10;
 
 /**
  * The POST body for a remote command. `autoFixPopup: false` opts out of the
  * server auto-resolving precondition popups on our behalf, so preconditions
  * (park, doors, ignition) surface as failures instead of being silently fixed.
+ *
+ * `beepCount` rides along for the buzzer alone — the app sends it on that
+ * command and no other, and an unrecognized field is not worth risking on the
+ * rest.
  */
 export function commandBody(command: RemoteCommand): {
   command: RemoteCommand;
   autoFixPopup: false;
+  beepCount?: number;
 } {
-  return { command, autoFixPopup: false };
+  return command === "buzzer-warning"
+    ? { command, autoFixPopup: false, beepCount: BUZZER_BEEP_COUNT }
+    : { command, autoFixPopup: false };
 }
 
 /**

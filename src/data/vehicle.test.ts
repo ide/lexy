@@ -34,6 +34,7 @@ const profile: VehicleProfile = {
   inServiceDate: "2025-01-02",
   manufacturedDate: "2024-12-01",
   capabilities: [{ label: "Lock & Unlock", symbol: "lock.fill" }],
+  remoteCapabilities: ["doors", "engine"],
   subscriptions: [
     {
       name: "Remote Connect",
