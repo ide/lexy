@@ -38,7 +38,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
 import { PulsingText } from "@/components/pulsing-text";
-import { useRedacted } from "@/components/redactable";
+import { PLACEHOLDER_TEXT, useRedacted } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/auth/auth-context";
@@ -574,10 +574,13 @@ function MoreControls({
                   <SFText
                     modifiers={[
                       font({ textStyle: "body", weight: "semibold" }),
-                      foregroundColor(colors.label),
+                      // The heaviest text on the card, so while redacted it
+                      // drops to the secondary colour — otherwise its bar is
+                      // the darkest thing on a screen claiming nothing yet.
+                      foregroundColor(isRedacted ? PLACEHOLDER_TEXT : colors.label),
                     ]}
                   >
-                    More Controls
+                    More controls
                   </SFText>
                   {/* The list wraps at this width, and a wrapped line centres
                       itself by default — which left "and buzzer" floating under
