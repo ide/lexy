@@ -10,6 +10,8 @@ const RELEASE: AppVersionFacts = {
   updateId: null,
   updateCreatedAt: null,
   channel: "preview",
+  isEmergencyLaunch: false,
+  emergencyLaunchReason: null,
 };
 
 describe("describeAppVersion", () => {
@@ -47,6 +49,32 @@ describe("describeAppVersion", () => {
     });
     expect(shown.update).toBe("Development build");
     expect(shown.report).toBe("Lexy 1.0.0 · Development build");
+  });
+
+  it("says nothing about recovery on an ordinary launch", () => {
+    expect(describeAppVersion(RELEASE).emergency).toBeNull();
+  });
+
+  // The state the section exists for: everything looks normal, but the app is
+  // running older code than it downloaded.
+  it("explains an emergency launch, and carries the reason into the report", () => {
+    const shown = describeAppVersion({
+      ...RELEASE,
+      isEmergencyLaunch: true,
+      emergencyLaunchReason: "Failed to load the update bundle",
+    });
+    expect(shown.emergency).toBe(
+      "An update failed to start, so Lexy is running the version built into this app.",
+    );
+    expect(shown.report).toBe(
+      "Lexy 1.0.0 (24) · Embedded in this build · preview · emergency launch: Failed to load the update bundle",
+    );
+  });
+
+  it("still flags an emergency launch when the runtime gives no reason", () => {
+    const shown = describeAppVersion({ ...RELEASE, isEmergencyLaunch: true });
+    expect(shown.emergency).toBeTruthy();
+    expect(shown.report).toMatch(/· emergency launch$/);
   });
 
   it("falls back rather than printing an empty version", () => {

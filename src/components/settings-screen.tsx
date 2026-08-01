@@ -2,6 +2,7 @@ import { Button, Host, HStack, Image, ScrollView, Text, VStack } from "@expo/ui/
 import {
   buttonStyle,
   contentShape,
+  fixedSize,
   font,
   foregroundStyle,
   frame,
@@ -134,6 +135,8 @@ function AboutSection() {
     updateId: Updates.updateId,
     updateCreatedAt: Updates.createdAt,
     channel: Updates.channel,
+    isEmergencyLaunch: Updates.isEmergencyLaunch,
+    emergencyLaunchReason: Updates.emergencyLaunchReason,
   });
 
   return (
@@ -150,6 +153,30 @@ function AboutSection() {
           {shown.published ? <InfoRow label="Published" value={shown.published} /> : null}
         </GroupCard>
       </VStack>
+      {/* Nothing else on screen would say this: the app is running older code
+          than it downloaded, and it looks entirely normal doing it. */}
+      {shown.emergency ? (
+        <HStack
+          alignment="firstTextBaseline"
+          spacing={Spacing.two}
+          modifiers={[
+            padding({ horizontal: Spacing.three }),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          <Image systemName="exclamationmark.triangle.fill" size={13} color={colors.systemOrange} />
+          <Text
+            modifiers={[
+              font({ textStyle: "footnote", weight: "regular" }),
+              foregroundStyle(colors.systemOrange),
+              fixedSize({ horizontal: false, vertical: true }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+            ]}
+          >
+            {shown.emergency}
+          </Text>
+        </HStack>
+      ) : null}
       <VStack
         alignment="leading"
         spacing={Spacing.one}

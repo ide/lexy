@@ -23,6 +23,10 @@ export type AppVersionFacts = {
   updateCreatedAt: Date | null | undefined;
   /** The update channel this build follows ("preview", "production"). */
   channel: string | null | undefined;
+  /** Whether an update failed to start and the binary fell back to its own copy. */
+  isEmergencyLaunch: boolean;
+  /** What went wrong on that fallback, when the runtime says. */
+  emergencyLaunchReason: string | null | undefined;
 };
 
 export type AppVersionDisplay = {
@@ -32,6 +36,11 @@ export type AppVersionDisplay = {
   update: string;
   /** When that update was published, or null when there is no date to give. */
   published: string | null;
+  /**
+   * Said plainly when an update failed to start and the app recovered by
+   * running its built-in copy, or null on an ordinary launch.
+   */
+  emergency: string | null;
   /** The one line to paste into a bug report. */
   report: string;
 };
@@ -65,10 +74,24 @@ export function describeAppVersion(facts: AppVersionFacts): AppVersionDisplay {
   // report gets matched to the release it came from.
   const channel = facts.updatesEnabled && facts.channel ? ` · ${facts.channel}` : "";
 
+  // The state worth reporting above all others, and the one nothing else on
+  // screen would reveal: an update crashed on launch and the app quietly
+  // recovered by running the copy inside the binary. Everything looks normal;
+  // it is not, and the newest code is not what is running.
+  const emergency = facts.isEmergencyLaunch
+    ? "An update failed to start, so Lexy is running the version built into this app."
+    : null;
+  // The reason is the runtime's own words — technical, but it is exactly what
+  // makes the report actionable, so it rides along with the pasted line.
+  const emergencyNote = facts.isEmergencyLaunch
+    ? ` · emergency launch${facts.emergencyLaunchReason ? `: ${facts.emergencyLaunchReason}` : ""}`
+    : "";
+
   return {
     version: versionLine,
     update,
     published,
-    report: `Lexy ${versionLine} · ${update}${channel}`,
+    emergency,
+    report: `Lexy ${versionLine} · ${update}${channel}${emergencyNote}`,
   };
 }
