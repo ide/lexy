@@ -215,6 +215,8 @@ const HORN: Control = {
 const CONTROLS_PER_ROW = 3;
 /** The main row's height, measured from the live layout. */
 const CONTROL_ROW_HEIGHT = 76;
+/** The More controls header's content height, likewise. */
+const MORE_HEADER_CONTENT_HEIGHT = 56;
 
 /** The default glyph size; a few symbols override it (see `Control.iconSize`). */
 const CONTROL_ICON_SIZE = 22;
@@ -542,11 +544,13 @@ function MoreControls({
       >
         {({ pressed }) => (
           <View style={[styles.moreHeader, pressed && styles.pressed]}>
-            <Host
-              matchContents={{ vertical: true }}
-              style={styles.moreHeaderHost}
-              pointerEvents="none"
-            >
+            {/* Sized, not measured. `matchContents` makes RN wait for SwiftUI
+                to report a height, and on the first layout pass it has none —
+                so the row came up at 38pt and settled at 80pt a frame later,
+                with its own text spilling out in between. Telling RN the
+                height up front is what the main control row above already
+                does, and why that one has never flickered. */}
+            <Host style={styles.moreHeaderHost} pointerEvents="none">
               <HStack
                 spacing={Spacing.three - Spacing.one}
                 modifiers={[
@@ -827,6 +831,9 @@ const styles = StyleSheet.create({
   },
   moreHeaderHost: {
     flex: 1,
+    // The header's content height, measured from the live layout: the badge
+    // and two lines of text, without the row's own padding.
+    height: MORE_HEADER_CONTENT_HEIGHT,
   },
   detailClip: {
     overflow: "hidden",
