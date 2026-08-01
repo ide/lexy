@@ -87,7 +87,7 @@ export function describeNativeLog(entry: NativeLogLike): {
   const conciseMessage = entry.message.replace(/,\s*context\s*=\s*\{[\s\S]*$/i, "").trim();
   return {
     title: entry.code !== "None" ? humanize(entry.code) : humanize(entry.level),
-    summary: conciseMessage || "Native expo-updates event.",
+    summary: conciseMessage || "Native Expo Updates event.",
   };
 }
 
@@ -229,7 +229,7 @@ export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState)
     return {
       icon: "exclamationmark.triangle.fill",
       title: "Updates disabled",
-      detail: "This build is not configured to use expo-updates.",
+      detail: "This build is not configured to use Expo Updates.",
       tone: "attention",
     };
   }

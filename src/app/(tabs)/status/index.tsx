@@ -168,7 +168,7 @@ export default function CarDashboard() {
                 </Text>
               ) : (
                 <FooterTimeRow
-                  label={`Lexy has data from ${relativeTime(dataUpdatedAt, now)}.`}
+                  label={`Lexy checked for data ${relativeTime(dataUpdatedAt, now)}.`}
                   timestamp={dataUpdatedAt}
                 />
               )}

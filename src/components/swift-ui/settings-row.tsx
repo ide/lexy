@@ -21,6 +21,14 @@ export function RowChevron() {
 }
 
 /**
+ * The trailing glyph of a row that leaves the app — a website in Safari rather
+ * than another screen in the stack, so it is not the pushing chevron.
+ */
+export function RowExternalLink() {
+  return <Image systemName="arrow.up.forward" size={14} color={colors.secondaryLabel} />;
+}
+
+/**
  * The trailing checkmark of a selectable row. Always in the layout (hidden via
  * opacity when unselected) so choosing an option doesn't reflow the row text.
  */
