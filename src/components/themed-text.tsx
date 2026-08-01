@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import { Platform, StyleSheet, Text, type TextProps } from "react-native";
 
 import { useRedacted } from "@/components/redactable";
@@ -8,10 +9,20 @@ export type ThemedTextProps = TextProps & {
   themeColor?: ThemeColor;
 };
 
+// Whether an enclosing ThemedText has already painted a placeholder bar over
+// this text. Nested text is a real pattern here — the tire readings tuck their
+// unit inside the value's run so the two share a baseline — and the bar color
+// is a translucent system fill, so a nested text painting its own bar over its
+// parent's composited the two into a darker patch: a small dark square sitting
+// on the lighter rectangle. Only the outermost one draws.
+const InsideRedactedText = createContext(false);
+
 export function ThemedText({ style, type = "default", themeColor, ...rest }: ThemedTextProps) {
   const redacted = useRedacted();
+  const alreadyBarred = useContext(InsideRedactedText);
+  const drawsBar = redacted && !alreadyBarred;
 
-  return (
+  const text = (
     <Text
       style={[
         { color: colors[themeColor ?? "label"] },
@@ -20,12 +31,17 @@ export function ThemedText({ style, type = "default", themeColor, ...rest }: The
         // Inside a `Redactable` subtree the text keeps its exact metrics (font,
         // line height, width from the placeholder string) but draws as a
         // neutral bar: transparent glyphs over a fill background. Placed last
-        // so it also wins over caller color overrides.
-        redacted && styles.redacted,
+        // so they also win over caller color overrides.
+        redacted && styles.redactedGlyphs,
+        drawsBar && styles.redactedBar,
       ]}
       {...rest}
     />
   );
+
+  // Nested text still hides its glyphs — the parent's bar is what covers them
+  // both, and it is one rect over the whole run rather than two overlapping.
+  return drawsBar ? <InsideRedactedText.Provider value>{text}</InsideRedactedText.Provider> : text;
 }
 
 const styles = StyleSheet.create({
@@ -70,8 +86,10 @@ const styles = StyleSheet.create({
     fontWeight: Platform.select({ android: 700 }) ?? 500,
     fontSize: 12,
   },
-  redacted: {
+  redactedGlyphs: {
     color: "transparent",
+  },
+  redactedBar: {
     backgroundColor: colors.fill,
     borderRadius: 6,
     overflow: "hidden",
