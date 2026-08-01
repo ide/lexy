@@ -11,7 +11,6 @@ import {
 import { Stack } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
 
 import { ClimateCard } from "@/components/climate-card";
 import { ClosuresCard, StaleNote } from "@/components/closures-summary";
@@ -24,7 +23,6 @@ import { RefreshingNote } from "@/components/refreshing-note";
 import { SectionTitle } from "@/components/section-title";
 import { TirePressureCard } from "@/components/tire-pressure-card";
 import { VehicleControls } from "@/components/vehicle-controls";
-import { VehicleNameHeaderTitle } from "@/components/vehicle-name-header-title";
 import { Spacing } from "@/constants/theme";
 import { cornerShownAts, oldestStale } from "@/data/closure-display";
 import { groupClosures } from "@/data/closures";
@@ -79,9 +77,6 @@ export default function CarDashboard() {
   // describing something the user is already watching, or something that isn't
   // happening.
   const autoRefreshing = useIsAutoRefreshing();
-  // Drives the inline header title's fade; written on the UI thread by the
-  // scroll view, read by the title (see navigation/header-collapse.ts).
-  const collapse = useSharedValue(0);
   // One clock for the whole screen, so the sync lines and the closures' "some
   // readings as of" are measured from the same instant, and all of them stay
   // true while the screen sits open.
@@ -132,18 +127,11 @@ export default function CarDashboard() {
           placeholder's nickname while loading — "My Vehicle", the generic
           fallback, rather than the tab's "Status" label, which reads oddly as a
           large screen title. */}
-      <Stack.Screen
-        options={{
-          title: vehicle.nickname,
-          headerRight,
-          headerTitle: () => <VehicleNameHeaderTitle collapse={collapse} name={vehicle.nickname} />,
-        }}
-      />
+      <Stack.Screen options={{ title: vehicle.nickname, headerRight }} />
       {/* The scroll view and the floating note share this box so the note
           can hang over the content without displacing any of it. */}
       <View style={styles.screen}>
         <NativeScrollView
-          collapse={collapse}
           onRefresh={refresh}
           contentContainerStyle={styles.content}
           // The sync lines are SwiftUI, so they ride in the scroll view's own
