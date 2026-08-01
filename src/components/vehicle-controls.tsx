@@ -446,37 +446,43 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       >
         <Namespace id={namespaceId}>
           <GlassEffectContainer spacing={Spacing.two}>
-            {/* Deliberately not animated. An `animation` here applied to every
-                layout change the expansion caused — including the main row's
-                own position — so opening the disclosure slid the three buttons
-                above it. The group animates its own content; nothing else
-                should move at all. */}
-            <VStack spacing={Spacing.three} modifiers={[frame({ maxWidth: Infinity })]}>
-              <ControlRow
-                controls={controls}
-                enabled={enabled}
-                isRedacted={isRedacted}
-                namespaceId={namespaceId}
-                slotOffset={0}
-                onPress={confirm}
-              />
-              {/* Nothing to disclose on a car that reports none of these. */}
-              {extras.length > 0 ? (
-                <MoreControls
-                  controls={extras}
-                  enabled={enabled}
-                  expanded={expanded}
-                  isRedacted={isRedacted}
-                  namespaceId={namespaceId}
-                  subtitle={extrasSubtitle}
-                  onExpandedChange={setExpanded}
-                  onPress={confirm}
-                />
-              ) : null}
-            </VStack>
+            <ControlRow
+              controls={controls}
+              enabled={enabled}
+              isRedacted={isRedacted}
+              namespaceId={namespaceId}
+              slotOffset={0}
+              onPress={confirm}
+            />
           </GlassEffectContainer>
         </Namespace>
       </Host>
+      {/* A host of its own, and this is why the row above finally holds still.
+          A `matchContents` host re-measures when its content changes, and for a
+          frame it reports the *new* height while SwiftUI is still laying the old
+          content out inside it — so with everything in one host, opening the
+          disclosure dropped the three buttons into the middle of a
+          suddenly-taller box and snapped them back. Only the part that actually
+          changes size gets to re-measure. */}
+      {extras.length > 0 ? (
+        <View style={styles.more}>
+          <Host
+            matchContents={{ vertical: true }}
+            style={styles.controls}
+            modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
+          >
+            <MoreControls
+              controls={extras}
+              enabled={enabled}
+              expanded={expanded}
+              isRedacted={isRedacted}
+              subtitle={extrasSubtitle}
+              onExpandedChange={setExpanded}
+              onPress={confirm}
+            />
+          </Host>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -497,7 +503,6 @@ function MoreControls({
   enabled,
   expanded,
   isRedacted,
-  namespaceId,
   subtitle,
   onExpandedChange,
   onPress,
@@ -506,7 +511,6 @@ function MoreControls({
   enabled: boolean;
   expanded: boolean;
   isRedacted: boolean;
-  namespaceId: string;
   subtitle: string;
   onExpandedChange: (expanded: boolean) => void;
   onPress: (control: Control) => void;
@@ -572,26 +576,16 @@ function MoreControls({
           <Spacer />
         </HStack>
       </DisclosureGroup.Label>
-      {/* A namespace of their own. Sharing the main row's meant these shells
-          were matched against the ones already on screen when they appeared,
-          and SwiftUI flew each new button in from whichever existing button it
-          had paired it with. Nothing here morphs into anything up there. */}
-      <Namespace id={`${namespaceId}-extra`}>
-        <GlassEffectContainer spacing={Spacing.two}>
-          <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
-            {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
-              <ControlRow
-                key={index}
-                controls={row}
-                enabled={enabled}
-                namespaceId={`${namespaceId}-extra`}
-                slotOffset={CONTROLS_PER_ROW * index}
-                onPress={onPress}
-              />
-            ))}
-          </VStack>
-        </GlassEffectContainer>
-      </Namespace>
+      {/* No glass container and no namespace around these. The nested
+          container drew a second visible box inside the disclosure's own card,
+          and the shared namespace was what made each new button fly in from
+          whichever existing shell SwiftUI had paired it with. Nothing here
+          morphs, so nothing here needs an identity. */}
+      <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
+        {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
+          <ControlRow key={index} controls={row} enabled={enabled} onPress={onPress} />
+        ))}
+      </VStack>
     </DisclosureGroup>
   );
 }
@@ -607,15 +601,21 @@ function ControlRow({
   enabled,
   isRedacted = false,
   namespaceId,
-  slotOffset,
+  slotOffset = 0,
   onPress,
 }: {
   controls: Control[];
   enabled: boolean;
   isRedacted?: boolean;
-  namespaceId: string;
-  /** Where this row starts in the screen-wide run of glass identities. */
-  slotOffset: number;
+  /**
+   * The glass namespace this row's shells morph within. Only the main row
+   * passes one — it has two slots that swap content in place (Start/Stop, and
+   * the hazard toggle). A row without an identity simply appears, which is
+   * what the disclosure's rows want.
+   */
+  namespaceId?: string;
+  /** Where this row starts in the run of glass identities. */
+  slotOffset?: number;
   onPress: (control: Control) => void;
 }) {
   return (
@@ -637,7 +637,7 @@ function ControlRow({
             // Identity is per *slot*, not per command, for the same reason as
             // the key: a swapping slot keeps one id so the glass morphs in
             // place.
-            glassEffectId(`control-${slotOffset + slot}`, namespaceId),
+            ...(namespaceId ? [glassEffectId(`control-${slotOffset + slot}`, namespaceId)] : []),
             disabledModifier(!enabled),
           ]}
         >
@@ -735,5 +735,10 @@ const styles = StyleSheet.create({
   // result is.
   controls: {
     backgroundColor: "transparent",
+  },
+  // The gap the main row's VStack spacing used to provide, now that the
+  // disclosure is a sibling rather than a child.
+  more: {
+    marginTop: Spacing.three,
   },
 });
