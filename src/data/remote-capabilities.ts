@@ -48,6 +48,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * How each extra capability is named in the More Controls subtitle. Doors and
+ * the engine are absent on purpose: they are the buttons already on screen
+ * above the disclosure, so naming them here would advertise what isn't behind
+ * it.
+ */
+const EXTRA_NAMES: { capability: RemoteCapability; name: string }[] = [
+  { capability: "trunk", name: "trunk" },
+  { capability: "headlights", name: "headlights" },
+  { capability: "hazards", name: "hazards" },
+  { capability: "horn", name: "horn" },
+  { capability: "buzzer", name: "buzzer" },
+  { capability: "moonroof", name: "moonroof" },
+  { capability: "windows", name: "windows" },
+];
+
+/**
+ * A sentence naming what the disclosure hides, e.g. "Trunk, headlights,
+ * hazards, horn, and buzzer" — so the row says what opening it will offer
+ * rather than making the reader open it to find out.
+ *
+ * Returns an empty string when there is nothing extra, which is also when the
+ * disclosure itself shouldn't be rendered.
+ */
+export function describeExtraControls(capabilities: RemoteCapability[]): string {
+  const names = EXTRA_NAMES.filter(({ capability }) => capabilities.includes(capability)).map(
+    ({ name }) => name,
+  );
+  if (names.length === 0) {
+    return "";
+  }
+  const sentence =
+    names.length === 1
+      ? names[0]
+      : // Oxford comma, matching the rest of the app's copy.
+        `${names.slice(0, -1).join(", ")}${names.length > 2 ? "," : ""} and ${names[names.length - 1]}`;
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+}
+
+/**
  * Read the capability set from a discovery vehicle record. Anything
  * unrecognizable yields an empty set — no capability is assumed, so a shape we
  * don't understand hides controls rather than offering ones the car will
