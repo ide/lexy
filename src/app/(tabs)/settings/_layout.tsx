@@ -21,6 +21,13 @@ export default function SettingsLayout() {
           headerBackButtonDisplayMode: "minimal",
         }}
       />
+      <Stack.Screen
+        name="vehicle-name"
+        options={{
+          title: "Name",
+          headerBackButtonDisplayMode: "minimal",
+        }}
+      />
       {/* No header so the preview is pixel-identical to the real, headerless
           sign-in screen. Swipe from the left edge to return to the menu. */}
       <Stack.Screen name="login" options={{ headerShown: false }} />

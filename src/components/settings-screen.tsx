@@ -20,6 +20,7 @@ import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
 import { describeMapsProviderChoice } from "@/data/maps-providers";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
+import { useVehicleProfile } from "@/hooks/use-vehicle";
 import { haptic } from "@/utils/haptics";
 
 type DevItem = {
@@ -76,6 +77,32 @@ function MapsProviderRow() {
         // promptChoice presents the chooser, or explains when nothing is
         // installed.
         promptChoice();
+      }}
+    />
+  );
+}
+
+// The vehicle's name on the Lexus account — shown here rather than on the
+// details screen because it is the one identity field that is *editable*, and
+// changing it writes to the account, not the car.
+function VehicleNameRow() {
+  const router = useRouter();
+  const profile = useVehicleProfile();
+  const nickname = profile.data?.profile.nickname;
+
+  return (
+    <SettingsRow
+      icon="car.fill"
+      tint={colors.systemBlue}
+      title="Name"
+      subtitle={nickname ?? "…"}
+      accessory=<RowChevron />
+      // Nothing to edit until the current name is known; the rename screen
+      // needs it as the field's starting value.
+      disabled={nickname === undefined}
+      onPress={() => {
+        haptic("selection");
+        router.push("/settings/vehicle-name");
       }}
     />
   );
@@ -184,6 +211,13 @@ export default function SettingsScreen() {
             >
               The app used to open your vehicle&apos;s location for directions.
             </Text>
+          </VStack>
+
+          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+            <SectionHeader>VEHICLE</SectionHeader>
+            <GroupCard>
+              <VehicleNameRow />
+            </GroupCard>
           </VStack>
 
           <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
