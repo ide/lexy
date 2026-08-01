@@ -7,9 +7,11 @@ import {
   font,
   foregroundStyle,
   frame,
+  multilineTextAlignment,
   opacity,
   padding,
   shapes,
+  textSelection,
 } from "@expo/ui/swift-ui/modifiers";
 import type { SFSymbol } from "sf-symbols-typescript";
 
@@ -40,6 +42,50 @@ export function RowCheckmark({ selected }: { selected: boolean }) {
       color={colors.systemBlue}
       modifiers={[opacity(selected ? 1 : 0)]}
     />
+  );
+}
+
+/**
+ * A grouped-list row that reads rather than acts: a label and its value, with
+ * no icon and nothing to tap. The value is selectable, so a long press offers
+ * Copy — the whole point of showing a version string to someone writing a bug
+ * report.
+ */
+export function InfoRow({
+  label,
+  value,
+  last = true,
+}: {
+  label: string;
+  value: string;
+  /** When false, a divider (full width — there is no icon to inset past) follows. */
+  last?: boolean;
+}) {
+  return (
+    <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+      <HStack
+        alignment="center"
+        spacing={Spacing.three}
+        modifiers={[
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+          padding({ horizontal: Spacing.three, vertical: Spacing.three }),
+        ]}
+      >
+        <Text modifiers={[font({ textStyle: "body", weight: "regular" })]}>{label}</Text>
+        <Spacer />
+        <Text
+          modifiers={[
+            font({ textStyle: "body", weight: "regular" }),
+            foregroundStyle({ type: "hierarchical", style: "secondary" }),
+            textSelection(true),
+            multilineTextAlignment("trailing"),
+          ]}
+        >
+          {value}
+        </Text>
+      </HStack>
+      {last ? null : <Divider modifiers={[padding({ leading: Spacing.three })]} />}
+    </VStack>
   );
 }
 
