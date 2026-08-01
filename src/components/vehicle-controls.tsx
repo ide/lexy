@@ -622,10 +622,25 @@ function MoreControls({
               safe here for the same reason the closures detail is: the content
               is a fixed number of rows and never changes size, and the clip
               that animates is the RN view outside it. */}
-          <Host matchContents={{ vertical: true }}>
+          {/* Redaction has to be applied here as well as on the header: SwiftUI's
+              does not cross a host boundary, so a card left open when the data
+              goes away would otherwise draw live icons and labels against a
+              screen of skeleton bars. `disabled` for the same reason the main
+              row is — these actuate a car we have no data for. */}
+          <Host
+            matchContents={{ vertical: true }}
+            modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
+          >
             <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
               {rows.map((row, index) => (
-                <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
+                <ControlRow
+                  key={index}
+                  controls={row}
+                  enabled={enabled}
+                  isRedacted={isRedacted}
+                  onCard
+                  onPress={onPress}
+                />
               ))}
             </VStack>
           </Host>
