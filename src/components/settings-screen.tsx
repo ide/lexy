@@ -7,20 +7,24 @@ import {
   frame,
   padding,
   shapes,
+  textSelection,
 } from "@expo/ui/swift-ui/modifiers";
+import Constants from "expo-constants";
 import { useRouter, type Href } from "expo-router";
 import { useObserve } from "expo-observe";
+import * as Updates from "expo-updates";
 import { useEffect } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
 import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
-import { RowChevron, SettingsRow } from "@/components/swift-ui/settings-row";
+import { InfoRow, RowChevron, SettingsRow } from "@/components/swift-ui/settings-row";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
 import { describeMapsProviderChoice } from "@/data/maps-providers";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useVehicleProfile } from "@/hooks/use-vehicle";
+import { describeAppVersion } from "@/updates/app-version";
 import { haptic } from "@/utils/haptics";
 
 type DevItem = {
@@ -112,6 +116,70 @@ function VehicleNameRow() {
         router.push("/settings/vehicle-name");
       }}
     />
+  );
+}
+
+/**
+ * What to quote when something goes wrong: the binary that is installed, and
+ * the JavaScript it is running. `Constants.platform.ios.buildNumber` reads the
+ * binary's own Info.plist rather than the manifest, so an update cannot make
+ * this row describe a build the phone doesn't have.
+ */
+function AboutSection() {
+  const shown = describeAppVersion({
+    version: Constants.expoConfig?.version,
+    buildNumber: Constants.platform?.ios?.buildNumber,
+    updatesEnabled: Updates.isEnabled,
+    isEmbeddedLaunch: Updates.isEmbeddedLaunch,
+    updateId: Updates.updateId,
+    updateCreatedAt: Updates.createdAt,
+    channel: Updates.channel,
+  });
+
+  return (
+    <VStack
+      alignment="leading"
+      spacing={Spacing.two}
+      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+    >
+      <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+        <SectionHeader>ABOUT</SectionHeader>
+        <GroupCard>
+          <InfoRow label="Version" value={shown.version} last={false} />
+          <InfoRow label="Update" value={shown.update} last={shown.published === null} />
+          {shown.published ? <InfoRow label="Published" value={shown.published} /> : null}
+        </GroupCard>
+      </VStack>
+      <VStack
+        alignment="leading"
+        spacing={Spacing.one}
+        modifiers={[
+          padding({ horizontal: Spacing.three }),
+          frame({ maxWidth: Infinity, alignment: "leading" }),
+        ]}
+      >
+        <Text
+          modifiers={[
+            font({ textStyle: "footnote", weight: "regular" }),
+            foregroundStyle({ type: "hierarchical", style: "secondary" }),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          Include this when reporting a problem — press and hold to copy it.
+        </Text>
+        {/* The same facts as the rows above, on one line, because a report is
+            pasted rather than transcribed. */}
+        <Text
+          modifiers={[
+            font({ textStyle: "footnote", weight: "regular" }),
+            textSelection(true),
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+          ]}
+        >
+          {shown.report}
+        </Text>
+      </VStack>
+    </VStack>
   );
 }
 
@@ -233,6 +301,8 @@ export default function SettingsScreen() {
               <SignOutRow />
             </GroupCard>
           </VStack>
+
+          <AboutSection />
         </VStack>
       </ScrollView>
     </Host>
