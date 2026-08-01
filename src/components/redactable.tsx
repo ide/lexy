@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/pulsing-text";
+import { colors } from "@/constants/theme";
 
 /**
  * React Native analog of SwiftUI's `.redacted(reason:)` for content that lives
@@ -42,6 +43,16 @@ import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/pulsing-text"
  * not redacted" is unrepresentable.
  */
 export type RedactionReason = "loading" | "unavailable" | null;
+
+/**
+ * What the heaviest text on a card is drawn in while redacted.
+ *
+ * Semibold body in the primary colour is the darkest thing on a card, so its
+ * placeholder bar would be the darkest too — which reads as the most important
+ * thing on a screen that is not claiming anything yet. Dropping it to the
+ * secondary colour evens the skeleton out.
+ */
+export const PLACEHOLDER_TEXT = colors.secondaryLabel;
 
 const RedactedContext = createContext(false);
 

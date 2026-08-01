@@ -17,7 +17,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
-import { useRedacted } from "@/components/redactable";
+import { PLACEHOLDER_TEXT, useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
 import { EXPAND_TIMING } from "@/constants/motion";
 import { Spacing, colors } from "@/constants/theme";
@@ -42,8 +42,6 @@ import { relativeTime, type Closure } from "@/data/vehicle";
 // an otherwise even screen. Rendered against those bars, `secondaryLabel` is
 // the one that lands on the same tone — `colors.fill` itself is already
 // translucent and fades a second time under redaction, landing too light.
-const PLACEHOLDER_TEXT = colors.secondaryLabel;
-
 // "attention" draws the warning orange, "settled" the reassuring green.
 const TONE_COLORS: Record<ClosureTone, string> = {
   attention: colors.systemOrange,
