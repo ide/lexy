@@ -9,7 +9,7 @@ export default function SettingsLayout() {
       <Stack.Screen
         name="updates"
         options={{
-          title: "Expo Updates",
+          title: "Updates",
           // "Settings" is a long back-title, so show just the chevron.
           headerBackButtonDisplayMode: "minimal",
         }}

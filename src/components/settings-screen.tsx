@@ -38,16 +38,16 @@ const DEV_ITEMS: DevItem[] = [
   {
     icon: "square.stack.3d.up.fill",
     tint: colors.systemBlue,
-    title: "Expo Updates",
+    title: "Updates",
     subtitle: "Expo Updates status, controls, and activity log.",
     href: "/settings/updates",
   },
   {
-    icon: "cloud.fill",
-    tint: colors.systemCyan,
-    title: "Expo Application Services",
-    subtitle: "Open this project's EAS dashboard.",
-    href: "/settings/eas",
+    icon: "cylinder.split.1x2.fill",
+    tint: colors.systemOrange,
+    title: "Data State",
+    subtitle: "Force loading, offline, error, and empty states.",
+    href: "/settings/data-state",
   },
   {
     icon: "person.badge.key.fill",
@@ -57,11 +57,11 @@ const DEV_ITEMS: DevItem[] = [
     href: "/settings/login",
   },
   {
-    icon: "cylinder.split.1x2.fill",
-    tint: colors.systemOrange,
-    title: "Data State",
-    subtitle: "Force loading, offline, error, and empty states.",
-    href: "/settings/data-state",
+    icon: "cloud.fill",
+    tint: colors.systemCyan,
+    title: "Expo Application Services",
+    subtitle: "Open this project's EAS dashboard.",
+    href: "/settings/eas",
   },
 ];
 
