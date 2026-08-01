@@ -12,8 +12,6 @@ import {
   ZStack,
 } from "@expo/ui/swift-ui";
 import {
-  Animation,
-  animation,
   background,
   buttonStyle,
   disabled as disabledModifier,
@@ -173,9 +171,9 @@ const HAZARDS_OFF: Control = {
 
 const HEADLIGHTS: Control = {
   command: "headlight-on",
-  label: "Flash headlights",
+  label: "Flash lights",
   symbol: "headlight.low.beam.fill",
-  iconSize: 20,
+  iconSize: 21,
   tint: blue,
   confirmTitle: "Flash the headlights?",
   confirmMessage: "The headlights come on to help you find the vehicle.",
@@ -448,13 +446,12 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       >
         <Namespace id={namespaceId}>
           <GlassEffectContainer spacing={Spacing.two}>
-            <VStack
-              spacing={Spacing.three}
-              modifiers={[
-                frame({ maxWidth: Infinity }),
-                animation(Animation.spring({ duration: 0.35 }), expanded),
-              ]}
-            >
+            {/* Deliberately not animated. An `animation` here applied to every
+                layout change the expansion caused — including the main row's
+                own position — so opening the disclosure slid the three buttons
+                above it. The group animates its own content; nothing else
+                should move at all. */}
+            <VStack spacing={Spacing.three} modifiers={[frame({ maxWidth: Infinity })]}>
               <ControlRow
                 controls={controls}
                 enabled={enabled}
@@ -575,20 +572,26 @@ function MoreControls({
           <Spacer />
         </HStack>
       </DisclosureGroup.Label>
-      <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
-        {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
-          <ControlRow
-            key={index}
-            controls={row}
-            enabled={enabled}
-            namespaceId={namespaceId}
-            // Ids continue past the main row so no two buttons on screen share
-            // one and the glass container keeps them apart.
-            slotOffset={CONTROLS_PER_ROW * (index + 1)}
-            onPress={onPress}
-          />
-        ))}
-      </VStack>
+      {/* A namespace of their own. Sharing the main row's meant these shells
+          were matched against the ones already on screen when they appeared,
+          and SwiftUI flew each new button in from whichever existing button it
+          had paired it with. Nothing here morphs into anything up there. */}
+      <Namespace id={`${namespaceId}-extra`}>
+        <GlassEffectContainer spacing={Spacing.two}>
+          <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
+            {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
+              <ControlRow
+                key={index}
+                controls={row}
+                enabled={enabled}
+                namespaceId={`${namespaceId}-extra`}
+                slotOffset={CONTROLS_PER_ROW * index}
+                onPress={onPress}
+              />
+            ))}
+          </VStack>
+        </GlassEffectContainer>
+      </Namespace>
     </DisclosureGroup>
   );
 }
