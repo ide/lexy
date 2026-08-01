@@ -110,7 +110,7 @@ const ENGINE_START: Control = {
   confirmMessage:
     "Never remotely start the engine in an enclosed space, or with a child or pet inside the vehicle.",
   destructive: true,
-  actionLabel: "Start engine",
+  actionLabel: "Start Engine",
 };
 
 const ENGINE_STOP: Control = {
@@ -121,7 +121,7 @@ const ENGINE_STOP: Control = {
   confirmTitle: "Stop the engine?",
   confirmMessage: "This ends the remote start.",
   destructive: false,
-  actionLabel: "Stop engine",
+  actionLabel: "Stop Engine",
 };
 
 // ---- More Controls ----------------------------------------------------------
@@ -131,51 +131,51 @@ const ENGINE_STOP: Control = {
 
 const TRUNK_LOCK: Control = {
   command: "trunk-lock",
-  label: "Lock trunk",
+  label: "Lock Trunk",
   symbol: "car.side.rear.crop.trunk.partition.fill",
   tint: green,
   confirmTitle: "Lock the trunk?",
   confirmMessage: "This locks the trunk.",
   destructive: false,
-  actionLabel: "Lock trunk",
+  actionLabel: "Lock Trunk",
 };
 
 const TRUNK_UNLOCK: Control = {
   command: "trunk-unlock",
-  label: "Unlock trunk",
+  label: "Unlock Trunk",
   symbol: "car.side.rear.crop.trunk.partition",
   tint: orange,
   confirmTitle: "Unlock the trunk?",
   confirmMessage: "This unlocks the trunk. Only do this when you're near the vehicle.",
   destructive: true,
-  actionLabel: "Unlock trunk",
+  actionLabel: "Unlock Trunk",
 };
 
 const HAZARDS_ON: Control = {
   command: "hazard-on",
-  label: "Hazard lights",
+  label: "Hazard Lights",
   symbol: "car.rear.hazardsign.fill",
   tint: red,
   confirmTitle: "Flash the hazards?",
   confirmMessage: "The hazard lights start flashing until you turn them off.",
   destructive: false,
-  actionLabel: "Turn on",
+  actionLabel: "Turn On",
 };
 
 const HAZARDS_OFF: Control = {
   command: "hazard-off",
-  label: "Hazards off",
+  label: "Hazards Off",
   symbol: "car.rear.hazardsign",
   tint: blue,
   confirmTitle: "Turn off the hazards?",
   confirmMessage: "This stops the hazard lights.",
   destructive: false,
-  actionLabel: "Turn off",
+  actionLabel: "Turn Off",
 };
 
 const HEADLIGHTS: Control = {
   command: "headlight-on",
-  label: "Flash lights",
+  label: "Flash Lights",
   symbol: "headlight.low.beam.fill",
   iconSize: 21,
   // A beam, not a button: the lighter blue reads as light where systemBlue
@@ -189,26 +189,26 @@ const HEADLIGHTS: Control = {
 
 const BUZZER: Control = {
   command: "buzzer-warning",
-  label: "Play beeps",
+  label: "Play Beeps",
   symbol: "bell.and.waves.left.and.right.fill",
   iconSize: 20,
   tint: yellow,
   confirmTitle: "Sound the buzzer?",
   confirmMessage: "The vehicle beeps ten times.",
   destructive: false,
-  actionLabel: "Play beeps",
+  actionLabel: "Play Beeps",
 };
 
 const HORN: Control = {
   command: "sound-horn",
-  label: "Honk horn",
+  label: "Honk Horn",
   symbol: "horn.blast.fill",
   iconSize: 19,
   tint: orange,
   confirmTitle: "Sound the horn?",
   confirmMessage: "The vehicle will sound its horn. Be sure not to startle anyone.",
   destructive: true,
-  actionLabel: "Honk horn",
+  actionLabel: "Honk Horn",
 };
 
 /** Buttons per row, matching the three of the main row above. */

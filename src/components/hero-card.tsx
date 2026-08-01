@@ -132,7 +132,7 @@ export function HeroCard({ vehicle }: { vehicle: Vehicle }) {
               <HStack spacing={Spacing.one}>
                 <SFImage systemName="map.fill" size={15} color={blue} />
                 <Text modifiers={[font({ textStyle: "subheadline", weight: "semibold" })]}>
-                  Last parked
+                  Last Parked
                 </Text>
               </HStack>
             </Button>

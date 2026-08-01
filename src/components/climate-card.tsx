@@ -197,14 +197,14 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
       {defrost.front || defrost.rear ? (
         <Animated.View style={[styles.defrostRow, dimStyle]}>
           <DefrostToggle
-            label="Front defrost"
+            label="Front Defrost"
             symbol="windshield.front.and.heat.waves"
             parameter={defrost.front}
             disabled={!on}
             onToggle={(enabled) => setDefrost("frontDefrost", enabled)}
           />
           <DefrostToggle
-            label="Rear defrost"
+            label="Rear Defrost"
             symbol="windshield.rear.and.heat.waves"
             parameter={defrost.rear}
             disabled={!on}

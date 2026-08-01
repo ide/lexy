@@ -31,7 +31,7 @@ export default function StatusLayout() {
     <Stack screenOptions={tabStackScreenOptions}>
       <Stack.Screen name="index" options={{ title: "Status" }} />
       {/* The vehicle-location map, presented as a draggable bottom sheet and opened
-          from the "Last parked" button on the Status screen. Uses the native
+          from the "Last Parked" button on the Status screen. Uses the native
           stack header (inline title + X) rather than a hand-rolled one so the
           title sizing and position match the system sheet chrome. */}
       <Stack.Screen

@@ -69,7 +69,7 @@ function MapsProviderRow() {
     <SettingsRow
       icon="map.fill"
       tint={colors.systemBlue}
-      title="Maps app"
+      title="Maps App"
       subtitle={describeMapsProviderChoice(resolved, saved)}
       accessory=<RowChevron />
       onPress={() => {

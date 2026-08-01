@@ -43,7 +43,7 @@ describe("closuresSummary", () => {
     const summary = closuresSummary(allClearCorners(), closedOpenings);
     expect(summary).toEqual({
       kind: "secure",
-      headline: "All secure",
+      headline: "All Secure",
       subline: "Doors locked · Everything else closed",
       symbol: "checkmark.shield.fill",
       exceptions: [],
@@ -56,7 +56,7 @@ describe("closuresSummary", () => {
       door: { label: "door", state: "Closed" } as Closure,
     }));
     const summary = closuresSummary(corners, []);
-    expect(summary.headline).toBe("All closed");
+    expect(summary.headline).toBe("All Closed");
     expect(summary.subline).toBe("Doors closed · Windows closed");
   });
 
