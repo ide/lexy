@@ -568,23 +568,18 @@ function MoreControls({
       onIsExpandedChange={onExpandedChange}
       modifiers={[
         frame({ maxWidth: Infinity }),
+        padding({ horizontal: Spacing.three, vertical: Spacing.two }),
+        background(
+          colors.card,
+          shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
+        ),
         ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
       ]}
     >
       <DisclosureGroup.Label>
-        {/* The card is on the row, not on the group — a `DisclosureGroup`'s
-            background covers its content too, and that is what boxed the
-            buttons in. */}
         <HStack
           spacing={Spacing.three - Spacing.one}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-            background(
-              colors.card,
-              shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
-            ),
-          ]}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
         >
           <ZStack>
             {/* Same treatment as the closures badge: a wash of the tint rather
@@ -633,15 +628,14 @@ function MoreControls({
           and the shared namespace was what made each new button fly in from
           whichever existing shell SwiftUI had paired it with. Nothing here
           morphs, so nothing here needs an identity. */}
-      {/* No card behind these: glass over a white card renders its material as
-          a grey field that merges across the whole grid, which is the rectangle
-          that kept appearing around the buttons. Over the screen's own
-          background it reads exactly as the main row does — same button, same
-          backdrop, so the disclosure looks like more of the row rather than a
-          panel of its own. */}
-      <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
+      {/* Chips rather than glass. A glass button renders its material against
+          what is behind it, and over the card that material reads as a grey
+          field which merges across the whole grid into the rectangle that kept
+          appearing around these. On a card the app's own answer is a subtle
+          fill — the same treatment as the climate card's defrost chips. */}
+      <VStack spacing={Spacing.two} modifiers={[padding({ top: Spacing.three })]}>
         {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
-          <ControlRow key={index} controls={row} enabled={enabled} onPress={onPress} />
+          <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
         ))}
       </VStack>
     </DisclosureGroup>
@@ -659,12 +653,19 @@ function ControlRow({
   enabled,
   isRedacted = false,
   namespaceId,
+  onCard = false,
   slotOffset = 0,
   onPress,
 }: {
   controls: Control[];
   enabled: boolean;
   isRedacted?: boolean;
+  /**
+   * Whether this row sits on a card rather than the screen background. Glass
+   * belongs on the background; on a card it paints a grey field across the
+   * whole row, so a card row uses the app's chip fill instead.
+   */
+  onCard?: boolean;
   /**
    * The glass namespace this row's shells morph within. Only the main row
    * passes one — it has two slots that swap content in place (Start/Stop, and
@@ -691,7 +692,7 @@ function ControlRow({
             // frame leaves that rect's corners showing around the shell — the
             // button reads as sitting inside a container. The shell *is* the
             // button.
-            buttonStyle("glass"),
+            buttonStyle(onCard ? "plain" : "glass"),
             // Identity is per *slot*, not per command, for the same reason as
             // the key: a swapping slot keeps one id so the glass morphs in
             // place.
@@ -713,6 +714,18 @@ function ControlRow({
             modifiers={[
               padding({ vertical: Spacing.two }),
               frame({ maxWidth: Infinity }),
+              // A glass button brings its own shell; a chip has to draw one.
+              ...(onCard
+                ? [
+                    background(
+                      colors.subtleFill,
+                      shapes.roundedRectangle({
+                        cornerRadius: 12,
+                        roundedCornerStyle: "continuous",
+                      }),
+                    ),
+                  ]
+                : []),
               ...(isRedacted ? [unredacted()] : []),
             ]}
           >
