@@ -74,16 +74,50 @@ car by header and takes no `DATETIME`.
 
 ### Response
 
-The standard business envelope. The official client treats **any 2xx with a
-non-empty body as success** and does not inspect `responseCode`; an empty body
-is a failure.
+The standard business envelope. Confirmed against the live API on a 21MM
+vehicle — success is `ORCH-6000`:
 
 ```json
-{ "status": { "messages": [ { "responseCode": "…", "description": "…" } ] } }
+{
+  "status": {
+    "messages": [
+      {
+        "responseCode": "ORCH-6000",
+        "description": "Request Processed Successfully",
+        "detailedDescription": "Request Processed Successfully"
+      }
+    ]
+  }
+}
 ```
+
+The official client doesn't inspect `responseCode` at all: it treats **any 2xx
+with a non-empty body as success**, and an empty body as failure. Worth knowing
+the code anyway, since it's the only thing in the response that carries meaning.
 
 Nothing about the write is asynchronous — unlike a remote command, there is no
 request id to follow up on. Re-read discovery to confirm.
+
+## Which capability block to trust
+
+Discovery carries two, and they disagree. On a 2026 IS 350,
+`remoteServiceCapabilities` reports `trunkCapable: false`,
+`trunkCommandCapable: false`, and `hornCommandCapable: false` for a car whose
+trunk and horn both work. `extendedCapabilities` reports
+`trunkLockUnlockCapable: true`, `hornCapable: true`, `buzzerCapable: true`.
+
+**Gate on `extendedCapabilities`.** Every accessor in the official app reads it
+— `isTrunkLockUnlockCapable`, `isHornCapable`, `isBuzzerCapable`,
+`isHazardCapable`, `isLightsCapable`, `isMoonRoofCapable`,
+`isPowerWindowCapable` — and none read `remoteServiceCapabilities`.
+
+Two traps in that block:
+
+- It lists only what a car **can** do. A missing key is a "no", not a default.
+- `moonroof` and `moonroofCloseCapable` are different flags, and
+  `isMoonRoofCapable()` reads the **second**. A car can advertise
+  `moonroof: true`, omit `moonroofCloseCapable`, and reject the command — which
+  is exactly what this one does.
 
 ## Field notes
 
