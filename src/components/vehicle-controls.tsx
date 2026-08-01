@@ -32,12 +32,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
@@ -47,6 +42,7 @@ import { useRedacted } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/auth/auth-context";
+import { EXPAND_TIMING } from "@/constants/motion";
 import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
 import type { VehicleContext } from "@/data/lexus-api";
@@ -217,7 +213,6 @@ const CONTROLS_PER_ROW = 3;
 /** The main row's height, measured from the live layout. */
 const CONTROL_ROW_HEIGHT = 76;
 
-const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 /** The default glyph size; a few symbols override it (see `Control.iconSize`). */
 const CONTROL_ICON_SIZE = 22;
 
@@ -733,12 +728,14 @@ function ControlRow({
                 line of text and one height. */}
             <SFText
               modifiers={[
-                font({ textStyle: onCard ? "subheadline" : "footnote", weight: "semibold" }),
+                // One size for every control, main row and disclosure alike:
+                // they are the same button doing the same kind of thing, and a
+                // grid where each label had found its own size read as a
+                // mistake rather than a hierarchy.
+                font({ textStyle: "footnote", weight: "semibold" }),
                 foregroundColor(colors.label),
                 lineLimit(1),
-                // Shrink to fit rather than truncate. The floor is low enough
-                // that "Hazard lights" — the longest — still lands on one line.
-                minimumScaleFactor(onCard ? 0.7 : 0.75),
+                minimumScaleFactor(0.75),
                 hidden(isRedacted),
               ]}
             >

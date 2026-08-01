@@ -12,18 +12,14 @@ import {
 import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
 import { Icon } from "@/components/icon";
 import { useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
+import { EXPAND_TIMING } from "@/constants/motion";
 import { Spacing, colors } from "@/constants/theme";
 import {
   cornerVisibility,
@@ -61,8 +57,6 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
   attention: colors.systemOrange,
   busy: colors.secondaryLabel,
 };
-
-const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 
 // Point size per symbol, where the default reads wrong. SF Symbols differ
 // enough in how much of their point size they actually occupy that one number
