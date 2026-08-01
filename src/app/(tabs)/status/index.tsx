@@ -131,58 +131,60 @@ export default function CarDashboard() {
       {/* The scroll view and the floating note share this box so the note
           can hang over the content without displacing any of it. */}
       <View style={styles.screen}>
-        {/* Redaction wraps the whole scroll view now that the screen's content
-            is part SwiftUI and part RN. One shared pulse over everything —
-            rather than one per RN run, which would drift — and `useRedacted`
-            still reaches the SwiftUI segments, since it is React context and
-            does not care which side of the bridge a component renders on. */}
-        <Redactable reason={redaction} style={styles.screen}>
-          <SwiftUIScrollView
-            onRefresh={refresh}
-            // The sync lines are SwiftUI, so they ride in the scroll view's own
-            // footer slot rather than a `Host` of their own inside the RN content
-            // — one less SwiftUI island to measure and lay out. Being genuine
-            // SwiftUI, they take the real `redacted` modifier while loading, which
-            // also spares them from rendering the placeholder's timestamps as
-            // readable sentences; `disabled` keeps the popovers shut, the job the
-            // redacted wrapper's `pointerEvents` used to do here.
-            nativeFooter={
-              <VStack
-                alignment="center"
-                spacing={Spacing.half}
-                modifiers={[
-                  frame({ maxWidth: Infinity }),
-                  padding({ top: Spacing.four, bottom: Spacing.six }),
-                  ...(redaction ? [redacted(), disabled(true)] : []),
-                ]}
-              >
-                <FooterTimeRow
-                  label={`Vehicle last synced with Lexus ${relativeTime(syncedAt, now)}.`}
-                  timestamp={syncedAt}
-                />
-                {/* During an automatic (non-pull-to-refresh) refresh, the data
+        <SwiftUIScrollView
+          onRefresh={refresh}
+          // The sync lines are SwiftUI, so they ride in the scroll view's own
+          // footer slot rather than a `Host` of their own inside the RN content
+          // — one less SwiftUI island to measure and lay out. Being genuine
+          // SwiftUI, they take the real `redacted` modifier while loading, which
+          // also spares them from rendering the placeholder's timestamps as
+          // readable sentences; `disabled` keeps the popovers shut, the job the
+          // redacted wrapper's `pointerEvents` used to do here.
+          nativeFooter={
+            <VStack
+              alignment="center"
+              spacing={Spacing.half}
+              modifiers={[
+                frame({ maxWidth: Infinity }),
+                padding({ top: Spacing.four, bottom: Spacing.six }),
+                ...(redaction ? [redacted(), disabled(true)] : []),
+              ]}
+            >
+              <FooterTimeRow
+                label={`Vehicle last synced with Lexus ${relativeTime(syncedAt, now)}.`}
+                timestamp={syncedAt}
+              />
+              {/* During an automatic (non-pull-to-refresh) refresh, the data
                 freshness line becomes a quiet "Updating…" — the one bit of
                 state we actually have — then returns to the timestamp. */}
-                {autoRefreshing ? (
-                  <Text
-                    modifiers={[
-                      font({ textStyle: "footnote", weight: "regular" }),
-                      foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                    ]}
-                  >
-                    Updating…
-                  </Text>
-                ) : (
-                  <FooterTimeRow
-                    label={`Lexy has data from ${relativeTime(dataUpdatedAt, now)}.`}
-                    timestamp={dataUpdatedAt}
-                  />
-                )}
-              </VStack>
-            }
-          >
-            <RNSection style={styles.contentTop}>
-              {statusBanner}
+              {autoRefreshing ? (
+                <Text
+                  modifiers={[
+                    font({ textStyle: "footnote", weight: "regular" }),
+                    foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                  ]}
+                >
+                  Updating…
+                </Text>
+              ) : (
+                <FooterTimeRow
+                  label={`Lexy has data from ${relativeTime(dataUpdatedAt, now)}.`}
+                  timestamp={dataUpdatedAt}
+                />
+              )}
+            </VStack>
+          }
+        >
+          <RNSection style={styles.content}>
+            {statusBanner}
+            {/* Redaction wraps the content, not the scroll view. Around the
+                  scroll view its `pointerEvents="none"` took the scrolling with
+                  it, so the skeleton could not be scrolled at all. Every
+                  interactive thing inside guards itself anyway — the closures
+                  and More controls headers are disabled while redacted, the
+                  hero's button is not rendered, the climate controls are
+                  placeholders, and the SwiftUI hosts carry `disabled`. */}
+            <Redactable reason={redaction} style={styles.group}>
               <HeroCard vehicle={vehicle} />
 
               {/* Summary readouts stay above the REMOTE CONTROLS section title so
@@ -193,9 +195,7 @@ export default function CarDashboard() {
                 range={vehicle.range}
                 unit={vehicle.distanceUnit}
               />
-            </RNSection>
 
-            <RNSection style={styles.contentBottom}>
               {/* Back in the RN content. It was hoisted into the SwiftUI stack
                 to escape a host that resized itself; nothing here resizes a
                 host any more, and the expansion is a Reanimated clip like the
@@ -238,9 +238,9 @@ export default function CarDashboard() {
                   <TirePressureCard tires={vehicle.tires!} />
                 </View>
               ) : null}
-            </RNSection>
-          </SwiftUIScrollView>
-        </Redactable>
+            </Redactable>
+          </RNSection>
+        </SwiftUIScrollView>
         <RefreshingNote visible={autoRefreshing} />
       </View>
     </>
@@ -251,22 +251,15 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  // The RN runs above and below the SwiftUI controls. Each carries the gap
-  // between its own cards; the seam either side of the controls is the same
-  // gap again, so the whole column reads as one rhythm.
-  contentTop: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.three,
-    gap: Spacing.three,
-  },
-  contentBottom: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
+  content: {
+    padding: Spacing.three,
     gap: Spacing.three,
     // The native footer below the RN content carries the bottom spacing now,
     // including the room the floating tab bar needs.
     paddingBottom: 0,
+  },
+  group: {
+    gap: Spacing.three,
   },
   sectionTitleSpacing: {
     marginTop: Spacing.one,
