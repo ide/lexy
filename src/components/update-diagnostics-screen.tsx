@@ -928,7 +928,7 @@ export default function UpdateDiagnostics() {
                     fixedSize({ horizontal: false, vertical: true }),
                   ]}
                 >
-                  No native expo-updates entries were recorded in the last 24 hours.
+                  No native Expo Updates entries were recorded in the last 24 hours.
                 </Text>
               ) : (
                 <VStack
@@ -945,7 +945,7 @@ export default function UpdateDiagnostics() {
               )}
             </Panel>
             <SectionFooter>
-              {`The ${MAX_VISIBLE_EVENTS} most recent low-level expo-updates entries from the last 24 hours. Entries are summarized; tap one to inspect its raw message and identifiers.`}
+              {`The ${MAX_VISIBLE_EVENTS} most recent low-level Expo Updates entries from the last 24 hours. Entries are summarized; tap one to inspect its raw message and identifiers.`}
             </SectionFooter>
           </VStack>
         </VStack>

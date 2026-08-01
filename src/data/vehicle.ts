@@ -545,7 +545,7 @@ export function absoluteLocalTime(from: string | number): string {
  * renders "how long ago" against the phone's. Those two clocks disagree — car
  * clocks drift by minutes — and when the car's runs ahead, its snapshot reads
  * as *newer* than the fetch that carried it. On the dashboard footer that came
- * out as two adjacent lines contradicting each other: "Lexy has data from 2
+ * out as two adjacent lines contradicting each other: "Lexy checked for data 2
  * hours 35 minutes ago", directly under "Vehicle last synced with Lexus 2 hours
  * 32 minutes ago" — the car apparently reporting after we last heard from it.
  *

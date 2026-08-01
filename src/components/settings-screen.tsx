@@ -36,11 +36,18 @@ type DevItem = {
 // production.
 const DEV_ITEMS: DevItem[] = [
   {
-    icon: "arrow.trianglehead.2.clockwise.rotate.90.circle.fill",
+    icon: "square.stack.3d.up.fill",
     tint: colors.systemBlue,
-    title: "Updates",
-    subtitle: "expo-updates status, controls, and activity log.",
+    title: "Expo Updates",
+    subtitle: "Expo Updates status, controls, and activity log.",
     href: "/settings/updates",
+  },
+  {
+    icon: "cloud.fill",
+    tint: colors.systemCyan,
+    title: "Expo Application Services",
+    subtitle: "Open this project's EAS dashboard.",
+    href: "/settings/eas",
   },
   {
     icon: "person.badge.key.fill",
@@ -50,7 +57,7 @@ const DEV_ITEMS: DevItem[] = [
     href: "/settings/login",
   },
   {
-    icon: "square.stack.3d.up.fill",
+    icon: "cylinder.split.1x2.fill",
     tint: colors.systemOrange,
     title: "Data State",
     subtitle: "Force loading, offline, error, and empty states.",

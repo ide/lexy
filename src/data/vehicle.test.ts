@@ -431,7 +431,7 @@ describe("observedAt", () => {
 
   // The bug this exists for. The car's clock ran three minutes ahead of the
   // phone's, so its snapshot claimed to be newer than the fetch that carried
-  // it, and the footer contradicted itself: "Lexy has data from 2 hours 35
+  // it, and the footer contradicted itself: "Lexy checked for data 2 hours 35
   // minutes ago" directly under "Vehicle last synced with Lexus 2 hours 32
   // minutes ago".
   it("never reports a vehicle stamp as newer than the read that carried it", () => {
