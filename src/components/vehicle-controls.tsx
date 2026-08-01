@@ -73,6 +73,7 @@ type Control = {
 };
 
 const blue = colors.systemBlue;
+const cyan = colors.systemCyan;
 const green = colors.systemGreen;
 const orange = colors.systemOrange;
 const red = colors.systemRed;
@@ -177,7 +178,9 @@ const HEADLIGHTS: Control = {
   label: "Flash lights",
   symbol: "headlight.low.beam.fill",
   iconSize: 21,
-  tint: blue,
+  // A beam, not a button: the lighter blue reads as light where systemBlue
+  // reads as the app's action colour.
+  tint: cyan,
   confirmTitle: "Flash the headlights?",
   confirmMessage: "The headlights come on to help you find the vehicle.",
   destructive: false,
@@ -203,7 +206,7 @@ const HORN: Control = {
   iconSize: 19,
   tint: orange,
   confirmTitle: "Sound the horn?",
-  confirmMessage: "The vehicle will sound its horn. Don't use this to startle anyone.",
+  confirmMessage: "The vehicle will sound its horn. Be sure not to startle anyone.",
   destructive: true,
   actionLabel: "Honk horn",
 };

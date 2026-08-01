@@ -7,6 +7,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-na
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Card } from "@/components/card";
+import { ColorWash } from "@/components/color-wash";
 import { Icon } from "@/components/icon";
 import { useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
@@ -47,13 +48,8 @@ function DefrostToggle({
       style={styles.defrostToggle}
     >
       {({ pressed }) => (
-        <View
-          style={[
-            styles.defrostChip,
-            active && styles.defrostChipOn,
-            (pressed || disabled) && { opacity: 0.6 },
-          ]}
-        >
+        <View style={[styles.defrostChip, (pressed || disabled) && { opacity: 0.6 }]}>
+          {active ? <ColorWash color={blue} /> : null}
           <Icon name={symbol} size={17} tint={active ? blue : colors.secondaryLabel} />
           {/* Medium weight, like a system button label — bold made the chips
               shout compared to every real button on the screen. */}
@@ -309,9 +305,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderCurve: "continuous",
     backgroundColor: colors.subtleFill,
-  },
-  defrostChipOn: {
-    backgroundColor: "rgba(0,122,255,0.15)",
+    // Clips the active wash to the chip's corner radius.
+    overflow: "hidden",
   },
   tabularNums: {
     fontVariant: ["tabular-nums"],
