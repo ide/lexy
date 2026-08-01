@@ -53,14 +53,26 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
 
 const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 
-// Wide, landscape glyphs (window, hood, trunk) drawn at the same point size as
-// the portrait lock read much larger; a smaller point size brings their widths
-// in line with the lock's.
-const WIDE_SYMBOL_SIZE: Partial<Record<SFSymbol, number>> = {
+// Point size per symbol, where the default reads wrong. SF Symbols differ
+// enough in how much of their point size they actually occupy that one number
+// cannot serve them all: at 12pt the hood is 19.3pt wide and 12.0pt tall, while
+// the trunk — which looks like it should be the wider of the two — is 13.3 by
+// 11.0. Sizing them identically is what makes them look mismatched.
+//
+// So each is set to land at a similar drawn size, subject to the 22pt slot
+// below. Width is the binding constraint for the landscape glyphs (the hood at
+// 13pt is already 21.7pt wide and would spill into the text), which is why
+// those stay small; the compact ones can afford more. Measured against the iOS
+// 26 SDK — re-measure rather than guess when adding a symbol here.
+const SYMBOL_POINT_SIZE: Partial<Record<SFSymbol, number>> = {
   "car.window.left": 12,
   "car.window.right": 12,
   "engine.combustion.fill": 12,
-  "car.side.rear.crop.trunk.partition.fill": 12,
+  // Compact, not wide: 17.3 x 14.0 at this size, which reads level with the
+  // moon beside it instead of half its height.
+  "car.side.rear.crop.trunk.partition.fill": 15,
+  // A filled disc is dense for its size, so it needs less of it: 15.0 square.
+  "moon.fill": 13,
 };
 
 function StatusLine({ status }: { status: ClosureStatus }) {
@@ -68,10 +80,14 @@ function StatusLine({ status }: { status: ClosureStatus }) {
     <HStack spacing={Spacing.one}>
       <Image
         systemName={status.symbol}
-        size={WIDE_SYMBOL_SIZE[status.symbol] ?? 15}
+        size={SYMBOL_POINT_SIZE[status.symbol] ?? 15}
         color={TONE_COLORS[status.tone]}
         // SF Symbols vary in intrinsic width (a lock is narrow, a window
-        // wide); a fixed slot keeps the texts of stacked lines aligned.
+        // wide); a fixed slot keeps the texts of stacked lines aligned. It is
+        // also what makes the sizes above safe to change: the text starts at
+        // the same x whatever the glyph does, as long as the glyph stays
+        // inside the slot. Nothing here is tall enough to drive the row's
+        // height either — the subheadline's line box is.
         modifiers={[frame({ width: 22 })]}
       />
       <Text modifiers={[font({ textStyle: "subheadline" }), foregroundStyle(colors.label)]}>
