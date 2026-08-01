@@ -6,7 +6,7 @@ import type { VehicleContext } from "@/data/lexus-api";
 import { queryClient } from "@/data/query-client";
 import { refreshVehicleStatus } from "@/data/refresh-status-sender";
 import { createSingleFlight } from "@/data/single-flight";
-import { vehicleStatusQueryKey } from "@/data/vehicle-keys";
+import { VEHICLE_PROFILE_QUERY_KEY, vehicleStatusQueryKey } from "@/data/vehicle-keys";
 
 /** `runAuthorized` from the auth context: run an operation with a live session. */
 export type RunAuthorized = <T>(operation: (session: LexusSession) => Promise<T>) => Promise<T>;
@@ -27,11 +27,18 @@ export type RefreshTrigger = "auto" | "manual";
  * the climate settings, which live in their own query and can change out from
  * under us (the official Lexus app edits the same settings).
  *
- * The profile is deliberately not refreshed here. Identity, spec sheet, and
- * subscriptions don't go stale on the timescale a refresh is about, and
- * re-reading them would put discovery, spec, and subscriptions back on a path
- * that runs on every foreground and after every lock command. React Query
- * refreshes that half on its own schedule (see PROFILE_STALE_TIME_MS).
+ * The profile rides along on a *manual* refresh only. On an automatic one it
+ * would be waste: identity, spec sheet, and subscriptions don't go stale on
+ * the timescale the app decides to re-read for itself, and putting discovery,
+ * spec, and subscriptions back on that path would run all three on every
+ * foreground and after every lock command.
+ *
+ * A pull-to-refresh is a different question. It means "everything on this
+ * screen", and some of that screen is profile data the *car* never reports:
+ * the vehicle's name is edited from the official Lexus app, so with nothing
+ * re-reading discovery, a rename made there stayed invisible in Lexy until the
+ * profile's own day-long window elapsed (PROFILE_STALE_TIME_MS) — with the
+ * refresh gesture that should have fixed it appearing to do nothing.
  *
  * `prime` POSTs `refresh-status`, which wakes the telematics unit and asks
  * every body module to report — expensive for the 12V battery, so it is
@@ -75,6 +82,9 @@ export async function refreshVehicleData({
       ? queryClient.refetchQueries({ queryKey: vehicleStatusQueryKey(context.vin) })
       : Promise.resolve(),
     queryClient.refetchQueries({ queryKey: CLIMATE_SETTINGS_QUERY_KEY }),
+    trigger === "manual"
+      ? queryClient.refetchQueries({ queryKey: VEHICLE_PROFILE_QUERY_KEY })
+      : Promise.resolve(),
   ]);
 }
 
