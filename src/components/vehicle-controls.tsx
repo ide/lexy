@@ -24,6 +24,7 @@ import {
   hidden,
   lineLimit,
   minimumScaleFactor,
+  multilineTextAlignment,
   opacity,
   padding,
   redacted,
@@ -557,10 +558,15 @@ function MoreControls({
             >
               More Controls
             </SFText>
+            {/* The list wraps at this width, and a wrapped line centres itself
+                by default — which left "and buzzer" floating under the middle
+                of the line above it. */}
             <SFText
               modifiers={[
                 font({ textStyle: "footnote", weight: "regular" }),
                 foregroundColor(colors.secondaryLabel),
+                multilineTextAlignment("leading"),
+                frame({ maxWidth: Infinity, alignment: "leading" }),
               ]}
             >
               {subtitle}
