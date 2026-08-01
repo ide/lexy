@@ -216,8 +216,6 @@ const HORN: Control = {
 const CONTROLS_PER_ROW = 3;
 /** The main row's height, measured from the live layout. */
 const CONTROL_ROW_HEIGHT = 76;
-/** One row of chips, likewise — the host holding them is sized, not measured. */
-const CHIP_ROW_HEIGHT = 64;
 
 const EXPAND_TIMING = { duration: 300, easing: Easing.inOut(Easing.ease) };
 /** The default glyph size; a few symbols override it (see `Control.iconSize`). */
@@ -618,7 +616,12 @@ function MoreControls({
             }
           }}
         >
-          <Host style={{ height: rows.length * CHIP_ROW_HEIGHT }}>
+          {/* Sized by its content, not by a number I picked. The fixed height
+              this used to carry was short, which clipped the top row. It is
+              safe here for the same reason the closures detail is: the content
+              is a fixed number of rows and never changes size, and the clip
+              that animates is the RN view outside it. */}
+          <Host matchContents={{ vertical: true }}>
             <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
               {rows.map((row, index) => (
                 <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
@@ -730,10 +733,12 @@ function ControlRow({
                 line of text and one height. */}
             <SFText
               modifiers={[
-                font({ textStyle: "footnote", weight: "semibold" }),
+                font({ textStyle: onCard ? "subheadline" : "footnote", weight: "semibold" }),
                 foregroundColor(colors.label),
                 lineLimit(1),
-                minimumScaleFactor(0.75),
+                // Shrink to fit rather than truncate. The floor is low enough
+                // that "Hazard lights" — the longest — still lands on one line.
+                minimumScaleFactor(onCard ? 0.7 : 0.75),
                 hidden(isRedacted),
               ]}
             >
