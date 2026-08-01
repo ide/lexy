@@ -1,5 +1,6 @@
 import {
   Button,
+  DisclosureGroup,
   GlassEffectContainer,
   HStack,
   Image as SFImage,
@@ -27,7 +28,6 @@ import {
   opacity,
   padding,
   redacted,
-  rotationEffect,
   shapes,
   textCase,
   unredacted,
@@ -535,23 +535,15 @@ function StatusIndicator({
 }
 
 /**
- * The extra controls, behind a disclosure row.
+ * The extra controls, inside a real SwiftUI `DisclosureGroup`.
  *
- * Hand-built rather than a `DisclosureGroup`, for three reasons the group gave
- * no way around: the group's own background wraps its content as well as its
- * label, so the buttons sat in a visible box; its label is rebuilt on each
- * change of state, which flashed the text on a quick tap; and its content is
- * dropped rather than dismissed, so the buttons vanished the instant a collapse
- * began instead of leaving with the row.
+ * The buttons are the group's *content*, so opening and closing is SwiftUI's
+ * own animation on its own container — not an RN box being resized to a height
+ * computed on this side while the SwiftUI content changes underneath it. That
+ * split was what made the reveal stutter.
  *
- * A button and a conditional stack have none of those problems. The card is on
- * the row alone, so the controls below it sit on the screen's background like
- * the main row does; the label is never rebuilt; and one `animation` keyed to
- * `expanded` carries both the height change and the content's own fade, in and
- * out alike.
- *
- * This is where the layout started, before it went through a `DisclosureGroup`.
- * What was wrong then was the RN host it was nested in, not the shape of it.
+ * The label is built like the Doors & Windows card's header: tinted badge,
+ * title, and a subtitle naming what is inside. The chevron is the group's own.
  */
 function MoreControls({
   controls,
@@ -571,32 +563,23 @@ function MoreControls({
   onPress: (control: Control) => void;
 }) {
   return (
-    <VStack
-      spacing={Spacing.three}
+    <DisclosureGroup
+      isExpanded={expanded}
+      onIsExpandedChange={onExpandedChange}
       modifiers={[
         frame({ maxWidth: Infinity }),
-        animation(Animation.easeInOut({ duration: 0.28 }), expanded),
+        padding({ horizontal: Spacing.three, vertical: Spacing.two }),
+        background(
+          colors.card,
+          shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
+        ),
+        ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
       ]}
     >
-      <Button
-        onPress={() => onExpandedChange(!expanded)}
-        modifiers={[
-          buttonStyle("plain"),
-          frame({ maxWidth: Infinity }),
-          ...(isRedacted ? [disabledModifier(true)] : []),
-        ]}
-      >
+      <DisclosureGroup.Label>
         <HStack
           spacing={Spacing.three - Spacing.one}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-            background(
-              colors.card,
-              shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
-            ),
-            ...(isRedacted ? [redacted("placeholder")] : []),
-          ]}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
         >
           <ZStack>
             {/* Same treatment as the closures badge: a wash of the tint rather
@@ -638,26 +621,19 @@ function MoreControls({
             </SFText>
           </VStack>
           <Spacer />
-          <SFImage
-            systemName="chevron.right"
-            size={14}
-            color={colors.secondaryLabel}
-            modifiers={[rotationEffect(expanded ? 90 : 0)]}
-          />
         </HStack>
-      </Button>
-      {/* No card behind these and no glass container around them: they are the
-          same buttons as the main row, on the same background, so the
-          disclosure reads as revealing more of the row rather than opening a
-          panel. */}
-      {expanded ? (
-        <VStack spacing={Spacing.three} modifiers={[frame({ maxWidth: Infinity })]}>
-          {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
-            <ControlRow key={index} controls={row} enabled={enabled} onPress={onPress} />
-          ))}
-        </VStack>
-      ) : null}
-    </VStack>
+      </DisclosureGroup.Label>
+      {/* No glass container and no namespace around these. The nested
+          container drew a second visible box inside the disclosure's own card,
+          and the shared namespace was what made each new button fly in from
+          whichever existing shell SwiftUI had paired it with. Nothing here
+          morphs, so nothing here needs an identity. */}
+      <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
+        {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
+          <ControlRow key={index} controls={row} enabled={enabled} onPress={onPress} />
+        ))}
+      </VStack>
+    </DisclosureGroup>
   );
 }
 
