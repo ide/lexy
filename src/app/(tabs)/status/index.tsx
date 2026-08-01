@@ -16,7 +16,7 @@ import { ClimateCard } from "@/components/climate-card";
 import { ClosuresCard, StaleNote } from "@/components/closures-summary";
 import { FuelBar } from "@/components/fuel-bar";
 import { HeroCard } from "@/components/hero-card";
-import { NativeScrollView } from "@/components/native-scroll-view";
+import { RNSection, SwiftUIScrollView } from "@/components/swiftui-scroll-view";
 import { OdometerCard } from "@/components/odometer-card";
 import { Redactable } from "@/components/redactable";
 import { RefreshingNote } from "@/components/refreshing-note";
@@ -131,104 +131,115 @@ export default function CarDashboard() {
       {/* The scroll view and the floating note share this box so the note
           can hang over the content without displacing any of it. */}
       <View style={styles.screen}>
-        <NativeScrollView
-          onRefresh={refresh}
-          contentContainerStyle={styles.content}
-          // The sync lines are SwiftUI, so they ride in the scroll view's own
-          // footer slot rather than a `Host` of their own inside the RN content
-          // — one less SwiftUI island to measure and lay out. Being genuine
-          // SwiftUI, they take the real `redacted` modifier while loading, which
-          // also spares them from rendering the placeholder's timestamps as
-          // readable sentences; `disabled` keeps the popovers shut, the job the
-          // redacted wrapper's `pointerEvents` used to do here.
-          nativeFooter={
-            <VStack
-              alignment="center"
-              spacing={Spacing.half}
-              modifiers={[
-                frame({ maxWidth: Infinity }),
-                padding({ top: Spacing.four, bottom: Spacing.six }),
-                ...(redaction ? [redacted(), disabled(true)] : []),
-              ]}
-            >
-              <FooterTimeRow
-                label={`Vehicle last synced with Lexus ${relativeTime(syncedAt, now)}.`}
-                timestamp={syncedAt}
-              />
-              {/* During an automatic (non-pull-to-refresh) refresh, the data
+        {/* Redaction wraps the whole scroll view now that the screen's content
+            is part SwiftUI and part RN. One shared pulse over everything —
+            rather than one per RN run, which would drift — and `useRedacted`
+            still reaches the SwiftUI segments, since it is React context and
+            does not care which side of the bridge a component renders on. */}
+        <Redactable reason={redaction} style={styles.screen}>
+          <SwiftUIScrollView
+            onRefresh={refresh}
+            // The sync lines are SwiftUI, so they ride in the scroll view's own
+            // footer slot rather than a `Host` of their own inside the RN content
+            // — one less SwiftUI island to measure and lay out. Being genuine
+            // SwiftUI, they take the real `redacted` modifier while loading, which
+            // also spares them from rendering the placeholder's timestamps as
+            // readable sentences; `disabled` keeps the popovers shut, the job the
+            // redacted wrapper's `pointerEvents` used to do here.
+            nativeFooter={
+              <VStack
+                alignment="center"
+                spacing={Spacing.half}
+                modifiers={[
+                  frame({ maxWidth: Infinity }),
+                  padding({ top: Spacing.four, bottom: Spacing.six }),
+                  ...(redaction ? [redacted(), disabled(true)] : []),
+                ]}
+              >
+                <FooterTimeRow
+                  label={`Vehicle last synced with Lexus ${relativeTime(syncedAt, now)}.`}
+                  timestamp={syncedAt}
+                />
+                {/* During an automatic (non-pull-to-refresh) refresh, the data
                 freshness line becomes a quiet "Updating…" — the one bit of
                 state we actually have — then returns to the timestamp. */}
-              {autoRefreshing ? (
-                <Text
-                  modifiers={[
-                    font({ textStyle: "footnote", weight: "regular" }),
-                    foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                  ]}
-                >
-                  Updating…
-                </Text>
-              ) : (
-                <FooterTimeRow
-                  label={`Lexy has data from ${relativeTime(dataUpdatedAt, now)}.`}
-                  timestamp={dataUpdatedAt}
-                />
-              )}
-            </VStack>
-          }
-        >
-          {statusBanner}
-          <Redactable reason={redaction} style={styles.group}>
-            <HeroCard vehicle={vehicle} />
+                {autoRefreshing ? (
+                  <Text
+                    modifiers={[
+                      font({ textStyle: "footnote", weight: "regular" }),
+                      foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                    ]}
+                  >
+                    Updating…
+                  </Text>
+                ) : (
+                  <FooterTimeRow
+                    label={`Lexy has data from ${relativeTime(dataUpdatedAt, now)}.`}
+                    timestamp={dataUpdatedAt}
+                  />
+                )}
+              </VStack>
+            }
+          >
+            <RNSection style={styles.contentTop}>
+              {statusBanner}
+              <HeroCard vehicle={vehicle} />
 
-            {/* Summary readouts stay above the REMOTE CONTROLS section title so
+              {/* Summary readouts stay above the REMOTE CONTROLS section title so
               they don't read as controls. Location comes first, then the energy
               and range available to leave that location. */}
-            <FuelBar
-              gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
-              range={vehicle.range}
-              unit={vehicle.distanceUnit}
-            />
+              <FuelBar
+                gauge={fuelGauge(vehicle.fuelType, vehicle.fuelPercent)}
+                range={vehicle.range}
+                unit={vehicle.distanceUnit}
+              />
+            </RNSection>
 
+            {/* SwiftUI, in the scroll view's own stack rather than an RN section
+              — the disclosure inside it changes height, and a nested host is
+              what made that jump. */}
             <VehicleControls vehicle={vehicle} />
 
-            <ClimateCard vehicle={vehicle} />
+            <RNSection style={styles.contentBottom}>
+              <ClimateCard vehicle={vehicle} />
 
-            {corners.length > 0 || openings.length > 0 ? (
-              <View>
-                <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
-                <ClosuresCard corners={corners} openings={openings} />
-                {/* A single note for the closures area — some readings weren't in
+              {corners.length > 0 || openings.length > 0 ? (
+                <View>
+                  <SectionTitle style={styles.sectionTitleSpacing}>DOORS & WINDOWS</SectionTitle>
+                  <ClosuresCard corners={corners} openings={openings} />
+                  {/* A single note for the closures area — some readings weren't in
                   the latest snapshot (e.g. windows after a drive). Bounded by the
                   same read as the sync line above it, and measured from the same
                   `now`, so the reading it names always reads as older than the
                   snapshot that didn't refresh it. */}
-                {closuresStaleAt ? (
-                  <StaleNote at={observedAt(closuresStaleAt, dataUpdatedAt)} now={now} />
-                ) : null}
-              </View>
-            ) : null}
+                  {closuresStaleAt ? (
+                    <StaleNote at={observedAt(closuresStaleAt, dataUpdatedAt)} now={now} />
+                  ) : null}
+                </View>
+              ) : null}
 
-            {/* Mileage bridges immediate access/security state and longer-term
+              {/* Mileage bridges immediate access/security state and longer-term
               running condition (tire pressure) without competing with the
               location/fuel summary at the top. */}
-            <View>
-              <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
-              <OdometerCard
-                odometer={vehicle.odometer}
-                tripA={vehicle.tripA}
-                tripB={vehicle.tripB}
-                unit={vehicle.distanceUnit}
-              />
-            </View>
-
-            {tires.length > 0 ? (
               <View>
-                <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
-                <TirePressureCard tires={vehicle.tires!} />
+                <SectionTitle style={styles.sectionTitleSpacing}>ODOMETER</SectionTitle>
+                <OdometerCard
+                  odometer={vehicle.odometer}
+                  tripA={vehicle.tripA}
+                  tripB={vehicle.tripB}
+                  unit={vehicle.distanceUnit}
+                />
               </View>
-            ) : null}
-          </Redactable>
-        </NativeScrollView>
+
+              {tires.length > 0 ? (
+                <View>
+                  <SectionTitle style={styles.sectionTitleSpacing}>TIRE PRESSURE</SectionTitle>
+                  <TirePressureCard tires={vehicle.tires!} />
+                </View>
+              ) : null}
+            </RNSection>
+          </SwiftUIScrollView>
+        </Redactable>
         <RefreshingNote visible={autoRefreshing} />
       </View>
     </>
@@ -239,17 +250,22 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  content: {
-    padding: Spacing.three,
+  // The RN runs above and below the SwiftUI controls. Each carries the gap
+  // between its own cards; the seam either side of the controls is the same
+  // gap again, so the whole column reads as one rhythm.
+  contentTop: {
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.three,
+    gap: Spacing.three,
+  },
+  contentBottom: {
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
     gap: Spacing.three,
     // The native footer below the RN content carries the bottom spacing now,
     // including the room the floating tab bar needs.
     paddingBottom: 0,
-  },
-  // The Redactable wrapper groups the sections into one child of the scroll
-  // content, so it re-applies the container's section gap inside itself.
-  group: {
-    gap: Spacing.three,
   },
   sectionTitleSpacing: {
     marginTop: Spacing.one,

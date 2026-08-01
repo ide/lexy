@@ -29,7 +29,7 @@ const LEGAL_WINDOW = { left: 56, width: 64, height: 34 };
  *
  * Why shrink one view's hit rect instead of covering the rest of the map in
  * transparent blocker views: this card sits in a SwiftUI ScrollView (see
- * `NativeScrollView`), where a React Native view that answers a hit test is a
+ * `SwiftUIScrollView`), where a React Native view that answers a hit test is a
  * view SwiftUI's scroll gesture has to fight for the touch. Shrinking the rect
  * sidesteps that — outside the window `hitTest` returns nil, so every touch
  * takes exactly the path it took when the map was flatly `pointerEvents="none"`,

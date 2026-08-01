@@ -3,7 +3,6 @@ import {
   DisclosureGroup,
   GlassEffectContainer,
   HStack,
-  Host,
   Image as SFImage,
   Namespace,
   Spacer,
@@ -12,6 +11,8 @@ import {
   ZStack,
 } from "@expo/ui/swift-ui";
 import {
+  Animation,
+  animation,
   background,
   buttonStyle,
   disabled as disabledModifier,
@@ -20,6 +21,7 @@ import {
   frame,
   glassEffectId,
   hidden,
+  kerning,
   lineLimit,
   minimumScaleFactor,
   multilineTextAlignment,
@@ -27,18 +29,16 @@ import {
   padding,
   redacted,
   shapes,
+  textCase,
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { Icon } from "@/components/icon";
-import { PulsingText } from "@/components/pulsing-text";
+import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/pulsing-text";
 import { useRedacted } from "@/components/redactable";
-import { SectionTitle } from "@/components/section-title";
-import { ThemedText } from "@/components/themed-text";
 import { useAuth } from "@/auth/auth-context";
 import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
@@ -395,95 +395,142 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   };
 
   return (
-    <View>
-      <View style={styles.titleRow}>
-        <SectionTitle style={styles.title}>REMOTE CONTROLS</SectionTitle>
+    <VStack
+      alignment="leading"
+      spacing={Spacing.three}
+      modifiers={[
+        frame({ maxWidth: Infinity, alignment: "leading" }),
+        padding({ horizontal: Spacing.three }),
+        ...(isRedacted ? [disabledModifier(true)] : []),
+      ]}
+    >
+      <HStack
+        alignment="center"
+        spacing={Spacing.three}
+        modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+      >
+        <SFText
+          modifiers={[
+            font({ textStyle: "footnote", weight: "semibold" }),
+            foregroundColor(colors.secondaryLabel),
+            kerning(0.5),
+            textCase("uppercase"),
+            ...(isRedacted ? [redacted("placeholder")] : []),
+          ]}
+        >
+          Remote Controls
+        </SFText>
+        <Spacer />
         {/* Lock state before engine state, matching the button order below
             (Lock, Unlock, then Start/Stop). */}
-        <View style={styles.status}>
-          {/* Mid-command the word pulses instead of trailing an ellipsis —
-              the wait has no length to promise, only a state to report. */}
-          <View style={styles.statusItem}>
-            <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
-            <PulsingText pulsing={lockPending}>
-              <ThemedText type="smallBold" style={{ color: lockColor }}>
-                {lockPending ? (locked ? "Locking" : "Unlocking") : locked ? "Locked" : "Unlocked"}
-              </ThemedText>
-            </PulsingText>
-          </View>
-          {engineLabel ? (
-            <View style={styles.statusItem}>
-              <Icon name="power" size={13} tint={engineColor} />
-              <PulsingText pulsing={pending !== null}>
-                <ThemedText type="smallBold" style={{ color: engineColor }}>
-                  {engineLabel}
-                </ThemedText>
-              </PulsingText>
-            </View>
-          ) : null}
-        </View>
-      </View>
-      {/* One Host for every control, main row and disclosure alike.
-          Per-row hosts each clipped their own contents, so a glass button's
-          press effect — which grows past the button's own bounds — was cut off
-          at the row edge, and each host was a separate glass container, so the
-          shells could not merge or morph across rows. Under one host SwiftUI
-          owns the whole layout: the reveal animates natively, and nothing is
-          clipped by an RN box that has to be told the height in advance.
+        <StatusIndicator
+          symbol={locked ? "lock.fill" : "lock.open.fill"}
+          tint={lockColor}
+          label={lockPending ? (locked ? "Locking" : "Unlocking") : locked ? "Locked" : "Unlocked"}
+          pulsing={lockPending}
+          isRedacted={isRedacted}
+        />
+        {engineLabel ? (
+          <StatusIndicator
+            symbol="power"
+            tint={engineColor}
+            label={engineLabel}
+            pulsing={pending !== null}
+            isRedacted={isRedacted}
+          />
+        ) : null}
+      </HStack>
+      {/* No `Host` of its own — these lay out in the scroll view's own SwiftUI
+          stack (see swiftui-scroll-view.tsx). A nested host is measured on the
+          RN side, so a disclosure opening inside one reports its new height
+          across the bridge a frame before SwiftUI has finished laying the old
+          content out, and every control sharing that host jumps and settles.
+          Here there is no boundary to cross and nothing to re-measure.
 
-          The row is SwiftUI, so it does not inherit the RN `Redactable` tree's
-          redaction the way the cards around it do — left alone it renders fully
-          live (real icons, real labels, real glass) against a screen of grey
-          skeleton bars. `redacted` is SwiftUI's own modifier, so the glass
-          shells keep their shape; their contents are hidden rather than
-          placeholdered (see below), so what is left is the buttons' own
-          outlines at their own size. `disabled` keeps them from actuating a car
-          we have no data for. */}
-      <Host
-        matchContents={{ vertical: true }}
-        style={styles.controls}
-        modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
-      >
-        <Namespace id={namespaceId}>
-          <GlassEffectContainer spacing={Spacing.two}>
-            <ControlRow
-              controls={controls}
-              enabled={enabled}
-              isRedacted={isRedacted}
-              namespaceId={namespaceId}
-              slotOffset={0}
-              onPress={confirm}
-            />
-          </GlassEffectContainer>
-        </Namespace>
-      </Host>
-      {/* A host of its own, and this is why the row above finally holds still.
-          A `matchContents` host re-measures when its content changes, and for a
-          frame it reports the *new* height while SwiftUI is still laying the old
-          content out inside it — so with everything in one host, opening the
-          disclosure dropped the three buttons into the middle of a
-          suddenly-taller box and snapped them back. Only the part that actually
-          changes size gets to re-measure. */}
+          `redacted` is SwiftUI's own modifier, so the glass shells keep their
+          shape while their contents are hidden rather than placeholdered (see
+          below) — what is left is the buttons' own outlines at their own size.
+          `disabled` keeps them from actuating a car we have no data for. */}
+      <Namespace id={namespaceId}>
+        <GlassEffectContainer spacing={Spacing.two}>
+          <ControlRow
+            controls={controls}
+            enabled={enabled}
+            isRedacted={isRedacted}
+            namespaceId={namespaceId}
+            slotOffset={0}
+            onPress={confirm}
+          />
+        </GlassEffectContainer>
+      </Namespace>
+      {/* Nothing to disclose on a car that reports none of these. */}
       {extras.length > 0 ? (
-        <View style={styles.more}>
-          <Host
-            matchContents={{ vertical: true }}
-            style={styles.controls}
-            modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
-          >
-            <MoreControls
-              controls={extras}
-              enabled={enabled}
-              expanded={expanded}
-              isRedacted={isRedacted}
-              subtitle={extrasSubtitle}
-              onExpandedChange={setExpanded}
-              onPress={confirm}
-            />
-          </Host>
-        </View>
+        <MoreControls
+          controls={extras}
+          enabled={enabled}
+          expanded={expanded}
+          isRedacted={isRedacted}
+          subtitle={extrasSubtitle}
+          onExpandedChange={setExpanded}
+          onPress={confirm}
+        />
       ) : null}
-    </View>
+    </VStack>
+  );
+}
+
+/**
+ * A lock or engine state, as a glyph and a word.
+ *
+ * Mid-command the word pulses instead of trailing an ellipsis — the wait has no
+ * length to promise, only a state to report. The pulse is SwiftUI's own here
+ * rather than the RN `PulsingText`, since these no longer live on the RN side;
+ * `repeat` stands in for a `repeatForever` @expo/ui doesn't expose, at a count
+ * no one will outlast.
+ */
+function StatusIndicator({
+  symbol,
+  tint,
+  label,
+  pulsing,
+  isRedacted,
+}: {
+  symbol: SFSymbol;
+  tint: string;
+  label: string;
+  pulsing: boolean;
+  isRedacted: boolean;
+}) {
+  return (
+    <HStack
+      alignment="center"
+      spacing={Spacing.one}
+      modifiers={[
+        opacity(pulsing ? PULSE_MIN_OPACITY : 1),
+        animation(
+          Animation.easeInOut({ duration: PULSE_DURATION_MS / 1000 }).repeat({
+            repeatCount: 100_000,
+            autoreverses: true,
+          }),
+          pulsing,
+        ),
+        ...(isRedacted ? [redacted("placeholder")] : []),
+      ]}
+    >
+      {/* SwiftUI's placeholder redaction fills each view with its *own* colour,
+          so the live green of "Locked" skeletonizes as a green pill. The RN
+          text this replaced drew a neutral bar; a neutral tint while redacted
+          keeps that. */}
+      <SFImage systemName={symbol} size={13} color={isRedacted ? colors.fill : tint} />
+      <SFText
+        modifiers={[
+          font({ textStyle: "footnote", weight: "semibold" }),
+          foregroundColor(isRedacted ? colors.fill : tint),
+        ]}
+      >
+        {label}
+      </SFText>
+    </HStack>
   );
 }
 
@@ -526,7 +573,7 @@ function MoreControls({
           colors.card,
           shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
         ),
-        ...(isRedacted ? [disabledModifier(true)] : []),
+        ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
       ]}
     >
       <DisclosureGroup.Label>
@@ -698,47 +745,3 @@ function ControlRow({
     </HStack>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    marginTop: Spacing.one,
-  },
-  // Title on the leading edge, indicators on the trailing one, each inset the
-  // same amount (see `status`). The cost is that "Locked" growing into
-  // "Locking…" pushes the run leftward instead of only extending it — the
-  // right edge is what stays put.
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: Spacing.three,
-  },
-  // Mirrors the SectionTitle's own margins (bottom Spacing.two, top
-  // Spacing.one) so the status indicators line up with the title baseline, and
-  // the trailing inset mirrors the title's leading one so the row is inset the
-  // same amount on both ends.
-  status: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-    marginRight: Spacing.two,
-    marginBottom: Spacing.two,
-  },
-  statusItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.one,
-  },
-  // No height: the host sizes itself to the SwiftUI content, so opening the
-  // disclosure grows it without anything here having to know how tall the
-  // result is.
-  controls: {
-    backgroundColor: "transparent",
-  },
-  // The gap the main row's VStack spacing used to provide, now that the
-  // disclosure is a sibling rather than a child.
-  more: {
-    marginTop: Spacing.three,
-  },
-});
