@@ -11,7 +11,6 @@ import {
   ZStack,
 } from "@expo/ui/swift-ui";
 import {
-  background,
   buttonBorderShape,
   buttonStyle,
   disabled as disabledModifier,
@@ -26,7 +25,6 @@ import {
   opacity,
   padding,
   redacted,
-  shapes,
   tint,
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
@@ -702,21 +700,19 @@ function ControlRow({
             // frame leaves that rect's corners showing around the shell — the
             // button reads as sitting inside a container. The shell *is* the
             // button.
-            // A skeleton chip draws its own shape rather than being a button
-            // that happens to be disabled: SwiftUI greys a disabled prominent
-            // button, and that grey is darker than the fill it replaces, so
-            // the placeholders came out heavier than the controls they stand
-            // in for.
-            buttonStyle(
-              onCard && !isRedacted ? "borderedProminent" : isRedacted ? "plain" : "glass",
-            ),
+            // The same button in every state, redacted or not. Substituting a
+            // stand-in shape cost more than the slightly heavier grey it
+            // saved: a plain button is a different size to a prominent one, so
+            // the chips came out wrong, and the main row lost its glass shell
+            // altogether. A real control with its contents hidden is the
+            // honest placeholder — the live geometry, to the point, with
+            // nothing to keep in sync.
+            buttonStyle(onCard ? "borderedProminent" : "glass"),
             // Prominent, so the tint is the fill at full strength rather than
             // the wash `bordered` applies — which left these barely visible.
             // The grey is the climate card's defrost chip, which is the same
             // control on the same kind of card.
-            ...(onCard && !isRedacted
-              ? [buttonBorderShape("capsule"), tint(colors.subtleFill)]
-              : []),
+            ...(onCard ? [buttonBorderShape("capsule"), tint(colors.subtleFill)] : []),
             // Identity is per *slot*, not per command, for the same reason as
             // the key: a swapping slot keeps one id so the glass morphs in
             // place.
@@ -738,7 +734,6 @@ function ControlRow({
             modifiers={[
               padding({ vertical: Spacing.two }),
               frame({ maxWidth: Infinity }),
-              ...(onCard && isRedacted ? [background(colors.subtleFill, shapes.capsule())] : []),
               ...(isRedacted ? [unredacted()] : []),
             ]}
           >
