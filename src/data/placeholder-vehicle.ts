@@ -61,10 +61,13 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
     { label: "Location", symbol: "location.fill" },
   ],
   // The controls the stand-in row draws while the real set is still loading.
-  // Doors and engine only: those two are the always-present buttons, so the
-  // skeleton reserves the row that every car has and never a More Controls
-  // disclosure that might not appear.
-  remoteCapabilities: ["doors", "engine"],
+  // A typical Remote Connect car, so the skeleton reserves the More Controls
+  // row as well as the buttons above it — leaving it out was the more cautious
+  // choice and the worse one, because the row then appeared out of nowhere on
+  // load and pushed the rest of the screen down. A car that turns out to have
+  // no extras collapses the row instead, which is the rarer jump and the
+  // smaller one.
+  remoteCapabilities: ["doors", "engine", "trunk", "hazards", "headlights", "buzzer", "horn"],
   // Representative rows so the Connected Services skeleton reserves the right
   // space during first load. Values are never readable (they draw as redacted
   // bars) — only their lengths and count matter, so keep them the shape of a

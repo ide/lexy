@@ -1,5 +1,6 @@
 import {
   Button,
+  DisclosureGroup,
   GlassEffectContainer,
   HStack,
   Host,
@@ -26,8 +27,8 @@ import {
   opacity,
   padding,
   redacted,
-  rotationEffect,
   shapes,
+  unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useState } from "react";
@@ -55,6 +56,13 @@ type Control = {
   command: RemoteCommand;
   label: string;
   symbol: SFSymbol;
+  /**
+   * Optical size for this glyph. SF Symbols are drawn to fill their box, so a
+   * wide, dense symbol at the same point size reads bigger than a compact one —
+   * the horn and the bell most of all. Nudged per symbol so the row looks
+   * evenly weighted rather than measuring evenly.
+   */
+  iconSize?: number;
   tint: string;
   confirmTitle: string;
   confirmMessage: string;
@@ -166,6 +174,7 @@ const HEADLIGHTS: Control = {
   command: "headlight-on",
   label: "Flash headlights",
   symbol: "headlight.low.beam.fill",
+  iconSize: 20,
   tint: blue,
   confirmTitle: "Flash the headlights?",
   confirmMessage: "The headlights come on to help you find the vehicle.",
@@ -177,6 +186,7 @@ const BUZZER: Control = {
   command: "buzzer-warning",
   label: "Play beeps",
   symbol: "bell.and.waves.left.and.right.fill",
+  iconSize: 20,
   tint: yellow,
   confirmTitle: "Sound the buzzer?",
   confirmMessage: "The vehicle beeps ten times.",
@@ -188,6 +198,7 @@ const HORN: Control = {
   command: "sound-horn",
   label: "Honk horn",
   symbol: "horn.blast.fill",
+  iconSize: 19,
   tint: orange,
   confirmTitle: "Sound the horn?",
   confirmMessage: "The vehicle will sound its horn. Don't use this to startle anyone.",
@@ -197,6 +208,8 @@ const HORN: Control = {
 
 /** Buttons per row, matching the three of the main row above. */
 const CONTROLS_PER_ROW = 3;
+/** The default glyph size; a few symbols override it (see `Control.iconSize`). */
+const CONTROL_ICON_SIZE = 22;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const rows: T[][] = [];
@@ -316,11 +329,6 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   // the main row assumes; everything else has to earn its place.
   const extras = extraControls(vehicle.remoteCapabilities, hazardsOn);
   const extrasSubtitle = describeExtraControls(vehicle.remoteCapabilities);
-
-  const toggleExpanded = () => {
-    haptic("selection");
-    setExpanded((open) => !open);
-  };
 
   // No reading yet means no claim — the indicator stays absent rather than
   // asserting "Stopped" about an engine we haven't asked about. The redacted
@@ -454,31 +462,19 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
                 slotOffset={0}
                 onPress={confirm}
               />
-              {/* Nothing to disclose on a car that reports none of these — and
-                  the placeholder reports none, so the skeleton never shows a
-                  row it might have to take away. */}
+              {/* Nothing to disclose on a car that reports none of these. */}
               {extras.length > 0 ? (
-                <MoreControlsHeader
+                <MoreControls
+                  controls={extras}
+                  enabled={enabled}
                   expanded={expanded}
+                  isRedacted={isRedacted}
+                  namespaceId={namespaceId}
                   subtitle={extrasSubtitle}
-                  onPress={toggleExpanded}
+                  onExpandedChange={setExpanded}
+                  onPress={confirm}
                 />
               ) : null}
-              {expanded
-                ? chunk(extras, CONTROLS_PER_ROW).map((row, index) => (
-                    <ControlRow
-                      key={index}
-                      controls={row}
-                      enabled={enabled}
-                      namespaceId={namespaceId}
-                      onPress={confirm}
-                      // Ids continue past the main row so no two buttons on
-                      // screen share one and the glass container keeps them
-                      // apart.
-                      slotOffset={CONTROLS_PER_ROW * (index + 1)}
-                    />
-                  ))
-                : null}
             </VStack>
           </GlassEffectContainer>
         </Namespace>
@@ -488,66 +484,106 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
 }
 
 /**
- * The disclosure row, built like the Doors & Windows card's header: tinted
- * badge, title over a subtitle naming what is inside, and a chevron that turns
- * as it opens. A plain SwiftUI button so the whole row is the target and the
- * press state is the system's.
+ * The extra controls, inside a real SwiftUI `DisclosureGroup`.
+ *
+ * The buttons are the group's *content*, so opening and closing is SwiftUI's
+ * own animation on its own container — not an RN box being resized to a height
+ * computed on this side while the SwiftUI content changes underneath it. That
+ * split was what made the reveal stutter.
+ *
+ * The label is built like the Doors & Windows card's header: tinted badge,
+ * title, and a subtitle naming what is inside. The chevron is the group's own.
  */
-function MoreControlsHeader({
+function MoreControls({
+  controls,
+  enabled,
   expanded,
+  isRedacted,
+  namespaceId,
   subtitle,
+  onExpandedChange,
   onPress,
 }: {
+  controls: Control[];
+  enabled: boolean;
   expanded: boolean;
+  isRedacted: boolean;
+  namespaceId: string;
   subtitle: string;
-  onPress: () => void;
+  onExpandedChange: (expanded: boolean) => void;
+  onPress: (control: Control) => void;
 }) {
   return (
-    <Button onPress={onPress} modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}>
-      <HStack
-        spacing={Spacing.three - Spacing.one}
-        modifiers={[
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-          padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-          background(
-            colors.card,
-            shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
-          ),
-        ]}
-      >
-        <ZStack>
-          {/* Same treatment as the closures badge: a wash of the tint rather
-              than the tint itself, so the glyph stays the loudest thing in it. */}
-          <SFImage systemName="circle.fill" size={36} color={blue} modifiers={[opacity(0.15)]} />
-          <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
-        </ZStack>
-        <VStack alignment="leading" spacing={Spacing.half}>
-          <SFText
-            modifiers={[
-              font({ textStyle: "body", weight: "semibold" }),
-              foregroundColor(colors.label),
-            ]}
-          >
-            More Controls
-          </SFText>
-          <SFText
-            modifiers={[
-              font({ textStyle: "footnote", weight: "regular" }),
-              foregroundColor(colors.secondaryLabel),
-            ]}
-          >
-            {subtitle}
-          </SFText>
-        </VStack>
-        <Spacer />
-        <SFImage
-          systemName="chevron.right"
-          size={14}
-          color={colors.secondaryLabel}
-          modifiers={[rotationEffect(expanded ? 90 : 0)]}
-        />
-      </HStack>
-    </Button>
+    <DisclosureGroup
+      isExpanded={expanded}
+      onIsExpandedChange={onExpandedChange}
+      modifiers={[
+        frame({ maxWidth: Infinity }),
+        padding({ horizontal: Spacing.three, vertical: Spacing.two }),
+        background(
+          colors.card,
+          shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
+        ),
+        ...(isRedacted ? [disabledModifier(true)] : []),
+      ]}
+    >
+      <DisclosureGroup.Label>
+        <HStack
+          spacing={Spacing.three - Spacing.one}
+          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+        >
+          <ZStack>
+            {/* Same treatment as the closures badge: a wash of the tint rather
+                than the tint itself, so the glyph stays the loudest thing in
+                it — and, while redacted, the neutral fill circle the RN `Icon`
+                uses, because placeholder redaction masks an image into a
+                rounded rect in its own colour and turns the circle square. */}
+            <SFImage
+              systemName="circle.fill"
+              size={36}
+              color={isRedacted ? colors.fill : blue}
+              modifiers={isRedacted ? [unredacted()] : [opacity(0.15)]}
+            />
+            {isRedacted ? null : (
+              <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
+            )}
+          </ZStack>
+          <VStack alignment="leading" spacing={Spacing.half}>
+            <SFText
+              modifiers={[
+                font({ textStyle: "body", weight: "semibold" }),
+                foregroundColor(colors.label),
+              ]}
+            >
+              More Controls
+            </SFText>
+            <SFText
+              modifiers={[
+                font({ textStyle: "footnote", weight: "regular" }),
+                foregroundColor(colors.secondaryLabel),
+              ]}
+            >
+              {subtitle}
+            </SFText>
+          </VStack>
+          <Spacer />
+        </HStack>
+      </DisclosureGroup.Label>
+      <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
+        {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
+          <ControlRow
+            key={index}
+            controls={row}
+            enabled={enabled}
+            namespaceId={namespaceId}
+            // Ids continue past the main row so no two buttons on screen share
+            // one and the glass container keeps them apart.
+            slotOffset={CONTROLS_PER_ROW * (index + 1)}
+            onPress={onPress}
+          />
+        ))}
+      </VStack>
+    </DisclosureGroup>
   );
 }
 
@@ -599,9 +635,19 @@ function ControlRow({
           {/* The width lives on the *label*, not the Button: a glass button's
               shell wraps its label, so sizing the button leaves a
               content-sized pill floating in an empty frame. */}
+          {/* `unredacted` alongside `hidden`: the contents are already hidden
+              while redacted, so the only thing the inherited placeholder
+              redaction could still do is change how the text is measured — and
+              it does, by a point or two, which left the skeleton's shells
+              fractionally taller than the live ones. Opting out makes the two
+              states the same layout by construction. */}
           <VStack
             spacing={Spacing.one}
-            modifiers={[padding({ vertical: Spacing.two }), frame({ maxWidth: Infinity })]}
+            modifiers={[
+              padding({ vertical: Spacing.two }),
+              frame({ maxWidth: Infinity }),
+              ...(isRedacted ? [unredacted()] : []),
+            ]}
           >
             {/* The real icon and label, drawn or not. `hidden` keeps a view in
                 the layout while suppressing its drawing, so the redacted row is
@@ -611,7 +657,7 @@ function ControlRow({
                 lands. */}
             <SFImage
               systemName={control.symbol}
-              size={22}
+              size={control.iconSize ?? CONTROL_ICON_SIZE}
               color={control.tint}
               modifiers={[hidden(isRedacted)]}
             />
