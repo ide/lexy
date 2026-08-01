@@ -568,18 +568,23 @@ function MoreControls({
       onIsExpandedChange={onExpandedChange}
       modifiers={[
         frame({ maxWidth: Infinity }),
-        padding({ horizontal: Spacing.three, vertical: Spacing.two }),
-        background(
-          colors.card,
-          shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
-        ),
         ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
       ]}
     >
       <DisclosureGroup.Label>
+        {/* The card is on the row, not on the group — a `DisclosureGroup`'s
+            background covers its content too, and that is what boxed the
+            buttons in. */}
         <HStack
           spacing={Spacing.three - Spacing.one}
-          modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
+          modifiers={[
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+            padding({ horizontal: Spacing.three, vertical: Spacing.two }),
+            background(
+              colors.card,
+              shapes.roundedRectangle({ cornerRadius: 18, roundedCornerStyle: "continuous" }),
+            ),
+          ]}
         >
           <ZStack>
             {/* Same treatment as the closures badge: a wash of the tint rather
@@ -628,6 +633,12 @@ function MoreControls({
           and the shared namespace was what made each new button fly in from
           whichever existing shell SwiftUI had paired it with. Nothing here
           morphs, so nothing here needs an identity. */}
+      {/* No card behind these: glass over a white card renders its material as
+          a grey field that merges across the whole grid, which is the rectangle
+          that kept appearing around the buttons. Over the screen's own
+          background it reads exactly as the main row does — same button, same
+          backdrop, so the disclosure looks like more of the row rather than a
+          panel of its own. */}
       <VStack spacing={Spacing.three} modifiers={[padding({ top: Spacing.three })]}>
         {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
           <ControlRow key={index} controls={row} enabled={enabled} onPress={onPress} />
