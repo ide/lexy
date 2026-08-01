@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/auth/auth-context";
 import { colors } from "@/constants/theme";
 import { VehicleDataProvider } from "@/data/query-client";
 import { DebugOverrideProvider } from "@/debug/debug-overrides";
+import { EmergencyLaunchReporter } from "@/updates/emergency-launch-reporter";
 import { UpdateHistoryRecorder } from "@/updates/update-history-recorder";
 
 Observe.configure({
@@ -73,6 +74,7 @@ function RootLayout() {
         <VehicleDataProvider>
           <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
             <UpdateHistoryRecorder />
+            <EmergencyLaunchReporter />
             <DebugOverrideProvider>
               <RootNavigator />
             </DebugOverrideProvider>
