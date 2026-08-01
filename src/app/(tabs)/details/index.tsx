@@ -50,17 +50,17 @@ export default function CarDetails() {
 
   const spec: [string, string][] = [
     ["VIN", vehicle.vin],
-    ["Model code", vehicle.modelCode],
+    ["Model Code", vehicle.modelCode],
     ["Exterior", vehicle.color],
     ["Trim", vehicle.trim],
     ["Region", vehicle.region],
     ["Telematics", vehicle.generation],
-    ["Head unit", vehicle.headUnit],
-    ["Fuel type", vehicle.fuelType],
+    ["Head Unit", vehicle.headUnit],
+    ["Fuel Type", vehicle.fuelType],
     ["Transmission", vehicle.transmission],
     ["Drivetrain", vehicle.drivetrain],
     ["Built", vehicle.manufacturedDate],
-    ["In service", vehicle.inServiceDate],
+    ["In Service", vehicle.inServiceDate],
   ];
 
   return (

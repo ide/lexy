@@ -153,13 +153,13 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
     };
   }
 
-  // All clear. "All secure" only when every shown door is confirmed locked;
+  // All clear. "All Secure" only when every shown door is confirmed locked;
   // position-only data honestly claims closed, not locked.
   const secure = doorsPart === "Doors locked";
   const subline = [doorsPart, restSubline(rest)].filter(Boolean).join(" · ") || null;
   return {
     kind: "secure",
-    headline: secure ? "All secure" : "All closed",
+    headline: secure ? "All Secure" : "All Closed",
     subline,
     symbol: secure ? "checkmark.shield.fill" : "checkmark.circle.fill",
     exceptions: [],
