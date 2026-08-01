@@ -1,6 +1,5 @@
 import {
   Button,
-  DisclosureGroup,
   GlassEffectContainer,
   HStack,
   Image as SFImage,
@@ -14,7 +13,9 @@ import {
   Animation,
   animation,
   background,
+  buttonBorderShape,
   buttonStyle,
+  clipped,
   disabled as disabledModifier,
   font,
   foregroundColor,
@@ -25,11 +26,14 @@ import {
   lineLimit,
   minimumScaleFactor,
   multilineTextAlignment,
+  onGeometryChange,
   opacity,
   padding,
   redacted,
+  rotationEffect,
   shapes,
   textCase,
+  tint,
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
@@ -207,6 +211,16 @@ const HORN: Control = {
 
 /** Buttons per row, matching the three of the main row above. */
 const CONTROLS_PER_ROW = 3;
+/**
+ * One row of chips, measured from the live layout (170.67pt for two rows plus
+ * the gap and the top padding).
+ *
+ * This only has to be close. It seeds the reveal's height so the first tap has
+ * somewhere to animate to — the content cannot be measured while it is clipped
+ * to nothing, which is the one thing a purely measured version cannot do. Once
+ * open, the real height arrives from `onGeometryChange` and corrects it.
+ */
+const CHIP_ROW_HEIGHT = 73.5;
 /** The default glyph size; a few symbols override it (see `Control.iconSize`). */
 const CONTROL_ICON_SIZE = 22;
 
@@ -271,7 +285,6 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   // Set the moment an engine command is accepted, so the row reports
   // "Starting…"/"Stopping…" while engine-status is still catching up.
   const [pending, setPending] = useState<{ command: EngineCommand; deadline: number } | null>(null);
-  const [expanded, setExpanded] = useState(false);
   // Which way the hazard button points. Nothing reports hazard state — it is
   // absent from the status snapshot and has no read of its own — so this
   // remembers what we last asked for and nothing reconciles it. A car whose
@@ -468,10 +481,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
         <MoreControls
           controls={extras}
           enabled={enabled}
-          expanded={expanded}
           isRedacted={isRedacted}
           subtitle={extrasSubtitle}
-          onExpandedChange={setExpanded}
           onPress={confirm}
         />
       ) : null}
@@ -535,37 +546,43 @@ function StatusIndicator({
 }
 
 /**
- * The extra controls, inside a real SwiftUI `DisclosureGroup`.
+ * The extra controls, behind a disclosure row built the way the Doors & Windows
+ * card is built.
  *
- * The buttons are the group's *content*, so opening and closing is SwiftUI's
- * own animation on its own container — not an RN box being resized to a height
- * computed on this side while the SwiftUI content changes underneath it. That
- * split was what made the reveal stutter.
+ * Not a `DisclosureGroup`. The group presses its *whole* label — card
+ * background included — so a quick tap flashed the row, and there is no way to
+ * quiet that from outside: a `buttonStyle` on the group doesn't reach it.
+ * Owning the tap means owning the press, which is the whole reason the closures
+ * card feels better.
  *
- * The label is built like the Doors & Windows card's header: tinted badge,
- * title, and a subtitle naming what is inside. The chevron is the group's own.
+ * The reveal is the closures card's mechanic too, in SwiftUI rather than RN: the
+ * content is always mounted and always laid out, and an animated height clips
+ * it. That is what makes it slide rather than appear, and — because nothing is
+ * ever unmounted — what makes it slide back out on the way in rather than
+ * blinking off the moment a collapse starts.
  */
 function MoreControls({
   controls,
   enabled,
-  expanded,
   isRedacted,
   subtitle,
-  onExpandedChange,
   onPress,
 }: {
   controls: Control[];
   enabled: boolean;
-  expanded: boolean;
   isRedacted: boolean;
   subtitle: string;
-  onExpandedChange: (expanded: boolean) => void;
   onPress: (control: Control) => void;
 }) {
+  const rows = chunk(controls, CONTROLS_PER_ROW);
+  const [expanded, setExpanded] = useState(false);
+  const [contentHeight, setContentHeight] = useState(
+    () => Spacing.three + rows.length * CHIP_ROW_HEIGHT + (rows.length - 1) * Spacing.two,
+  );
+
   return (
-    <DisclosureGroup
-      isExpanded={expanded}
-      onIsExpandedChange={onExpandedChange}
+    <VStack
+      spacing={0}
       modifiers={[
         frame({ maxWidth: Infinity }),
         padding({ horizontal: Spacing.three, vertical: Spacing.two }),
@@ -576,7 +593,13 @@ function MoreControls({
         ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
       ]}
     >
-      <DisclosureGroup.Label>
+      <Button
+        onPress={() => {
+          haptic("selection");
+          setExpanded((open) => !open);
+        }}
+        modifiers={[buttonStyle("plain"), frame({ maxWidth: Infinity })]}
+      >
         <HStack
           spacing={Spacing.three - Spacing.one}
           modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
@@ -621,24 +644,35 @@ function MoreControls({
             </SFText>
           </VStack>
           <Spacer />
+          <SFImage
+            systemName="chevron.right"
+            size={14}
+            color={colors.secondaryLabel}
+            modifiers={[rotationEffect(expanded ? 90 : 0)]}
+          />
         </HStack>
-      </DisclosureGroup.Label>
-      {/* No glass container and no namespace around these. The nested
-          container drew a second visible box inside the disclosure's own card,
-          and the shared namespace was what made each new button fly in from
-          whichever existing shell SwiftUI had paired it with. Nothing here
-          morphs, so nothing here needs an identity. */}
-      {/* Chips rather than glass. A glass button renders its material against
-          what is behind it, and over the card that material reads as a grey
-          field which merges across the whole grid into the rectangle that kept
-          appearing around these. On a card the app's own answer is a subtle
-          fill — the same treatment as the climate card's defrost chips. */}
-      <VStack spacing={Spacing.two} modifiers={[padding({ top: Spacing.three })]}>
-        {chunk(controls, CONTROLS_PER_ROW).map((row, index) => (
-          <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
-        ))}
+      </Button>
+      <VStack
+        modifiers={[
+          frame({ maxWidth: Infinity, height: expanded ? contentHeight : 0, alignment: "top" }),
+          clipped(),
+          animation(Animation.easeInOut({ duration: 0.28 }), expanded),
+        ]}
+      >
+        <VStack
+          spacing={Spacing.two}
+          modifiers={[
+            padding({ top: Spacing.three }),
+            frame({ maxWidth: Infinity }),
+            onGeometryChange((geometry) => setContentHeight(geometry.height)),
+          ]}
+        >
+          {rows.map((row, index) => (
+            <ControlRow key={index} controls={row} enabled={enabled} onCard onPress={onPress} />
+          ))}
+        </VStack>
       </VStack>
-    </DisclosureGroup>
+    </VStack>
   );
 }
 
@@ -692,7 +726,11 @@ function ControlRow({
             // frame leaves that rect's corners showing around the shell — the
             // button reads as sitting inside a container. The shell *is* the
             // button.
-            buttonStyle(onCard ? "plain" : "glass"),
+            buttonStyle(onCard ? "bordered" : "glass"),
+            // A bordered button fills with the accent colour by default, which
+            // turned every one of these blue. The tint is the fill here, not
+            // the content: the icons keep their own colours.
+            ...(onCard ? [buttonBorderShape("capsule"), tint(colors.fill)] : []),
             // Identity is per *slot*, not per command, for the same reason as
             // the key: a swapping slot keeps one id so the glass morphs in
             // place.
@@ -714,18 +752,6 @@ function ControlRow({
             modifiers={[
               padding({ vertical: Spacing.two }),
               frame({ maxWidth: Infinity }),
-              // A glass button brings its own shell; a chip has to draw one.
-              ...(onCard
-                ? [
-                    background(
-                      colors.subtleFill,
-                      shapes.roundedRectangle({
-                        cornerRadius: 12,
-                        roundedCornerStyle: "continuous",
-                      }),
-                    ),
-                  ]
-                : []),
               ...(isRedacted ? [unredacted()] : []),
             ]}
           >
