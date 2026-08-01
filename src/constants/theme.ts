@@ -4,6 +4,17 @@
  * to light/dark mode and accessibility settings automatically. The `default`
  * branch serves non-native environments (unit tests, web dev server) with
  * static hex stand-ins; Lexy itself is iOS-only (see AGENTS.md).
+ *
+ * Every colour the app draws should come from here, and the reason is not
+ * tidiness. A `PlatformColor` resolves to the system's own UIColor, which is
+ * Display P3 on a display that has it and swaps itself between light and dark.
+ * A hex or `rgba()` literal is neither: it is a fixed sRGB triple that stays
+ * put when the appearance changes and is clamped to the narrower gamut.
+ *
+ * For a translucent tint of one of these — a wash behind a banner, an active
+ * chip — use `ColorWash` rather than writing the colour out with an alpha
+ * channel. It paints the system colour and lets the compositor set the
+ * coverage, so the colour keeps both properties.
  */
 
 import { Color } from "expo-router";
@@ -44,6 +55,12 @@ const palette = {
   systemBlue: Platform.select({
     ios: Color.ios.systemBlue,
     default: "#007AFF",
+  })!,
+  // The lighter blue in the system palette, for when systemBlue would read as
+  // an action rather than a thing.
+  systemCyan: Platform.select({
+    ios: Color.ios.systemCyan,
+    default: "#32ADE6",
   })!,
   systemGreen: Platform.select({
     ios: Color.ios.systemGreen,

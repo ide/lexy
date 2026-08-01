@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import { ColorWash } from "@/components/color-wash";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 
@@ -28,7 +29,8 @@ export function StatusBanner({
 }) {
   const orange = colors.systemOrange;
   return (
-    <View style={[styles.banner, { backgroundColor: "rgba(255,149,0,0.15)" }]}>
+    <View style={styles.banner}>
+      <ColorWash color={orange} />
       <Image source={`sf:${symbol}`} tintColor={orange} style={styles.icon} contentFit="contain" />
       <View style={styles.text}>
         <ThemedText type="smallBold" style={{ color: orange }}>
@@ -46,6 +48,8 @@ export function StatusBanner({
 
 const styles = StyleSheet.create({
   banner: {
+    // Clips the wash to the corner radius.
+    overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.two,

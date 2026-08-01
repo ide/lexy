@@ -158,10 +158,14 @@ const styles = StyleSheet.create({
     inset: 0,
     opacity: 0.48,
   },
+  // The card's own surface, not a white literal: in light mode this is the
+  // same colour it always was, and in dark mode it mutes the map towards the
+  // card instead of washing it white.
   heroMapVeil: {
     position: "absolute",
     inset: 0,
-    backgroundColor: "rgba(255,255,255,0.22)",
+    backgroundColor: colors.card,
+    opacity: 0.22,
   },
   // The Lexus vehicle render (from the telematics CDN) is a 700x631 PNG whose
   // car only occupies the middle ~46% of the height: it ships with ~26%
