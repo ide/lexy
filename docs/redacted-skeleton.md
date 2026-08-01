@@ -89,7 +89,7 @@ one SwiftUI redaction has with placeholder collections.
 Status followed the Details recipe — `redaction` computed the same way, the real
 tree fed `PLACEHOLDER_VEHICLE` inside `<Redactable reason={redaction}
 style={styles.group}>`, the early-return branch dropped, the status banner left
-outside the wrapper so it neither pulses nor redacts, and the "My Lexus"
+outside the wrapper so it neither pulses nor redacts, and the "My Vehicle"
 fallback title preserved (it
 is the placeholder's own nickname, and the nav bar sits outside the redacted
 tree anyway).

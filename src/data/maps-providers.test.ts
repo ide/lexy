@@ -8,18 +8,18 @@ import {
   type MapsProviderId,
 } from "./maps-providers";
 
-const TARGET = { latitude: 37.3318, longitude: -122.0312, label: "My Lexus" };
+const TARGET = { latitude: 37.3318, longitude: -122.0312, label: "My Vehicle" };
 
 describe("buildDirectionsUrl", () => {
   it("builds an Apple Maps universal link with an encoded label", () => {
     expect(getMapsProvider("apple").buildDirectionsUrl(TARGET)).toBe(
-      "https://maps.apple.com/?ll=37.3318,-122.0312&q=My%20Lexus",
+      "https://maps.apple.com/?ll=37.3318,-122.0312&q=My%20Vehicle",
     );
   });
 
   it("drops a labeled pin for Google Maps", () => {
     expect(getMapsProvider("google").buildDirectionsUrl(TARGET)).toBe(
-      "comgooglemaps://?q=37.3318,-122.0312(My%20Lexus)&center=37.3318,-122.0312",
+      "comgooglemaps://?q=37.3318,-122.0312(My%20Vehicle)&center=37.3318,-122.0312",
     );
   });
 
