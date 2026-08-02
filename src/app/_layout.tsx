@@ -1,13 +1,13 @@
-import { useIsRestoring } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { Observe, ObserveRoot } from "expo-observe";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { AuthProvider, useAuth } from "@/auth/auth-context";
+import { AuthProvider } from "@/auth/auth-context";
 import { colors } from "@/constants/theme";
 import { VehicleDataProvider } from "@/data/query-client";
 import { DebugOverrideProvider } from "@/debug/debug-overrides";
+import { useLaunchGate } from "@/navigation/use-launch-gate";
 import { EmergencyLaunchReporter } from "@/updates/emergency-launch-reporter";
 import { UpdateHistoryRecorder } from "@/updates/update-history-recorder";
 
@@ -20,21 +20,14 @@ Observe.configure({
 });
 
 function RootNavigator() {
-  const { session, isLoading } = useAuth();
-  // The persisted query cache (SQLite) rehydrates asynchronously. Hold the
-  // first paint until it finishes so a logged-in launch with cached data
-  // renders straight into the vehicle screen instead of flashing the loading
-  // skeleton for the restore window and then swapping in the cached data.
-  const isRestoring = useIsRestoring();
+  // The only thing a launch still waits on is the persisted query cache
+  // rehydrating — a local SQLite read. Both network calls that used to sit in
+  // front of the first paint are behind it now: the Lexus token refresh (see
+  // the restore effect in auth-context) and, when there is a cached car to
+  // render, the Keychain read confirming the session (see launch-gate.ts).
+  const { hold, signedIn } = useLaunchGate();
 
-  // Both holds are deliberately short and local — a SQLite read and a Keychain
-  // read, tens of milliseconds together. Neither waits on the network: the
-  // token refresh that used to sit behind `isLoading` now runs after the first
-  // paint (see the restore effect in auth-context). What is left is the
-  // minimum needed to render the right screen rather than the wrong one for a
-  // frame: without the auth read, `session` is still null here and a
-  // signed-in launch would show sign-in before flipping to the car.
-  if (isLoading || isRestoring) {
+  if (hold) {
     return null;
   }
 
@@ -57,10 +50,10 @@ function RootNavigator() {
       {/* The `/` entry renders nothing (it redirects to tabs or sign-in); hide
           its header so the route name doesn't flash in the bar on launch. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Protected guard={session !== null}>
+      <Stack.Protected guard={signedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={session === null}>
+      <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
@@ -72,7 +65,7 @@ function RootLayout() {
 
   return (
     // Paint the root with the app's grouped background so the launch hold
-    // (RootNavigator returns null while auth loads and the cache restores) and
+    // (RootNavigator returns null until the launch gate opens) and
     // every screen behind the transparent header share one color — matching
     // the splash screen's backgroundColor, with no white window flashing
     // through between the splash and the first content paint.

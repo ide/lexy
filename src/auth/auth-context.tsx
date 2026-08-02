@@ -182,6 +182,14 @@ export function AuthProvider({
         }
         if (stored) {
           setSession(stored);
+        } else {
+          // No tokens means no vehicle data, and the launch gate leans on that:
+          // it treats a populated cache as evidence of a session so it can
+          // paint before this read lands (launch-gate.ts). A sign-out that
+          // cleared the tokens but died before clearing the cache would leave
+          // that evidence lying, so re-assert the invariant here — it is
+          // idempotent, and it runs after the first paint.
+          clearVehicleCache().catch(() => {});
         }
         setIsLoading(false);
       },
