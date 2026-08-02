@@ -57,6 +57,29 @@ For example, downsample a 3x phone screenshot with `sips`:
 sips --resampleWidth 393 screenshot.png
 ```
 
+# Typed routes
+
+Adding, renaming, or moving a file under `src/app` changes the route union that
+Expo Router generates into `.expo/types/router.d.ts`. Only the dev server writes
+that file — `expo export`, and so `eas update`, leaves it untouched — so until
+Metro has run, `tsc` rejects the new path against a route that plainly exists:
+
+```
+error TS2820: Type '"/settings/eas"' is not assignable to type ...
+Did you mean '"/settings"'?
+```
+
+That error is the stale types file, not the code. Regenerate before trusting a
+typecheck, and quit the server once it starts:
+
+```sh
+npx expo start
+npx tsc --noEmit
+```
+
+`.expo/` is gitignored, so this is per-checkout state — a fresh clone or a new
+worktree needs its own run, and nothing can be committed to spare it.
+
 # Unit tests
 
 Vitest runs in plain Node, so native modules do not resolve. `expo-sqlite` is
