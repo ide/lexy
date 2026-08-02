@@ -3,11 +3,10 @@ import { Observe, ObserveRoot } from "expo-observe";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { AuthProvider } from "@/auth/auth-context";
+import { AuthProvider, useAuth } from "@/auth/auth-context";
 import { colors } from "@/constants/theme";
 import { VehicleDataProvider } from "@/data/query-client";
 import { DebugOverrideProvider } from "@/debug/debug-overrides";
-import { useLaunchGate } from "@/navigation/use-launch-gate";
 import { EmergencyLaunchReporter } from "@/updates/emergency-launch-reporter";
 import { UpdateHistoryRecorder } from "@/updates/update-history-recorder";
 
@@ -20,16 +19,12 @@ Observe.configure({
 });
 
 function RootNavigator() {
-  // The only thing a launch still waits on is the persisted query cache
-  // rehydrating — a local SQLite read. Both network calls that used to sit in
-  // front of the first paint are behind it now: the Lexus token refresh (see
-  // the restore effect in auth-context) and, when there is a cached car to
-  // render, the Keychain read confirming the session (see launch-gate.ts).
-  const { hold, signedIn } = useLaunchGate();
-
-  if (hold) {
-    return null;
-  }
+  // Nothing to wait for. Both reads the auth boundary depends on — the stored
+  // session and the persisted query cache — happen synchronously before the
+  // first render (see auth-context.tsx and query-client.tsx), so this renders
+  // the right side of the boundary the first time, with the cached car already
+  // in it. There is no hold, and so no blank frame to hold *for*.
+  const { session } = useAuth();
 
   return (
     <Stack
@@ -50,10 +45,10 @@ function RootNavigator() {
       {/* The `/` entry renders nothing (it redirects to tabs or sign-in); hide
           its header so the route name doesn't flash in the bar on launch. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Protected guard={signedIn}>
+      <Stack.Protected guard={session !== null}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack.Protected>
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={session === null}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
@@ -64,11 +59,10 @@ function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    // Paint the root with the app's grouped background so the launch hold
-    // (RootNavigator returns null until the launch gate opens) and
-    // every screen behind the transparent header share one color — matching
-    // the splash screen's backgroundColor, with no white window flashing
-    // through between the splash and the first content paint.
+    // Paint the root with the app's grouped background so every screen behind
+    // the transparent header shares one color — matching the splash screen's
+    // backgroundColor, with no white window flashing through between the splash
+    // and the first content paint.
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.groupedBackground }}>
       <AuthProvider>
         <VehicleDataProvider>

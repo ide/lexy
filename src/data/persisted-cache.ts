@@ -1,4 +1,4 @@
-import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
+import type { PersistedClient } from "@tanstack/react-query-persist-client";
 
 import { parseVehicleProfile, parseVehicleStatus } from "@/data/vehicle";
 import { isVehicleProfileKey, isVehicleStatusKey } from "@/data/vehicle-keys";
@@ -49,7 +49,7 @@ const VALIDATORS: Validator[] = [
 ];
 
 /**
- * Wrap a persister so restored queries are re-validated before they hydrate.
+ * Drop any persisted query whose data can no longer be trusted.
  *
  * React Query rehydrates persisted data as-is: it does not re-run the `queryFn`
  * parse path on restore, so without this a vehicle blob written by an older
@@ -62,34 +62,56 @@ const VALIDATORS: Validator[] = [
  * bump is the intended lever for breaking changes; this catches the ones that
  * slip through (a forgotten bump, or partially corrupted storage).
  */
-export function createValidatingPersister(base: Persister): Persister {
+function validatePersistedClient(restored: PersistedClient): PersistedClient {
+  const queries = restored.clientState.queries.filter((query) => {
+    const validator = VALIDATORS.find((candidate) => candidate.claims(query.queryKey));
+    if (!validator) {
+      return true;
+    }
+    try {
+      validator.validate(query.state.data);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  if (queries.length === restored.clientState.queries.length) {
+    return restored;
+  }
   return {
-    persistClient: base.persistClient,
-    removeClient: base.removeClient,
-    async restoreClient() {
-      const restored = await base.restoreClient();
-      if (!restored) {
-        return restored;
-      }
-      const queries = restored.clientState.queries.filter((query) => {
-        const validator = VALIDATORS.find((candidate) => candidate.claims(query.queryKey));
-        if (!validator) {
-          return true;
-        }
-        try {
-          validator.validate(query.state.data);
-          return true;
-        } catch {
-          return false;
-        }
-      });
-      if (queries.length === restored.clientState.queries.length) {
-        return restored;
-      }
-      return {
-        ...restored,
-        clientState: { ...restored.clientState, queries },
-      } satisfies PersistedClient;
-    },
-  };
+    ...restored,
+    clientState: { ...restored.clientState, queries },
+  } satisfies PersistedClient;
+}
+
+/**
+ * Turn a raw persisted blob into the state to hydrate, or null when there is
+ * nothing usable in it.
+ *
+ * Split out from the storage read so the decisions — is this JSON, is it this
+ * build's cache, does its data still parse — stay testable in plain Node while
+ * the SQLite call sits at the edge (see query-client.tsx).
+ */
+export function readPersistedClient(raw: string | null): PersistedClient | null {
+  if (!raw) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    // Truncated or corrupt storage reads as an empty cache, which costs a cold
+    // load and nothing else.
+    return null;
+  }
+  const client = parsed as PersistedClient | null;
+  if (!client || typeof client !== "object" || !client.clientState) {
+    return null;
+  }
+  // The buster check React Query would have done for us. Without it an old
+  // build's cache would hydrate into a shape this one cannot read.
+  if (client.buster !== CACHE_VERSION) {
+    return null;
+  }
+  return validatePersistedClient(client);
 }
