@@ -8,7 +8,6 @@ import {
   frame,
   padding,
   shapes,
-  textSelection,
 } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
 import { useRouter, type Href } from "expo-router";
@@ -122,9 +121,10 @@ function VehicleNameRow() {
 
 /**
  * What to quote when something goes wrong: the binary that is installed, and
- * the JavaScript it is running. `Constants.platform.ios.buildNumber` reads the
- * binary's own Info.plist rather than the manifest, so an update cannot make
- * this row describe a build the phone doesn't have.
+ * the JavaScript it is running, on one line. `Constants.platform.ios.buildNumber`
+ * reads the binary's own Info.plist rather than the manifest, so an update
+ * cannot make this row describe a build the phone doesn't have. The value is
+ * selectable, so a long press offers Copy without a line of text saying so.
  */
 function AboutSection() {
   const shown = describeAppVersion({
@@ -133,10 +133,8 @@ function AboutSection() {
     updatesEnabled: Updates.isEnabled,
     isEmbeddedLaunch: Updates.isEmbeddedLaunch,
     updateId: Updates.updateId,
-    updateCreatedAt: Updates.createdAt,
     channel: Updates.channel,
     isEmergencyLaunch: Updates.isEmergencyLaunch,
-    emergencyLaunchReason: Updates.emergencyLaunchReason,
   });
 
   return (
@@ -148,9 +146,7 @@ function AboutSection() {
       <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
         <SectionHeader>ABOUT</SectionHeader>
         <GroupCard>
-          <InfoRow label="Version" value={shown.version} last={false} />
-          <InfoRow label="Update" value={shown.update} last={shown.published === null} />
-          {shown.published ? <InfoRow label="Published" value={shown.published} /> : null}
+          <InfoRow label="Version" value={shown.version} />
         </GroupCard>
       </VStack>
       {/* Nothing else on screen would say this: the app is running older code
@@ -177,35 +173,6 @@ function AboutSection() {
           </Text>
         </HStack>
       ) : null}
-      <VStack
-        alignment="leading"
-        spacing={Spacing.one}
-        modifiers={[
-          padding({ horizontal: Spacing.three }),
-          frame({ maxWidth: Infinity, alignment: "leading" }),
-        ]}
-      >
-        <Text
-          modifiers={[
-            font({ textStyle: "footnote", weight: "regular" }),
-            foregroundStyle({ type: "hierarchical", style: "secondary" }),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
-          Include this when reporting a problem — press and hold to copy it.
-        </Text>
-        {/* The same facts as the rows above, on one line, because a report is
-            pasted rather than transcribed. */}
-        <Text
-          modifiers={[
-            font({ textStyle: "footnote", weight: "regular" }),
-            textSelection(true),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
-        >
-          {shown.report}
-        </Text>
-      </VStack>
     </VStack>
   );
 }
