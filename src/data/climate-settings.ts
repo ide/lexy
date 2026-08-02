@@ -13,6 +13,8 @@
 // Categories observed: defrost (frontDefrost/rearDefrost), seatHeat, seatVent,
 // steeringHeaterCat — each gated by its own `available` flag per vehicle.
 
+import { isRecord } from "@/data/json";
+
 /**
  * Lives here rather than beside the hook so the refresh orchestration
  * (vehicle-refresh.ts) can name this query without importing a hook module.
@@ -51,10 +53,6 @@ export type ClimateSettings = {
 };
 
 export type DefrostName = "frontDefrost" | "rearDefrost";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 /**
  * Unwrap a climate-settings response (`{ payload: {...} }` envelope or a bare

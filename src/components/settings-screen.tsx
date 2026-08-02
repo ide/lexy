@@ -11,9 +11,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
 import { useRouter, type Href } from "expo-router";
-import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
-import { useEffect } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
@@ -26,6 +24,7 @@ import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useVehicleProfile } from "@/hooks/use-vehicle";
 import { describeAppVersion } from "@/updates/app-version";
 import { haptic } from "@/utils/haptics";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 type DevItem = {
   icon: SFSymbol;
@@ -213,11 +212,8 @@ function SignOutRow() {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { markInteractive } = useObserve();
 
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   const open = (href: Href) => {
     haptic("selection");

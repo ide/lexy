@@ -1,3 +1,5 @@
+import { isRecord } from "@/data/json";
+
 /**
  * What remote actions a vehicle will accept, read from its discovery record.
  *
@@ -42,10 +44,6 @@ const FLAGS: Record<Exclude<RemoteCapability, "windows">, string> = {
   headlights: "lightsCapable",
   moonroof: "moonroofCloseCapable",
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 /**
  * How each extra capability is named in the More Controls subtitle. Doors and

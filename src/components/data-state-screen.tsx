@@ -1,7 +1,5 @@
 import { Host, ScrollView, Text, VStack } from "@expo/ui/swift-ui";
 import { font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
-import { useObserve } from "expo-observe";
-import { useEffect } from "react";
 
 import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
 import { RowCheckmark, SettingsRow } from "@/components/swift-ui/settings-row";
@@ -10,15 +8,13 @@ import type { DataStateOverride } from "@/debug/data-state";
 import { DATA_STATE_OPTIONS, useDebugOverrides } from "@/debug/debug-overrides";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { haptic } from "@/utils/haptics";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 export default function DataStateScreen() {
-  const { markInteractive } = useObserve();
   const { dataState, setDataState } = useDebugOverrides();
   const { saved: savedMapsProvider, clear: clearMapsProvider } = useMapsProvider();
 
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   const select = (key: DataStateOverride) => {
     haptic("selection");

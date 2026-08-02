@@ -23,8 +23,7 @@ import {
   textInputAutocapitalization,
 } from "@expo/ui/swift-ui/modifiers";
 import { useRouter } from "expo-router";
-import { useObserve } from "expo-observe";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { ErrorNotice, PrimaryButton } from "@/components/sign-in/sign-in-elements";
 import { SectionHeader } from "@/components/swift-ui/section";
@@ -33,6 +32,7 @@ import type { VehicleContext } from "@/data/lexus-api";
 import { useRenameVehicle } from "@/hooks/use-rename-vehicle";
 import { useVehicleProfile } from "@/hooks/use-vehicle";
 import { haptic } from "@/utils/haptics";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 function Footnote({ children }: { children: string }) {
   return (
@@ -125,12 +125,9 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
 }
 
 export default function VehicleNameScreen() {
-  const { markInteractive } = useObserve();
   const profile = useVehicleProfile();
 
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   const loaded = profile.data;
 

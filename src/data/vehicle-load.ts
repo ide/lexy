@@ -17,16 +17,18 @@ import { loadClosureStore, saveClosureStore } from "@/data/closure-state-store";
 import { OPTIMISTIC_LOCK_MAX_AGE_MS } from "@/data/lock-reconcile";
 import { fetchVehicleSubscriptions } from "@/data/subscriptions";
 import {
-  mapVehicleProfile,
-  mapVehicleStatus,
   NoVehicleError,
-  parseSubscriptionVehicle,
-  parseVehicleContexts,
   parseVehicleProfile,
   parseVehicleStatus,
   type VehicleProfile,
   type VehicleStatus,
 } from "@/data/vehicle";
+import {
+  mapVehicleProfile,
+  mapVehicleStatus,
+  parseSubscriptionVehicle,
+  parseVehicleContexts,
+} from "@/data/vehicle-mapping";
 
 async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   const response = await fetch(url, { headers, signal });

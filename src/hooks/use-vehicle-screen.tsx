@@ -1,5 +1,4 @@
-import { useObserve } from "expo-observe";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
 import type { RedactionReason } from "@/components/redactable";
@@ -11,6 +10,7 @@ import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";
 import { NoVehicleError } from "@/data/vehicle";
 import { useIsOnline } from "@/hooks/use-is-online";
 import { useVehicle } from "@/hooks/use-vehicle";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 /**
  * The scaffolding every vehicle screen (Status, Specs) shares: the vehicle
@@ -31,15 +31,10 @@ import { useVehicle } from "@/hooks/use-vehicle";
 export function useVehicleScreen() {
   const query = useVehicle();
   const { vehicle: data, dataUpdatedAt, error, isLoading, refetch } = query;
-  const { markInteractive } = useObserve();
   const isOnline = useIsOnline();
   const [forceSkeleton, setForceSkeleton] = useState(false);
 
-  useEffect(() => {
-    // TTI marks the UI shell becoming interactive; data readiness is tracked
-    // separately by the vehicle load events.
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   // Affordance to hold the real loading skeleton on the real screen. Available
   // in dev and preview builds (see SHOW_DEV_TOOLS); kept out of production.
