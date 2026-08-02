@@ -1,12 +1,20 @@
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { focusManager, onlineManager, QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import {
+  focusManager,
+  hydrate,
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import { persistQueryClientSubscribe } from "@tanstack/react-query-persist-client";
 import * as Network from "expo-network";
 import Storage from "expo-sqlite/kv-store";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { clearClosureStore } from "@/data/closure-state-store";
-import { CACHE_VERSION, createValidatingPersister } from "@/data/persisted-cache";
+import { CACHE_VERSION, readPersistedClient } from "@/data/persisted-cache";
+
+const CACHE_KEY = "lexy-query-cache";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,15 +53,31 @@ onlineManager.setEventListener((setOnline) => {
   return () => subscription.remove();
 });
 
-// Re-validate persisted queries on restore (drop any `['vehicle']` blob an
-// older build wrote in an incompatible shape) on top of the raw SQLite-backed
-// persister. See persisted-cache.ts.
-const persister = createValidatingPersister(
-  createAsyncStoragePersister({
-    key: "lexy-query-cache",
-    storage: Storage,
-  }),
-);
+// Hydrate here, at module scope, from the *synchronous* SQLite read — before
+// React renders anything at all.
+//
+// This was `PersistQueryClientProvider`, whose restore is a promise: the app had
+// to render something while it settled and then re-render once it landed. There
+// was nothing worth rendering in that window — a skeleton standing in for data
+// already on disk — so the tree was held at `null` instead, which is what made
+// a launch a blank screen followed by a screen.
+//
+// Read synchronously and the question stops existing. The cached car is in the
+// client before the first render, so the first render has it, and the splash
+// hands over to a finished screen rather than an empty one. It is one row of a
+// few KB, read before there is a frame to drop.
+const persistedClient = readPersistedClient(Storage.getItemSync(CACHE_KEY));
+if (persistedClient) {
+  hydrate(queryClient, persistedClient.clientState);
+}
+
+// Writing back stays asynchronous, because nothing waits on it. The buster is
+// stamped on every save so the read above can reject a cache an older,
+// incompatible build wrote. Nothing else expires it — freshness is the vehicle
+// queries' job, not the persister's.
+const persister = createAsyncStoragePersister({ key: CACHE_KEY, storage: Storage });
+
+persistQueryClientSubscribe({ queryClient, persister, buster: CACHE_VERSION });
 
 /**
  * Wipe every cached query — both the in-memory store and the persisted SQLite
@@ -70,15 +94,5 @@ export async function clearVehicleCache() {
 }
 
 export function VehicleDataProvider({ children }: { children: React.ReactNode }) {
-  return (
-    // The buster (CACHE_VERSION) invalidates persisted entries whenever the
-    // cached Vehicle shape changes, so an old cache is refetched rather than
-    // rendered with missing fields. See persisted-cache.ts for when to bump it.
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{ buster: CACHE_VERSION, maxAge: Infinity, persister }}
-    >
-      {children}
-    </PersistQueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

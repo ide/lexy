@@ -27,6 +27,13 @@ export type SessionManager = {
   /** Adopt a signed-in session (or drop it on sign-out). */
   setSession: (session: LexusSession | null) => void;
   /**
+   * Whether there is a session at all, without asking for one. `getSession`
+   * throws when there isn't, which is the wrong shape for "is there anything
+   * here to freshen?" — a question the launch asks before it has any reason to
+   * treat the answer as a failure.
+   */
+  hasSession: () => boolean;
+  /**
    * The current session, refreshed first when it is at/near expiry. Concurrent
    * callers share one in-flight refresh — refresh-token rotation makes parallel
    * refreshes fatal (the first wins, the rest burn an already-rotated token).
@@ -138,6 +145,10 @@ export function createSessionManager({
   return {
     setSession(session) {
       current = session;
+    },
+
+    hasSession() {
+      return current !== null;
     },
 
     getSession,

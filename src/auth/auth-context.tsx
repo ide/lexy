@@ -20,9 +20,10 @@ import {
   type RequestLike,
 } from "@/auth/lexus-auth";
 import { createSessionManager, SessionInvalidError } from "@/auth/session-manager";
-import { restoreSession } from "@/auth/session-restore";
+import { freshenSession } from "@/auth/session-restore";
 import { signInErrorMessage } from "@/auth/sign-in-error";
-import { secureTokenStore, type TokenStore } from "@/auth/token-store";
+import { secureTokenStore } from "@/auth/secure-token-store";
+import type { TokenStore } from "@/auth/token-store";
 import { clearVehicleCache } from "@/data/query-client";
 
 type AuthContextValue = {
@@ -40,14 +41,6 @@ type AuthContextValue = {
   changeMethod: () => Promise<void>;
   choices: string[];
   error: string | null;
-  /**
-   * Whether it is still unknown *whether* anyone is signed in — true only for
-   * the Keychain read at launch. It deliberately does not cover the token
-   * refresh that may follow: `session` is published from the stored tokens as
-   * soon as they are read, so the app can paint, and the refresh settles
-   * behind it. See the restore effect.
-   */
-  isLoading: boolean;
   /** The verification method the user selected at the `choice` step (e.g. "Email"), if any. */
   method: string | null;
   prompt: string | null;
@@ -121,9 +114,12 @@ export function AuthProvider({
   fetch = expoFetch,
   tokenStore = secureTokenStore,
 }: AuthProviderProps) {
-  const [session, setSession] = useState<LexusSession | null>(null);
+  // Read straight out of the Keychain, on the first render rather than after
+  // it. There is no loading pass to sit through and no second render to correct
+  // it: the very first tree the app builds already knows who is signed in, so
+  // the right screen mounts once, populated, and the splash hands over to it.
+  const [session, setSession] = useState<LexusSession | null>(tokenStore.load);
   const [node, setNode] = useState<AuthenticationNode | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<string | null>(null);
@@ -141,9 +137,13 @@ export function AuthProvider({
   // Owns token freshness for the whole app: proactive refresh at/near expiry,
   // one shared in-flight refresh, persistence of rotated tokens, and sign-out
   // when the refresh token itself is rejected. React state only mirrors it.
+  //
+  // Built with the restored session already in it, in the same pass that read
+  // it, so an authorized call made from the first painted frame finds a manager
+  // that is ready rather than one still waiting to be told.
   const manager = useMemo(
-    () =>
-      createSessionManager({
+    () => {
+      const created = createSessionManager({
         store: tokenStore,
         request: fetch,
         onSession: (refreshed) => setSession(refreshed),
@@ -156,7 +156,14 @@ export function AuthProvider({
           setSession(null);
           setError(signInErrorMessage(new SessionInvalidError(), "restore"));
         },
-      }),
+      });
+      created.setSession(session);
+      return created;
+    },
+    // `session` is the restore's initial value, read once during the first
+    // render; re-running this on every session change would build a new manager
+    // and throw away its in-flight refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [fetch, tokenStore],
   );
 
@@ -170,41 +177,14 @@ export function AuthProvider({
     [manager],
   );
 
-  // Publishes the stored session as soon as it is read, and settles its
-  // freshness behind the painted screen — see session-restore.ts for why the
-  // refresh is not worth holding the launch for.
+  // The one thing about the session that genuinely cannot be known during the
+  // first render: whether the token is still good. It runs behind the screen —
+  // see session-restore.ts.
   useEffect(() => {
-    let active = true;
-    restoreSession(tokenStore, manager, {
-      onRestored: (stored) => {
-        if (!active) {
-          return;
-        }
-        if (stored) {
-          setSession(stored);
-        } else {
-          // No tokens means no vehicle data, and the launch gate leans on that:
-          // it treats a populated cache as evidence of a session so it can
-          // paint before this read lands (launch-gate.ts). A sign-out that
-          // cleared the tokens but died before clearing the cache would leave
-          // that evidence lying, so re-assert the invariant here — it is
-          // idempotent, and it runs after the first paint.
-          clearVehicleCache().catch(() => {});
-        }
-        setIsLoading(false);
-      },
-      onUnreadable: (cause) => {
-        if (!active) {
-          return;
-        }
-        setError(signInErrorMessage(cause, "restore"));
-        setIsLoading(false);
-      },
-    });
-    return () => {
-      active = false;
-    };
-  }, [manager, tokenStore]);
+    if (manager.hasSession()) {
+      freshenSession(manager);
+    }
+  }, [manager]);
 
   // Apply the next node: exchange for a session when authentication is
   // complete, otherwise advance the UI to the returned step.
@@ -364,7 +344,6 @@ export function AuthProvider({
       changeMethod,
       choices: nodeChoices(node),
       error,
-      isLoading,
       method,
       prompt: nodePrompt(node),
       resendCode,
@@ -380,7 +359,6 @@ export function AuthProvider({
       busy,
       changeMethod,
       error,
-      isLoading,
       method,
       node,
       resendCode,

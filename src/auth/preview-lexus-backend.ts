@@ -222,7 +222,7 @@ export function createPreviewFetch(scenario: PreviewScenario): RequestLike {
 export function createMemoryStorage(): KeyValueStorage {
   const map = new Map<string, string>();
   return {
-    async getItem(key) {
+    getItemSync(key) {
       return map.get(key) ?? null;
     },
     async setItem(key, value) {

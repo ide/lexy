@@ -6,8 +6,6 @@ const accounts = {
   idToken: "id-token",
 } as const;
 
-const KEYCHAIN_SERVICE = "app.ide.lexy";
-
 // The access token, its type, and its expiry are written and refreshed as a unit,
 // so they share one Keychain entry: a partial write can never leave the token
 // paired with a stale type or expiry. The refresh and ID tokens have their own
@@ -18,27 +16,30 @@ type StoredAccessToken = {
   expiresAt: number;
 };
 
+/**
+ * Reads are synchronous and writes are not, which is the asymmetry the launch
+ * cares about: the session has to be in hand *before* the first render, so the
+ * app can mount the right screen with no loading pass, while a write can settle
+ * whenever it likes. See {@link TokenStore.load}.
+ */
 export type KeyValueStorage = {
-  getItem: (key: string) => Promise<string | null>;
+  getItemSync: (key: string) => string | null;
   setItem: (key: string, value: string) => Promise<void>;
   deleteItem: (key: string) => Promise<void>;
 };
 
 export type TokenStore = {
-  load: () => Promise<LexusSession | null>;
+  /**
+   * The stored session, read on the calling thread. Synchronous so the launch
+   * can answer "who is signed in?" during the first render rather than after
+   * it — an effect that resolves later would mean rendering one screen and
+   * then replacing it, which is the flash this exists to avoid.
+   *
+   * This does not say the session is *fresh*; see session-restore.ts.
+   */
+  load: () => LexusSession | null;
   save: (session: LexusSession) => Promise<void>;
   clear: () => Promise<void>;
-};
-
-type SecureStoreModule = {
-  deleteItemAsync: (key: string, options?: { keychainService?: string }) => Promise<void>;
-  getItemAsync: (key: string, options?: { keychainService?: string }) => Promise<string | null>;
-  setItemAsync: (
-    key: string,
-    value: string,
-    options?: { keychainAccessible?: number; keychainService?: string },
-  ) => Promise<void>;
-  WHEN_UNLOCKED_THIS_DEVICE_ONLY: number;
 };
 
 function parseAccessToken(value: string | null): StoredAccessToken | null {
@@ -68,13 +69,10 @@ function parseAccessToken(value: string | null): StoredAccessToken | null {
 
 export function createTokenStore(storage: KeyValueStorage): TokenStore {
   return {
-    async load() {
-      const [accessTokenValue, refreshToken, idToken] = await Promise.all([
-        storage.getItem(accounts.accessToken),
-        storage.getItem(accounts.refreshToken),
-        storage.getItem(accounts.idToken),
-      ]);
-      const accessToken = parseAccessToken(accessTokenValue);
+    load() {
+      const accessToken = parseAccessToken(storage.getItemSync(accounts.accessToken));
+      const refreshToken = storage.getItemSync(accounts.refreshToken);
+      const idToken = storage.getItemSync(accounts.idToken);
       if (!accessToken || !refreshToken || !idToken) {
         return null;
       }
@@ -105,31 +103,3 @@ export function createTokenStore(storage: KeyValueStorage): TokenStore {
     },
   };
 }
-
-export function createSecureStorage(
-  loadSecureStore: () => Promise<SecureStoreModule> = () => import("expo-secure-store"),
-): KeyValueStorage {
-  return {
-    async getItem(key) {
-      const SecureStore = await loadSecureStore();
-      return SecureStore.getItemAsync(key, {
-        keychainService: KEYCHAIN_SERVICE,
-      });
-    },
-    async setItem(key, value) {
-      const SecureStore = await loadSecureStore();
-      await SecureStore.setItemAsync(key, value, {
-        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-        keychainService: KEYCHAIN_SERVICE,
-      });
-    },
-    async deleteItem(key) {
-      const SecureStore = await loadSecureStore();
-      await SecureStore.deleteItemAsync(key, {
-        keychainService: KEYCHAIN_SERVICE,
-      });
-    },
-  };
-}
-
-export const secureTokenStore = createTokenStore(createSecureStorage());
