@@ -20,6 +20,7 @@ import {
   type RequestLike,
 } from "@/auth/lexus-auth";
 import { createSessionManager, SessionInvalidError } from "@/auth/session-manager";
+import { restoreSession } from "@/auth/session-restore";
 import { signInErrorMessage } from "@/auth/sign-in-error";
 import { secureTokenStore, type TokenStore } from "@/auth/token-store";
 import { clearVehicleCache } from "@/data/query-client";
@@ -39,6 +40,13 @@ type AuthContextValue = {
   changeMethod: () => Promise<void>;
   choices: string[];
   error: string | null;
+  /**
+   * Whether it is still unknown *whether* anyone is signed in — true only for
+   * the Keychain read at launch. It deliberately does not cover the token
+   * refresh that may follow: `session` is published from the stored tokens as
+   * soon as they are read, so the app can paint, and the refresh settles
+   * behind it. See the restore effect.
+   */
   isLoading: boolean;
   /** The verification method the user selected at the `choice` step (e.g. "Email"), if any. */
   method: string | null;
@@ -162,36 +170,29 @@ export function AuthProvider({
     [manager],
   );
 
+  // Publishes the stored session as soon as it is read, and settles its
+  // freshness behind the painted screen — see session-restore.ts for why the
+  // refresh is not worth holding the launch for.
   useEffect(() => {
     let active = true;
-    tokenStore
-      .load()
-      .then((stored) => {
-        if (!stored) {
-          return null;
+    restoreSession(tokenStore, manager, {
+      onRestored: (stored) => {
+        if (!active) {
+          return;
         }
-        // getSession refreshes when the stored token is at/near expiry,
-        // persists any rotated tokens, and signs out via onInvalid when the
-        // grant was rejected while the app was gone.
-        manager.setSession(stored);
-        return manager.getSession();
-      })
-      .then((restored) => {
-        if (active && restored) {
-          setSession(restored);
+        if (stored) {
+          setSession(stored);
         }
-      })
-      .catch((cause) => {
-        // A rejected grant already set its own message via onInvalid.
-        if (active && !(cause instanceof SessionInvalidError)) {
-          setError(signInErrorMessage(cause, "restore"));
+        setIsLoading(false);
+      },
+      onUnreadable: (cause) => {
+        if (!active) {
+          return;
         }
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
-      });
+        setError(signInErrorMessage(cause, "restore"));
+        setIsLoading(false);
+      },
+    });
     return () => {
       active = false;
     };
