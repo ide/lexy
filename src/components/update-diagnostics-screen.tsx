@@ -38,9 +38,7 @@ import {
   truncationMode,
 } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
-import { useObserve } from "expo-observe";
 import * as Updates from "expo-updates";
-import { useEffect } from "react";
 import { useWindowDimensions } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
@@ -59,6 +57,7 @@ import {
 } from "@/updates/update-utils";
 import { useUpdateActions } from "@/updates/use-update-actions";
 import { MAX_VISIBLE_EVENTS, useUpdateEvents } from "@/updates/use-update-events";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 // The headline status tones, mapped from the theme palette.
 const TONE_COLORS: Record<UpdateStatusTone, string> = {
@@ -601,11 +600,8 @@ function ActivityRow({ entry }: { entry: UpdateActivityEvent }) {
 export default function UpdateDiagnostics() {
   const updateState = Updates.useUpdates();
   const { width: windowWidth } = useWindowDimensions();
-  const { markInteractive } = useObserve();
 
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   const status = describeUpdateStatus(Updates.isEnabled, updateState);
   const lastCheck = resolveLastCheck(

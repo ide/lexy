@@ -2,8 +2,6 @@ import { Host, ScrollView, Text, VStack } from "@expo/ui/swift-ui";
 import { font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
-import { useObserve } from "expo-observe";
-import { useEffect } from "react";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
@@ -11,6 +9,7 @@ import { RowExternalLink, SettingsRow } from "@/components/swift-ui/settings-row
 import { Spacing, colors } from "@/constants/theme";
 import { easProjectUrl, type EasProjectIdentity } from "@/data/eas-dashboard";
 import { haptic } from "@/utils/haptics";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 type Destination = {
   icon: SFSymbol;
@@ -66,11 +65,7 @@ function projectIdentity(): EasProjectIdentity {
 }
 
 export default function EasScreen() {
-  const { markInteractive } = useObserve();
-
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   const identity = projectIdentity();
 

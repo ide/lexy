@@ -30,8 +30,7 @@ import {
   textFieldStyle,
   textInputAutocapitalization,
 } from "@expo/ui/swift-ui/modifiers";
-import { useObserve } from "expo-observe";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAuth } from "@/auth/auth-context";
 import { choiceIcon, otpCopy, signInHero, signInScreenFor } from "@/auth/sign-in-copy";
@@ -45,6 +44,7 @@ import {
 } from "@/components/sign-in/sign-in-elements";
 import { Spacing, colors } from "@/constants/theme";
 import { haptic } from "@/utils/haptics";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 const SCREEN_ORDER = ["credentials", "choice", "otp"] as const;
 
@@ -62,7 +62,6 @@ export default function SignInScreen() {
     submit,
     submitCredentials,
   } = useAuth();
-  const { markInteractive } = useObserve();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -90,9 +89,7 @@ export default function SignInScreen() {
     codeRef.current?.blur();
   };
 
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   const screen = signInScreenFor(step);
   // A numeric key for the `animation(...)` dependency so switching screens

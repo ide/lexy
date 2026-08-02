@@ -27,7 +27,7 @@ import { Spacing } from "@/constants/theme";
 import { cornerShownAts, oldestStale } from "@/data/closure-display";
 import { groupClosures } from "@/data/closures";
 import { fuelGauge } from "@/data/fuel";
-import { absoluteLocalTime, observedAt, relativeTime } from "@/data/vehicle";
+import { absoluteLocalTime, observedAt, relativeTime } from "@/data/time";
 import { refreshVehicleData } from "@/data/vehicle-refresh";
 import { useNow } from "@/hooks/use-now";
 import { useIsAutoRefreshing } from "@/hooks/use-vehicle-auto-refresh";

@@ -9,6 +9,8 @@
 // handled as not-running, with nothing in the client distinguishing them — so
 // anything that isn't "1" is stopped here too.
 
+import { isRecord } from "@/data/json";
+
 export const ENGINE_STATUS_QUERY_KEY = ["engine-status"] as const;
 
 /** The one `status` value that means the engine is running. */
@@ -35,10 +37,6 @@ export type EngineStatus = {
   /** Total remote-start runtime in minutes. */
   runtimeMinutes: number;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 /**
  * Unwrap an engine-status response (`{ payload: {...} }` envelope or a bare

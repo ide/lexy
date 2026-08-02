@@ -1,18 +1,17 @@
 import { Button, Host, Text } from "@expo/ui/swift-ui";
 import { buttonStyle, controlSize, font, frame } from "@expo/ui/swift-ui/modifiers";
-import { useObserve } from "expo-observe";
-import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { VehicleLocationMap } from "@/components/vehicle-location-map";
 import { ThemedText } from "@/components/themed-text";
 import { Spacing, colors } from "@/constants/theme";
-import { observedAt, relativeTime } from "@/data/vehicle";
+import { observedAt, relativeTime } from "@/data/time";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useNow } from "@/hooks/use-now";
 import { useParkingAddress } from "@/hooks/use-parking-address";
 import { useVehicle } from "@/hooks/use-vehicle";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 export default function VehicleLocationSheet() {
   const { vehicle, dataUpdatedAt } = useVehicle();
@@ -21,12 +20,9 @@ export default function VehicleLocationSheet() {
   const now = useNow();
   const { data: parkingAddress } = useParkingAddress(vehicle?.location);
   const { resolved, openInMaps } = useMapsProvider();
-  const { markInteractive } = useObserve();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    markInteractive();
-  }, [markInteractive]);
+  useMarkInteractive();
 
   if (!vehicle) {
     // The sheet is only reachable from the Status screen, which already holds a

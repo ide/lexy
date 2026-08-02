@@ -1,0 +1,320 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  mapVehicleProfile,
+  mapVehicleStatus,
+  parseSubscriptionVehicle,
+  parseVehicleContexts,
+} from "./vehicle-mapping";
+import { composeVehicle, parseVehicleProfile, parseVehicleStatus } from "./vehicle";
+
+describe("parseVehicleContexts", () => {
+  it("pulls VIN, brand, and generation from the single discovery entry", () => {
+    const body = { payload: [{ vin: "TESTVIN1234567890", brand: "L", generation: "21MM" }] };
+    expect(parseVehicleContexts(body)).toEqual([
+      { vin: "TESTVIN1234567890", brand: "L", generation: "21MM" },
+    ]);
+  });
+
+  it("returns every enrolled vehicle in order for a multi-car account", () => {
+    const body = {
+      payload: [
+        { vin: "VIN_A", brand: "L", generation: "21MM" },
+        { vin: "VIN_B", brand: "L", generation: "24MM" },
+      ],
+    };
+    expect(parseVehicleContexts(body).map((c) => c.vin)).toEqual(["VIN_A", "VIN_B"]);
+  });
+
+  it("returns an empty list when the account has no vehicle", () => {
+    expect(parseVehicleContexts({ payload: [] })).toEqual([]);
+    expect(parseVehicleContexts({})).toEqual([]);
+  });
+
+  it("skips entries missing VIN, brand, or generation", () => {
+    const body = {
+      payload: [{ vin: "V1" }, { vin: "V2", brand: "L", generation: "21MM" }],
+    };
+    expect(parseVehicleContexts(body).map((c) => c.vin)).toEqual(["V2"]);
+  });
+});
+
+describe("mapVehicleProfile / mapVehicleStatus", () => {
+  // Fixtures captured from live production responses for the account's IS 350.
+  const VIN = "JTHGZ1B20M5000000";
+  const discovery = {
+    payload: [
+      {
+        vin: "JTHGZ1B20M5000000",
+        nickName: "2026 IS 350",
+        displayModelDescription: "2026 Lexus IS 350 4-DOOR SEDAN",
+        modelName: "IS 350 4-DOOR SEDAN",
+        modelYear: "2026",
+        modelCode: "9510",
+        color: "Cloudburst Grey",
+        region: "US",
+        generation: "21MM",
+        brand: "L",
+        asiCode: "JG",
+        hwType: "211",
+        fuelType: "G",
+        image: "https://img.example/is350.png",
+      },
+    ],
+  };
+  const status = {
+    payload: {
+      status: {
+        driverPosition: "LEFT",
+        vehicleStatus: [
+          {
+            category: "Driver Side",
+            sections: [
+              {
+                section: "Door",
+                values: [
+                  { value: "Closed", status: 0 },
+                  { value: "Locked", status: 0 },
+                ],
+              },
+              { section: "Window", values: [{ value: "Closed", status: 0 }] },
+            ],
+          },
+          {
+            category: "Other",
+            sections: [{ section: "Trunk", values: [{ value: "Open", status: 1 }] }],
+          },
+          {
+            category: "Trip Details",
+            sections: [
+              { section: "Trip A", values: [{ value: "272.1 miles", status: 0 }] },
+              { section: "Trip B", values: [{ value: "735.1 miles", status: 0 }] },
+            ],
+          },
+        ],
+        telemetry: {
+          fugage: { value: 100, unit: "%" },
+          rage: { value: 281, unit: "Mile" },
+          odo: { value: 735, unit: "Mile" },
+        },
+        occurrenceDate: "2026-07-28T01:23:50Z",
+        cautionOverallCount: 0,
+        latitude: 37.41144,
+        longitude: -122.12686,
+      },
+    },
+  };
+  const spec = {
+    payload: {
+      vehicleSpecifications: {
+        dataItems: [
+          { dataName: "Drive Type", dataValue: "2WD" },
+          { dataName: "Grade", dataValue: "F SPORT" },
+          { dataName: "Transmission", dataValue: "8AT-F" },
+          { dataName: "Date of First Use", dataValue: "April 23, 2026" },
+        ],
+      },
+      additionalDetails: { dataItems: [{ dataName: "Order Date", dataValue: "03/2026" }] },
+    },
+  };
+
+  const tires = {
+    payload: {
+      vin: "JTHGZ1B20M5000000",
+      tirePressureStatus: "Good",
+      flTirePressure: { value: 39, unit: "psi", displayLowTirePressureWarning: false },
+      frTirePressure: { value: 39, unit: "psi", displayLowTirePressureWarning: false },
+      rlTirePressure: { value: 40, unit: "psi", displayLowTirePressureWarning: false },
+      rrTirePressure: { value: 33, unit: "psi", displayLowTirePressureWarning: true },
+    },
+  };
+
+  // Unwrapped v3 vehicle-subscriptions payload (as fetchVehicleSubscriptions returns it).
+  const subscriptions = {
+    paidSubscriptions: [
+      {
+        productName: "Remote Connect",
+        status: "ACTIVE",
+        type: "Paid",
+        subscriptionEndDate: "2028-04-23",
+      },
+    ],
+    trialSubscriptions: [
+      {
+        displayProductName: "Service Connect",
+        status: "active",
+        type: "Trial",
+        subscriptionEndDate: "2036-04-23",
+      },
+      {
+        productName: "Wi-Fi Connect",
+        status: "INACTIVE",
+        type: "Trial",
+        subscriptionEndDate: "2026-08-28",
+      },
+    ],
+    // A complimentary service with no end date — the expiry line is omitted.
+    complimentarySubscriptions: [
+      { productName: "Safety Connect", status: "ACTIVE", type: "Complimentary" },
+    ],
+    availableSubscriptions: [{ productName: "Music Lover", category: "BUNDLE" }],
+  };
+
+  it("maps discovery and the spec sheet into the profile", () => {
+    expect(mapVehicleProfile(discovery, spec, subscriptions)).toMatchObject({
+      nickname: "2026 IS 350",
+      fullName: "2026 Lexus IS 350 4-DOOR SEDAN",
+      model: "IS 350 4-DOOR SEDAN",
+      color: "Cloudburst Grey",
+      vin: VIN,
+      modelCode: "9510",
+      generation: "21MM",
+      fuelType: "Gasoline",
+      transmission: "8AT-F",
+      drivetrain: "2WD",
+      trim: "F SPORT",
+      headUnit: "Lexus Multimedia (21MM)",
+      inServiceDate: "April 23, 2026",
+    });
+  });
+
+  it("maps the status and tire responses into the snapshot", () => {
+    const mapped = mapVehicleStatus(VIN, status, tires);
+    expect(mapped.tires).toEqual({
+      status: "Good",
+      unit: "psi",
+      positions: [
+        { label: "Front left", value: 39, low: false },
+        { label: "Front right", value: 39, low: false },
+        { label: "Rear left", value: 40, low: false },
+        { label: "Rear right", value: 33, low: true },
+      ],
+    });
+    expect(mapped).toMatchObject({
+      vin: VIN,
+      updatedAt: "2026-07-28T01:23:50Z",
+      fuelPercent: 100,
+      distanceUnit: "mi",
+      range: 281,
+      odometer: 735,
+      tripA: 272.1,
+      tripB: 735.1,
+      location: { latitude: 37.41144, longitude: -122.12686 },
+    });
+    expect(mapped.closures).toEqual([
+      { label: "Driver Door", state: "Closed", locked: true },
+      { label: "Driver Window", state: "Closed" },
+      { label: "Trunk", state: "Open" },
+    ]);
+  });
+
+  // The snapshot is stamped with the car that was *asked*, not with anything the
+  // payload echoes — that stamp is what composeVehicle checks.
+  it("stamps the snapshot with the requested VIN", () => {
+    expect(mapVehicleStatus("OTHERVIN000000000", status, tires).vin).toBe("OTHERVIN000000000");
+  });
+
+  it("flattens paid/trial/complimentary subscriptions with status, trial, and expiry", () => {
+    const mapped = mapVehicleProfile(discovery, spec, subscriptions);
+    expect(mapped.subscriptions).toEqual([
+      {
+        name: "Remote Connect",
+        status: "Active",
+        active: true,
+        trial: false,
+        expires: "April 2028",
+      },
+      {
+        name: "Service Connect",
+        status: "Active",
+        active: true,
+        trial: true,
+        expires: "April 2036",
+      },
+      {
+        name: "Wi-Fi Connect",
+        status: "Inactive",
+        active: false,
+        trial: true,
+        expires: "August 2026",
+      },
+      // No end date → no `expires` key at all.
+      { name: "Safety Connect", status: "Active", active: true, trial: false },
+    ]);
+  });
+
+  it("leaves subscriptions empty when the read is missing or failed", () => {
+    expect(mapVehicleProfile(discovery, spec, null).subscriptions).toEqual([]);
+    expect(mapVehicleProfile(discovery, spec).subscriptions).toEqual([]);
+  });
+
+  it("produces halves that pass their own validation, and join", () => {
+    const mappedProfile = parseVehicleProfile(mapVehicleProfile(discovery, spec));
+    const mappedStatus = parseVehicleStatus(mapVehicleStatus(VIN, status));
+    expect(composeVehicle(mappedProfile, mappedStatus)).not.toBeNull();
+  });
+
+  it("keeps lock-only closures from sparse status snapshots", () => {
+    // Captured live 2026-07-29: after driving, most sections report only the
+    // lock with no Open/Closed position (and windows vanish entirely).
+    const sparse = structuredClone(status);
+    sparse.payload.status.vehicleStatus = [
+      {
+        category: "Driver Side",
+        sections: [
+          {
+            section: "Door",
+            values: [
+              { value: "Closed", status: 0 },
+              { value: "Locked", status: 0 },
+            ],
+          },
+          { section: "Rear Door", values: [{ value: "Locked", status: 0 }] },
+        ],
+      },
+      {
+        category: "Passenger Side",
+        sections: [{ section: "Door", values: [{ value: "Locked", status: 0 }] }],
+      },
+      { category: "Other", sections: [{ section: "Trunk", values: [] }] },
+    ] as typeof status.payload.status.vehicleStatus;
+    expect(mapVehicleStatus(VIN, sparse).closures).toEqual([
+      { label: "Driver Door", state: "Closed", locked: true },
+      { label: "Driver Rear Door", locked: true },
+      { label: "Passenger Door", locked: true },
+    ]);
+  });
+
+  it("takes the distance unit from telemetry, defaulting to miles", () => {
+    const metricStatus = structuredClone(status);
+    metricStatus.payload.status.telemetry.rage.unit = "Kilometer";
+    expect(mapVehicleStatus(VIN, metricStatus).distanceUnit).toBe("km");
+
+    const unitless = structuredClone(status);
+    // @ts-expect-error -- exercise telemetry that omits the unit entirely
+    delete unitless.payload.status.telemetry.rage.unit;
+    // @ts-expect-error
+    delete unitless.payload.status.telemetry.odo.unit;
+    expect(mapVehicleStatus(VIN, unitless).distanceUnit).toBe("mi");
+  });
+});
+
+describe("parseSubscriptionVehicle", () => {
+  const record = {
+    vin: "JTHGZ1B20M5000000",
+    brand: "L",
+    generation: "21MM",
+    region: "US",
+    asiCode: "JG",
+    hwType: "211",
+  };
+
+  it("pulls the region/ASI/hardware context the v3 list requires", () => {
+    expect(parseSubscriptionVehicle({ payload: [record] })).toEqual(record);
+  });
+
+  it("returns null when a required discovery field is absent", () => {
+    expect(parseSubscriptionVehicle({ payload: [{ ...record, hwType: undefined }] })).toBeNull();
+    expect(parseSubscriptionVehicle({ payload: [] })).toBeNull();
+  });
+});

@@ -31,7 +31,8 @@ import {
 } from "@/data/closure-display";
 import { closuresSummary, type ClosuresSummary } from "@/data/closure-summary";
 import type { Corner, Row } from "@/data/closures";
-import { relativeTime, type Closure } from "@/data/vehicle";
+import { relativeTime } from "@/data/time";
+import type { Closure } from "@/data/vehicle";
 
 // What primary-colored SwiftUI text is drawn in while redacted.
 //
