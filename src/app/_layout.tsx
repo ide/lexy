@@ -27,6 +27,13 @@ function RootNavigator() {
   // skeleton for the restore window and then swapping in the cached data.
   const isRestoring = useIsRestoring();
 
+  // Both holds are deliberately short and local — a SQLite read and a Keychain
+  // read, tens of milliseconds together. Neither waits on the network: the
+  // token refresh that used to sit behind `isLoading` now runs after the first
+  // paint (see the restore effect in auth-context). What is left is the
+  // minimum needed to render the right screen rather than the wrong one for a
+  // frame: without the auth read, `session` is still null here and a
+  // signed-in launch would show sign-in before flipping to the car.
   if (isLoading || isRestoring) {
     return null;
   }
