@@ -1,1 +1,1 @@
-export { default } from "@/components/login-preview-screen";
+export { default } from "@/screens/login-preview-screen";

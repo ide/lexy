@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
-import { Card } from "@/components/card";
-import { ThemedText } from "@/components/themed-text";
+import { Card } from "@/components/ui/card";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import type { TirePressure } from "@/data/vehicle";
 

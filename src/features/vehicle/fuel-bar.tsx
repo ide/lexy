@@ -1,9 +1,9 @@
 import { StyleSheet, View } from "react-native";
 
-import { Card } from "@/components/card";
-import { Icon } from "@/components/icon";
-import { useRedacted } from "@/components/redactable";
-import { ThemedText } from "@/components/themed-text";
+import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { useRedacted } from "@/components/ui/redactable";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import type { FuelGauge, FuelLevel } from "@/data/fuel";
 import type { DistanceUnit } from "@/data/vehicle";

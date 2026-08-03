@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { useRedacted } from "@/components/redactable";
+import { useRedacted } from "@/components/ui/redactable";
 import { colors } from "@/constants/theme";
 
 /**

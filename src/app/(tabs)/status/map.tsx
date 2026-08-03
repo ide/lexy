@@ -3,8 +3,8 @@ import { buttonStyle, controlSize, font, frame } from "@expo/ui/swift-ui/modifie
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { VehicleLocationMap } from "@/components/vehicle-location-map";
-import { ThemedText } from "@/components/themed-text";
+import { VehicleLocationMap } from "@/features/vehicle/vehicle-location-map";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import { observedAt, relativeTime } from "@/data/time";
 import { useMapsProvider } from "@/hooks/use-maps-provider";

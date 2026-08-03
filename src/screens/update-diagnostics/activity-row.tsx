@@ -19,7 +19,7 @@ import {
   primaryStyle,
   secondaryStyle,
 } from "@/components/swift-ui/modifier-presets";
-import { formatEventTime } from "@/components/update-diagnostics/event-time";
+import { formatEventTime } from "@/screens/update-diagnostics/event-time";
 import { Spacing, colors } from "@/constants/theme";
 import { shortUpdateId, type UpdateActivityEvent } from "@/updates/update-utils";
 

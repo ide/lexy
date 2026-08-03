@@ -44,10 +44,10 @@ import {
 } from "@/components/swift-ui/modifier-presets";
 import { GroupCard, SectionFooter, SectionHeader } from "@/components/swift-ui/section";
 import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
-import { ActivityRow } from "@/components/update-diagnostics/activity-row";
-import { DataRow } from "@/components/update-diagnostics/data-row";
-import { KnownUpdateCard } from "@/components/update-diagnostics/known-update-card";
-import { NativeLogDisclosure } from "@/components/update-diagnostics/native-log-disclosure";
+import { ActivityRow } from "@/screens/update-diagnostics/activity-row";
+import { DataRow } from "@/screens/update-diagnostics/data-row";
+import { KnownUpdateCard } from "@/screens/update-diagnostics/known-update-card";
+import { NativeLogDisclosure } from "@/screens/update-diagnostics/native-log-disclosure";
 import { Spacing, colors } from "@/constants/theme";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import {

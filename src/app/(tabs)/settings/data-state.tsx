@@ -1,1 +1,1 @@
-export { default } from "@/components/data-state-screen";
+export { default } from "@/screens/data-state-screen";

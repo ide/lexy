@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ui/themed-text";
 import { colors } from "@/constants/theme";
 
 // Zoom level for the parked-car map: close enough to read the street the car is

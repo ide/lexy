@@ -6,11 +6,11 @@ import { Pressable } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { Card } from "@/components/card";
-import { ColorWash } from "@/components/color-wash";
-import { Icon } from "@/components/icon";
-import { useRedacted } from "@/components/redactable";
-import { ThemedText } from "@/components/themed-text";
+import { Card } from "@/components/ui/card";
+import { ColorWash } from "@/components/ui/color-wash";
+import { Icon } from "@/components/ui/icon";
+import { useRedacted } from "@/components/ui/redactable";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import type { AcParameter } from "@/data/climate-settings";
 import type { Vehicle } from "@/data/vehicle";
