@@ -1,13 +1,12 @@
 import { Text, VStack } from "@expo/ui/swift-ui";
-import {
-  background,
-  font,
-  foregroundStyle,
-  frame,
-  padding,
-  shapes,
-} from "@expo/ui/swift-ui/modifiers";
+import { background, fixedSize, font, padding } from "@expo/ui/swift-ui/modifiers";
 
+import {
+  cardShape,
+  fillWidth,
+  fillWidthLeading,
+  secondaryStyle,
+} from "@/components/swift-ui/modifier-presets";
 import { Spacing, colors } from "@/constants/theme";
 
 // The SwiftUI siblings of the RN `SectionTitle` and `Card` components: the
@@ -19,9 +18,9 @@ export function SectionHeader({ children }: { children: string }) {
     <Text
       modifiers={[
         font({ textStyle: "footnote", weight: "semibold" }),
-        foregroundStyle({ type: "hierarchical", style: "secondary" }),
+        secondaryStyle,
         padding({ leading: Spacing.three, bottom: Spacing.one }),
-        frame({ maxWidth: Infinity, alignment: "leading" }),
+        fillWidthLeading,
       ]}
     >
       {children}
@@ -29,22 +28,57 @@ export function SectionHeader({ children }: { children: string }) {
   );
 }
 
-export function GroupCard({ children }: { children: React.ReactNode }) {
+/**
+ * A grouped-list card.
+ *
+ * Rows that pad themselves (`SettingsRow`, `InfoRow`) want the default bare
+ * card; content that doesn't — a status panel, a run of data rows — passes
+ * `padded` and gets the card's own inset instead.
+ */
+export function GroupCard({
+  children,
+  spacing = 0,
+  padded = false,
+  verticalPadding = Spacing.three,
+}: {
+  children: React.ReactNode;
+  spacing?: number;
+  padded?: boolean;
+  /** Only meaningful with `padded`; the horizontal inset is fixed. */
+  verticalPadding?: number;
+}) {
   return (
     <VStack
-      spacing={0}
+      alignment="leading"
+      spacing={spacing}
       modifiers={[
-        frame({ maxWidth: Infinity }),
-        background(
-          colors.card,
-          shapes.roundedRectangle({
-            cornerRadius: 18,
-            roundedCornerStyle: "continuous",
-          }),
-        ),
+        padded ? fillWidthLeading : fillWidth,
+        ...(padded ? [padding({ horizontal: Spacing.three, vertical: verticalPadding })] : []),
+        background(colors.card, cardShape),
       ]}
     >
       {children}
     </VStack>
+  );
+}
+
+/**
+ * The muted explanatory footnote under a section's card — what the rows above
+ * mean, or what they leave out. Inset to the same leading edge as
+ * `SectionHeader`, so a section's header and footer line up over its card.
+ */
+export function SectionFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <Text
+      modifiers={[
+        font({ textStyle: "footnote", weight: "regular" }),
+        secondaryStyle,
+        fixedSize({ horizontal: false, vertical: true }),
+        fillWidthLeading,
+        padding({ top: Spacing.two, horizontal: Spacing.three }),
+      ]}
+    >
+      {children}
+    </Text>
   );
 }

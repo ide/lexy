@@ -1,18 +1,7 @@
-import {
-  Host,
-  ScrollView,
-  Text,
-  TextField,
-  useNativeState,
-  VStack,
-  type TextFieldRef,
-} from "@expo/ui/swift-ui";
+import { TextField, useNativeState, VStack, type TextFieldRef } from "@expo/ui/swift-ui";
 import {
   autocorrectionDisabled,
   background,
-  fixedSize,
-  font,
-  foregroundStyle,
   frame,
   onSubmit,
   padding,
@@ -26,29 +15,14 @@ import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 
 import { ErrorNotice, PrimaryButton } from "@/components/sign-in/sign-in-elements";
-import { SectionHeader } from "@/components/swift-ui/section";
+import { SectionFooter, SectionHeader } from "@/components/swift-ui/section";
+import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
 import { Spacing, colors } from "@/constants/theme";
 import type { VehicleContext } from "@/data/lexus-api";
 import { useRenameVehicle } from "@/hooks/use-rename-vehicle";
 import { useVehicleProfile } from "@/hooks/use-vehicle";
 import { haptic } from "@/utils/haptics";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
-
-function Footnote({ children }: { children: string }) {
-  return (
-    <Text
-      modifiers={[
-        font({ textStyle: "footnote", weight: "regular" }),
-        foregroundStyle({ type: "hierarchical", style: "secondary" }),
-        padding({ top: Spacing.two, horizontal: Spacing.three }),
-        fixedSize({ horizontal: false, vertical: true }),
-        frame({ maxWidth: Infinity, alignment: "leading" }),
-      ]}
-    >
-      {children}
-    </Text>
-  );
-}
 
 /**
  * The form itself, mounted only once the current name is known: the native
@@ -83,7 +57,7 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
 
   return (
     <VStack spacing={Spacing.three} modifiers={[frame({ maxWidth: Infinity })]}>
-      <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
+      <Section>
         <SectionHeader>VEHICLE NAME</SectionHeader>
         <TextField
           ref={field}
@@ -108,8 +82,8 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
             ),
           ]}
         />
-        <Footnote>The name your Lexus account uses for this car.</Footnote>
-      </VStack>
+        <SectionFooter>The name your Lexus account uses for this car.</SectionFooter>
+      </Section>
 
       {error ? <ErrorNotice message={error.message} /> : null}
 
@@ -132,31 +106,14 @@ export default function VehicleNameScreen() {
   const loaded = profile.data;
 
   return (
-    <Host
-      seedColor={colors.systemBlue}
-      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
-    >
-      <ScrollView modifiers={[scrollDismissesKeyboard("interactively")]}>
-        <VStack
-          spacing={Spacing.four}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({
-              top: Spacing.three,
-              horizontal: Spacing.three,
-              bottom: Spacing.six,
-            }),
-          ]}
-        >
-          {loaded ? (
-            <RenameForm context={loaded.context} currentName={loaded.profile.nickname} />
-          ) : (
-            <Footnote>
-              {profile.error ? "Your vehicle couldn't be loaded." : "Loading your vehicle…"}
-            </Footnote>
-          )}
-        </VStack>
-      </ScrollView>
-    </Host>
+    <SettingsScreenScaffold scrollModifiers={[scrollDismissesKeyboard("interactively")]}>
+      {loaded ? (
+        <RenameForm context={loaded.context} currentName={loaded.profile.nickname} />
+      ) : (
+        <SectionFooter>
+          {profile.error ? "Your vehicle couldn't be loaded." : "Loading your vehicle…"}
+        </SectionFooter>
+      )}
+    </SettingsScreenScaffold>
   );
 }

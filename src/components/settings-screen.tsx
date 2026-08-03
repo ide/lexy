@@ -1,4 +1,4 @@
-import { Button, Host, HStack, Image, ScrollView, Text, VStack } from "@expo/ui/swift-ui";
+import { Button, HStack, Image, Text } from "@expo/ui/swift-ui";
 import {
   buttonStyle,
   contentShape,
@@ -15,7 +15,9 @@ import * as Updates from "expo-updates";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
-import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
+import { GroupCard, SectionFooter, SectionHeader } from "@/components/swift-ui/section";
+import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
+import { fillWidthLeading } from "@/components/swift-ui/modifier-presets";
 import { InfoRow, RowChevron, SettingsRow } from "@/components/swift-ui/settings-row";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { Spacing, colors } from "@/constants/theme";
@@ -137,27 +139,18 @@ function AboutSection() {
   });
 
   return (
-    <VStack
-      alignment="leading"
-      spacing={Spacing.two}
-      modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-    >
-      <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-        <SectionHeader>ABOUT</SectionHeader>
-        <GroupCard>
-          <InfoRow label="Version" value={shown.version} />
-        </GroupCard>
-      </VStack>
+    <Section>
+      <SectionHeader>ABOUT</SectionHeader>
+      <GroupCard>
+        <InfoRow label="Version" value={shown.version} />
+      </GroupCard>
       {/* Nothing else on screen would say this: the app is running older code
           than it downloaded, and it looks entirely normal doing it. */}
       {shown.emergency ? (
         <HStack
           alignment="firstTextBaseline"
           spacing={Spacing.two}
-          modifiers={[
-            padding({ horizontal: Spacing.three }),
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-          ]}
+          modifiers={[padding({ top: Spacing.two, horizontal: Spacing.three }), fillWidthLeading]}
         >
           <Image systemName="exclamationmark.triangle.fill" size={13} color={colors.systemOrange} />
           <Text
@@ -165,14 +158,14 @@ function AboutSection() {
               font({ textStyle: "footnote", weight: "regular" }),
               foregroundStyle(colors.systemOrange),
               fixedSize({ horizontal: false, vertical: true }),
-              frame({ maxWidth: Infinity, alignment: "leading" }),
+              fillWidthLeading,
             ]}
           >
             {shown.emergency}
           </Text>
         </HStack>
       ) : null}
-    </VStack>
+    </Section>
   );
 }
 
@@ -221,80 +214,52 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Host
-      seedColor={colors.systemBlue}
-      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
-    >
-      <ScrollView>
-        <VStack
-          alignment="leading"
-          spacing={Spacing.four}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({
-              top: Spacing.three,
-              horizontal: Spacing.three,
-              bottom: Spacing.six,
-            }),
-          ]}
-        >
-          {SHOW_DEV_TOOLS ? (
-            <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-              <SectionHeader>DEVELOPER TOOLS</SectionHeader>
-              <GroupCard>
-                {DEV_ITEMS.map((item, index) => (
-                  <SettingsRow
-                    key={item.title}
-                    icon={item.icon}
-                    tint={item.tint}
-                    title={item.title}
-                    subtitle={item.subtitle}
-                    accessory=<RowChevron />
-                    last={index === DEV_ITEMS.length - 1}
-                    onPress={() => open(item.href)}
-                  />
-                ))}
-              </GroupCard>
-            </VStack>
-          ) : null}
+    <SettingsScreenScaffold>
+      {SHOW_DEV_TOOLS ? (
+        <Section>
+          <SectionHeader>DEVELOPER TOOLS</SectionHeader>
+          <GroupCard>
+            {DEV_ITEMS.map((item, index) => (
+              <SettingsRow
+                key={item.title}
+                icon={item.icon}
+                tint={item.tint}
+                title={item.title}
+                subtitle={item.subtitle}
+                accessory=<RowChevron />
+                last={index === DEV_ITEMS.length - 1}
+                onPress={() => open(item.href)}
+              />
+            ))}
+          </GroupCard>
+        </Section>
+      ) : null}
 
-          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-            <SectionHeader>MAPS</SectionHeader>
-            <GroupCard>
-              <MapsProviderRow />
-            </GroupCard>
-            <Text
-              modifiers={[
-                font({ textStyle: "footnote", weight: "regular" }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                padding({
-                  top: Spacing.two,
-                  horizontal: Spacing.three,
-                }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-              ]}
-            >
-              The app used to open your vehicle&apos;s location for directions.
-            </Text>
-          </VStack>
+      <Section>
+        <SectionHeader>MAPS</SectionHeader>
+        <GroupCard>
+          <MapsProviderRow />
+        </GroupCard>
+        <SectionFooter>
+          The app used to open your vehicle&apos;s location for directions.
+        </SectionFooter>
+      </Section>
 
-          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-            <SectionHeader>VEHICLE</SectionHeader>
-            <GroupCard>
-              <VehicleNameRow />
-            </GroupCard>
-          </VStack>
+      <Section>
+        <SectionHeader>VEHICLE</SectionHeader>
+        <GroupCard>
+          <VehicleNameRow />
+        </GroupCard>
+      </Section>
 
-          <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-            <SectionHeader>LEXUS ACCOUNT</SectionHeader>
-            <GroupCard>
-              <SignOutRow />
-            </GroupCard>
-          </VStack>
+      <Section>
+        <SectionHeader>LEXUS ACCOUNT</SectionHeader>
+        <GroupCard>
+          <SignOutRow />
+        </GroupCard>
+      </Section>
 
-          <AboutSection />
-        </VStack>
-      </ScrollView>
-    </Host>
+      <AboutSection />
+    </SettingsScreenScaffold>
   );
 }
