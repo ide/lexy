@@ -257,15 +257,12 @@ type EngineCommand = "engine-start" | "engine-stop";
  * action confirms first (engine start carries the enclosed-space safety
  * warning).
  *
- * These are real SwiftUI buttons rather than RN pressables: Liquid Glass gives
- * the row edge definition against the flat cards around it, and the native
- * control brings its own pressed/disabled/accessibility behavior instead of the
- * JS opacity swaps this used to fake. The glass shell is the whole button — no
- * fill behind it, or that fill's corners show around the shell and each button
- * reads as sitting inside a container.
+ * They are SwiftUI buttons, so the native control brings its own
+ * pressed/disabled/accessibility behavior and Liquid Glass gives the row edge
+ * definition against the flat cards around it.
  *
  * Subscription/entitlement gating is intentionally not wired: the
- * `vehicle-subscriptions` response shape hasn't been captured, so there's no
+ * `vehicle-subscriptions` response shape hasn't been captured, so there is no
  * honest way to tell whether Remote Connect is active yet. Add that gate once a
  * real response is available.
  */
@@ -292,9 +289,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
 
   const enabled = !busy && !!session && !isRedacted;
 
-  // Doors are the only closures with a lock, so the section-title indicator is
-  // "Locked" only when every known door reports locked. Mirrors the summary
-  // that used to sit on the hero card.
+  // Doors are the only closures with a lock, so the indicator reads "Locked"
+  // only when every known door reports locked.
   const lockStates = vehicle.closures
     .map((closure) => closure.locked)
     .filter((value): value is boolean => value !== undefined);
@@ -337,11 +333,10 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   const extrasSubtitle = describeExtraControls(vehicle.remoteCapabilities);
 
   // No reading yet means no claim — the indicator stays absent rather than
-  // asserting "Stopped" about an engine we haven't asked about. The redacted
-  // pass is the exception: the engine read is skipped there, but the run is
-  // right-aligned, so an absent second indicator would leave the lock one
-  // parked against the margin and slide it left the moment the first reading
-  // lands. It draws as a bar either way, so the word only sets the width.
+  // asserting "Stopped" about an engine we haven't asked about. Redacted is the
+  // exception: the row is right-aligned, so an absent second indicator would
+  // shift the lock one the moment the first reading lands. It draws as a bar
+  // either way, so the word only sets the width.
   const engineLabel = pending
     ? pending.command === "engine-start"
       ? "Starting"
@@ -430,18 +425,14 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           ) : null}
         </View>
       </View>
-      {/* A fixed height, so this host never re-measures. That is the whole
-          reason it can sit in the RN content without the jump an earlier
-          version had: nothing here changes size, so nothing has to be
-          re-reported across the bridge.
+      {/* A fixed height, so this host never re-measures and nothing has to be
+          re-reported across the bridge — which is what lets it sit in the RN
+          content without jumping.
 
-          The row is SwiftUI, so it does not inherit the RN `Redactable` tree's
-          redaction the way the cards around it do — left alone it renders fully
-          live against a screen of grey skeleton bars. `redacted` is SwiftUI's
-          own modifier, so the glass shells keep their shape; their contents are
-          hidden rather than placeholdered, so what is left is the buttons' own
-          outlines at their own size. `disabled` keeps them from actuating a car
-          we have no data for. */}
+          SwiftUI redaction does not cross the host boundary, so the row needs
+          its own: `redacted` keeps the glass shells' shape and hides their
+          contents, and `disabled` keeps them from actuating a car we have no
+          data for. */}
       <Host
         style={styles.row}
         modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
@@ -539,8 +530,8 @@ function MoreControls({
                 More controls
               </SFText>
               {/* The list wraps at this width, and a wrapped line centres
-                      itself by default — which left "and buzzer" floating under
-                      the middle of the line above it. */}
+                      itself by default, which centres the wrapped tail under
+                      the line above it. */}
               <SFText
                 modifiers={[
                   font({ textStyle: "footnote", weight: "regular" }),
@@ -626,40 +617,29 @@ function ControlRow({
           key={slot}
           onPress={() => onPress(control)}
           modifiers={[
-            // No separate background fill behind this: the glass shell has its
-            // own shape and inset, so painting a rect across the button's full
-            // frame leaves that rect's corners showing around the shell — the
-            // button reads as sitting inside a container. The shell *is* the
-            // button.
-            // The same button in every state, redacted or not. Substituting a
-            // stand-in shape cost more than the slightly heavier grey it
-            // saved: a plain button is a different size to a prominent one, so
-            // the chips came out wrong, and the main row lost its glass shell
-            // altogether. A real control with its contents hidden is the
-            // honest placeholder — the live geometry, to the point, with
-            // nothing to keep in sync.
+            // The glass shell is the whole button: it has its own shape and
+            // inset, so a background fill behind it shows its corners around
+            // the shell. The same button in every state — redacted, it keeps
+            // its live geometry and only hides its contents.
             buttonStyle(onCard ? "borderedProminent" : "glass"),
-            // Prominent, so the tint is the fill at full strength rather than
-            // the wash `bordered` applies — which left these barely visible.
-            // The grey is the climate card's defrost chip, which is the same
-            // control on the same kind of card.
+            // Prominent so the tint is the fill at full strength rather than
+            // the wash `bordered` applies. The grey is the climate card's
+            // defrost chip — the same control on the same kind of card.
             ...(onCard ? [buttonBorderShape("capsule"), tint(colors.subtleFill)] : []),
-            // Identity is per *slot*, not per command, for the same reason as
-            // the key: a swapping slot keeps one id so the glass morphs in
-            // place.
+            // Per *slot*, not per command, for the same reason as the key: a
+            // swapping slot keeps one id so the glass morphs in place.
             ...(namespaceId ? [glassEffectId(`control-${slotOffset + slot}`, namespaceId)] : []),
             disabledModifier(!enabled),
           ]}
         >
           {/* The width lives on the *label*, not the Button: a glass button's
               shell wraps its label, so sizing the button leaves a
-              content-sized pill floating in an empty frame. */}
-          {/* `unredacted` alongside `hidden`: the contents are already hidden
-              while redacted, so the only thing the inherited placeholder
-              redaction could still do is change how the text is measured — and
-              it does, by a point or two, which left the skeleton's shells
-              fractionally taller than the live ones. Opting out makes the two
-              states the same layout by construction. */}
+              content-sized pill floating in an empty frame.
+
+              `unredacted` alongside `hidden` because the contents are already
+              hidden; all the inherited placeholder redaction could still do is
+              change how the text measures, which makes the skeleton's shells a
+              point or two taller than the live ones. */}
           <VStack
             spacing={Spacing.one}
             modifiers={[
@@ -668,29 +648,23 @@ function ControlRow({
               ...(isRedacted ? [unredacted()] : []),
             ]}
           >
-            {/* The real icon and label, drawn or not. `hidden` keeps a view in
-                the layout while suppressing its drawing, so the redacted row is
-                laid out by exactly the content it is standing in for — the
-                shells are the live shells, to the point, with no stand-in
-                geometry to keep in sync and nothing to jump when the data
-                lands. */}
+            {/* `hidden` keeps a view in the layout while suppressing its
+                drawing, so the redacted row is laid out by exactly the content
+                it stands in for and nothing jumps when the data lands. */}
             <SFImage
               systemName={control.symbol}
               size={control.iconSize ?? CONTROL_ICON_SIZE}
               color={control.tint}
               modifiers={[hidden(isRedacted)]}
             />
-            {/* A glass button tints its label with the accent color, which
-                turns every label blue. The label is text, not an action color —
-                the icon already carries the action. Two-word labels shrink to
-                fit rather than wrapping, so every button in the grid keeps one
-                line of text and one height. */}
+            {/* A glass button tints its label with the accent color, turning
+                every label blue; the icon already carries the action, so the
+                label is text. Two-word labels shrink to fit rather than wrap,
+                so every button keeps one line and one height. */}
             <SFText
               modifiers={[
-                // One size for every control, main row and disclosure alike:
-                // they are the same button doing the same kind of thing, and a
-                // grid where each label had found its own size read as a
-                // mistake rather than a hierarchy.
+                // One size for every control, main row and disclosure alike —
+                // they are the same button doing the same kind of thing.
                 font({ textStyle: "footnote", weight: "semibold" }),
                 foregroundColor(colors.label),
                 lineLimit(1),

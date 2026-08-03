@@ -146,10 +146,9 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
                 <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
               </Host>
             )
-          ) : // No settings yet — and nothing honest to put here. The setpoint
-          // this slot used to fall back on came from the vehicle load's own copy
-          // of this very endpoint; with that duplicate read gone, an absent
-          // reading is simply absent rather than quietly a beat behind.
+          ) : // No settings yet, and nothing honest to put here: this endpoint
+          // is the only reading of the setpoint, so an absent one is absent
+          // rather than a stale stand-in.
           null}
         </View>
         <ThemedText type="small" themeColor="secondaryLabel">

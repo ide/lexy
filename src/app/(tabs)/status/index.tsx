@@ -138,8 +138,7 @@ export default function CarDashboard() {
           // — one less SwiftUI island to measure and lay out. Being genuine
           // SwiftUI, they take the real `redacted` modifier while loading, which
           // also spares them from rendering the placeholder's timestamps as
-          // readable sentences; `disabled` keeps the popovers shut, the job the
-          // redacted wrapper's `pointerEvents` used to do here.
+          // readable sentences; `disabled` keeps the popovers shut.
           nativeFooter={
             <VStack
               alignment="center"

@@ -30,15 +30,6 @@ import type { Corner, Row } from "@/data/closures";
 import { relativeTime } from "@/data/time";
 import type { Closure } from "@/data/vehicle";
 
-// What primary-colored SwiftUI text is drawn in while redacted.
-//
-// SwiftUI's placeholder redaction fills its bar with the view's own foreground
-// color, so text carries its weight into the skeleton: `colors.label` comes out
-// markedly darker than the neutral bars the RN side draws (ThemedText fills
-// those with `colors.fill`), and the verdict headline was the darkest thing on
-// an otherwise even screen. Rendered against those bars, `secondaryLabel` is
-// the one that lands on the same tone — `colors.fill` itself is already
-// translucent and fades a second time under redaction, landing too light.
 // "attention" draws the warning orange, "settled" the reassuring green.
 const TONE_COLORS: Record<ClosureTone, string> = {
   attention: colors.systemOrange,
@@ -53,17 +44,13 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
   busy: colors.secondaryLabel,
 };
 
-// Point size per symbol, where the default reads wrong. SF Symbols differ
-// enough in how much of their point size they actually occupy that one number
-// cannot serve them all: at 12pt the hood is 19.3pt wide and 12.0pt tall, while
-// the trunk — which looks like it should be the wider of the two — is 13.3 by
-// 11.0. Sizing them identically is what makes them look mismatched.
-//
-// So each is set to land at a similar drawn size, subject to the 22pt slot
-// below. Width is the binding constraint for the landscape glyphs (the hood at
-// 13pt is already 21.7pt wide and would spill into the text), which is why
-// those stay small; the compact ones can afford more. Measured against the iOS
-// 26 SDK — re-measure rather than guess when adding a symbol here.
+// Point size per symbol, where the default reads wrong. SF Symbols occupy
+// different fractions of their point size — at 12pt the hood is 19.3 x 12.0
+// while the trunk is 13.3 x 11.0 — so one number cannot serve them all. Each is
+// set to land at a similar drawn size within the 22pt slot below; width is the
+// binding constraint for the landscape glyphs, which is why those stay small.
+// Measured against the iOS 26 SDK — re-measure rather than guess when adding
+// a symbol here.
 const SYMBOL_POINT_SIZE: Partial<Record<SFSymbol, number>> = {
   "car.window.left": 12,
   "car.window.right": 12,
@@ -80,28 +67,22 @@ function StatusLine({ status }: { status: ClosureStatus }) {
   return (
     <HStack spacing={Spacing.one}>
       {/* The glyph is the reading — a closed padlock in green says "locked" on
-          its own — so while redacted it gives way to the same neutral dot for
-          every row. Left to redact itself it would be worse than useless:
-          placeholder redaction masks an image into a rounded rect in its own
-          color (see the badge above), so the row would claim a verdict in
-          green or orange without even looking like an icon. Exempted from the
-          surrounding redaction for that reason, and neutral so it claims
-          nothing. */}
+          its own — so while redacted it gives way to a neutral dot. It is
+          exempt from the surrounding redaction because placeholder redaction
+          masks an image into a rounded rect in its own color, which would claim
+          a verdict in green or orange without looking like an icon. */}
       <Image
         systemName={isRedacted ? "circle.fill" : status.symbol}
         size={isRedacted ? 13 : (SYMBOL_POINT_SIZE[status.symbol] ?? 15)}
         color={isRedacted ? colors.fill : TONE_COLORS[status.tone]}
         // SF Symbols vary in intrinsic width (a lock is narrow, a window
-        // wide); a fixed slot keeps the texts of stacked lines aligned. It is
-        // also what makes the sizes above safe to change: the text starts at
-        // the same x whatever the glyph does, as long as the glyph stays
-        // inside the slot. Nothing here is tall enough to drive the row's
-        // height either — the subheadline's line box is.
+        // wide); a fixed slot keeps stacked lines' text aligned, and is what
+        // makes the sizes above safe to change. Nothing here is tall enough to
+        // drive the row height — the subheadline's line box is.
         modifiers={[frame({ width: 22 }), ...(isRedacted ? [unredacted()] : [])]}
       />
-      {/* Redacts to a bar of its own width, which is why the placeholder's
-          closures are worth keeping the shape of real ones — and to a bar of
-          its own color, which is why it lightens first. */}
+      {/* Redacts to a bar of its own width and color — hence the placeholder
+          closures keeping the shape of real ones, and the lighter tone. */}
       <Text
         modifiers={[
           font({ textStyle: "subheadline" }),
@@ -140,11 +121,9 @@ function CornerCell({ corner }: { corner: Corner }) {
 /**
  * The Doors & Windows card: a one-line, fixed-height verdict ("All secure",
  * "Trunk open", "2 open, 1 unlocked") with the full per-corner detail one tap
- * away. The content is SwiftUI; the expansion is a Reanimated height clip,
- * because a SwiftUI animation cannot span the host boundary — the RN side
- * snaps to the new size instead of growing (verified on-device), so the
- * UI-thread clip is what makes the card visibly grow and shrink. The verdict
- * logic lives in closure-summary.ts.
+ * away. The content is SwiftUI; the expansion is the shared `ExpandableCard`,
+ * because a SwiftUI animation cannot span the host boundary. The verdict logic
+ * lives in closure-summary.ts.
  */
 export function ClosuresCard({ corners, openings }: { corners: Corner[]; openings: Closure[] }) {
   const redacted = useRedacted();
@@ -165,24 +144,21 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
           <HStack
             spacing={Spacing.three - Spacing.one}
             modifiers={[
-              // A fixed height regardless of state, so the card never
-              // shifts its collapsed size and the skeleton matches it.
-              // Two frame calls: expo-ui's frame modifier drops maxWidth
-              // when height is set, which left the row floating centered.
+              // A fixed height regardless of state, so the card never shifts
+              // its collapsed size and the skeleton matches it. Two frame
+              // calls: expo-ui's frame modifier drops maxWidth when height is
+              // set, leaving the row centered.
               frame({ height: 44 }),
               frame({ maxWidth: Infinity, alignment: "leading" }),
               ...(redacted ? [redactedModifier(), disabledModifier(true)] : []),
             ]}
           >
             <ZStack>
-              {/* The tint at full strength would shout; a translucent wash
-                      of the same color keeps the icon the loudest element.
-                      While redacted the badge is exempted from the redaction
-                      it sits under — placeholder redaction masks an image into
-                      a rounded rect in its own color, which turned the circle
-                      into a tinted square — and drawn as the neutral fill
-                      circle the RN `Icon` uses, so the skeleton keeps the
-                      badge's shape without claiming a verdict. */}
+              {/* A translucent wash rather than the tint at full strength, so
+                  the icon stays the loudest element. Redacted, the badge opts
+                  out and draws as a neutral fill circle: placeholder redaction
+                  masks an image into a rounded rect in its own color, which
+                  squares the circle off and claims a verdict. */}
               <Image
                 systemName="circle.fill"
                 size={36}
@@ -228,14 +204,11 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
           spacing={Spacing.three}
           modifiers={[
             frame({ maxWidth: Infinity, alignment: "leading" }),
-            // The detail is SwiftUI, so it does not inherit the RN
-            // `Redactable` tree's redaction the way the cards around it do
-            // — left alone it renders every door and window state in full
-            // against a screen of skeleton bars, which is exactly what a
-            // card that was already expanded when the data went away used
-            // to do. `redacted` is SwiftUI's own, and reaches the corner
-            // titles and status text; the glyphs opt back out of it
-            // individually (see StatusLine).
+            // SwiftUI redaction does not cross the host boundary, so a card
+            // left open when the data goes away needs its own or it draws
+            // every door and window state live against a screen of skeleton
+            // bars. This reaches the corner titles and status text; the glyphs
+            // opt back out individually (see StatusLine).
             ...(redacted ? [redactedModifier()] : []),
           ]}
         >

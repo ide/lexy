@@ -34,11 +34,11 @@ export type RefreshTrigger = "auto" | "manual";
  * foreground and after every lock command.
  *
  * A pull-to-refresh is a different question. It means "everything on this
- * screen", and some of that screen is profile data the *car* never reports:
- * the vehicle's name is edited from the official Lexus app, so with nothing
- * re-reading discovery, a rename made there stayed invisible in Lexy until the
- * profile's own day-long window elapsed (PROFILE_STALE_TIME_MS) — with the
- * refresh gesture that should have fixed it appearing to do nothing.
+ * screen", and some of that screen is profile data the *car* never reports —
+ * the vehicle's name is edited from the official Lexus app. Without discovery
+ * on this path, such a rename stays invisible until the profile's own day-long
+ * window elapses (PROFILE_STALE_TIME_MS), with the refresh gesture that should
+ * have fixed it appearing to do nothing.
  *
  * `prime` POSTs `refresh-status`, which wakes the telematics unit and asks
  * every body module to report — expensive for the 12V battery, so it is
