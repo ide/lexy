@@ -27,7 +27,7 @@ export async function freshenSession(manager: Pick<SessionManager, "getSession">
     // A transient failure is swallowed on purpose: the restored session stays
     // in place, the screen keeps its cached data, and the next authorized call
     // retries the refresh — the same handling a failure mid-session gets.
-    // Signing someone out because the network was down for their launch is the
-    // worse answer, and it is what awaiting this used to do.
+    // Signing someone out because the network was down for their launch would
+    // be the worse answer.
   }
 }

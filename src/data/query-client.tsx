@@ -56,16 +56,12 @@ onlineManager.setEventListener((setOnline) => {
 // Hydrate here, at module scope, from the *synchronous* SQLite read — before
 // React renders anything at all.
 //
-// This was `PersistQueryClientProvider`, whose restore is a promise: the app had
-// to render something while it settled and then re-render once it landed. There
-// was nothing worth rendering in that window — a skeleton standing in for data
-// already on disk — so the tree was held at `null` instead, which is what made
-// a launch a blank screen followed by a screen.
-//
-// Read synchronously and the question stops existing. The cached car is in the
-// client before the first render, so the first render has it, and the splash
-// hands over to a finished screen rather than an empty one. It is one row of a
-// few KB, read before there is a frame to drop.
+// Not `PersistQueryClientProvider`: its restore is a promise, so the app must
+// render something while it settles and re-render when it lands, and there is
+// nothing worth rendering in that window but a skeleton standing in for data
+// already on disk. Read synchronously, the cached car is in the client before
+// the first render, so the splash hands over to a finished screen. It is one
+// row of a few KB, read before there is a frame to drop.
 const persistedClient = readPersistedClient(Storage.getItemSync(CACHE_KEY));
 if (persistedClient) {
   hydrate(queryClient, persistedClient.clientState);
