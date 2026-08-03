@@ -4,8 +4,8 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { Card } from "@/components/card";
-import { Icon } from "@/components/icon";
+import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { EXPAND_TIMING } from "@/constants/motion";
 import { Spacing, colors } from "@/constants/theme";
 

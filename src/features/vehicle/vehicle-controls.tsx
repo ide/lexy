@@ -34,12 +34,12 @@ import { Alert, StyleSheet, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
-import { ExpandableCard } from "@/components/expandable-card";
-import { Icon } from "@/components/icon";
-import { PulsingText } from "@/components/pulsing-text";
-import { PLACEHOLDER_TEXT, useRedacted } from "@/components/redactable";
-import { SectionTitle } from "@/components/section-title";
-import { ThemedText } from "@/components/themed-text";
+import { ExpandableCard } from "@/components/ui/expandable-card";
+import { Icon } from "@/components/ui/icon";
+import { PulsingText } from "@/components/ui/pulsing-text";
+import { PLACEHOLDER_TEXT, useRedacted } from "@/components/ui/redactable";
+import { SectionTitle } from "@/components/ui/section-title";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
 import type { VehicleContext } from "@/data/lexus-api";

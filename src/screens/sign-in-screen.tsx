@@ -41,7 +41,7 @@ import {
   NewToLexusCallout,
   PrimaryButton,
   SecondaryAction,
-} from "@/components/sign-in/sign-in-elements";
+} from "@/screens/sign-in/sign-in-elements";
 import { Spacing, colors } from "@/constants/theme";
 import { haptic } from "@/utils/haptics";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";

@@ -5,9 +5,9 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View, type LayoutRectangle } from "react-native";
 
-import { Card } from "@/components/card";
-import { VehicleLocationMap } from "@/components/vehicle-location-map";
-import { useRedacted } from "@/components/redactable";
+import { Card } from "@/components/ui/card";
+import { VehicleLocationMap } from "@/features/vehicle/vehicle-location-map";
+import { useRedacted } from "@/components/ui/redactable";
 import { Spacing, colors } from "@/constants/theme";
 import type { Vehicle } from "@/data/vehicle";
 import { haptic } from "@/utils/haptics";

@@ -41,7 +41,7 @@ Options considered:
 - **C. Shared layout constants, two trees** — strictly worse than B (still two
   trees, still drift), only cheaper. Not needed.
 
-How B works (see `src/components/redactable.tsx`). The vocabulary follows
+How B works (see `src/components/ui/redactable.tsx`). The vocabulary follows
 SwiftUI's: a subtree is _redactable_, and a redaction _reason_ says whether it
 is redacted right now and why.
 

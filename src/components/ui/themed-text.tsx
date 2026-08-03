@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import { Platform, StyleSheet, Text, type TextProps } from "react-native";
 
-import { useRedacted } from "@/components/redactable";
+import { useRedacted } from "@/components/ui/redactable";
 import { Fonts, ThemeColor, colors } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {

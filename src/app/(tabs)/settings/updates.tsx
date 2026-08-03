@@ -1,1 +1,1 @@
-export { default } from "@/components/update-diagnostics-screen";
+export { default } from "@/screens/update-diagnostics-screen";

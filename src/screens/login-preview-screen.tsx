@@ -24,7 +24,7 @@ import {
   PREVIEW_SCENARIOS,
   type PreviewScenario,
 } from "@/auth/preview-lexus-backend";
-import SignInScreen from "@/components/sign-in-screen";
+import SignInScreen from "@/screens/sign-in-screen";
 import { Spacing, colors } from "@/constants/theme";
 
 /**

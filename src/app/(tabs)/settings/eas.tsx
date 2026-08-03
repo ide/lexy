@@ -1,1 +1,1 @@
-export { default } from "@/components/eas-screen";
+export { default } from "@/screens/eas-screen";

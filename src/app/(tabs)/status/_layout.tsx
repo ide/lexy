@@ -1,7 +1,7 @@
 import { router, Stack } from "expo-router";
 import { Pressable } from "react-native-gesture-handler";
 
-import { Icon } from "@/components/icon";
+import { Icon } from "@/components/ui/icon";
 import { colors } from "@/constants/theme";
 import { tabStackScreenOptions } from "@/navigation/tab-stack-options-preset";
 

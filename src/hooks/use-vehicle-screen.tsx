@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { DevSkeletonToggle } from "@/components/dev-skeleton-toggle";
-import type { RedactionReason } from "@/components/redactable";
-import { StatusBanner } from "@/components/status-banner";
-import { NoVehicleState, VehicleError } from "@/components/vehicle-state";
+import { DevSkeletonToggle } from "@/components/ui/dev-skeleton-toggle";
+import type { RedactionReason } from "@/components/ui/redactable";
+import { StatusBanner } from "@/components/ui/status-banner";
+import { NoVehicleState, VehicleError } from "@/features/vehicle/vehicle-state";
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { describeFailure } from "@/data/load-error";
 import { PLACEHOLDER_VEHICLE } from "@/data/placeholder-vehicle";

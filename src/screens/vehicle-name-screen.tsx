@@ -14,7 +14,7 @@ import {
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 
-import { ErrorNotice, PrimaryButton } from "@/components/sign-in/sign-in-elements";
+import { ErrorNotice, PrimaryButton } from "@/screens/sign-in/sign-in-elements";
 import { SectionFooter, SectionHeader } from "@/components/swift-ui/section";
 import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
 import { Spacing, colors } from "@/constants/theme";

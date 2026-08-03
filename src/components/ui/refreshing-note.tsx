@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { AccessibilityInfo, ActivityIndicator, StyleSheet } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 
 const FADE_MS = 220;

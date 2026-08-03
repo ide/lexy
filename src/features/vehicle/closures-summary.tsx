@@ -12,10 +12,10 @@ import {
 import { StyleSheet, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { ExpandableCard } from "@/components/expandable-card";
-import { Icon } from "@/components/icon";
-import { PLACEHOLDER_TEXT, useRedacted } from "@/components/redactable";
-import { ThemedText } from "@/components/themed-text";
+import { ExpandableCard } from "@/components/ui/expandable-card";
+import { Icon } from "@/components/ui/icon";
+import { PLACEHOLDER_TEXT, useRedacted } from "@/components/ui/redactable";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 import {
   cornerVisibility,

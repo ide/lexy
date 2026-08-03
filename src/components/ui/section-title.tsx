@@ -1,7 +1,7 @@
 import { StyleSheet, type StyleProp, type TextStyle } from "react-native";
 
-import { useRedacted } from "@/components/redactable";
-import { ThemedText } from "@/components/themed-text";
+import { useRedacted } from "@/components/ui/redactable";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing } from "@/constants/theme";
 
 // While redacted, headers stand in with a short, uniform label so they

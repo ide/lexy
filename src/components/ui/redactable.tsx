@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/pulsing-text";
+import { PULSE_DURATION_MS, PULSE_MIN_OPACITY } from "@/components/ui/pulsing-text";
 import { colors } from "@/constants/theme";
 
 /**

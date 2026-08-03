@@ -2,8 +2,8 @@ import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { ColorWash } from "@/components/color-wash";
-import { ThemedText } from "@/components/themed-text";
+import { ColorWash } from "@/components/ui/color-wash";
+import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 
 /**
