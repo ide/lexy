@@ -9,17 +9,13 @@ import {
   redacted as redactedModifier,
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
-import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Pressable } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { Card } from "@/components/card";
+import { ExpandableCard } from "@/components/expandable-card";
 import { Icon } from "@/components/icon";
 import { PLACEHOLDER_TEXT, useRedacted } from "@/components/redactable";
 import { ThemedText } from "@/components/themed-text";
-import { EXPAND_TIMING } from "@/constants/motion";
 import { Spacing, colors } from "@/constants/theme";
 import {
   cornerVisibility,
@@ -152,25 +148,6 @@ function CornerCell({ corner }: { corner: Corner }) {
  */
 export function ClosuresCard({ corners, openings }: { corners: Corner[]; openings: Closure[] }) {
   const redacted = useRedacted();
-  const [expanded, setExpanded] = useState(false);
-  const expandedRef = useRef(expanded);
-  // The detail's natural height, measured from its always-rendered (but
-  // clipped) content so the first expansion already knows where to land.
-  const measuredDetail = useRef(0);
-  const detailHeight = useSharedValue(0);
-  const rotation = useSharedValue(0);
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-  const clipStyle = useAnimatedStyle(() => ({ height: detailHeight.value }));
-
-  const toggle = () => {
-    const next = !expanded;
-    expandedRef.current = next;
-    setExpanded(next);
-    rotation.value = withTiming(next ? 90 : 0, EXPAND_TIMING);
-    detailHeight.value = withTiming(next ? measuredDetail.current : 0, EXPAND_TIMING);
-  };
 
   const summary = closuresSummary(corners, openings);
   const badgeTint = KIND_COLORS[summary.kind];
@@ -179,33 +156,26 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
     .filter((row) => row.length > 0);
 
   return (
-    <Card>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityHint="Shows each door and window"
-        disabled={redacted}
-        onPress={toggle}
-      >
-        {({ pressed }) => (
-          <View style={[styles.header, pressed && styles.pressed]}>
-            {/* The SwiftUI host would swallow the tap before the Pressable
-                sees it; the header content is purely presentational. */}
-            <Host matchContents={{ vertical: true }} style={styles.headerHost} pointerEvents="none">
-              <HStack
-                spacing={Spacing.three - Spacing.one}
-                modifiers={[
-                  // A fixed height regardless of state, so the card never
-                  // shifts its collapsed size and the skeleton matches it.
-                  // Two frame calls: expo-ui's frame modifier drops maxWidth
-                  // when height is set, which left the row floating centered.
-                  frame({ height: 44 }),
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                  ...(redacted ? [redactedModifier(), disabledModifier(true)] : []),
-                ]}
-              >
-                <ZStack>
-                  {/* The tint at full strength would shout; a translucent wash
+    <ExpandableCard
+      accessibilityHint="Shows each door and window"
+      disabled={redacted}
+      detailStyle={styles.detailContent}
+      header={
+        <Host matchContents={{ vertical: true }} style={styles.headerHost} pointerEvents="none">
+          <HStack
+            spacing={Spacing.three - Spacing.one}
+            modifiers={[
+              // A fixed height regardless of state, so the card never
+              // shifts its collapsed size and the skeleton matches it.
+              // Two frame calls: expo-ui's frame modifier drops maxWidth
+              // when height is set, which left the row floating centered.
+              frame({ height: 44 }),
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+              ...(redacted ? [redactedModifier(), disabledModifier(true)] : []),
+            ]}
+          >
+            <ZStack>
+              {/* The tint at full strength would shout; a translucent wash
                       of the same color keeps the icon the loudest element.
                       While redacted the badge is exempted from the redaction
                       it sits under — placeholder redaction masks an image into
@@ -213,104 +183,84 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
                       into a tinted square — and drawn as the neutral fill
                       circle the RN `Icon` uses, so the skeleton keeps the
                       badge's shape without claiming a verdict. */}
-                  <Image
-                    systemName="circle.fill"
-                    size={36}
-                    color={redacted ? colors.fill : badgeTint}
-                    modifiers={redacted ? [unredacted()] : [opacity(0.15)]}
-                  />
-                  {/* No glyph inside it: the symbol is the verdict. */}
-                  {redacted ? null : (
-                    <Image systemName={summary.symbol} size={18} color={badgeTint} />
-                  )}
-                </ZStack>
-                <VStack alignment="leading" spacing={Spacing.half}>
-                  <Text
-                    modifiers={[
-                      font({ textStyle: "body", weight: "semibold" }),
-                      // Semibold body in the primary color is the heaviest text
-                      // on the card, so its placeholder was the heaviest bar.
-                      foregroundStyle(redacted ? PLACEHOLDER_TEXT : colors.label),
-                      lineLimit(1),
-                    ]}
-                  >
-                    {summary.headline}
-                  </Text>
-                  {summary.subline ? (
-                    <Text
-                      modifiers={[
-                        font({ textStyle: "footnote" }),
-                        foregroundStyle(colors.secondaryLabel),
-                        lineLimit(1),
-                      ]}
-                    >
-                      {summary.subline}
-                    </Text>
-                  ) : null}
-                </VStack>
-              </HStack>
-            </Host>
-            <Animated.View style={chevronStyle}>
-              <Icon name="chevron.right" size={14} tint={colors.secondaryLabel} />
-            </Animated.View>
-          </View>
-        )}
-      </Pressable>
-
-      <Animated.View style={[styles.detailClip, clipStyle]}>
-        <View
-          style={styles.detailContent}
-          onLayout={(event) => {
-            measuredDetail.current = event.nativeEvent.layout.height;
-            // A data refresh can reflow the open detail; track it unanimated.
-            if (expandedRef.current) {
-              detailHeight.value = event.nativeEvent.layout.height;
-            }
-          }}
-        >
-          {/* The detail breathes on the card itself — the corner titles carry
-              the grouping, so no surface or border boxes the grid in. */}
-          <Host matchContents={{ vertical: true }} pointerEvents="none">
-            <VStack
-              alignment="leading"
-              spacing={Spacing.three}
-              modifiers={[
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-                // The detail is SwiftUI, so it does not inherit the RN
-                // `Redactable` tree's redaction the way the cards around it do
-                // — left alone it renders every door and window state in full
-                // against a screen of skeleton bars, which is exactly what a
-                // card that was already expanded when the data went away used
-                // to do. `redacted` is SwiftUI's own, and reaches the corner
-                // titles and status text; the glyphs opt back out of it
-                // individually (see StatusLine).
-                ...(redacted ? [redactedModifier()] : []),
-              ]}
-            >
-              {rows.map((rowCorners) => (
-                <HStack
-                  key={rowCorners[0].row}
-                  alignment="top"
-                  spacing={Spacing.three}
-                  modifiers={[frame({ maxWidth: Infinity })]}
+              <Image
+                systemName="circle.fill"
+                size={36}
+                color={redacted ? colors.fill : badgeTint}
+                modifiers={redacted ? [unredacted()] : [opacity(0.15)]}
+              />
+              {/* No glyph inside it: the symbol is the verdict. */}
+              {redacted ? null : <Image systemName={summary.symbol} size={18} color={badgeTint} />}
+            </ZStack>
+            <VStack alignment="leading" spacing={Spacing.half}>
+              <Text
+                modifiers={[
+                  font({ textStyle: "body", weight: "semibold" }),
+                  // Semibold body in the primary color is the heaviest text
+                  // on the card, so its placeholder was the heaviest bar.
+                  foregroundStyle(redacted ? PLACEHOLDER_TEXT : colors.label),
+                  lineLimit(1),
+                ]}
+              >
+                {summary.headline}
+              </Text>
+              {summary.subline ? (
+                <Text
+                  modifiers={[
+                    font({ textStyle: "footnote" }),
+                    foregroundStyle(colors.secondaryLabel),
+                    lineLimit(1),
+                  ]}
                 >
-                  {rowCorners.map((corner) => (
-                    <CornerCell key={corner.key} corner={corner} />
-                  ))}
-                </HStack>
-              ))}
-              {openings.length > 0 ? (
-                <VStack alignment="leading" spacing={Spacing.two}>
-                  {openings.map((opening) => (
-                    <StatusLine key={opening.label} status={openingStatus(opening)} />
-                  ))}
-                </VStack>
+                  {summary.subline}
+                </Text>
               ) : null}
             </VStack>
-          </Host>
-        </View>
-      </Animated.View>
-    </Card>
+          </HStack>
+        </Host>
+      }
+    >
+      {/* The detail breathes on the card itself — the corner titles carry the
+          grouping, so no surface or border boxes the grid in. */}
+      <Host matchContents={{ vertical: true }} pointerEvents="none">
+        <VStack
+          alignment="leading"
+          spacing={Spacing.three}
+          modifiers={[
+            frame({ maxWidth: Infinity, alignment: "leading" }),
+            // The detail is SwiftUI, so it does not inherit the RN
+            // `Redactable` tree's redaction the way the cards around it do
+            // — left alone it renders every door and window state in full
+            // against a screen of skeleton bars, which is exactly what a
+            // card that was already expanded when the data went away used
+            // to do. `redacted` is SwiftUI's own, and reaches the corner
+            // titles and status text; the glyphs opt back out of it
+            // individually (see StatusLine).
+            ...(redacted ? [redactedModifier()] : []),
+          ]}
+        >
+          {rows.map((rowCorners) => (
+            <HStack
+              key={rowCorners[0].row}
+              alignment="top"
+              spacing={Spacing.three}
+              modifiers={[frame({ maxWidth: Infinity })]}
+            >
+              {rowCorners.map((corner) => (
+                <CornerCell key={corner.key} corner={corner} />
+              ))}
+            </HStack>
+          ))}
+          {openings.length > 0 ? (
+            <VStack alignment="leading" spacing={Spacing.two}>
+              {openings.map((opening) => (
+                <StatusLine key={opening.label} status={openingStatus(opening)} />
+              ))}
+            </VStack>
+          ) : null}
+        </VStack>
+      </Host>
+    </ExpandableCard>
   );
 }
 
@@ -335,30 +285,11 @@ export function StaleNote({ at, now }: { at: number; now: number }) {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two + Spacing.one,
-  },
-  pressed: {
-    opacity: 0.6,
-  },
   headerHost: {
     flex: 1,
   },
-  detailClip: {
-    overflow: "hidden",
-  },
-  // Rendered (and measured) at natural size even while the clip is closed.
+  // The grid wants a little air under the header the controls grid does not.
   detailContent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.three,
     paddingTop: Spacing.half,
   },
   staleNote: {

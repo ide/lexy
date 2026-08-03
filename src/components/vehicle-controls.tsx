@@ -29,20 +29,17 @@ import {
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
-import { Pressable } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { Card } from "@/components/card";
+import { useAuth } from "@/auth/auth-context";
+import { ExpandableCard } from "@/components/expandable-card";
 import { Icon } from "@/components/icon";
 import { PulsingText } from "@/components/pulsing-text";
 import { PLACEHOLDER_TEXT, useRedacted } from "@/components/redactable";
 import { SectionTitle } from "@/components/section-title";
 import { ThemedText } from "@/components/themed-text";
-import { useAuth } from "@/auth/auth-context";
-import { EXPAND_TIMING } from "@/constants/motion";
 import { Spacing, colors } from "@/constants/theme";
 import { ENGINE_POLL_COUNT, ENGINE_POLL_INTERVAL_MS } from "@/data/engine-status";
 import type { VehicleContext } from "@/data/lexus-api";
@@ -477,28 +474,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
 }
 
 /**
- * The extra controls, built the way the Doors & Windows card is built —
- * structurally, not approximately.
- *
- * Everything about the interaction is React Native and Reanimated, and the only
- * SwiftUI here is content that draws:
- *
- * - The tap is a `Pressable`, so the press dims the header's own content and
- *   not the card under it. A `DisclosureGroup` presses its whole label instead,
- *   which is what made the row flash.
- * - The header's SwiftUI host is `pointerEvents="none"`, or it would swallow
- *   the tap before the Pressable saw it.
- * - The chevron is RN, rotated by a shared value on the UI thread. Driving a
- *   SwiftUI `rotationEffect` from React state is why it never animated.
- * - The reveal is an animated height with `overflow: hidden`, and the content
- *   inside is **absolutely positioned** — which is the piece that matters. Out
- *   of the clip's layout flow, it keeps its natural size and is merely revealed.
- *   Every version that laid the content out *inside* the animating box had it
- *   squeezed to nothing and re-expanded instead, which is the empty box that
- *   filled all at once and the collapse with nothing left to animate.
- *
- * None of it is driven by React state mid-flight, so an unrelated re-render
- * cannot interrupt it. That is why this card has never glitched.
+ * The extra controls a car will accept, behind a disclosure. Everything but the
+ * drawn content is the shared `ExpandableCard`.
  */
 function MoreControls({
   controls,
@@ -513,144 +490,94 @@ function MoreControls({
   subtitle: string;
   onPress: (control: Control) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const expandedRef = useRef(expanded);
-  const measured = useRef(0);
-  const detailHeight = useSharedValue(0);
-  const rotation = useSharedValue(0);
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-  const clipStyle = useAnimatedStyle(() => ({ height: detailHeight.value }));
-
-  const toggle = () => {
-    const next = !expanded;
-    expandedRef.current = next;
-    setExpanded(next);
-    rotation.value = withTiming(next ? 90 : 0, EXPAND_TIMING);
-    detailHeight.value = withTiming(next ? measured.current : 0, EXPAND_TIMING);
-  };
-
   const rows = chunk(controls, CONTROLS_PER_ROW);
 
   return (
-    <Card style={styles.moreCard}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityHint="Shows the vehicle's other remote controls"
-        disabled={isRedacted}
-        onPress={toggle}
-      >
-        {({ pressed }) => (
-          <View style={[styles.moreHeader, pressed && styles.pressed]}>
-            {/* Sized, not measured. `matchContents` makes RN wait for SwiftUI
-                to report a height, and on the first layout pass it has none —
-                so the row came up at 38pt and settled at 80pt a frame later,
-                with its own text spilling out in between. Telling RN the
-                height up front is what the main control row above already
-                does, and why that one has never flickered. */}
-            <Host style={styles.moreHeaderHost} pointerEvents="none">
-              <HStack
-                spacing={Spacing.three - Spacing.one}
-                modifiers={[
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                  ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
-                ]}
-              >
-                <ZStack>
-                  {/* A wash of the tint rather than the tint itself, so the
+    <ExpandableCard
+      accessibilityHint="Shows the vehicle's other remote controls"
+      disabled={isRedacted}
+      style={styles.moreCard}
+      header={
+        /* Sized, not measured. `matchContents` makes RN wait for SwiftUI to
+           report a height, and on the first layout pass there is none — the row
+           comes up short and settles a frame later with its text spilling out.
+           The main control row above states its height for the same reason. */
+        <Host style={styles.moreHeaderHost} pointerEvents="none">
+          <HStack
+            spacing={Spacing.three - Spacing.one}
+            modifiers={[
+              frame({ maxWidth: Infinity, alignment: "leading" }),
+              ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
+            ]}
+          >
+            <ZStack>
+              {/* A wash of the tint rather than the tint itself, so the
                       glyph stays the loudest thing in it — and, while redacted,
                       the neutral fill circle the RN `Icon` uses, because
                       placeholder redaction masks an image into a rounded rect
                       in its own colour and turns the circle square. */}
-                  <SFImage
-                    systemName="circle.fill"
-                    size={36}
-                    color={isRedacted ? colors.fill : blue}
-                    modifiers={isRedacted ? [unredacted()] : [opacity(0.15)]}
-                  />
-                  {isRedacted ? null : (
-                    <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
-                  )}
-                </ZStack>
-                <VStack alignment="leading" spacing={Spacing.half}>
-                  <SFText
-                    modifiers={[
-                      font({ textStyle: "body", weight: "semibold" }),
-                      // The heaviest text on the card, so while redacted it
-                      // drops to the secondary colour — otherwise its bar is
-                      // the darkest thing on a screen claiming nothing yet.
-                      foregroundColor(isRedacted ? PLACEHOLDER_TEXT : colors.label),
-                    ]}
-                  >
-                    More controls
-                  </SFText>
-                  {/* The list wraps at this width, and a wrapped line centres
+              <SFImage
+                systemName="circle.fill"
+                size={36}
+                color={isRedacted ? colors.fill : blue}
+                modifiers={isRedacted ? [unredacted()] : [opacity(0.15)]}
+              />
+              {isRedacted ? null : (
+                <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
+              )}
+            </ZStack>
+            <VStack alignment="leading" spacing={Spacing.half}>
+              <SFText
+                modifiers={[
+                  font({ textStyle: "body", weight: "semibold" }),
+                  // The heaviest text on the card, so while redacted it
+                  // drops to the secondary colour — otherwise its bar is
+                  // the darkest thing on a screen claiming nothing yet.
+                  foregroundColor(isRedacted ? PLACEHOLDER_TEXT : colors.label),
+                ]}
+              >
+                More controls
+              </SFText>
+              {/* The list wraps at this width, and a wrapped line centres
                       itself by default — which left "and buzzer" floating under
                       the middle of the line above it. */}
-                  <SFText
-                    modifiers={[
-                      font({ textStyle: "footnote", weight: "regular" }),
-                      foregroundColor(colors.secondaryLabel),
-                      multilineTextAlignment("leading"),
-                      frame({ maxWidth: Infinity, alignment: "leading" }),
-                    ]}
-                  >
-                    {subtitle}
-                  </SFText>
-                </VStack>
-              </HStack>
-            </Host>
-            <Animated.View style={chevronStyle}>
-              <Icon name="chevron.right" size={14} tint={colors.secondaryLabel} />
-            </Animated.View>
-          </View>
-        )}
-      </Pressable>
-
-      <Animated.View style={[styles.detailClip, clipStyle]}>
-        <View
-          style={styles.detailContent}
-          onLayout={(event) => {
-            measured.current = event.nativeEvent.layout.height;
-            // A capability change can reflow the open detail; track it
-            // unanimated.
-            if (expandedRef.current) {
-              detailHeight.value = event.nativeEvent.layout.height;
-            }
-          }}
-        >
-          {/* Sized by its content, not by a number I picked. The fixed height
-              this used to carry was short, which clipped the top row. It is
-              safe here for the same reason the closures detail is: the content
-              is a fixed number of rows and never changes size, and the clip
-              that animates is the RN view outside it. */}
-          {/* Redaction has to be applied here as well as on the header: SwiftUI's
-              does not cross a host boundary, so a card left open when the data
-              goes away would otherwise draw live icons and labels against a
-              screen of skeleton bars. `disabled` for the same reason the main
-              row is — these actuate a car we have no data for. */}
-          <Host
-            matchContents={{ vertical: true }}
-            modifiers={isRedacted ? [disabledModifier(true)] : undefined}
-          >
-            <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
-              {rows.map((row, index) => (
-                <ControlRow
-                  key={index}
-                  controls={row}
-                  enabled={enabled}
-                  isRedacted={isRedacted}
-                  onCard
-                  onPress={onPress}
-                />
-              ))}
+              <SFText
+                modifiers={[
+                  font({ textStyle: "footnote", weight: "regular" }),
+                  foregroundColor(colors.secondaryLabel),
+                  multilineTextAlignment("leading"),
+                  frame({ maxWidth: Infinity, alignment: "leading" }),
+                ]}
+              >
+                {subtitle}
+              </SFText>
             </VStack>
-          </Host>
-        </View>
-      </Animated.View>
-    </Card>
+          </HStack>
+        </Host>
+      }
+    >
+      {/* SwiftUI redaction does not cross a host boundary, so this needs its own
+          alongside the header's: a card left open when the data goes away would
+          otherwise draw live icons and labels against a screen of skeleton bars.
+          `disabled` because these actuate a car we have no data for. */}
+      <Host
+        matchContents={{ vertical: true }}
+        modifiers={isRedacted ? [disabledModifier(true)] : undefined}
+      >
+        <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
+          {rows.map((row, index) => (
+            <ControlRow
+              key={index}
+              controls={row}
+              enabled={enabled}
+              isRedacted={isRedacted}
+              onCard
+              onPress={onPress}
+            />
+          ))}
+        </VStack>
+      </Host>
+    </ExpandableCard>
   );
 }
 
@@ -819,33 +746,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
     padding: 0,
   },
-  moreHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two + Spacing.one,
-  },
-  pressed: {
-    opacity: 0.6,
-  },
   moreHeaderHost: {
     flex: 1,
     // The header's content height, measured from the live layout: the badge
     // and two lines of text, without the row's own padding.
     height: MORE_HEADER_CONTENT_HEIGHT,
-  },
-  detailClip: {
-    overflow: "hidden",
-  },
-  // Rendered (and measured) at natural size even while the clip is closed —
-  // absolute, so the clip's height never lays it out.
-  detailContent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.three,
   },
 });
