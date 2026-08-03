@@ -1,15 +1,14 @@
-import { Host, ScrollView, Text, VStack } from "@expo/ui/swift-ui";
-import { font, foregroundStyle, frame, padding } from "@expo/ui/swift-ui/modifiers";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import type { SFSymbol } from "sf-symbols-typescript";
 
-import { GroupCard, SectionHeader } from "@/components/swift-ui/section";
+import { GroupCard, SectionFooter, SectionHeader } from "@/components/swift-ui/section";
+import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
 import { RowExternalLink, SettingsRow } from "@/components/swift-ui/settings-row";
-import { Spacing, colors } from "@/constants/theme";
+import { colors } from "@/constants/theme";
 import { easProjectUrl, type EasProjectIdentity } from "@/data/eas-dashboard";
-import { haptic } from "@/utils/haptics";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
+import { haptic } from "@/utils/haptics";
 
 type Destination = {
   icon: SFSymbol;
@@ -86,63 +85,32 @@ export default function EasScreen() {
   const linked = easProjectUrl(identity) !== null;
 
   return (
-    <Host
-      seedColor={colors.systemBlue}
-      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
-    >
-      <ScrollView>
-        <VStack
-          alignment="leading"
-          spacing={Spacing.four}
-          modifiers={[
-            frame({ maxWidth: Infinity, alignment: "leading" }),
-            padding({
-              top: Spacing.three,
-              horizontal: Spacing.three,
-              bottom: Spacing.six,
-            }),
-          ]}
-        >
-          <VStack
-            alignment="leading"
-            spacing={Spacing.two}
-            modifiers={[frame({ maxWidth: Infinity, alignment: "leading" })]}
-          >
-            <VStack spacing={0} modifiers={[frame({ maxWidth: Infinity })]}>
-              <SectionHeader>DASHBOARD</SectionHeader>
-              <GroupCard>
-                {DESTINATIONS.map((destination, index) => (
-                  <SettingsRow
-                    key={destination.title}
-                    icon={destination.icon}
-                    tint={destination.tint}
-                    title={destination.title}
-                    subtitle={destination.subtitle}
-                    accessory=<RowExternalLink />
-                    disabled={!linked}
-                    last={index === DESTINATIONS.length - 1}
-                    onPress={() => open(destination.page)}
-                  />
-                ))}
-              </GroupCard>
-            </VStack>
-            <Text
-              modifiers={[
-                font({ textStyle: "footnote", weight: "regular" }),
-                foregroundStyle({ type: "hierarchical", style: "secondary" }),
-                padding({ horizontal: Spacing.three }),
-                frame({ maxWidth: Infinity, alignment: "leading" }),
-              ]}
-            >
-              {linked
-                ? `Opens expo.dev in Safari for ${identity.owner ?? "this account"}/${
-                    identity.slug ?? "this project"
-                  }. Sign in there to see anything.`
-                : "This build isn't linked to an EAS project, so there is no dashboard to open."}
-            </Text>
-          </VStack>
-        </VStack>
-      </ScrollView>
-    </Host>
+    <SettingsScreenScaffold>
+      <Section>
+        <SectionHeader>DASHBOARD</SectionHeader>
+        <GroupCard>
+          {DESTINATIONS.map((destination, index) => (
+            <SettingsRow
+              key={destination.title}
+              icon={destination.icon}
+              tint={destination.tint}
+              title={destination.title}
+              subtitle={destination.subtitle}
+              accessory=<RowExternalLink />
+              disabled={!linked}
+              last={index === DESTINATIONS.length - 1}
+              onPress={() => open(destination.page)}
+            />
+          ))}
+        </GroupCard>
+        <SectionFooter>
+          {linked
+            ? `Opens expo.dev in Safari for ${identity.owner ?? "this account"}/${
+                identity.slug ?? "this project"
+              }. Sign in there to see anything.`
+            : "This build isn't linked to an EAS project, so there is no dashboard to open."}
+        </SectionFooter>
+      </Section>
+    </SettingsScreenScaffold>
   );
 }
