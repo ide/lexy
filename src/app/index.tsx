@@ -1,3 +1,4 @@
+import { ObserveInteractiveMarker } from "expo-observe";
 import { Redirect } from "expo-router";
 
 import { useAuth } from "@/auth/auth-context";
@@ -11,5 +12,16 @@ export default function Index() {
   // built-in "Unmatched Route" screen on launch. The redirect hands off to the
   // tabs (or sign-in); the root stack disables its animation so the target
   // renders in place instead of sliding in from the right.
-  return <Redirect href={session ? "/(tabs)/status" : "/sign-in"} />;
+  //
+  // The marker closes out this route's navigation TTI — a redirect is as
+  // interactive as `/` ever gets, and without it Observe records a TTR but no
+  // TTI for every launch. It must precede the Redirect: sibling effects run in
+  // tree order, and markInteractive only records while the route is still
+  // focused, so it has to fire before the redirect steals focus.
+  return (
+    <>
+      <ObserveInteractiveMarker />
+      <Redirect href={session ? "/(tabs)/status" : "/sign-in"} />
+    </>
+  );
 }
