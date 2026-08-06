@@ -1,11 +1,12 @@
 import { Host, Slider, Toggle } from "@expo/ui/swift-ui";
 import { disabled } from "@expo/ui/swift-ui/modifiers";
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { SFSymbol } from "sf-symbols-typescript";
 
+import { AlertHost, type AlertSpec } from "@/components/swift-ui/alert-host";
 import { Card } from "@/components/ui/card";
 import { ColorWash } from "@/components/ui/color-wash";
 import { Icon } from "@/components/ui/icon";
@@ -86,12 +87,16 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
   const [draftTemperature, setDraftTemperature] = useState<number | null>(null);
   const draftRef = useRef<number | null>(null);
 
+  // Nothing to confirm — the write already failed — so the alert carries no
+  // action and SwiftUI supplies the OK.
+  const [alert, setAlert] = useState<AlertSpec | null>(null);
+
   useEffect(() => {
     if (error) {
-      Alert.alert(
-        "Couldn't save climate settings",
-        error instanceof Error ? error.message : "The vehicle API rejected the change.",
-      );
+      setAlert({
+        title: "Couldn't save climate settings",
+        message: error instanceof Error ? error.message : "The vehicle API rejected the change.",
+      });
     }
   }, [error]);
 
@@ -211,6 +216,7 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
           />
         </Animated.View>
       ) : null}
+      <AlertHost alert={alert} onDismiss={() => setAlert(null)} />
     </Card>
   );
 }
