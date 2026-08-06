@@ -76,7 +76,6 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
     if (!savable || saving) {
       return;
     }
-    haptic("impact-medium");
     rename(trimmed)
       .then(() => {
         haptic("success");
@@ -90,7 +89,6 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
   };
 
   const clear = () => {
-    haptic("selection");
     // `clear()` empties the native field; React's copy of the text is what the
     // Save button reads, so it has to be told separately. Focus follows the
     // clear, as it does in UIKit — the point of the gesture is to retype.

@@ -3,6 +3,7 @@ import { buttonStyle, controlSize, font, frame } from "@expo/ui/swift-ui/modifie
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { MapsProviderPrompt } from "@/features/maps/maps-provider-prompt";
 import { VehicleLocationMap } from "@/features/vehicle/vehicle-location-map";
 import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
@@ -19,7 +20,7 @@ export default function VehicleLocationSheet() {
   // so its own clock — the screen underneath has stopped ticking while blurred.
   const now = useNow();
   const { data: parkingAddress } = useParkingAddress(vehicle?.location);
-  const { resolved, openInMaps } = useMapsProvider();
+  const { resolved, openInMaps, prompt, dismissPrompt } = useMapsProvider();
   const insets = useSafeAreaInsets();
 
   useMarkInteractive();
@@ -63,16 +64,22 @@ export default function VehicleLocationSheet() {
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.three) }]}>
         <Host style={styles.buttonHost}>
-          <Button
-            onPress={() => openInMaps({ latitude, longitude, label: vehicle.nickname })}
-            modifiers={[
-              buttonStyle(actionable ? "borderedProminent" : "bordered"),
-              controlSize("large"),
-              frame({ maxWidth: Infinity }),
-            ]}
-          >
-            <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>{buttonLabel}</Text>
-          </Button>
+          {/* The button is the chooser's trigger: SwiftUI presents the dialog
+              from the tapped view rather than from a call. */}
+          <MapsProviderPrompt prompt={prompt} onDismiss={dismissPrompt}>
+            <Button
+              onPress={() => openInMaps({ latitude, longitude, label: vehicle.nickname })}
+              modifiers={[
+                buttonStyle(actionable ? "borderedProminent" : "bordered"),
+                controlSize("large"),
+                frame({ maxWidth: Infinity }),
+              ]}
+            >
+              <Text modifiers={[font({ textStyle: "body", weight: "semibold" })]}>
+                {buttonLabel}
+              </Text>
+            </Button>
+          </MapsProviderPrompt>
         </Host>
       </View>
     </View>

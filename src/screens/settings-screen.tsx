@@ -15,6 +15,7 @@ import * as Updates from "expo-updates";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
+import { MapsProviderPrompt } from "@/features/maps/maps-provider-prompt";
 import { GroupCard, SectionFooter, SectionHeader } from "@/components/swift-ui/section";
 import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
 import { fillWidthLeading } from "@/components/swift-ui/modifier-presets";
@@ -25,7 +26,6 @@ import { describeMapsProviderChoice } from "@/data/maps-providers";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useVehicleProfile } from "@/hooks/use-vehicle";
 import { describeAppVersion } from "@/updates/app-version";
-import { haptic } from "@/utils/haptics";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 type DevItem = {
@@ -75,22 +75,24 @@ const DEV_ITEMS: DevItem[] = [
 // the full width for long app names and Dynamic Type. When no maps app is
 // installed the row reads "Unavailable" and taps explain how to fix it.
 function MapsProviderRow() {
-  const { resolved, saved, promptChoice } = useMapsProvider();
+  const { resolved, saved, promptChoice, prompt, dismissPrompt } = useMapsProvider();
 
   return (
-    <SettingsRow
-      icon="map.fill"
-      tint={colors.systemBlue}
-      title="Maps App"
-      subtitle={describeMapsProviderChoice(resolved, saved)}
-      accessory=<RowChevron />
-      onPress={() => {
-        haptic("selection");
-        // promptChoice presents the chooser, or explains when nothing is
+    // The row is the dialog's trigger — SwiftUI presents from the view that
+    // was tapped rather than from a call, so the chooser is attached here
+    // instead of fired inside `promptChoice`.
+    <MapsProviderPrompt prompt={prompt} onDismiss={dismissPrompt}>
+      <SettingsRow
+        icon="map.fill"
+        tint={colors.systemBlue}
+        title="Maps App"
+        subtitle={describeMapsProviderChoice(resolved, saved)}
+        accessory=<RowChevron />
+        // promptChoice offers the chooser, or explains when nothing is
         // installed.
-        promptChoice();
-      }}
-    />
+        onPress={promptChoice}
+      />
+    </MapsProviderPrompt>
   );
 }
 
@@ -112,10 +114,7 @@ function VehicleNameRow() {
       // Nothing to edit until the current name is known; the rename screen
       // needs it as the field's starting value.
       disabled={nickname === undefined}
-      onPress={() => {
-        haptic("selection");
-        router.push("/settings/vehicle-name");
-      }}
+      onPress={() => router.push("/settings/vehicle-name")}
     />
   );
 }
@@ -174,7 +173,6 @@ function SignOutRow() {
   const red = colors.systemRed;
 
   const onPress = () => {
-    haptic("impact-medium");
     // signOut clears the stored session + query cache; the Stack.Protected
     // guard in the root layout then swaps back to the sign-in screen.
     signOut().catch(() => {
@@ -208,11 +206,6 @@ export default function SettingsScreen() {
 
   useMarkInteractive();
 
-  const open = (href: Href) => {
-    haptic("selection");
-    router.push(href);
-  };
-
   return (
     <SettingsScreenScaffold>
       {SHOW_DEV_TOOLS ? (
@@ -228,7 +221,7 @@ export default function SettingsScreen() {
                 subtitle={item.subtitle}
                 accessory=<RowChevron />
                 last={index === DEV_ITEMS.length - 1}
-                onPress={() => open(item.href)}
+                onPress={() => router.push(item.href)}
               />
             ))}
           </GroupCard>
