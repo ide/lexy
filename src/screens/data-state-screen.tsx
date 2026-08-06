@@ -3,13 +3,18 @@ import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-
 import { RowCheckmark, SettingsRow } from "@/components/swift-ui/settings-row";
 import { colors } from "@/constants/theme";
 import type { DataStateOverride } from "@/debug/data-state";
-import { DATA_STATE_OPTIONS, useDebugOverrides } from "@/debug/debug-overrides";
+import {
+  COMMAND_CONFIRM_OPTIONS,
+  DATA_STATE_OPTIONS,
+  useDebugOverrides,
+  type CommandConfirmStyle,
+} from "@/debug/debug-overrides";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { haptic } from "@/utils/haptics";
 
 export default function DataStateScreen() {
-  const { dataState, setDataState } = useDebugOverrides();
+  const { dataState, setDataState, commandConfirm, setCommandConfirm } = useDebugOverrides();
   const { saved: savedMapsProvider, clear: clearMapsProvider } = useMapsProvider();
 
   useMarkInteractive();
@@ -17,6 +22,11 @@ export default function DataStateScreen() {
   const select = (key: DataStateOverride) => {
     haptic("selection");
     setDataState(key);
+  };
+
+  const selectConfirmStyle = (key: CommandConfirmStyle) => {
+    haptic("selection");
+    setCommandConfirm(key);
   };
 
   const clearProvider = () => {
@@ -45,6 +55,28 @@ export default function DataStateScreen() {
         <SectionFooter>
           Overrides the Status and Details tabs so you can preview each data state. Resets to Live
           when the app reloads.
+        </SectionFooter>
+      </Section>
+
+      <Section>
+        <SectionHeader>COMMAND CONFIRMATION</SectionHeader>
+        <GroupCard>
+          {COMMAND_CONFIRM_OPTIONS.map((option, index) => (
+            <SettingsRow
+              key={option.key}
+              icon={option.icon}
+              tint={option.tint}
+              title={option.title}
+              subtitle={option.subtitle}
+              accessory=<RowCheckmark selected={option.key === commandConfirm} />
+              last={index === COMMAND_CONFIRM_OPTIONS.length - 1}
+              onPress={() => selectConfirmStyle(option.key)}
+            />
+          ))}
+        </GroupCard>
+        <SectionFooter>
+          How Remote Controls ask before actuating the car. Affects every control on the Status tab,
+          including the ones behind More controls. Resets to Alert when the app reloads.
         </SectionFooter>
       </Section>
 
