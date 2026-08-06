@@ -82,7 +82,7 @@ function RenameForm({ context, currentName }: { context: VehicleContext; current
             ),
           ]}
         />
-        <SectionFooter>The name your Lexus account uses for this car.</SectionFooter>
+        <SectionFooter>Your car’s name, saved to the Lexus app.</SectionFooter>
       </Section>
 
       {error ? <ErrorNotice message={error.message} /> : null}
