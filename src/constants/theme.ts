@@ -27,6 +27,9 @@ const ios = (color: ColorValue, fallback: string) =>
 const palette = {
   label: ios(Color.ios.label, "#000000"),
   secondaryLabel: ios(Color.ios.secondaryLabel, "#60646C"),
+  // The faintest label grey — for a glyph that serves the text beside it and
+  // must not compete with it, like a field's clear button.
+  tertiaryLabel: ios(Color.ios.tertiaryLabel, "#8A8F98"),
   // Grouped (settings-style) backgrounds: grey screen, elevated cards.
   groupedBackground: ios(Color.ios.systemGroupedBackground, "#F2F2F7"),
   card: ios(Color.ios.secondarySystemGroupedBackground, "#FFFFFF"),
