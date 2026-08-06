@@ -1,8 +1,6 @@
 import { useFocusEffect } from "expo-router";
-import { haptic } from "@/utils/haptics";
 import * as Linking from "expo-linking";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ActionSheetIOS, Alert } from "react-native";
 
 import {
   clearSavedMapsProviderId,
@@ -27,6 +25,18 @@ const NO_APPS_TITLE = "No maps app installed";
 const NO_APPS_MESSAGE =
   "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions.";
 
+/**
+ * What a consumer's trigger should be presenting, or `null` for nothing.
+ *
+ * SwiftUI presents from a binding rather than from a call — `.confirmationDialog`
+ * and `.alert` attach to the view that triggered them — so this hook describes
+ * the presentation and lets the screen render it, instead of reaching for
+ * `ActionSheetIOS` and showing UIKit chrome over a SwiftUI tree.
+ */
+export type MapsPrompt =
+  | { kind: "choice"; options: MapsProvider[]; onPick: (provider: MapsProvider) => void }
+  | { kind: "alert"; title: string; message: string };
+
 type UseMapsProvider = {
   /** `null` until the first installation probe resolves. */
   resolved: ResolvedMapsProvider | null;
@@ -43,17 +53,10 @@ type UseMapsProvider = {
   openInMaps: (target: MapsTarget) => void;
   /** Present the provider chooser (installed apps) and persist the pick. */
   promptChoice: () => void;
+  /** Wrap the triggering view in `MapsProviderPrompt` and pass these two. */
+  prompt: MapsPrompt | null;
+  dismissPrompt: () => void;
 };
-
-function open(provider: MapsProvider, target: MapsTarget) {
-  haptic("impact-light");
-  Linking.openURL(provider.buildDirectionsUrl(target)).catch(() => {
-    Alert.alert(
-      "Couldn't open " + provider.name,
-      "The app didn't respond to the location link. It may have just been removed.",
-    );
-  });
-}
 
 export function useMapsProvider(): UseMapsProvider {
   const [installedIds, setInstalledIds] = useState<MapsProviderId[] | null>(null);
@@ -105,8 +108,12 @@ export function useMapsProvider(): UseMapsProvider {
     clearSavedMapsProviderId();
   }, []);
 
+  const [prompt, setPrompt] = useState<MapsPrompt | null>(null);
+
+  const dismissPrompt = useCallback(() => setPrompt(null), []);
+
   const explainNoApps = useCallback(() => {
-    Alert.alert(NO_APPS_TITLE, NO_APPS_MESSAGE);
+    setPrompt({ kind: "alert", title: NO_APPS_TITLE, message: NO_APPS_MESSAGE });
   }, []);
 
   // Keep the latest resolution in a ref so the stable action callbacks below
@@ -114,25 +121,15 @@ export function useMapsProvider(): UseMapsProvider {
   const resolvedRef = useRef(resolved);
   resolvedRef.current = resolved;
 
-  const promptWith = useCallback(
-    (options: MapsProvider[], onPick: (provider: MapsProvider) => void) => {
-      haptic("selection");
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: "Open location in",
-          options: [...options.map((provider) => provider.name), "Cancel"],
-          cancelButtonIndex: options.length,
-        },
-        (index) => {
-          const provider = options[index];
-          if (provider) {
-            onPick(provider);
-          }
-        },
-      );
-    },
-    [],
-  );
+  const open = useCallback((provider: MapsProvider, target: MapsTarget) => {
+    Linking.openURL(provider.buildDirectionsUrl(target)).catch(() => {
+      setPrompt({
+        kind: "alert",
+        title: `Couldn't open ${provider.name}`,
+        message: "The app didn't respond to the location link. It may have just been removed.",
+      });
+    });
+  }, []);
 
   const promptChoice = useCallback(() => {
     const current = resolvedRef.current;
@@ -141,8 +138,8 @@ export function useMapsProvider(): UseMapsProvider {
       return;
     }
     const options = current.kind === "prompt" ? current.options : installedProviders(installedIds);
-    promptWith(options, (provider) => choose(provider.id));
-  }, [choose, explainNoApps, installedIds, promptWith]);
+    setPrompt({ kind: "choice", options, onPick: (provider) => choose(provider.id) });
+  }, [choose, explainNoApps, installedIds]);
 
   const openInMaps = useCallback(
     (target: MapsTarget) => {
@@ -159,12 +156,16 @@ export function useMapsProvider(): UseMapsProvider {
         return;
       }
       // Several apps, no saved choice yet: ask, remember, then open.
-      promptWith(current.options, (provider) => {
-        choose(provider.id);
-        open(provider, target);
+      setPrompt({
+        kind: "choice",
+        options: current.options,
+        onPick: (provider) => {
+          choose(provider.id);
+          open(provider, target);
+        },
       });
     },
-    [choose, explainNoApps, promptWith],
+    [choose, explainNoApps, open],
   );
 
   return {
@@ -173,6 +174,8 @@ export function useMapsProvider(): UseMapsProvider {
     clear,
     openInMaps,
     promptChoice,
+    prompt,
+    dismissPrompt,
   };
 }
 
