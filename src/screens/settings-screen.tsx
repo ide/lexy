@@ -208,26 +208,6 @@ export default function SettingsScreen() {
 
   return (
     <SettingsScreenScaffold>
-      {SHOW_DEV_TOOLS ? (
-        <Section>
-          <SectionHeader>DEVELOPER TOOLS</SectionHeader>
-          <GroupCard>
-            {DEV_ITEMS.map((item, index) => (
-              <SettingsRow
-                key={item.title}
-                icon={item.icon}
-                tint={item.tint}
-                title={item.title}
-                subtitle={item.subtitle}
-                accessory=<RowChevron />
-                last={index === DEV_ITEMS.length - 1}
-                onPress={() => router.push(item.href)}
-              />
-            ))}
-          </GroupCard>
-        </Section>
-      ) : null}
-
       <Section>
         <SectionHeader>MAPS</SectionHeader>
         <GroupCard>
@@ -251,6 +231,29 @@ export default function SettingsScreen() {
           <SignOutRow />
         </GroupCard>
       </Section>
+
+      {/* TEMPORARY: parked at the bottom so Maps is the first section on the
+          screen, to see how the chooser presents from a row at the top. Move
+          back above MAPS when that's answered. */}
+      {SHOW_DEV_TOOLS ? (
+        <Section>
+          <SectionHeader>DEVELOPER TOOLS</SectionHeader>
+          <GroupCard>
+            {DEV_ITEMS.map((item, index) => (
+              <SettingsRow
+                key={item.title}
+                icon={item.icon}
+                tint={item.tint}
+                title={item.title}
+                subtitle={item.subtitle}
+                accessory=<RowChevron />
+                last={index === DEV_ITEMS.length - 1}
+                onPress={() => router.push(item.href)}
+              />
+            ))}
+          </GroupCard>
+        </Section>
+      ) : null}
 
       <AboutSection />
     </SettingsScreenScaffold>

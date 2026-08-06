@@ -30,10 +30,11 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
 import { useEffect, useId, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
+import { AlertHost, type AlertSpec } from "@/components/swift-ui/alert-host";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Icon } from "@/components/ui/icon";
 import { PulsingText } from "@/components/ui/pulsing-text";
@@ -270,6 +271,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   const { session, runAuthorized } = useAuth();
   const isRedacted = useRedacted();
   const [busy, setBusy] = useState(false);
+  // The confirmation a command waits on, or the failure it came back with.
+  const [alert, setAlert] = useState<AlertSpec | null>(null);
   // No engine read while standing in for data we don't have — the placeholder
   // VIN isn't a car.
   const engine = useEngineStatus(vehicle, { placeholder: isRedacted });
@@ -377,23 +380,28 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       })
       .catch((error: unknown) => {
         haptic("error");
-        Alert.alert(
-          "Command failed",
-          error instanceof Error ? error.message : "The command could not be sent.",
-        );
+        setAlert({
+          title: "Command failed",
+          message: error instanceof Error ? error.message : "The command could not be sent.",
+        });
       })
       .finally(() => setBusy(false));
   };
 
+  // An alert rather than a confirmation dialog: there is one alternative, not a
+  // set of them, and the message is a consequence warning — an enclosed space,
+  // a car left unlocked — which an action sheet would render as small grey text
+  // above the buttons.
   const confirm = (control: Control) => {
-    Alert.alert(control.confirmTitle, control.confirmMessage, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: control.actionLabel,
-        style: control.destructive ? "destructive" : "default",
-        onPress: () => run(control),
+    setAlert({
+      title: control.confirmTitle,
+      message: control.confirmMessage,
+      action: {
+        label: control.actionLabel,
+        destructive: control.destructive,
+        onConfirm: () => run(control),
       },
-    ]);
+    });
   };
 
   return (
@@ -460,6 +468,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           onPress={confirm}
         />
       ) : null}
+      <AlertHost alert={alert} onDismiss={() => setAlert(null)} />
     </View>
   );
 }
