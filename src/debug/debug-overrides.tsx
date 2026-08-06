@@ -66,47 +66,9 @@ export const DATA_STATE_OPTIONS: DataStateOption[] = [
   },
 ];
 
-/**
- * How a remote command asks before it actuates the car.
- *
- * - `alert` — a centered modal. The confirm message is a safety warning, and an
- *   alert makes it the primary content.
- * - `sheet` — a confirmation dialog anchored to the glass button that was
- *   pressed, so there is no doubt which control is being confirmed, at the cost
- *   of the warning rendering as subtext.
- *
- * Both are defensible; this exists to compare them on a real device.
- */
-export type CommandConfirmStyle = "alert" | "sheet";
-
-export const COMMAND_CONFIRM_OPTIONS: {
-  key: CommandConfirmStyle;
-  title: string;
-  subtitle: string;
-  icon: SFSymbol;
-  tint: string;
-}[] = [
-  {
-    key: "alert",
-    title: "Alert",
-    subtitle: "Centered modal. The safety warning reads as the main text.",
-    icon: "exclamationmark.bubble.fill",
-    tint: colors.systemBlue,
-  },
-  {
-    key: "sheet",
-    title: "Confirmation dialog",
-    subtitle: "Anchored to the button pressed. The warning becomes subtext.",
-    icon: "arrowshape.up.fill",
-    tint: colors.systemGreen,
-  },
-];
-
 type DebugContextValue = {
   dataState: DataStateOverride;
   setDataState: (state: DataStateOverride) => void;
-  commandConfirm: CommandConfirmStyle;
-  setCommandConfirm: (style: CommandConfirmStyle) => void;
 };
 
 const DebugContext = createContext<DebugContextValue | null>(null);
@@ -119,35 +81,14 @@ const DebugContext = createContext<DebugContextValue | null>(null);
  */
 export function DebugOverrideProvider({ children }: { children: React.ReactNode }) {
   const [dataState, setDataState] = useState<DataStateOverride>("live");
-  const [commandConfirm, setCommandConfirm] = useState<CommandConfirmStyle>("alert");
-  const value = useMemo(
-    () => ({ dataState, setDataState, commandConfirm, setCommandConfirm }),
-    [dataState, commandConfirm],
-  );
+  const value = useMemo(() => ({ dataState, setDataState }), [dataState]);
   return <DebugContext.Provider value={value}>{children}</DebugContext.Provider>;
 }
 
 // Controls for the dev screen. Falls back to a no-op when the provider is absent
 // so it can never crash a screen that renders it outside the tree.
 export function useDebugOverrides(): DebugContextValue {
-  return (
-    useContext(DebugContext) ?? {
-      dataState: "live",
-      setDataState: () => {},
-      commandConfirm: "alert",
-      setCommandConfirm: () => {},
-    }
-  );
-}
-
-/**
- * Which confirmation the remote controls should present. Production is always
- * `alert` — the comparison is a dev-tools affordance, and shipping a build
- * whose safety warning depends on an in-memory toggle is not a thing to allow.
- */
-export function useCommandConfirmStyle(): CommandConfirmStyle {
-  const { commandConfirm } = useDebugOverrides();
-  return SHOW_DEV_TOOLS ? commandConfirm : "alert";
+  return useContext(DebugContext) ?? { dataState: "live", setDataState: () => {} };
 }
 
 /**

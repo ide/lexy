@@ -1,6 +1,5 @@
 import {
   Button,
-  ConfirmationDialog,
   GlassEffectContainer,
   Host,
   HStack,
@@ -36,7 +35,6 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { useAuth } from "@/auth/auth-context";
 import { AlertHost, type AlertSpec } from "@/components/swift-ui/alert-host";
-import { useCommandConfirmStyle } from "@/debug/debug-overrides";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Icon } from "@/components/ui/icon";
 import { PulsingText } from "@/components/ui/pulsing-text";
@@ -248,17 +246,6 @@ function extraControls(capabilities: RemoteCapability[], hazardsOn: boolean): Co
   ];
 }
 
-/**
- * The anchored-confirmation wiring a row needs: which control is being
- * confirmed, and what to do with the answer. Threaded down rather than held per
- * button because only one command is ever in question at a time.
- */
-type SheetConfirm = {
-  control: Control | null;
-  onAccept: (control: Control) => void;
-  onCancel: () => void;
-};
-
 /** The window a just-issued engine command has to show up in engine-status. */
 const ENGINE_PENDING_MS = ENGINE_POLL_COUNT * ENGINE_POLL_INTERVAL_MS;
 
@@ -284,10 +271,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   const { session, runAuthorized } = useAuth();
   const isRedacted = useRedacted();
   const [busy, setBusy] = useState(false);
-  // The command waiting to be confirmed, and the failure one came back with.
-  const [confirming, setConfirming] = useState<Control | null>(null);
-  const [failure, setFailure] = useState<AlertSpec | null>(null);
-  const confirmStyle = useCommandConfirmStyle();
+  // The confirmation a command waits on, or the failure it came back with.
+  const [alert, setAlert] = useState<AlertSpec | null>(null);
   // No engine read while standing in for data we don't have — the placeholder
   // VIN isn't a car.
   const engine = useEngineStatus(vehicle, { placeholder: isRedacted });
@@ -395,7 +380,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       })
       .catch((error: unknown) => {
         haptic("error");
-        setFailure({
+        setAlert({
           title: "Command failed",
           message: error instanceof Error ? error.message : "The command could not be sent.",
         });
@@ -403,36 +388,29 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       .finally(() => setBusy(false));
   };
 
-  const confirm = (control: Control) => setConfirming(control);
-  const cancelConfirm = () => setConfirming(null);
-  const acceptConfirm = (control: Control) => {
-    setConfirming(null);
-    run(control);
+  // An alert rather than a confirmation dialog, tried both ways on device.
+  //
+  // An anchored dialog points at the button it came from, which sounds like the
+  // better feedback until you use the row: every control puts the question in a
+  // different place, and a confirmation that moves is one you have to re-find
+  // each time. A centered alert lands in the same spot for all eleven of them,
+  // so the answer is always where the last one was.
+  //
+  // It suits the content too — there is one alternative here, not a set of
+  // them, and the message is a consequence warning (an enclosed space, a car
+  // left unlocked) that an action sheet renders as small grey text above the
+  // buttons rather than as the thing being said.
+  const confirm = (control: Control) => {
+    setAlert({
+      title: control.confirmTitle,
+      message: control.confirmMessage,
+      action: {
+        label: control.actionLabel,
+        destructive: control.destructive,
+        onConfirm: () => run(control),
+      },
+    });
   };
-
-  // The alert form of the pending confirmation. Nothing when the dev override
-  // asks for anchored sheets — those are rendered by the buttons themselves.
-  const confirmAlert: AlertSpec | null =
-    confirmStyle === "alert" && confirming
-      ? {
-          title: confirming.confirmTitle,
-          message: confirming.confirmMessage,
-          action: {
-            label: confirming.actionLabel,
-            destructive: confirming.destructive,
-            onConfirm: () => run(confirming),
-          },
-        }
-      : null;
-
-  // One host, two sources: a failure can only arrive after a confirmation has
-  // been answered, so the two can never want the screen at the same time.
-  const alert = failure ?? confirmAlert;
-
-  const sheetConfirm =
-    confirmStyle === "sheet"
-      ? { control: confirming, onAccept: acceptConfirm, onCancel: cancelConfirm }
-      : undefined;
 
   return (
     <View>
@@ -484,7 +462,6 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
               namespaceId={namespaceId}
               slotOffset={0}
               onPress={confirm}
-              sheetConfirm={sheetConfirm}
             />
           </GlassEffectContainer>
         </Namespace>
@@ -497,16 +474,9 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           isRedacted={isRedacted}
           subtitle={extrasSubtitle}
           onPress={confirm}
-          sheetConfirm={sheetConfirm}
         />
       ) : null}
-      <AlertHost
-        alert={alert}
-        onDismiss={() => {
-          setFailure(null);
-          setConfirming(null);
-        }}
-      />
+      <AlertHost alert={alert} onDismiss={() => setAlert(null)} />
     </View>
   );
 }
@@ -521,14 +491,12 @@ function MoreControls({
   isRedacted,
   subtitle,
   onPress,
-  sheetConfirm,
 }: {
   controls: Control[];
   enabled: boolean;
   isRedacted: boolean;
   subtitle: string;
   onPress: (control: Control) => void;
-  sheetConfirm?: SheetConfirm;
 }) {
   const rows = chunk(controls, CONTROLS_PER_ROW);
 
@@ -613,7 +581,6 @@ function MoreControls({
               isRedacted={isRedacted}
               onCard
               onPress={onPress}
-              sheetConfirm={sheetConfirm}
             />
           ))}
         </VStack>
@@ -636,7 +603,6 @@ function ControlRow({
   onCard = false,
   slotOffset = 0,
   onPress,
-  sheetConfirm,
 }: {
   controls: Control[];
   enabled: boolean;
@@ -657,40 +623,33 @@ function ControlRow({
   /** Where this row starts in the run of glass identities. */
   slotOffset?: number;
   onPress: (control: Control) => void;
-  /**
-   * Present confirmations as sheets anchored to the button pressed. Absent when
-   * the screen is confirming with an alert, which needs nothing from the row —
-   * an alert has no anchor to take from it.
-   */
-  sheetConfirm?: SheetConfirm;
 }) {
   return (
     <HStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
-      {controls.map((control, slot) => {
-        const button = (
-          <Button
-            // Keyed by slot, not command: the engine and hazard buttons must stay
-            // the same React element across their swaps, or they are torn down
-            // and rebuilt and there is nothing left to morph.
-            key={slot}
-            onPress={() => onPress(control)}
-            modifiers={[
-              // The glass shell is the whole button: it has its own shape and
-              // inset, so a background fill behind it shows its corners around
-              // the shell. The same button in every state — redacted, it keeps
-              // its live geometry and only hides its contents.
-              buttonStyle(onCard ? "borderedProminent" : "glass"),
-              // Prominent so the tint is the fill at full strength rather than
-              // the wash `bordered` applies. The grey is the climate card's
-              // defrost chip — the same control on the same kind of card.
-              ...(onCard ? [buttonBorderShape("capsule"), tint(colors.subtleFill)] : []),
-              // Per *slot*, not per command, for the same reason as the key: a
-              // swapping slot keeps one id so the glass morphs in place.
-              ...(namespaceId ? [glassEffectId(`control-${slotOffset + slot}`, namespaceId)] : []),
-              disabledModifier(!enabled),
-            ]}
-          >
-            {/* The width lives on the *label*, not the Button: a glass button's
+      {controls.map((control, slot) => (
+        <Button
+          // Keyed by slot, not command: the engine and hazard buttons must stay
+          // the same React element across their swaps, or they are torn down
+          // and rebuilt and there is nothing left to morph.
+          key={slot}
+          onPress={() => onPress(control)}
+          modifiers={[
+            // The glass shell is the whole button: it has its own shape and
+            // inset, so a background fill behind it shows its corners around
+            // the shell. The same button in every state — redacted, it keeps
+            // its live geometry and only hides its contents.
+            buttonStyle(onCard ? "borderedProminent" : "glass"),
+            // Prominent so the tint is the fill at full strength rather than
+            // the wash `bordered` applies. The grey is the climate card's
+            // defrost chip — the same control on the same kind of card.
+            ...(onCard ? [buttonBorderShape("capsule"), tint(colors.subtleFill)] : []),
+            // Per *slot*, not per command, for the same reason as the key: a
+            // swapping slot keeps one id so the glass morphs in place.
+            ...(namespaceId ? [glassEffectId(`control-${slotOffset + slot}`, namespaceId)] : []),
+            disabledModifier(!enabled),
+          ]}
+        >
+          {/* The width lives on the *label*, not the Button: a glass button's
               shell wraps its label, so sizing the button leaves a
               content-sized pill floating in an empty frame.
 
@@ -698,79 +657,43 @@ function ControlRow({
               hidden; all the inherited placeholder redaction could still do is
               change how the text measures, which makes the skeleton's shells a
               point or two taller than the live ones. */}
-            <VStack
-              spacing={Spacing.one}
-              modifiers={[
-                padding({ vertical: Spacing.two }),
-                frame({ maxWidth: Infinity }),
-                ...(isRedacted ? [unredacted()] : []),
-              ]}
-            >
-              {/* `hidden` keeps a view in the layout while suppressing its
+          <VStack
+            spacing={Spacing.one}
+            modifiers={[
+              padding({ vertical: Spacing.two }),
+              frame({ maxWidth: Infinity }),
+              ...(isRedacted ? [unredacted()] : []),
+            ]}
+          >
+            {/* `hidden` keeps a view in the layout while suppressing its
                 drawing, so the redacted row is laid out by exactly the content
                 it stands in for and nothing jumps when the data lands. */}
-              <SFImage
-                systemName={control.symbol}
-                size={control.iconSize ?? CONTROL_ICON_SIZE}
-                color={control.tint}
-                modifiers={[hidden(isRedacted)]}
-              />
-              {/* A glass button tints its label with the accent color, turning
+            <SFImage
+              systemName={control.symbol}
+              size={control.iconSize ?? CONTROL_ICON_SIZE}
+              color={control.tint}
+              modifiers={[hidden(isRedacted)]}
+            />
+            {/* A glass button tints its label with the accent color, turning
                 every label blue; the icon already carries the action, so the
                 label is text. Two-word labels shrink to fit rather than wrap,
                 so every button keeps one line and one height. */}
-              <SFText
-                modifiers={[
-                  // One size for every control, main row and disclosure alike —
-                  // they are the same button doing the same kind of thing.
-                  font({ textStyle: "footnote", weight: "semibold" }),
-                  foregroundColor(colors.label),
-                  lineLimit(1),
-                  minimumScaleFactor(0.75),
-                  hidden(isRedacted),
-                ]}
-              >
-                {control.label}
-              </SFText>
-            </VStack>
-          </Button>
-        );
-
-        if (!sheetConfirm) {
-          return button;
-        }
-
-        // The anchored form: the dialog wraps the very button it points at, so
-        // each one carries its own. Only the pressed control's is presented.
-        return (
-          <ConfirmationDialog
-            key={slot}
-            title={control.confirmTitle}
-            titleVisibility="visible"
-            isPresented={sheetConfirm.control === control}
-            onIsPresentedChange={(presented) => {
-              if (!presented) {
-                sheetConfirm.onCancel();
-              }
-            }}
-            modifiers={[frame({ maxWidth: Infinity })]}
-          >
-            <ConfirmationDialog.Trigger>{button}</ConfirmationDialog.Trigger>
-            <ConfirmationDialog.Actions>
-              {/* No Cancel of ours — SwiftUI adds one to every confirmation
-                  dialog that doesn't declare its own. */}
-              <Button
-                role={control.destructive ? "destructive" : "default"}
-                label={control.actionLabel}
-                onPress={() => sheetConfirm.onAccept(control)}
-              />
-            </ConfirmationDialog.Actions>
-            <ConfirmationDialog.Message>
-              <SFText>{control.confirmMessage}</SFText>
-            </ConfirmationDialog.Message>
-          </ConfirmationDialog>
-        );
-      })}
+            <SFText
+              modifiers={[
+                // One size for every control, main row and disclosure alike —
+                // they are the same button doing the same kind of thing.
+                font({ textStyle: "footnote", weight: "semibold" }),
+                foregroundColor(colors.label),
+                lineLimit(1),
+                minimumScaleFactor(0.75),
+                hidden(isRedacted),
+              ]}
+            >
+              {control.label}
+            </SFText>
+          </VStack>
+        </Button>
+      ))}
       {/* A short final row keeps the grid: without these the two buttons of a
           2-of-3 row would split the width and sit wider than the three above
           them. */}
