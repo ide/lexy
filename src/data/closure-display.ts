@@ -1,5 +1,4 @@
-import type { SFSymbol } from "sf-symbols-typescript";
-
+import type { IconName } from "@/components/ui/icon-registry";
 import type { Corner, Side } from "@/data/closures";
 import type { Closure } from "@/data/vehicle";
 
@@ -9,36 +8,36 @@ import type { Closure } from "@/data/vehicle";
 // testable — the theme palette pulls in native modules.
 export type ClosureTone = "attention" | "settled";
 
-export type ClosureStatus = { text: string; tone: ClosureTone; symbol: SFSymbol };
+export type ClosureStatus = { text: string; tone: ClosureTone; symbol: IconName };
 
 export function doorStatus(door: Closure): ClosureStatus {
   if (door.state === "Open") {
-    return { text: "Door open", tone: "attention", symbol: "lock.open.fill" };
+    return { text: "Door open", tone: "attention", symbol: "lock-open" };
   }
   if (door.locked === false) {
     return {
       text: door.lockedOptimistic ? "Unlocking…" : "Door unlocked",
       tone: "attention",
-      symbol: "lock.open.fill",
+      symbol: "lock-open",
     };
   }
   if (door.locked === true) {
     return {
       text: door.lockedOptimistic ? "Locking…" : "Door locked",
       tone: "settled",
-      symbol: "lock.fill",
+      symbol: "lock",
     };
   }
   // Position known (closed) but no lock reading.
-  return { text: "Door closed", tone: "settled", symbol: "checkmark.circle.fill" };
+  return { text: "Door closed", tone: "settled", symbol: "check-circle" };
 }
 
 // Windows carry only a position, so one without a state has nothing to say —
 // callers skip it rather than render a guess.
 export function windowStatus(window: Closure, side: Side): ClosureStatus {
-  // The `car.window.left`/`right` glyphs read reversed against our driver-left /
+  // The left/right window glyphs read reversed against our driver-left /
   // passenger-right columns, so the sides are intentionally swapped here.
-  const symbol: SFSymbol = side === "driver" ? "car.window.right" : "car.window.left";
+  const symbol: IconName = side === "driver" ? "car-window-right" : "car-window-left";
   return window.state === "Open"
     ? { text: "Window open", tone: "attention", symbol }
     : { text: "Window closed", tone: "settled", symbol };
@@ -47,31 +46,27 @@ export function windowStatus(window: Closure, side: Side): ClosureStatus {
 // Non-door/window closures (moonroof, trunk, hood). Each carries its own
 // identity glyph; open/closed is conveyed by color + the written word rather
 // than a checkmark, keeping them visually consistent with doors and windows.
-const OPENING_SYMBOLS: { match: RegExp; open: SFSymbol; closed: SFSymbol }[] = [
-  // A moon, for the roof named after one. `window.ceiling` is the literal
-  // depiction and reads as a vent at 17pt; the moon is the thing the panel is
-  // called, so it identifies the row at a glance the way the trunk and engine
-  // glyphs do. Filled, matching them — and one glyph for both positions, since
-  // open/closed is already carried by the color and the word.
-  { match: /moonroof|sunroof/i, open: "moon.fill", closed: "moon.fill" },
-  {
-    match: /trunk|hatch|tailgate/i,
-    open: "car.side.rear.crop.trunk.partition.fill",
-    closed: "car.side.rear.crop.trunk.partition.fill",
-  },
-  { match: /hood/i, open: "engine.combustion.fill", closed: "engine.combustion.fill" },
+const OPENING_SYMBOLS: { match: RegExp; open: IconName; closed: IconName }[] = [
+  // A moon, for the roof named after one. The literal depiction (SF's
+  // `window.ceiling`) reads as a vent at 17pt; the moon is the thing the panel
+  // is called, so it identifies the row at a glance the way the trunk and
+  // engine glyphs do. Filled, matching them — and one glyph for both positions,
+  // since open/closed is already carried by the color and the word.
+  { match: /moonroof|sunroof/i, open: "moonroof", closed: "moonroof" },
+  { match: /trunk|hatch|tailgate/i, open: "trunk", closed: "trunk" },
+  { match: /hood/i, open: "hood", closed: "hood" },
 ];
 
 export function openingStatus(opening: Closure): ClosureStatus {
   const isOpen = opening.state === "Open";
   const match = OPENING_SYMBOLS.find((o) => o.match.test(opening.label));
-  const symbol: SFSymbol = match
+  const symbol: IconName = match
     ? isOpen
       ? match.open
       : match.closed
     : isOpen
-      ? "exclamationmark.triangle.fill"
-      : "checkmark.circle.fill";
+      ? "warning"
+      : "check-circle";
   return {
     text: `${opening.label} ${isOpen ? "open" : "closed"}`,
     tone: isOpen ? "attention" : "settled",

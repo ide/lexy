@@ -42,6 +42,7 @@ import {
   secondaryStyle,
   tertiaryStyle,
 } from "@/components/swift-ui/modifier-presets";
+import { iconRegistry } from "@/components/ui/icon-registry";
 import { GroupCard, SectionFooter, SectionHeader } from "@/components/swift-ui/section";
 import { Section, SettingsScreenScaffold } from "@/components/swift-ui/settings-screen-scaffold";
 import { ActivityRow } from "@/screens/update-diagnostics/activity-row";
@@ -179,7 +180,7 @@ export default function UpdateDiagnostics() {
               ),
             ]}
           >
-            <Image systemName={status.icon} size={24} color={TONE_COLORS[status.tone]} />
+            <Image systemName={iconRegistry[status.icon].sf} size={24} color={TONE_COLORS[status.tone]} />
           </ZStack>
           <VStack alignment="leading" spacing={Spacing.half} modifiers={[fillWidthLeading]}>
             <Text modifiers={[footnoteBold]}>{status.title}</Text>

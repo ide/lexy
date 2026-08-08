@@ -7,6 +7,7 @@ import {
   signInHero,
   signInScreenFor,
 } from "./sign-in-copy";
+import { iconRegistry } from "@/components/ui/icon-registry";
 
 describe("signInScreenFor", () => {
   it("maps auth steps to screens, defaulting to credentials", () => {
@@ -46,7 +47,7 @@ describe("otpCopy", () => {
   it("derives the copy from the chosen delivery channel", () => {
     expect(otpCopy("Email to l***@example.com").title).toBe("Check Your Email");
     expect(otpCopy("Text to ***-1234").title).toBe("Check Your Messages");
-    expect(otpCopy(null).icon).toBe("number");
+    expect(otpCopy(null).icon).toBe("one-time-code");
   });
 
   it("uses one placeholder across channels", () => {
@@ -58,9 +59,30 @@ describe("otpCopy", () => {
 
 describe("choiceIcon", () => {
   it("matches the channel of each choice", () => {
-    expect(choiceIcon("Email")).toBe("envelope");
+    expect(choiceIcon("Email")).toBe("mail");
     expect(choiceIcon("Text message")).toBe("message");
-    expect(choiceIcon("Security questions")).toBe("shield.lefthalf.filled");
+    expect(choiceIcon("Security questions")).toBe("shield-half");
+  });
+});
+
+describe("the icon names the copy hands out", () => {
+  // The copy module speaks registry names so both platform trees can draw it;
+  // a name it invents that the registry doesn't carry renders nothing at all.
+  it("are all in the icon registry", () => {
+    const names = [
+      choiceIcon("Email"),
+      choiceIcon("Text message"),
+      choiceIcon("Security questions"),
+      otpCopy("Email").icon,
+      otpCopy("Text message").icon,
+      otpCopy(null).icon,
+      signInHero("credentials", null, null).icon,
+      signInHero("choice", null, null).icon,
+      signInHero("otp", "Email", null).icon,
+    ];
+    for (const name of names) {
+      expect(iconRegistry).toHaveProperty(name);
+    }
   });
 });
 
@@ -75,13 +97,13 @@ describe("signInHero", () => {
 
   it("derives the otp hero from the chosen method", () => {
     const hero = signInHero("otp", "Email to l***@example.com", null);
-    expect(hero.icon).toBe("envelope.fill");
+    expect(hero.icon).toBe("mail-filled");
     expect(hero.title).toBe("Check Your Email");
   });
 
   it("uses the static credentials hero", () => {
     expect(signInHero("credentials", null, null)).toEqual({
-      icon: "key.fill",
+      icon: "key",
       title: "Welcome to Lexy",
       subtitle: "Sign in with your Lexus account to see and control your vehicle.",
     });

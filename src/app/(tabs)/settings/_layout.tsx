@@ -4,7 +4,7 @@ import { tabStackScreenOptions } from "@/navigation/tab-stack-options-preset";
 
 export default function SettingsLayout() {
   return (
-    <Stack screenOptions={tabStackScreenOptions}>
+    <Stack screenOptions={tabStackScreenOptions()}>
       <Stack.Screen name="index" options={{ title: "Settings" }} />
       <Stack.Screen
         name="updates"

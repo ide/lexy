@@ -1,6 +1,5 @@
-import type { SFSymbol } from "sf-symbols-typescript";
-
 import type { AuthenticationStep } from "@/auth/lexus-auth";
+import type { IconName } from "@/components/ui/icon-registry";
 
 export type SignInScreenName = "credentials" | "choice" | "otp";
 
@@ -35,8 +34,12 @@ export function classifyDeliveryMethod(
 // The OTP node's server prompt is often generic, so the copy (and icon) are
 // derived from the verification method the user actually chose. This is what
 // keeps an email selection from mislabeling its screen as an SMS code.
+//
+// Icons are named from the registry rather than as SF Symbols: this module is
+// shared by both platform trees, so it says what an icon means and each `Icon`
+// resolves that to its own glyph.
 export function otpCopy(method: string | null): {
-  icon: SFSymbol;
+  icon: IconName;
   title: string;
   subtitle: string;
   placeholder: string;
@@ -44,21 +47,21 @@ export function otpCopy(method: string | null): {
   switch (classifyDeliveryMethod(method)) {
     case "email":
       return {
-        icon: "envelope.fill",
+        icon: "mail-filled",
         title: "Check Your Email",
         subtitle: "We sent a verification code to your email address.",
         placeholder: "Verification Code",
       };
     case "sms":
       return {
-        icon: "message.fill",
+        icon: "message-filled",
         title: "Check Your Messages",
         subtitle: "We texted a verification code to your phone.",
         placeholder: "Verification Code",
       };
     default:
       return {
-        icon: "number",
+        icon: "one-time-code",
         title: "Enter Your Code",
         subtitle: "Enter the verification code you received.",
         placeholder: "Verification Code",
@@ -66,14 +69,14 @@ export function otpCopy(method: string | null): {
   }
 }
 
-export function choiceIcon(choice: string): SFSymbol {
+export function choiceIcon(choice: string): IconName {
   switch (classifyDeliveryMethod(choice)) {
     case "email":
-      return "envelope";
+      return "mail";
     case "sms":
       return "message";
     default:
-      return "shield.lefthalf.filled";
+      return "shield-half";
   }
 }
 
@@ -82,11 +85,11 @@ export function signInHero(
   screen: SignInScreenName,
   method: string | null,
   prompt: string | null,
-): { icon: SFSymbol; title: string; subtitle: string } {
+): { icon: IconName; title: string; subtitle: string } {
   const otp = otpCopy(method);
   if (screen === "choice") {
     return {
-      icon: "lock.shield.fill",
+      icon: "shield-lock",
       title: "Verify It's You",
       subtitle: prompt ?? "Choose how you'd like to receive your verification code.",
     };
@@ -98,7 +101,7 @@ export function signInHero(
     return { icon: otp.icon, title: otp.title, subtitle: otp.subtitle };
   }
   return {
-    icon: "key.fill",
+    icon: "key",
     title: "Welcome to Lexy",
     subtitle: "Sign in with your Lexus account to see and control your vehicle.",
   };

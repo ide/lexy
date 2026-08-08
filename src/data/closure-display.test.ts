@@ -15,7 +15,7 @@ describe("doorStatus", () => {
     expect(doorStatus({ label: "Driver Front Door", state: "Open", locked: true })).toEqual({
       text: "Door open",
       tone: "attention",
-      symbol: "lock.open.fill",
+      symbol: "lock-open",
     });
   });
 
@@ -24,7 +24,7 @@ describe("doorStatus", () => {
     expect(doorStatus({ label: "d", state: "Closed", locked: true })).toEqual({
       text: "Door locked",
       tone: "settled",
-      symbol: "lock.fill",
+      symbol: "lock",
     });
   });
 
@@ -39,18 +39,18 @@ describe("doorStatus", () => {
     expect(doorStatus({ label: "d", state: "Closed" })).toEqual({
       text: "Door closed",
       tone: "settled",
-      symbol: "checkmark.circle.fill",
+      symbol: "check-circle",
     });
   });
 });
 
 describe("windowStatus", () => {
   it("swaps the left/right glyphs to match the driver/passenger columns", () => {
-    expect(windowStatus({ label: "w", state: "Closed" }, "driver").symbol).toBe("car.window.right");
+    expect(windowStatus({ label: "w", state: "Closed" }, "driver").symbol).toBe("car-window-right");
     expect(windowStatus({ label: "w", state: "Open" }, "passenger")).toEqual({
       text: "Window open",
       tone: "attention",
-      symbol: "car.window.left",
+      symbol: "car-window-left",
     });
   });
 });
@@ -59,24 +59,20 @@ describe("openingStatus", () => {
   it("matches known openings to their identity glyphs", () => {
     // One glyph per opening, both positions: the tone and the word carry
     // open/closed, so the icon is only there to say which panel this row is.
-    expect(openingStatus({ label: "Moonroof", state: "Open" }).symbol).toBe("moon.fill");
-    expect(openingStatus({ label: "Moonroof", state: "Closed" }).symbol).toBe("moon.fill");
-    expect(openingStatus({ label: "Sunroof", state: "Open" }).symbol).toBe("moon.fill");
-    expect(openingStatus({ label: "Trunk", state: "Closed" }).symbol).toBe(
-      "car.side.rear.crop.trunk.partition.fill",
-    );
-    expect(openingStatus({ label: "Hood", state: "Closed" }).symbol).toBe("engine.combustion.fill");
+    expect(openingStatus({ label: "Moonroof", state: "Open" }).symbol).toBe("moonroof");
+    expect(openingStatus({ label: "Moonroof", state: "Closed" }).symbol).toBe("moonroof");
+    expect(openingStatus({ label: "Sunroof", state: "Open" }).symbol).toBe("moonroof");
+    expect(openingStatus({ label: "Trunk", state: "Closed" }).symbol).toBe("trunk");
+    expect(openingStatus({ label: "Hood", state: "Closed" }).symbol).toBe("hood");
   });
 
   it("falls back to generic glyphs for unrecognized openings", () => {
     expect(openingStatus({ label: "Charge Port", state: "Open" })).toEqual({
       text: "Charge Port open",
       tone: "attention",
-      symbol: "exclamationmark.triangle.fill",
+      symbol: "warning",
     });
-    expect(openingStatus({ label: "Charge Port", state: "Closed" }).symbol).toBe(
-      "checkmark.circle.fill",
-    );
+    expect(openingStatus({ label: "Charge Port", state: "Closed" }).symbol).toBe("check-circle");
   });
 });
 

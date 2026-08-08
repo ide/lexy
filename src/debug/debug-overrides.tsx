@@ -1,70 +1,72 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import type { SFSymbol } from "sf-symbols-typescript";
 
 import { SHOW_DEV_TOOLS } from "@/constants/build-channel";
 import { colors } from "@/constants/theme";
 import type { DataStateOverride } from "@/debug/data-state";
+import type { IconName } from "@/components/ui/icon-registry";
 
 export type DataStateOption = {
   key: DataStateOverride;
   title: string;
   subtitle: string;
-  icon: SFSymbol;
+  icon: IconName;
   tint: string;
 };
 
 // The rows shown in the Data State dev screen, in display order.
-export const DATA_STATE_OPTIONS: DataStateOption[] = [
+export const DATA_STATE_OPTIONS = [
   {
     key: "live",
     title: "Live",
     subtitle: "Use the real Lexus data — no override.",
-    icon: "antenna.radiowaves.left.and.right",
+    icon: "live",
     tint: colors.systemBlue,
   },
   {
     key: "skeleton",
     title: "Loading skeleton",
     subtitle: "Hold the first-load skeleton / redacted layout.",
-    icon: "rectangle.dashed",
+    icon: "skeleton",
     tint: colors.systemBlue,
   },
   {
     key: "offline-cached",
     title: "Offline — cached data",
     subtitle: "Show the last-seen dashboard behind the offline banner.",
-    icon: "wifi.slash",
+    icon: "wifi-off",
     tint: colors.systemOrange,
   },
   {
     key: "offline-empty",
     title: "Offline — no cache",
     subtitle: "Offline before anything was ever loaded.",
-    icon: "wifi.exclamationmark",
+    icon: "wifi-alert",
     tint: colors.systemOrange,
   },
   {
     key: "error-cached",
     title: "Fetch error — cached data",
     subtitle: "Show the last-seen dashboard behind the refresh-failed banner.",
-    icon: "exclamationmark.triangle.fill",
+    icon: "warning",
     tint: colors.systemOrange,
   },
   {
     key: "error-empty",
     title: "Fetch error — no cache",
     subtitle: 'Force the full-screen "Vehicle data unavailable" error.',
-    icon: "exclamationmark.octagon.fill",
+    icon: "alert-octagon",
     tint: colors.systemRed,
   },
   {
     key: "no-vehicle",
     title: "No vehicle on account",
     subtitle: 'Force the "No vehicle found" empty state.',
-    icon: "car.2",
+    icon: "car-multiple",
     tint: colors.secondaryLabel,
   },
-];
+  // `satisfies` keeps each icon's literal type, so a platform icon set (the
+  // Compose drawables) can prove at compile time that it covers this list.
+] as const satisfies readonly DataStateOption[];
 
 type DebugContextValue = {
   dataState: DataStateOverride;

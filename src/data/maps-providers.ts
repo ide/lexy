@@ -1,4 +1,4 @@
-import type { SFSymbol } from "sf-symbols-typescript";
+import type { IconName } from "@/components/ui/icon-registry";
 
 /**
  * The external navigation apps Lexy can hand a location off to. Apple Maps,
@@ -13,8 +13,8 @@ export type MapsProvider = {
   id: MapsProviderId;
   /** Full name for buttons and the settings row ("Apple Maps"). */
   name: string;
-  /** SF Symbol shown beside the provider in Settings. */
-  icon: SFSymbol;
+  /** Icon shown beside the provider in Settings. */
+  icon: IconName;
   /**
    * A minimal URL used only to probe installation via `canOpenURL`. It is never
    * opened — {@link buildDirectionsUrl} produces the URL that actually launches
@@ -37,7 +37,7 @@ export const MAPS_PROVIDERS: readonly MapsProvider[] = [
   {
     id: "apple",
     name: "Apple Maps",
-    icon: "map.fill",
+    icon: "map",
     // `maps://` must be declared in LSApplicationQueriesSchemes to be probeable;
     // Apple Maps is a system app but is removable since iOS 14, so we still
     // detect it rather than assuming it is present.
@@ -48,7 +48,7 @@ export const MAPS_PROVIDERS: readonly MapsProvider[] = [
   {
     id: "google",
     name: "Google Maps",
-    icon: "map.fill",
+    icon: "map",
     probeUrl: "comgooglemaps://",
     // `q=lat,lng` drops a pin at the coordinates; the label rides along in the
     // parenthetical so the pin reads as the car rather than a bare coordinate.
@@ -60,7 +60,7 @@ export const MAPS_PROVIDERS: readonly MapsProvider[] = [
   {
     id: "waze",
     name: "Waze",
-    icon: "location.fill",
+    icon: "location",
     probeUrl: "waze://",
     // Waze has no concept of a named pin; it navigates straight to the point.
     buildDirectionsUrl: ({ latitude, longitude }) =>
@@ -151,4 +151,16 @@ export function describeMapsProviderChoice(
     return resolved.provider.name;
   }
   return "Not set";
+}
+
+/**
+ * The Android handoff is the platform's own: a `geo:` URI resolved by intent,
+ * so the system routes to the user's default navigation app — or offers its
+ * own chooser — and Lexy maintains no provider list there at all (see the map
+ * screen spec's Platform notes). The `q=` carries the coordinates again with
+ * the label parenthesized, which is the convention both Google Maps and Waze
+ * read as "drop a named pin here".
+ */
+export function geoUri({ latitude, longitude, label }: MapsTarget): string {
+  return `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodeURIComponent(label)})`;
 }

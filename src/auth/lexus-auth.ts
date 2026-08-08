@@ -107,6 +107,23 @@ export async function startAuthentication(
   return parseAuthenticationNode(await readJson(response));
 }
 
+/**
+ * A node that classifies as `choice` but offers no choices is a dead end: the
+ * tree stopped (an unknown account's "User Not Found" message node is the
+ * known case) without a token, a field to answer, or methods to pick from.
+ * Rendering it would be a screen with a title and nothing to do, so the flow
+ * reads it as a rejection instead and stays where the user can act.
+ */
+export function isDeadEndChoiceNode(node: AuthenticationNode): boolean {
+  if (node.tokenId || classifyAuthenticationNode(node) !== "choice") {
+    return false;
+  }
+  const choices = (node.callbacks ?? [])
+    .flatMap((callback) => callback.output ?? [])
+    .find((output) => output.name === "choices")?.value;
+  return !Array.isArray(choices) || choices.length === 0;
+}
+
 export function classifyAuthenticationNode(node: AuthenticationNode): AuthenticationStep {
   if (node.tokenId) {
     return "complete";

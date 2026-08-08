@@ -83,7 +83,7 @@ export function ExpandableCard({
           <View style={[styles.header, pressed && styles.pressed]}>
             {header}
             <Animated.View style={chevronStyle}>
-              <Icon name="chevron.right" size={14} tint={colors.secondaryLabel} />
+              <Icon name="chevron-right" size={14} tint={colors.secondaryLabel} />
             </Animated.View>
           </View>
         )}

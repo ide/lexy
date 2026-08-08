@@ -84,7 +84,7 @@ export function useVehicleScreen() {
   // actionable explanation, and a paused query's last error is stale anyway.
   const statusBanner = !isOnline ? (
     <StatusBanner
-      symbol="wifi.slash"
+      symbol="wifi-off"
       title="You're offline"
       detail={data ? "Showing the latest data we saved." : "Reconnect to see your vehicle."}
     />
@@ -92,7 +92,7 @@ export function useVehicleScreen() {
     // Online, the fetch failed, but there is cached data to keep showing. The
     // data-less version of this is `errorScreen` above.
     <StatusBanner
-      symbol="exclamationmark.triangle.fill"
+      symbol="warning"
       title="Couldn't refresh"
       detail={`${failure.summary} Showing the latest data we saved.`}
     />

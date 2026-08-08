@@ -18,8 +18,13 @@ import { isVehicleProfileKey, isVehicleStatusKey } from "@/data/vehicle-keys";
  *
  * History: v2 renamed the distance fields and added `distanceUnit`. v3 split
  * the single `['vehicle']` blob into a profile and a VIN-keyed status snapshot.
+ * v4 changed what `Capability.symbol` *means*: it named an SF Symbol
+ * ("lock.fill") and now names an icon-registry key ("lock"), which each
+ * platform resolves to its own glyph. Old values still look like strings, so
+ * only this bump keeps a returning user from hydrating names the registry has
+ * never heard of.
  */
-export const CACHE_VERSION = "vehicle-v3";
+export const CACHE_VERSION = "vehicle-v4";
 
 type Validator = {
   /** Whether this validator is the one for a given persisted query key. */

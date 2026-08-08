@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   describeMapsProviderChoice,
+  geoUri,
   getMapsProvider,
   isMapsProviderId,
   resolveMapsProvider,
@@ -140,5 +141,13 @@ describe("describeMapsProviderChoice", () => {
 
   it("reads the saved name even before the first probe resolves", () => {
     expect(describeMapsProviderChoice(null, getMapsProvider("google"))).toBe("Google Maps");
+  });
+});
+
+describe("geoUri", () => {
+  it("carries the coordinates twice with the label parenthesized", () => {
+    expect(geoUri({ latitude: 37.334606, longitude: -122.009102, label: "My IS 350" })).toBe(
+      "geo:37.334606,-122.009102?q=37.334606,-122.009102(My%20IS%20350)",
+    );
   });
 });

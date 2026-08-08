@@ -1,10 +1,20 @@
 import * as Linking from "expo-linking";
+import { Platform } from "react-native";
 
 import { haptic } from "@/utils/haptics";
 
-// The Lexus OneApp App Store entry (iOS app com.lexus.oneApp). Hard fallback if
-// the universal link below can't be opened at all.
-export const LEXUS_APP_STORE_URL = "https://apps.apple.com/us/app/lexus/id1468484450";
+/**
+ * The Lexus OneApp's listing in the store the device actually has — the App
+ * Store entry for iOS `com.lexus.oneApp`, the Play listing for its Android
+ * counterpart `com.lexus.oneapp` (the same US app; the EU build ships
+ * separately as `com.lexus.oneapp.eu`, "Lexus Link+"). Somewhere to send a
+ * person who has no Lexus account yet, and the hard fallback if the universal
+ * link below can't be opened at all.
+ */
+export const LEXUS_APP_STORE_URL = Platform.select({
+  android: "https://play.google.com/store/apps/details?id=com.lexus.oneapp",
+  default: "https://apps.apple.com/us/app/lexus/id1468484450",
+});
 
 // The Lexus app's associated domain. Confirmed from the app's
 // apple-app-site-association at ctlexusapp.com, which claims all paths for

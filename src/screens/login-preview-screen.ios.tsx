@@ -24,6 +24,7 @@ import {
   PREVIEW_SCENARIOS,
   type PreviewScenario,
 } from "@/auth/preview-lexus-backend";
+import { iconRegistry } from "@/components/ui/icon-registry";
 import SignInScreen from "@/screens/sign-in-screen";
 import { Spacing, colors } from "@/constants/theme";
 
@@ -97,7 +98,7 @@ function ScenarioRow({
       <Menu
         label={
           <HStack alignment="center" spacing={Spacing.one}>
-            <Image systemName={current.systemImage} size={14} color={colors.systemBlue} />
+            <Image systemName={iconRegistry[current.icon].sf} size={14} color={colors.systemBlue} />
             <Text
               modifiers={[
                 font({ textStyle: "footnote", weight: "semibold" }),
@@ -113,7 +114,7 @@ function ScenarioRow({
           <Button
             key={option.id}
             label={option.label}
-            systemImage={option.systemImage}
+            systemImage={iconRegistry[option.icon].sf}
             onPress={() => onSelect(option.id)}
           />
         ))}

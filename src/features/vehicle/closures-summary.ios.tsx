@@ -10,10 +10,10 @@ import {
   unredacted,
 } from "@expo/ui/swift-ui/modifiers";
 import { StyleSheet, View } from "react-native";
-import type { SFSymbol } from "sf-symbols-typescript";
 
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Icon } from "@/components/ui/icon";
+import { iconRegistry, type IconName } from "@/components/ui/icon-registry";
 import { PLACEHOLDER_TEXT, useRedacted } from "@/components/ui/redactable";
 import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
@@ -51,15 +51,15 @@ const KIND_COLORS: Record<ClosuresSummary["kind"], string> = {
 // binding constraint for the landscape glyphs, which is why those stay small.
 // Measured against the iOS 26 SDK — re-measure rather than guess when adding
 // a symbol here.
-const SYMBOL_POINT_SIZE: Partial<Record<SFSymbol, number>> = {
-  "car.window.left": 12,
-  "car.window.right": 12,
-  "engine.combustion.fill": 12,
+const SYMBOL_POINT_SIZE: Partial<Record<IconName, number>> = {
+  "car-window-left": 12,
+  "car-window-right": 12,
+  hood: 12,
   // Compact, not wide: 17.3 x 14.0 at this size, which reads level with the
   // moon beside it instead of half its height.
-  "car.side.rear.crop.trunk.partition.fill": 15,
+  trunk: 15,
   // A filled disc is dense for its size, so it needs less of it: 15.0 square.
-  "moon.fill": 13,
+  moonroof: 13,
 };
 
 function StatusLine({ status }: { status: ClosureStatus }) {
@@ -72,7 +72,7 @@ function StatusLine({ status }: { status: ClosureStatus }) {
           masks an image into a rounded rect in its own color, which would claim
           a verdict in green or orange without looking like an icon. */}
       <Image
-        systemName={isRedacted ? "circle.fill" : status.symbol}
+        systemName={isRedacted ? "circle.fill" : iconRegistry[status.symbol].sf}
         size={isRedacted ? 13 : (SYMBOL_POINT_SIZE[status.symbol] ?? 15)}
         color={isRedacted ? colors.fill : TONE_COLORS[status.tone]}
         // SF Symbols vary in intrinsic width (a lock is narrow, a window
@@ -166,7 +166,9 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
                 modifiers={redacted ? [unredacted()] : [opacity(0.15)]}
               />
               {/* No glyph inside it: the symbol is the verdict. */}
-              {redacted ? null : <Image systemName={summary.symbol} size={18} color={badgeTint} />}
+              {redacted ? null : (
+                <Image systemName={iconRegistry[summary.symbol].sf} size={18} color={badgeTint} />
+              )}
             </ZStack>
             <VStack alignment="leading" spacing={Spacing.half}>
               <Text
@@ -249,7 +251,7 @@ export function ClosuresCard({ corners, openings }: { corners: Corner[]; opening
 export function StaleNote({ at, now }: { at: number; now: number }) {
   return (
     <View style={styles.staleNote}>
-      <Icon name="clock.arrow.circlepath" size={12} tint={colors.secondaryLabel} />
+      <Icon name="history" size={12} tint={colors.secondaryLabel} />
       <ThemedText type="small" themeColor="secondaryLabel" style={styles.staleText}>
         Some readings as of {relativeTime(at, now)}
       </ThemedText>

@@ -250,10 +250,10 @@ export function mapVehicleProfile(
     inServiceDate: specValue(spec, "Date of First Use") || "—",
     manufacturedDate: specValue(spec, "Order Date") || "—",
     capabilities: [
-      { label: "Lock & unlock", symbol: "lock.fill" },
+      { label: "Lock & unlock", symbol: "lock" },
       { label: "Engine start", symbol: "power" },
-      { label: "Climate", symbol: "thermometer.medium" },
-      { label: "Location", symbol: "location.fill" },
+      { label: "Climate", symbol: "climate" },
+      { label: "Location", symbol: "location" },
     ],
     remoteCapabilities: parseRemoteCapabilities(d),
     subscriptions: mapSubscriptions(subscriptions),

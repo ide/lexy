@@ -1,8 +1,8 @@
-import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
-import type { SFSymbol } from "sf-symbols-typescript";
 
 import { ColorWash } from "@/components/ui/color-wash";
+import { Icon } from "@/components/ui/icon";
+import type { IconName } from "@/components/ui/icon-registry";
 import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
 
@@ -23,7 +23,7 @@ export function StatusBanner({
   title,
   detail,
 }: {
-  symbol: SFSymbol;
+  symbol: IconName;
   title: string;
   detail?: string;
 }) {
@@ -31,7 +31,7 @@ export function StatusBanner({
   return (
     <View style={styles.banner}>
       <ColorWash color={orange} />
-      <Image source={`sf:${symbol}`} tintColor={orange} style={styles.icon} contentFit="contain" />
+      <Icon name={symbol} size={17} tint={orange} />
       <View style={styles.text}>
         <ThemedText type="smallBold" style={{ color: orange }}>
           {title}
@@ -57,10 +57,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: 14,
     borderCurve: "continuous",
-  },
-  icon: {
-    width: 17,
-    height: 17,
   },
   // Take the row's remaining width and allow shrinking so long copy wraps
   // inside the banner's horizontal padding instead of overflowing past it.

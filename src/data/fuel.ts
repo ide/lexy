@@ -1,4 +1,4 @@
-import type { SFSymbol } from "sf-symbols-typescript";
+import type { IconName } from "@/components/ui/icon-registry";
 
 // The fuel gauge is drawn as a bar divided into quarters — mirroring the car's
 // dashboard — rather than a precise percentage, because the underlying reading
@@ -40,7 +40,7 @@ export type FuelLevel = "full" | "high" | "medium" | "low" | "critical";
 export type FuelGauge = {
   /** Section label — "Fuel" for combustion/hybrid, "Charge" for EVs. */
   label: string;
-  symbol: SFSymbol;
+  symbol: IconName;
   /** The precise readout ("Full" at 100%). */
   valueText: string;
   level: FuelLevel;
@@ -72,7 +72,7 @@ export function fuelGauge(fuelType: string, percent: number): FuelGauge {
   const electric = isElectric(fuelType);
   return {
     label: electric ? "Charge" : "Fuel",
-    symbol: electric ? "bolt.fill" : "fuelpump.fill",
+    symbol: electric ? "charge" : "fuel",
     valueText: p >= 100 ? "Full" : `${p}%`,
     level: fuelLevel(p),
     fills: fuelSegmentFills(p),

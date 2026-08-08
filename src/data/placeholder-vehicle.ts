@@ -55,10 +55,10 @@ export const PLACEHOLDER_VEHICLE: Vehicle = {
     { label: "Hood", state: "Closed" },
   ],
   capabilities: [
-    { label: "Lock & unlock", symbol: "lock.fill" },
+    { label: "Lock & unlock", symbol: "lock" },
     { label: "Engine start", symbol: "power" },
-    { label: "Climate", symbol: "thermometer.medium" },
-    { label: "Location", symbol: "location.fill" },
+    { label: "Climate", symbol: "climate" },
+    { label: "Location", symbol: "location" },
   ],
   // The controls the stand-in row draws while the real set is still loading.
   // A typical Remote Connect car, so the skeleton reserves the More Controls
