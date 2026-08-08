@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { View } from "react-native";
-import type { SFSymbol } from "sf-symbols-typescript";
 
+import { iconRegistry, type IconName } from "@/components/ui/icon-registry";
 import { useRedacted } from "@/components/ui/redactable";
 import { colors } from "@/constants/theme";
 
@@ -10,7 +10,7 @@ import { colors } from "@/constants/theme";
  * Inside a `Redactable` subtree it draws as a neutral fill circle of its normal
  * size instead, so icon slots keep their exact geometry while loading.
  */
-export function Icon({ name, size = 22, tint }: { name: SFSymbol; size?: number; tint?: string }) {
+export function Icon({ name, size = 22, tint }: { name: IconName; size?: number; tint?: string }) {
   const redacted = useRedacted();
   if (redacted) {
     return (
@@ -26,7 +26,7 @@ export function Icon({ name, size = 22, tint }: { name: SFSymbol; size?: number;
   }
   return (
     <Image
-      source={`sf:${name}`}
+      source={`sf:${iconRegistry[name].sf}`}
       tintColor={tint ?? colors.label}
       style={{ width: size, height: size }}
       contentFit="contain"

@@ -1,4 +1,4 @@
-import type { SFSymbol } from "sf-symbols-typescript";
+import type { IconName } from "@/components/ui/icon-registry";
 
 type RunningUpdate = {
   updateId?: string;
@@ -216,8 +216,18 @@ export type UpdateSystemState = {
 // screen maps good → green, busy → blue, attention → orange.
 export type UpdateStatusTone = "good" | "busy" | "attention";
 
+/**
+ * The glyphs {@link describeUpdateStatus} can return. Narrower than IconName
+ * on purpose: an Android tree needs each of these to exist as a Compose vector
+ * drawable, and a union it can check is what makes that a compile-time fact.
+ */
+export type UpdateStatusIcon = Extract<
+  IconName,
+  "warning" | "refresh" | "download-circle" | "search" | "sparkles" | "check-circle"
+>;
+
 export type UpdateStatus = {
-  icon: SFSymbol;
+  icon: UpdateStatusIcon;
   title: string;
   detail: string;
   tone: UpdateStatusTone;
@@ -227,7 +237,7 @@ export type UpdateStatus = {
 export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState): UpdateStatus {
   if (!enabled) {
     return {
-      icon: "exclamationmark.triangle.fill",
+      icon: "warning",
       title: "Updates disabled",
       detail: "This build is not configured to use Expo Updates.",
       tone: "attention",
@@ -235,7 +245,7 @@ export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState)
   }
   if (state.isRestarting) {
     return {
-      icon: "arrow.clockwise",
+      icon: "refresh",
       title: "Reloading",
       detail: "Switching to the newest downloaded update.",
       tone: "busy",
@@ -243,7 +253,7 @@ export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState)
   }
   if (state.isDownloading) {
     return {
-      icon: "arrow.down.circle.fill",
+      icon: "download-circle",
       title: `Downloading ${Math.round((state.downloadProgress ?? 0) * 100)}%`,
       detail: "The update will be ready to launch when the download completes.",
       tone: "busy",
@@ -251,7 +261,7 @@ export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState)
   }
   if (state.isChecking) {
     return {
-      icon: "magnifyingglass",
+      icon: "search",
       title: "Checking for updates",
       detail: "Contacting the update server for this channel and runtime.",
       tone: "busy",
@@ -259,7 +269,7 @@ export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState)
   }
   if (state.isUpdatePending) {
     return {
-      icon: "arrow.down.circle.fill",
+      icon: "download-circle",
       title: "Update ready",
       detail: "Downloaded and scheduled for the next reload or cold launch.",
       tone: "good",
@@ -274,7 +284,7 @@ export function describeUpdateStatus(enabled: boolean, state: UpdateSystemState)
     };
   }
   return {
-    icon: "checkmark.circle.fill",
+    icon: "check-circle",
     title: "Running normally",
     detail: state.lastCheckForUpdateTimeSinceRestart
       ? "No newer compatible update was found at the last check."

@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import {
+  isDeadEndChoiceNode,
+  LexusAuthError,
   classifyAuthenticationNode,
   continueAuthentication,
   exchangeSsoToken,
@@ -197,6 +199,15 @@ export function AuthProvider({
         setNode(null);
         // Authentication is done — drop the in-memory credentials.
         setCredentials(null);
+      } else if (isDeadEndChoiceNode(next)) {
+        // The server ended the tree without offering anything to do. Surface
+        // it as a rejection (the 401 drives the stage's rejected copy) rather
+        // than advancing to a choice screen with no choices.
+        throw new LexusAuthError(
+          "Lexus ended the sign-in without offering a next step",
+          "dead_end_node",
+          401,
+        );
       } else {
         setNode(next);
       }

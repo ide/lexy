@@ -54,7 +54,7 @@ export function OdometerCard({
           apart from the total. */}
       <View style={styles.tripCell}>
         <View style={styles.odometerHeader}>
-          <Icon name="gauge.with.dots.needle.67percent" size={17} tint={colors.secondaryLabel} />
+          <Icon name="odometer" size={17} tint={colors.secondaryLabel} />
           <ThemedText type="smallBold" themeColor="secondaryLabel">
             Total
           </ThemedText>

@@ -24,7 +24,9 @@ export default function TabLayout() {
     >
       {appTabs.map((tab) => (
         <NativeTabs.Trigger key={tab.name} name={tab.name}>
-          <NativeTabs.Trigger.Icon sf={tab.icon} />
+          {/* One element, both platforms: the tab bar reads `sf` on iOS and
+              `md` on Android, so neither name has to be branched on here. */}
+          <NativeTabs.Trigger.Icon sf={tab.icon} md={tab.materialIcon} />
           <NativeTabs.Trigger.Label>{tab.label}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       ))}

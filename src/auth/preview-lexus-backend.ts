@@ -1,4 +1,4 @@
-import type { SFSymbol } from "sf-symbols-typescript";
+import type { IconName } from "@/components/ui/icon-registry";
 
 import type { RequestLike } from "./lexus-auth";
 import { createTokenStore, type KeyValueStorage, type TokenStore } from "./token-store";
@@ -23,11 +23,21 @@ export type PreviewScenario =
   | "wrong-code"
   | "network-error";
 
+/**
+ * The glyphs the scenarios use. Narrower than `IconName` on purpose: an
+ * Android tree needs each one to exist as a Compose vector drawable, and a
+ * union it can index directly is what makes that a compile-time fact.
+ */
+export type PreviewScenarioIcon = Extract<
+  IconName,
+  "seal-check" | "seal-check-outline" | "octagon-x" | "octagon-x-outline" | "wifi-off"
+>;
+
 export type PreviewScenarioOption = {
   id: PreviewScenario;
   label: string;
   detail: string;
-  systemImage: SFSymbol;
+  icon: PreviewScenarioIcon;
 };
 
 export const PREVIEW_SCENARIOS: PreviewScenarioOption[] = [
@@ -35,31 +45,31 @@ export const PREVIEW_SCENARIOS: PreviewScenarioOption[] = [
     id: "success-multi",
     label: "Success · Email or SMS",
     detail: "Two verification methods offered — the full happy path.",
-    systemImage: "checkmark.seal.fill",
+    icon: "seal-check",
   },
   {
     id: "success-single",
     label: "Success · Single Method",
     detail: "One method only — the flow skips the picker straight to the code.",
-    systemImage: "checkmark.seal",
+    icon: "seal-check-outline",
   },
   {
     id: "wrong-password",
     label: "Error · Wrong Password",
     detail: "Lexus rejects the credentials.",
-    systemImage: "xmark.octagon.fill",
+    icon: "octagon-x",
   },
   {
     id: "wrong-code",
     label: "Error · Invalid Code",
     detail: "Lexus rejects the verification code.",
-    systemImage: "xmark.octagon",
+    icon: "octagon-x-outline",
   },
   {
     id: "network-error",
     label: "Error · Network Failure",
     detail: "Requests never reach Lexus.",
-    systemImage: "wifi.slash",
+    icon: "wifi-off",
   },
 ];
 

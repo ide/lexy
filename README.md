@@ -1,6 +1,6 @@
 # Lexy
 
-Experimental, iOS-only Lexus remote-control tooling and mobile app.
+Experimental Lexus remote-control tooling and mobile app, for iOS and Android.
 
 The tracked tree contains code, tests, and the API reference under [`docs/`](docs/).
 Local APKs, raw analysis output, and unpublished research stay in the gitignored
@@ -28,14 +28,40 @@ Credentials and vehicle metadata are read from the macOS Keychain (account
 
 ## Mobile app
 
-The repo root is an Expo app (Expo Router + `@expo/ui`) with a "Lexy Status" iOS
-home screen widget (`expo-widgets`) that shows the vehicle's locked/unlocked
-state. It is iOS-only by design — see [`AGENTS.md`](AGENTS.md).
+The repo root is an Expo app (Expo Router + `@expo/ui`) that runs on iOS and
+Android from one codebase, plus a "Lexy Status" iOS home screen widget
+(`expo-widgets`) showing the vehicle's locked/unlocked state.
 
 ```sh
 pnpm install
-pnpm ios   # expo-widgets is not supported in Expo Go; a dev build is required
+pnpm ios       # a dev build is required; expo-widgets is not in Expo Go
+pnpm android
 ```
+
+### One codebase, two native apps
+
+iOS is the reference implementation and Android is a native Android app built
+to the same contracts — not a port of the iOS screens. What that means in
+practice, with the full rules in [`AGENTS.md`](AGENTS.md):
+
+- **Screens are specified once, in [`specs/`](specs/)**, a tree that mirrors
+  `src/app` file-for-file (enforced by a test). A screen's spec is the
+  platform-neutral contract; each platform's tree is a rendering of it, and an
+  intentional divergence is recorded under the spec's Platform notes. An
+  undocumented difference is a bug on whichever platform moved.
+- **The seam is Metro's platform suffixes.** SwiftUI trees live in `*.ios.tsx`
+  and `src/components/swift-ui/`; Jetpack Compose trees in `*.android.tsx` and
+  `src/components/jetpack-compose/`. A lint rule enforces both directions, so
+  neither toolkit can leak into the other platform's bundle.
+- **Everything below the view layer is shared**: authentication, the Lexus API
+  client, the vehicle model, TanStack Query and its persisted cache, update
+  handling, and the semantic icon registry that resolves a name to an SF Symbol
+  or a Material icon per platform.
+
+Two things are deliberately iOS-only: the home screen widget (`expo-widgets`
+has no Android renderer yet) and the in-app maps chooser — Android hands a
+`geo:` intent to the system instead, which routes to whatever navigation app
+the user prefers. The parked-location map itself awaits a Google Maps API key.
 
 No environment configuration is needed. The app talks to the production Lexus
 OneApp API directly; the hosts are hard-coded in
@@ -43,9 +69,10 @@ OneApp API directly; the hosts are hard-coded in
 or private API credentials in `EXPO_PUBLIC_` values.
 
 Sign-in happens first-party on-device: the OAuth flow lives in
-[`src/auth/`](src/auth/) and access/refresh tokens are held in the iOS Keychain
-via `expo-secure-store` (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`), never in the query
-cache. Once authenticated, the app discovers the vehicle (VIN + brand +
+[`src/auth/`](src/auth/) and access/refresh tokens are held in the platform's
+own secure storage via `expo-secure-store` — the iOS Keychain
+(`WHEN_UNLOCKED_THIS_DEVICE_ONLY`) and the Android Keystore — never in the
+query cache. Once authenticated, the app discovers the vehicle (VIN + brand +
 telematics generation) and reads its status, climate, spec, and tire endpoints,
 mapping the responses into the normalized shape defined in
 [`src/data/vehicle.ts`](src/data/vehicle.ts).

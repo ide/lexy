@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  isDeadEndChoiceNode,
   answerAuthenticationNode,
   classifyAuthenticationNode,
   exchangeSsoToken,
@@ -195,5 +196,44 @@ describe("OAuth token lifecycle", () => {
       tokenType: "Bearer",
     });
     expect(request.mock.calls[0]![1]?.body).toContain("refresh_token=existing-refresh");
+  });
+});
+
+describe("isDeadEndChoiceNode", () => {
+  it("reads a message-only node as a dead end", () => {
+    // The shape Lexus returns for an unknown account: a header-level message,
+    // no token, no answerable callbacks, no choices.
+    expect(
+      isDeadEndChoiceNode({
+        authId: "x",
+        callbacks: [
+          {
+            type: "TextOutputCallback",
+            output: [{ name: "message", value: "User Not Found" }],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps a genuine choice node", () => {
+    expect(
+      isDeadEndChoiceNode({
+        authId: "x",
+        callbacks: [
+          {
+            type: "ChoiceCallback",
+            output: [
+              { name: "prompt", value: "Choose" },
+              { name: "choices", value: ["Email to a***@b.com", "Text to ***-1234"] },
+            ],
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("never flags a completed node", () => {
+    expect(isDeadEndChoiceNode({ authId: "x", tokenId: "token", callbacks: [] })).toBe(false);
   });
 });

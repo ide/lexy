@@ -45,7 +45,7 @@ describe("closuresSummary", () => {
       kind: "secure",
       headline: "All secure",
       subline: "Doors locked · Everything else closed",
-      symbol: "checkmark.shield.fill",
+      symbol: "shield-check",
       exceptions: [],
     });
   });
@@ -83,7 +83,7 @@ describe("closuresSummary", () => {
     corners[3].window = { label: "window", state: "Open" };
     const summary = closuresSummary(corners, closedOpenings);
     expect(summary.headline).toBe("Rear passenger window open");
-    expect(summary.symbol).toBe("car.window.left");
+    expect(summary.symbol).toBe("car-window-left");
   });
 
   it("counts multiple exceptions and lists each with its location", () => {
@@ -102,21 +102,21 @@ describe("closuresSummary", () => {
         label: "Door unlocked",
         where: "Front driver",
         headline: "Front driver door unlocked",
-        symbol: "lock.open.fill",
+        symbol: "lock-open",
       },
       {
         key: "window:rearPassenger",
         label: "Window open",
         where: "Rear passenger",
         headline: "Rear passenger window open",
-        symbol: "car.window.left",
+        symbol: "car-window-left",
       },
       {
         key: "opening:Trunk",
         label: "Trunk open",
         where: undefined,
         headline: "Trunk open",
-        symbol: "car.side.rear.crop.trunk.partition.fill",
+        symbol: "trunk",
       },
     ]);
   });
@@ -133,7 +133,7 @@ describe("closuresSummary", () => {
     corners[1].door = { label: "door", state: "Closed", locked: false };
     const unlockedTwo = closuresSummary(corners, []);
     expect(unlockedTwo.headline).toBe("2 doors unlocked");
-    expect(unlockedTwo.symbol).toBe("lock.open.fill");
+    expect(unlockedTwo.symbol).toBe("lock-open");
   });
 
   it("does not promise locked doors in the subline when a door lacks a lock reading", () => {
@@ -152,7 +152,7 @@ describe("closuresSummary", () => {
       kind: "busy",
       headline: "Locking…",
       subline: "Everything else closed",
-      symbol: "lock.fill",
+      symbol: "lock",
     });
   });
 

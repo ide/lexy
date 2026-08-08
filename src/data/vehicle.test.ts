@@ -26,7 +26,7 @@ const profile: VehicleProfile = {
   imageUrl: "https://example.com/vehicle.png",
   inServiceDate: "2025-01-02",
   manufacturedDate: "2024-12-01",
-  capabilities: [{ label: "Lock & Unlock", symbol: "lock.fill" }],
+  capabilities: [{ label: "Lock & Unlock", symbol: "lock" }],
   remoteCapabilities: ["doors", "engine"],
   subscriptions: [
     {

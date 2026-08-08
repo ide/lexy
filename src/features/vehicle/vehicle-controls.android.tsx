@@ -1,44 +1,16 @@
-import {
-  Button,
-  GlassEffectContainer,
-  Host,
-  HStack,
-  Image as SFImage,
-  Namespace,
-  Spacer,
-  Text as SFText,
-  VStack,
-  ZStack,
-} from "@expo/ui/swift-ui";
-import {
-  buttonBorderShape,
-  buttonStyle,
-  disabled as disabledModifier,
-  font,
-  foregroundColor,
-  frame,
-  glassEffectId,
-  hidden,
-  lineLimit,
-  minimumScaleFactor,
-  multilineTextAlignment,
-  opacity,
-  padding,
-  redacted,
-  tint,
-  unredacted,
-} from "@expo/ui/swift-ui/modifiers";
 import { fetch as expoFetch } from "expo/fetch";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import type { SFSymbol } from "sf-symbols-typescript";
+import { Pressable } from "react-native-gesture-handler";
 
 import { useAuth } from "@/auth/auth-context";
-import { AlertHost, type AlertSpec } from "@/components/swift-ui/alert-host";
+import { AlertHost, type AlertSpec } from "@/components/ui/alert-host";
+import { Badge } from "@/components/ui/badge";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Icon } from "@/components/ui/icon";
+import type { IconName } from "@/components/ui/icon-registry";
 import { PulsingText } from "@/components/ui/pulsing-text";
-import { PLACEHOLDER_TEXT, useRedacted } from "@/components/ui/redactable";
+import { useRedacted } from "@/components/ui/redactable";
 import { SectionTitle } from "@/components/ui/section-title";
 import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
@@ -55,14 +27,7 @@ import { haptic } from "@/utils/haptics";
 type Control = {
   command: RemoteCommand;
   label: string;
-  symbol: SFSymbol;
-  /**
-   * Optical size for this glyph. SF Symbols are drawn to fill their box, so a
-   * wide, dense symbol at the same point size reads bigger than a compact one —
-   * the horn and the bell most of all. Nudged per symbol so the row looks
-   * evenly weighted rather than measuring evenly.
-   */
-  iconSize?: number;
+  symbol: IconName;
   tint: string;
   confirmTitle: string;
   confirmMessage: string;
@@ -80,7 +45,7 @@ const yellow = colors.systemYellow;
 const LOCK: Control = {
   command: "door-lock",
   label: "Lock",
-  symbol: "lock.fill",
+  symbol: "lock",
   tint: green,
   confirmTitle: "Lock your vehicle?",
   confirmMessage: "This locks all doors.",
@@ -91,7 +56,7 @@ const LOCK: Control = {
 const UNLOCK: Control = {
   command: "door-unlock",
   label: "Unlock",
-  symbol: "lock.open.fill",
+  symbol: "lock-open",
   tint: orange,
   confirmTitle: "Unlock your vehicle?",
   confirmMessage: "This unlocks the doors. Only do this when you're near the vehicle.",
@@ -130,7 +95,7 @@ const ENGINE_STOP: Control = {
 const TRUNK_LOCK: Control = {
   command: "trunk-lock",
   label: "Lock Trunk",
-  symbol: "car.side.rear.crop.trunk.partition.fill",
+  symbol: "trunk",
   tint: green,
   confirmTitle: "Lock the trunk?",
   confirmMessage: "This locks the trunk.",
@@ -141,7 +106,7 @@ const TRUNK_LOCK: Control = {
 const TRUNK_UNLOCK: Control = {
   command: "trunk-unlock",
   label: "Unlock Trunk",
-  symbol: "car.side.rear.crop.trunk.partition",
+  symbol: "trunk",
   tint: orange,
   confirmTitle: "Unlock the trunk?",
   confirmMessage: "This unlocks the trunk. Only do this when you're near the vehicle.",
@@ -152,7 +117,7 @@ const TRUNK_UNLOCK: Control = {
 const HAZARDS_ON: Control = {
   command: "hazard-on",
   label: "Hazard Lights",
-  symbol: "car.rear.hazardsign.fill",
+  symbol: "hazards",
   tint: red,
   confirmTitle: "Flash the hazards?",
   confirmMessage: "The hazard lights start flashing until you turn them off.",
@@ -163,7 +128,7 @@ const HAZARDS_ON: Control = {
 const HAZARDS_OFF: Control = {
   command: "hazard-off",
   label: "Hazards Off",
-  symbol: "car.rear.hazardsign",
+  symbol: "hazards",
   tint: blue,
   confirmTitle: "Turn off the hazards?",
   confirmMessage: "This stops the hazard lights.",
@@ -174,10 +139,9 @@ const HAZARDS_OFF: Control = {
 const HEADLIGHTS: Control = {
   command: "headlight-on",
   label: "Flash Lights",
-  symbol: "headlight.low.beam.fill",
-  iconSize: 21,
   // A beam, not a button: the lighter blue reads as light where systemBlue
   // reads as the app's action colour.
+  symbol: "headlights",
   tint: cyan,
   confirmTitle: "Flash the headlights?",
   confirmMessage: "The headlights come on to help you find the vehicle.",
@@ -188,8 +152,7 @@ const HEADLIGHTS: Control = {
 const BUZZER: Control = {
   command: "buzzer-warning",
   label: "Play Beeps",
-  symbol: "bell.and.waves.left.and.right.fill",
-  iconSize: 20,
+  symbol: "buzzer",
   tint: yellow,
   confirmTitle: "Sound the buzzer?",
   confirmMessage: "The vehicle beeps ten times.",
@@ -200,8 +163,7 @@ const BUZZER: Control = {
 const HORN: Control = {
   command: "sound-horn",
   label: "Honk Horn",
-  symbol: "horn.blast.fill",
-  iconSize: 19,
+  symbol: "horn",
   tint: orange,
   confirmTitle: "Sound the horn?",
   confirmMessage: "The vehicle will sound its horn. Be sure not to startle anyone.",
@@ -211,12 +173,12 @@ const HORN: Control = {
 
 /** Buttons per row, matching the three of the main row above. */
 const CONTROLS_PER_ROW = 3;
-/** The main row's height, measured from the live layout. */
-const CONTROL_ROW_HEIGHT = 76;
-/** The More controls header's content height, likewise. */
-const MORE_HEADER_CONTENT_HEIGHT = 56;
 
-/** The default glyph size; a few symbols override it (see `Control.iconSize`). */
+/**
+ * The glyph size every control wears. Material icons are drawn to a uniform em
+ * box, so unlike the SF Symbols on iOS — which occupy wildly different
+ * fractions of their point size — one number serves all of them.
+ */
 const CONTROL_ICON_SIZE = 22;
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -258,9 +220,16 @@ type EngineCommand = "engine-start" | "engine-stop";
  * action confirms first (engine start carries the enclosed-space safety
  * warning).
  *
- * They are SwiftUI buttons, so the native control brings its own
- * pressed/disabled/accessibility behavior and Liquid Glass gives the row edge
- * definition against the flat cards around it.
+ * The buttons are React Native surfaces pressed through
+ * react-native-gesture-handler rather than Compose buttons, for one reason: the
+ * glyph. The app names its icons semantically and resolves them to a Material
+ * *font* on Android (see icon-registry.ts), which a Compose `Icon` — it wants an
+ * XML vector drawable — cannot take, and hosting eleven `RNHostView`s inside
+ * eleven clickable Compose containers would put a foreign view over each
+ * button's own touch area. The surfaces below are Material's tonal button
+ * instead: a container tier for the fill, full-height corner rounding, and a
+ * press carried by the fill rather than by fading the control out. The dialogs
+ * they raise are real Compose `AlertDialog`s (see `AlertHost`).
  *
  * Subscription/entitlement gating is intentionally not wired: the
  * `vehicle-subscriptions` response shape hasn't been captured, so there is no
@@ -286,9 +255,6 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   // again, which sends `hazard-on` to a car already flashing: harmless, and
   // preferable to an "off" button that would be equally wrong.
   const [hazardsOn, setHazardsOn] = useState(false);
-  // The SwiftUI namespace the glass shells morph within, so the third button's
-  // Start→Stop swap animates instead of cutting.
-  const namespaceId = useId();
 
   const enabled = !busy && !!session && !isRedacted;
 
@@ -370,7 +336,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           setHazardsOn(control.command === "hazard-on");
         }
         // Acceptance, not completion; the optimistic fold and the reconciling
-        // refetches live in remote-command-effects.ts. No success alert: the
+        // refetches live in remote-command-effects.ts. No success dialog: the
         // section title already shows the pending state ("Locking…"). The
         // prime callback is its escalation path when plain re-reads keep
         // returning the pre-command snapshot.
@@ -388,18 +354,15 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
       .finally(() => setBusy(false));
   };
 
-  // An alert rather than a confirmation dialog, tried both ways on device.
-  //
-  // An anchored dialog points at the button it came from, which sounds like the
-  // better feedback until you use the row: every control puts the question in a
-  // different place, and a confirmation that moves is one you have to re-find
-  // each time. A centered alert lands in the same spot for all eleven of them,
-  // so the answer is always where the last one was.
-  //
-  // It suits the content too — there is one alternative here, not a set of
-  // them, and the message is a consequence warning (an enclosed space, a car
-  // left unlocked) that an action sheet renders as small grey text above the
-  // buttons rather than as the thing being said.
+  /**
+   * A centred Material dialog rather than a menu anchored to the button that
+   * raised it, for the reason the spec gives: a confirmation anchored to its
+   * control lands somewhere different for each of the eleven, so it is one you
+   * have to re-find every time, where a centred dialog is always where the last
+   * one was. It suits the content too — there is one alternative here, not a
+   * set of them, and the message is a consequence warning that belongs in a
+   * dialog's body rather than as a caption over a list of choices.
+   */
   const confirm = (control: Control) => {
     setAlert({
       title: control.confirmTitle,
@@ -422,7 +385,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           {/* Mid-command the word pulses instead of trailing an ellipsis —
               the wait has no length to promise, only a state to report. */}
           <View style={styles.statusItem}>
-            <Icon name={locked ? "lock.fill" : "lock.open.fill"} size={13} tint={lockColor} />
+            <Icon name={locked ? "lock" : "lock-open"} size={13} tint={lockColor} />
             <PulsingText pulsing={lockPending}>
               <ThemedText type="smallBold" style={{ color: lockColor }}>
                 {lockPending ? (locked ? "Locking" : "Unlocking") : locked ? "Locked" : "Unlocked"}
@@ -441,31 +404,7 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
           ) : null}
         </View>
       </View>
-      {/* A fixed height, so this host never re-measures and nothing has to be
-          re-reported across the bridge — which is what lets it sit in the RN
-          content without jumping.
-
-          SwiftUI redaction does not cross the host boundary, so the row needs
-          its own: `redacted` keeps the glass shells' shape and hides their
-          contents, and `disabled` keeps them from actuating a car we have no
-          data for. */}
-      <Host
-        style={styles.row}
-        modifiers={isRedacted ? [redacted("placeholder"), disabledModifier(true)] : undefined}
-      >
-        <Namespace id={namespaceId}>
-          <GlassEffectContainer spacing={Spacing.two}>
-            <ControlRow
-              controls={controls}
-              enabled={enabled}
-              isRedacted={isRedacted}
-              namespaceId={namespaceId}
-              slotOffset={0}
-              onPress={confirm}
-            />
-          </GlassEffectContainer>
-        </Namespace>
-      </Host>
+      <ControlRow controls={controls} enabled={enabled} isRedacted={isRedacted} onPress={confirm} />
       {/* Nothing to disclose on a car that reports none of these. */}
       {extras.length > 0 ? (
         <MoreControls
@@ -506,201 +445,104 @@ function MoreControls({
       disabled={isRedacted}
       style={styles.moreCard}
       header={
-        /* Sized, not measured. `matchContents` makes RN wait for SwiftUI to
-           report a height, and on the first layout pass there is none — the row
-           comes up short and settles a frame later with its text spilling out.
-           The main control row above states its height for the same reason. */
-        <Host style={styles.moreHeaderHost} pointerEvents="none">
-          <HStack
-            spacing={Spacing.three - Spacing.one}
-            modifiers={[
-              frame({ maxWidth: Infinity, alignment: "leading" }),
-              ...(isRedacted ? [redacted("placeholder"), disabledModifier(true)] : []),
-            ]}
-          >
-            <ZStack>
-              {/* A wash of the tint rather than the tint itself, so the
-                      glyph stays the loudest thing in it — and, while redacted,
-                      the neutral fill circle the RN `Icon` uses, because
-                      placeholder redaction masks an image into a rounded rect
-                      in its own colour and turns the circle square. */}
-              <SFImage
-                systemName="circle.fill"
-                size={36}
-                color={isRedacted ? colors.fill : blue}
-                modifiers={isRedacted ? [unredacted()] : [opacity(0.15)]}
-              />
-              {isRedacted ? null : (
-                <SFImage systemName="slider.horizontal.3" size={16} color={blue} />
-              )}
-            </ZStack>
-            <VStack alignment="leading" spacing={Spacing.half}>
-              <SFText
-                modifiers={[
-                  font({ textStyle: "body", weight: "semibold" }),
-                  // The heaviest text on the card, so while redacted it
-                  // drops to the secondary colour — otherwise its bar is
-                  // the darkest thing on a screen claiming nothing yet.
-                  foregroundColor(isRedacted ? PLACEHOLDER_TEXT : colors.label),
-                ]}
-              >
-                More controls
-              </SFText>
-              {/* The list wraps at this width, and a wrapped line centres
-                      itself by default, which centres the wrapped tail under
-                      the line above it. */}
-              <SFText
-                modifiers={[
-                  font({ textStyle: "footnote", weight: "regular" }),
-                  foregroundColor(colors.secondaryLabel),
-                  multilineTextAlignment("leading"),
-                  frame({ maxWidth: Infinity, alignment: "leading" }),
-                ]}
-              >
-                {subtitle}
-              </SFText>
-            </VStack>
-          </HStack>
-        </Host>
+        <View style={styles.moreHeader}>
+          <Badge symbol="controls" tint={blue} redacted={isRedacted} />
+          <View style={styles.moreHeaderText}>
+            <ThemedText style={styles.moreTitle}>More controls</ThemedText>
+            <ThemedText type="small" themeColor="secondaryLabel">
+              {subtitle}
+            </ThemedText>
+          </View>
+        </View>
       }
     >
-      {/* SwiftUI redaction does not cross a host boundary, so this needs its own
-          alongside the header's: a card left open when the data goes away would
-          otherwise draw live icons and labels against a screen of skeleton bars.
-          `disabled` because these actuate a car we have no data for. */}
-      <Host
-        matchContents={{ vertical: true }}
-        modifiers={isRedacted ? [disabledModifier(true)] : undefined}
-      >
-        <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
-          {rows.map((row, index) => (
-            <ControlRow
-              key={index}
-              controls={row}
-              enabled={enabled}
-              isRedacted={isRedacted}
-              onCard
-              onPress={onPress}
-            />
-          ))}
-        </VStack>
-      </Host>
+      <View style={styles.moreRows}>
+        {rows.map((row, index) => (
+          <ControlRow
+            key={index}
+            controls={row}
+            enabled={enabled}
+            isRedacted={isRedacted}
+            onCard
+            onPress={onPress}
+          />
+        ))}
+      </View>
     </ExpandableCard>
   );
 }
 
 /**
- * One row of glass control buttons, shared by the main row and each row of the
- * More Controls grid so the two are the same button at the same size rather
- * than two things that resemble each other. Not a host of its own — see the
- * one that wraps all of them.
+ * One row of control buttons, shared by the main row and each row of the More
+ * controls grid so the two are the same button at the same size rather than two
+ * things that resemble each other.
  */
 function ControlRow({
   controls,
   enabled,
-  isRedacted = false,
-  namespaceId,
+  isRedacted,
   onCard = false,
-  slotOffset = 0,
   onPress,
 }: {
   controls: Control[];
   enabled: boolean;
-  isRedacted?: boolean;
+  isRedacted: boolean;
   /**
-   * Whether this row sits on a card rather than the screen background. Glass
-   * belongs on the background; on a card it paints a grey field across the
-   * whole row, so a card row uses the app's chip fill instead.
+   * Whether this row sits on a card rather than the screen background. The
+   * button's container tier follows: a card's own surface would disappear into
+   * the card, so a row on one drops to the tier below it.
    */
   onCard?: boolean;
-  /**
-   * The glass namespace this row's shells morph within. Only the main row
-   * passes one — it has two slots that swap content in place (Start/Stop, and
-   * the hazard toggle). A row without an identity simply appears, which is
-   * what the disclosure's rows want.
-   */
-  namespaceId?: string;
-  /** Where this row starts in the run of glass identities. */
-  slotOffset?: number;
   onPress: (control: Control) => void;
 }) {
   return (
-    <HStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
+    <View style={styles.row}>
       {controls.map((control, slot) => (
-        <Button
-          // Keyed by slot, not command: the engine and hazard buttons must stay
-          // the same React element across their swaps, or they are torn down
-          // and rebuilt and there is nothing left to morph.
+        <Pressable
+          // Keyed by slot, not command, so the engine and hazard buttons stay
+          // the same element across their swaps rather than being torn down and
+          // rebuilt when the label changes.
           key={slot}
+          accessibilityRole="button"
+          accessibilityLabel={control.label}
+          disabled={!enabled}
           onPress={() => onPress(control)}
-          modifiers={[
-            // The glass shell is the whole button: it has its own shape and
-            // inset, so a background fill behind it shows its corners around
-            // the shell. The same button in every state — redacted, it keeps
-            // its live geometry and only hides its contents.
-            buttonStyle(onCard ? "borderedProminent" : "glass"),
-            // Prominent so the tint is the fill at full strength rather than
-            // the wash `bordered` applies. The grey is the climate card's
-            // defrost chip — the same control on the same kind of card.
-            ...(onCard ? [buttonBorderShape("capsule"), tint(colors.subtleFill)] : []),
-            // Per *slot*, not per command, for the same reason as the key: a
-            // swapping slot keeps one id so the glass morphs in place.
-            ...(namespaceId ? [glassEffectId(`control-${slotOffset + slot}`, namespaceId)] : []),
-            disabledModifier(!enabled),
-          ]}
+          style={styles.control}
         >
-          {/* The width lives on the *label*, not the Button: a glass button's
-              shell wraps its label, so sizing the button leaves a
-              content-sized pill floating in an empty frame.
-
-              `unredacted` alongside `hidden` because the contents are already
-              hidden; all the inherited placeholder redaction could still do is
-              change how the text measures, which makes the skeleton's shells a
-              point or two taller than the live ones. */}
-          <VStack
-            spacing={Spacing.one}
-            modifiers={[
-              padding({ vertical: Spacing.two }),
-              frame({ maxWidth: Infinity }),
-              ...(isRedacted ? [unredacted()] : []),
-            ]}
-          >
-            {/* `hidden` keeps a view in the layout while suppressing its
-                drawing, so the redacted row is laid out by exactly the content
-                it stands in for and nothing jumps when the data lands. */}
-            <SFImage
-              systemName={control.symbol}
-              size={control.iconSize ?? CONTROL_ICON_SIZE}
-              color={control.tint}
-              modifiers={[hidden(isRedacted)]}
-            />
-            {/* A glass button tints its label with the accent color, turning
-                every label blue; the icon already carries the action, so the
-                label is text. Two-word labels shrink to fit rather than wrap,
-                so every button keeps one line and one height. */}
-            <SFText
-              modifiers={[
-                // One size for every control, main row and disclosure alike —
-                // they are the same button doing the same kind of thing.
-                font({ textStyle: "footnote", weight: "semibold" }),
-                foregroundColor(colors.label),
-                lineLimit(1),
-                minimumScaleFactor(0.75),
-                hidden(isRedacted),
+          {({ pressed }) => (
+            <View
+              style={[
+                styles.controlSurface,
+                { backgroundColor: onCard ? colors.subtleFill : colors.card },
+                pressed && styles.controlPressed,
+                // Dimmed only for a real refusal — a command in flight, or no
+                // session. The skeleton is disabled too, but it already has the
+                // whole tree's pulse and shouldn't carry a second signal.
+                !enabled && !isRedacted && styles.controlDisabled,
               ]}
             >
-              {control.label}
-            </SFText>
-          </VStack>
-        </Button>
+              {/* The contents are hidden, not removed, while redacted: the row
+                  is laid out by exactly the content it stands in for, so
+                  nothing jumps when the data lands. The button keeps its live
+                  geometry and refuses to actuate (the enclosing `Redactable`
+                  takes the touches, and `enabled` is false besides). */}
+              <View style={[styles.controlContent, isRedacted && styles.hidden]}>
+                <Icon name={control.symbol} size={CONTROL_ICON_SIZE} tint={control.tint} />
+                <ThemedText type="small" style={styles.controlLabel} numberOfLines={1}>
+                  {control.label}
+                </ThemedText>
+              </View>
+            </View>
+          )}
+        </Pressable>
       ))}
       {/* A short final row keeps the grid: without these the two buttons of a
           2-of-3 row would split the width and sit wider than the three above
           them. */}
       {Array.from({ length: CONTROLS_PER_ROW - controls.length }, (_, index) => (
-        <Spacer key={`spacer-${index}`} modifiers={[frame({ maxWidth: Infinity })]} />
+        <View key={`spacer-${index}`} style={styles.control} />
       ))}
-    </HStack>
+    </View>
   );
 }
 
@@ -730,17 +572,65 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   row: {
-    height: CONTROL_ROW_HEIGHT,
-    backgroundColor: "transparent",
+    flexDirection: "row",
+    gap: Spacing.two,
+  },
+  control: {
+    flex: 1,
+  },
+  // Material's tonal button, at the size a glyph over a label needs: a
+  // container tier for the fill and a corner radius that reads as fully rounded
+  // at this height.
+  controlSurface: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.two + Spacing.half,
+    borderRadius: 20,
+    borderCurve: "continuous",
+  },
+  // The press is the fill going down a tier, which is how a Material container
+  // responds — not the whole control fading out.
+  controlPressed: {
+    backgroundColor: colors.fill,
+  },
+  controlDisabled: {
+    opacity: 0.5,
+  },
+  controlContent: {
+    alignItems: "center",
+    gap: Spacing.one,
+  },
+  // A step below the app's small text: three of these share a phone's width,
+  // and "Hazard Lights" has to stay on one line at the narrowest of them. The
+  // icon already carries the action, so the label can afford to be quiet.
+  controlLabel: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  // Keeps the view in the layout while suppressing its drawing, the way
+  // SwiftUI's `hidden` does on the other platform.
+  hidden: {
+    opacity: 0,
   },
   moreCard: {
     marginTop: Spacing.three,
-    padding: 0,
   },
-  moreHeaderHost: {
+  moreHeader: {
     flex: 1,
-    // The header's content height, measured from the live layout: the badge
-    // and two lines of text, without the row's own padding.
-    height: MORE_HEADER_CONTENT_HEIGHT,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.three - Spacing.one,
+  },
+  moreHeaderText: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  moreTitle: {
+    fontWeight: "600",
+  },
+  moreRows: {
+    gap: Spacing.two,
   },
 });

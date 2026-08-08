@@ -63,7 +63,15 @@ function RootLayout() {
     // the transparent header shares one color — matching the splash screen's
     // backgroundColor, with no white window flashing through between the splash
     // and the first content paint.
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.groupedBackground }}>
+    // Keyed on the appearance so a light/dark switch rebuilds the tree. iOS
+    // colours are live PlatformColors that repaint on their own, but Android's
+    // Material roles resolve to a value when they are read (see theme.ts), so
+    // the read has to happen again — remounting is what makes every screen do
+    // that at once, including the native trees the hosts own.
+    <GestureHandlerRootView
+      key={colorScheme ?? "light"}
+      style={{ flex: 1, backgroundColor: colors.groupedBackground }}
+    >
       <AuthProvider>
         <VehicleDataProvider>
           <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>

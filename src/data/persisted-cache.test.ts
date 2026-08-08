@@ -59,6 +59,25 @@ describe("readPersistedClient", () => {
     expect(restored?.clientState.queries).toHaveLength(0);
   });
 
+  // The regression this file exists for: a cache written before the icon
+  // registry, whose capability symbols name SF Symbols ("lock.fill") rather
+  // than registry keys ("lock"). The shape is still a perfectly good array of
+  // {label, symbol} strings, so only the symbol check catches it — and without
+  // it the names reach a registry lookup that resolves to undefined and throws
+  // while rendering, which on a returning user's device is a crash at launch.
+  it("drops a persisted profile whose capability symbols predate the icon registry", () => {
+    const stale = {
+      profile: {
+        ...PLACEHOLDER_VEHICLE,
+        capabilities: [{ label: "Lock & unlock", symbol: "lock.fill" }],
+      },
+    };
+    const restored = readPersistedClient(
+      stored(client([query([...VEHICLE_PROFILE_QUERY_KEY], stale)])),
+    );
+    expect(restored?.clientState.queries).toHaveLength(0);
+  });
+
   // The status key carries a VIN, so it is matched structurally rather than by
   // hash — a snapshot for any car still gets validated.
   it("drops a persisted status whose data no longer matches the shape", () => {

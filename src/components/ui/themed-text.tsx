@@ -87,7 +87,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   redactedGlyphs: {
-    color: "transparent",
+    // Invisible glyphs over the bar. On iOS that is literally `transparent`;
+    // Android's Fabric renderer draws transparent text solid, so there the
+    // glyphs take the bar's own color instead — indistinguishable, because
+    // the Android fill resolves opaque (see theme.ts), where layering iOS's
+    // translucent fill on itself would composite visible glyph shapes.
+    color: Platform.select({ android: colors.fill, default: "transparent" }),
   },
   redactedBar: {
     backgroundColor: colors.fill,

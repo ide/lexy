@@ -1,5 +1,4 @@
-import type { SFSymbol } from "sf-symbols-typescript";
-
+import type { IconName } from "@/components/ui/icon-registry";
 import { cornerVisibility, doorStatus, openingStatus, windowStatus } from "@/data/closure-display";
 import type { Corner } from "@/data/closures";
 import type { Closure } from "@/data/vehicle";
@@ -16,7 +15,7 @@ export type SummaryException = {
   where?: string;
   /** Headline form used when this is the only exception ("Front driver door unlocked"). */
   headline: string;
-  symbol: SFSymbol;
+  symbol: IconName;
 };
 
 export type ClosuresSummary = {
@@ -32,7 +31,7 @@ export type ClosuresSummary = {
    */
   headline: string;
   subline: string | null;
-  symbol: SFSymbol;
+  symbol: IconName;
   /**
    * Exceptions beyond the headline. Populated only when more than one thing
    * needs attention — a single exception is the headline.
@@ -113,7 +112,7 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
       kind: "busy",
       headline: locking ? "Locking…" : "Unlocking…",
       subline: restSubline(rest),
-      symbol: locking ? "lock.fill" : "lock.open.fill",
+      symbol: locking ? "lock" : "lock-open",
       exceptions,
     };
   }
@@ -156,7 +155,7 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
       headline,
       subline,
       // All-unlocked wears the open lock; a mix of kinds has no single glyph.
-      symbol: open === 0 ? "lock.open.fill" : "exclamationmark.triangle.fill",
+      symbol: open === 0 ? "lock-open" : "warning",
       exceptions,
     };
   }
@@ -169,7 +168,7 @@ export function closuresSummary(corners: Corner[], openings: Closure[]): Closure
     kind: "secure",
     headline: secure ? "All secure" : "All closed",
     subline,
-    symbol: secure ? "checkmark.shield.fill" : "checkmark.circle.fill",
+    symbol: secure ? "shield-check" : "check-circle",
     exceptions: [],
   };
 }

@@ -15,20 +15,24 @@ import {
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 import * as Linking from "expo-linking";
-import type { SFSymbol } from "sf-symbols-typescript";
 
+import { iconRegistry, type IconName } from "@/components/ui/icon-registry";
 import { Spacing, colors } from "@/constants/theme";
 import { LEXUS_APP_STORE_URL } from "@/data/lexus-app";
 import { haptic } from "@/utils/haptics";
 
 // The stateless SwiftUI pieces of the sign-in flow; the screen owns all state.
+//
+// `sign-in-copy.ts` is shared with the Compose tree, so it hands out registry
+// names rather than SF Symbols. These are the only views that draw them on
+// iOS, so they resolve a name to its symbol here, at the SwiftUI boundary.
 
 export function Hero({
   icon,
   title,
   subtitle,
 }: {
-  icon: SFSymbol;
+  icon: IconName;
   title: string;
   subtitle: string;
 }) {
@@ -37,7 +41,7 @@ export function Hero({
   return (
     <VStack spacing={Spacing.two} modifiers={[frame({ maxWidth: Infinity })]}>
       <Image
-        systemName={icon}
+        systemName={iconRegistry[icon].sf}
         size={44}
         color={colors.systemBlue}
         modifiers={[padding({ bottom: Spacing.one })]}
@@ -121,7 +125,7 @@ export function ChoiceButton({
   onPress,
 }: {
   disabled: boolean;
-  icon: SFSymbol;
+  icon: IconName;
   label: string;
   onPress: () => void;
 }) {
@@ -141,7 +145,7 @@ export function ChoiceButton({
         spacing={Spacing.two}
         modifiers={[frame({ maxWidth: Infinity }), padding({ vertical: Spacing.one })]}
       >
-        <Image systemName={icon} size={17} color={colors.systemBlue} />
+        <Image systemName={iconRegistry[icon].sf} size={17} color={colors.systemBlue} />
         <Text
           modifiers={[
             font({ textStyle: "body", weight: "semibold" }),

@@ -2,6 +2,13 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Metro picks `icon.ios.tsx` / `icon.android.tsx` for a bare
+    // `@/components/ui/icon` import; TypeScript needs to be told the same rule
+    // or the specifier resolves to nothing. iOS leads the list because it is
+    // the platform the app is designed against, so a caller is typechecked
+    // against the iOS variant. Both variants are still checked on their own —
+    // every `.tsx` under the project is in `include`.
+    "moduleSuffixes": [".ios", ""],
     "paths": {
       "@/*": ["./src/*"],
       "@/assets/*": ["./assets/*"]

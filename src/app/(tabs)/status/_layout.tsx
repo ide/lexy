@@ -11,7 +11,7 @@ export const unstable_settings = {
   anchor: "index",
 };
 
-// The sheet's dismiss control: a bare `xmark` glyph in the label colour — the
+// The sheet's dismiss control: a bare close glyph in the label colour — the
 // standard "close a presented screen" bar button, no circle or background.
 function SheetCloseButton() {
   return (
@@ -21,14 +21,14 @@ function SheetCloseButton() {
       hitSlop={16}
       onPress={() => router.back()}
     >
-      <Icon name="xmark" size={19} tint={colors.label} />
+      <Icon name="close" size={19} tint={colors.label} />
     </Pressable>
   );
 }
 
 export default function StatusLayout() {
   return (
-    <Stack screenOptions={tabStackScreenOptions}>
+    <Stack screenOptions={tabStackScreenOptions()}>
       <Stack.Screen name="index" options={{ title: "Status" }} />
       {/* The vehicle-location map, presented as a draggable bottom sheet and opened
           from the "Last Parked" button on the Status screen. Uses the native

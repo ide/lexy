@@ -4,6 +4,7 @@ import { RowCheckmark, SettingsRow } from "@/components/swift-ui/settings-row";
 import { colors } from "@/constants/theme";
 import type { DataStateOverride } from "@/debug/data-state";
 import { DATA_STATE_OPTIONS, useDebugOverrides } from "@/debug/debug-overrides";
+import { iconRegistry } from "@/components/ui/icon-registry";
 import { useMapsProvider } from "@/hooks/use-maps-provider";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { haptic } from "@/utils/haptics";
@@ -32,7 +33,7 @@ export default function DataStateScreen() {
           {DATA_STATE_OPTIONS.map((option, index) => (
             <SettingsRow
               key={option.key}
-              icon={option.icon}
+              icon={iconRegistry[option.icon].sf}
               tint={option.tint}
               title={option.title}
               subtitle={option.subtitle}

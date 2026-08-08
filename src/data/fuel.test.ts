@@ -36,7 +36,7 @@ describe("fuelGauge", () => {
   it("labels combustion vehicles Fuel with the percentage readout", () => {
     const gauge = fuelGauge("Gasoline", 72);
     expect(gauge.label).toBe("Fuel");
-    expect(gauge.symbol).toBe("fuelpump.fill");
+    expect(gauge.symbol).toBe("fuel");
     expect(gauge.valueText).toBe("72%");
     expect(gauge.level).toBe("high");
   });
@@ -44,7 +44,7 @@ describe("fuelGauge", () => {
   it("labels EVs Charge with a bolt", () => {
     const gauge = fuelGauge("Electric", 40);
     expect(gauge.label).toBe("Charge");
-    expect(gauge.symbol).toBe("bolt.fill");
+    expect(gauge.symbol).toBe("charge");
   });
 
   it("reads Full at 100%", () => {

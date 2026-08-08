@@ -1,15 +1,16 @@
-import { Host, Slider, Toggle } from "@expo/ui/swift-ui";
-import { disabled } from "@expo/ui/swift-ui/modifiers";
+import { Host, Switch } from "@expo/ui";
+import { Slider } from "@expo/ui/jetpack-compose";
+import { fillMaxWidth } from "@expo/ui/jetpack-compose/modifiers";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Pressable } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import type { SFSymbol } from "sf-symbols-typescript";
 
-import { AlertHost, type AlertSpec } from "@/components/swift-ui/alert-host";
+import { AlertHost, type AlertSpec } from "@/components/ui/alert-host";
 import { Card } from "@/components/ui/card";
 import { ColorWash } from "@/components/ui/color-wash";
 import { Icon } from "@/components/ui/icon";
+import type { IconName } from "@/components/ui/icon-registry";
 import { useRedacted } from "@/components/ui/redactable";
 import { ThemedText } from "@/components/ui/themed-text";
 import { Spacing, colors } from "@/constants/theme";
@@ -20,6 +21,24 @@ import { haptic } from "@/utils/haptics";
 
 const blue = colors.systemBlue;
 
+/**
+ * Compose's `Slider` counts the *intermediate* stops between its endpoints,
+ * where the wire describes the setpoint as a range plus an interval. A 65–85
+ * range in 1° steps is 21 selectable values, so 19 stops sit between the ends.
+ * Zero means a continuous slider, which is also the honest answer for a car
+ * that reports no interval.
+ */
+function sliderSteps(
+  min: number | undefined,
+  max: number | undefined,
+  interval: number | undefined,
+): number {
+  if (min === undefined || max === undefined || !interval || interval <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round((max - min) / interval) - 1);
+}
+
 function DefrostToggle({
   label,
   symbol,
@@ -28,7 +47,7 @@ function DefrostToggle({
   onToggle,
 }: {
   label: string;
-  symbol: SFSymbol;
+  symbol: IconName;
   parameter?: AcParameter;
   disabled: boolean;
   onToggle: (enabled: boolean) => void;
@@ -52,7 +71,7 @@ function DefrostToggle({
         <View style={[styles.defrostChip, (pressed || disabled) && { opacity: 0.6 }]}>
           {active ? <ColorWash color={blue} /> : null}
           <Icon name={symbol} size={17} tint={active ? blue : colors.secondaryLabel} />
-          {/* Medium weight, like a system button label — bold made the chips
+          {/* Medium weight, like a Material chip's label — bold made the chips
               shout compared to every real button on the screen. */}
           <ThemedText
             type="small"
@@ -74,21 +93,21 @@ function DefrostToggle({
 // useClimateSettings), so the controls respond instantly and never lock up
 // while a save is in flight.
 export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
-  // The switch and slider are SwiftUI, so neither the RN redaction context nor
-  // SwiftUI's own `redacted` modifier neutralizes them (the modifier leaves
-  // both controls fully drawn — verified on device). While redacted they give
-  // way to plain placeholders in the same slots.
+  // The switch and the slider are Compose, inside hosts of their own that the
+  // React Native redaction context cannot reach. While redacted they give way
+  // to plain placeholders in the same slots — which also keeps a live Material
+  // switch from sitting bright and blue in a screen of skeleton bars.
   const isRedacted = useRedacted();
   const { settings, defrost, setDefrost, setTemperature, setSettingsOn, error } =
     useClimateSettings(vehicle, { placeholder: isRedacted });
   // The setpoint mid-drag, shown in the readout before the PUT commits on
-  // release. A ref backs the commit so onEditingChanged never sees a stale
+  // release. A ref backs the commit so the finish callback never sees a stale
   // value.
   const [draftTemperature, setDraftTemperature] = useState<number | null>(null);
   const draftRef = useRef<number | null>(null);
 
   // Nothing to confirm — the write already failed — so the alert carries no
-  // action and SwiftUI supplies the OK.
+  // action and the dialog supplies a single OK.
   const [alert, setAlert] = useState<AlertSpec | null>(null);
 
   useEffect(() => {
@@ -131,24 +150,21 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
       <View style={styles.climateHeader}>
         <View style={styles.inlineRow}>
           <View style={styles.climateTitle}>
-            <Icon name="thermometer.medium" size={17} tint={blue} />
+            <Icon name="climate" size={17} tint={blue} />
             <ThemedText type="smallBold" themeColor="secondaryLabel">
               Remote Start Climate
             </ThemedText>
           </View>
           {settings ? (
-            // SwiftUI's `redacted` leaves a Toggle fully drawn (verified on
-            // device: a live blue switch in the skeleton), so the placeholder
-            // stands in for it instead. Both take the same fixed 51x31 box a
-            // UIKit switch always occupies, so they can't differ in size —
-            // and the host doesn't have to measure its content, which is what
-            // made the real switch land right of its slot for a frame before
-            // snapping back.
             isRedacted ? (
               <View style={[styles.climateSwitch, styles.switchPlaceholder]} />
             ) : (
+              // The slot is pinned rather than measured: the placeholder and
+              // the live switch then occupy the same box by construction, and
+              // the host never has to report a size back across the boundary.
+              // 52x32 is Material 3's switch.
               <Host style={styles.climateSwitch}>
-                <Toggle isOn={on} onIsOnChange={(value) => setSettingsOn(value)} />
+                <Switch value={on} onValueChange={(value) => setSettingsOn(value)} />
               </Host>
             )
           ) : // No settings yet, and nothing honest to put here: this endpoint
@@ -162,33 +178,34 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
       </View>
       {showSlider ? (
         <Animated.View style={[styles.sliderRow, dimStyle]}>
-          {/* Redaction leaves a Slider drawn too (a live blue track), so the
-              skeleton shows the bare track in the same 28pt slot. */}
           {isRedacted ? (
             <View style={[styles.slider, styles.sliderPlaceholder]}>
               <View style={styles.sliderPlaceholderTrack} />
             </View>
           ) : (
-            // A SwiftUI Slider has no intrinsic width, so the host gets an
-            // explicit flex + height instead of matchContents.
+            // A Compose Slider has no intrinsic width, so the host gets an
+            // explicit flex + height and the slider fills it.
             <Host style={styles.slider}>
               <Slider
                 min={settings.minTemp}
                 max={settings.maxTemp}
-                step={settings.tempInterval ?? 1}
+                steps={sliderSteps(settings.minTemp, settings.maxTemp, settings.tempInterval)}
                 value={settings.temperature}
+                enabled={on}
                 onValueChange={(value) => {
                   draftRef.current = value;
                   setDraftTemperature(value);
                 }}
-                onEditingChanged={(editing) => {
-                  if (!editing && draftRef.current !== null) {
+                // Material's own "the user let go" callback, which is where the
+                // write belongs — a PUT per drag frame would be a write storm.
+                onValueChangeFinished={() => {
+                  if (draftRef.current !== null) {
                     setTemperature(draftRef.current);
                     draftRef.current = null;
                     setDraftTemperature(null);
                   }
                 }}
-                modifiers={[disabled(!on)]}
+                modifiers={[fillMaxWidth()]}
               />
             </Host>
           )}
@@ -202,14 +219,14 @@ export function ClimateCard({ vehicle }: { vehicle: Vehicle }) {
         <Animated.View style={[styles.defrostRow, dimStyle]}>
           <DefrostToggle
             label="Front Defrost"
-            symbol="windshield.front.and.heat.waves"
+            symbol="defrost-front"
             parameter={defrost.front}
             disabled={!on}
             onToggle={(enabled) => setDefrost("frontDefrost", enabled)}
           />
           <DefrostToggle
             label="Rear Defrost"
-            symbol="windshield.rear.and.heat.waves"
+            symbol="defrost-rear"
             parameter={defrost.rear}
             disabled={!on}
             onToggle={(enabled) => setDefrost("rearDefrost", enabled)}
@@ -242,31 +259,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.one,
   },
-  // The switch's slot, shared by the live Toggle's host and its placeholder, so
-  // pinning the box keeps the two identical and spares the host a measure pass.
-  // 69x28 is what the Toggle actually draws, measured on device — not the 51x31
-  // a UIKit switch uses, which this had assumed: at 51 wide the control was
-  // overflowing its own host, so the placeholder sat 9pt inside where the
-  // switch really was. It holds that size at every Dynamic Type setting
-  // (checked up to XXXL). The trailing inset keeps the switch off the card's
-  // edge, which a control needs more than a line of text does.
+  // Material 3's switch is 52x32dp. The slot is shared by the live control's
+  // host and its placeholder so the two cannot differ in size.
   climateSwitch: {
-    width: 69,
-    height: 28,
-    marginRight: Spacing.two,
+    width: 52,
+    height: 32,
     backgroundColor: "transparent",
+  },
+  switchPlaceholder: {
+    borderRadius: 16,
+    backgroundColor: colors.fill,
   },
   sliderRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.three,
   },
+  // Material's slider reserves a 48dp touch target around a 4dp track.
   slider: {
     flex: 1,
-    height: 28,
+    height: 48,
     backgroundColor: "transparent",
   },
-  // The redacted stand-in for the SwiftUI slider, sized from the same style
+  // The redacted stand-in for the Compose slider, sized from the same style
   // as the real one.
   sliderPlaceholder: {
     justifyContent: "center",
@@ -274,18 +289,6 @@ const styles = StyleSheet.create({
   sliderPlaceholderTrack: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.fill,
-  },
-  // The switch as it is actually *drawn*, which is not the box it is laid out
-  // in: the Toggle reports a 69pt frame but paints a 63pt track inside it, and
-  // not centred — the track's trailing edge lands 22pt inside the card, where
-  // the frame's is 24pt. Both numbers come from measuring the pixels of a
-  // device screenshot, so the pill covers the switch rather than its slot.
-  // The height needs no correction; the track fills the frame's 28pt.
-  switchPlaceholder: {
-    width: 63,
-    marginRight: Spacing.two - 2,
-    borderRadius: 14,
     backgroundColor: colors.fill,
   },
   // Widest plausible readout ("29.5°C") reserves its slot so the slider
@@ -307,7 +310,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: Spacing.one,
     paddingVertical: Spacing.two,
-    borderRadius: 12,
+    // Material's assist chip: a fully rounded container at this height.
+    borderRadius: 18,
     borderCurve: "continuous",
     backgroundColor: colors.subtleFill,
     // Clips the active wash to the chip's corner radius.

@@ -1,7 +1,7 @@
-import type { SFSymbol } from "sf-symbols-typescript";
-
+import type { IconName } from "@/components/ui/icon-registry";
 import { hasNumber, isRecord } from "@/data/json";
 import type { VehicleContext } from "@/data/lexus-api";
+import { iconRegistry } from "@/components/ui/icon-registry";
 import type { RemoteCapability } from "@/data/remote-capabilities";
 
 export type Closure = {
@@ -30,7 +30,7 @@ export type Closure = {
 
 export type Capability = {
   label: string;
-  symbol: SFSymbol;
+  symbol: IconName;
 };
 
 export type Subscription = {
@@ -184,12 +184,29 @@ export function parseVehicleProfile(value: unknown): VehicleProfile {
     !isRecord(value) ||
     !profileStringFields.every((field) => typeof value[field] === "string") ||
     !Array.isArray(value.capabilities) ||
+    !value.capabilities.every(namesAKnownIcon) ||
     !Array.isArray(value.remoteCapabilities) ||
     !Array.isArray(value.subscriptions)
   ) {
     throw new Error("Invalid vehicle profile");
   }
   return value as VehicleProfile;
+}
+
+/**
+ * A capability's `symbol` is an icon-registry key, and it is persisted — so a
+ * build that renames or re-scopes those keys leaves the old names sitting in a
+ * returning user's cache, where they still look like perfectly good strings.
+ * Checking them here is what turns that into a cold load instead of an
+ * undefined glyph lookup at render. See CACHE_VERSION in persisted-cache.ts,
+ * whose bump is the intended lever; this is the net under it.
+ */
+function namesAKnownIcon(capability: unknown): boolean {
+  return (
+    isRecord(capability) &&
+    typeof capability.symbol === "string" &&
+    capability.symbol in iconRegistry
+  );
 }
 
 export function parseVehicleStatus(value: unknown): VehicleStatus {

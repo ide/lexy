@@ -4,34 +4,90 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 # Project scope
 
-For now, Lexy is an iOS-only exploration of Apple platform APIs. Focus product
-and implementation work on native Apple experiences, including SwiftUI, Home
-Screen widgets, and Live Activities. Do not add Android or web parity unless the
-user explicitly asks for it.
+Lexy is an exploration of native platform APIs on iOS and Android from one
+codebase. iOS is the reference implementation; Android is a native Android app
+built to the same per-screen contracts, not a port of the iOS trees. Do not add
+web support.
 
-# Deployment target
+Screens are specified once, in `specs/` — read `specs/README.md` before
+touching any screen. The specs tree mirrors `src/app` file-for-file (enforced
+by `specs/mirror.test.ts`), a behavior change updates the screen's spec in the
+same commit, and a platform divergence that isn't recorded under the spec's
+Platform notes is a bug on whichever platform moved.
 
-Assume **iOS 26 or newer**. Do not build support for older OS versions.
+# Platform seams
 
-Use iOS 26 APIs — Liquid Glass (`buttonStyle('glass' | 'glassProminent')`, the
-`glassEffect` modifier, `expo-glass-effect`) included — directly, without a
-version gate and without a pre-26 fallback path. Do not add
-`isLiquidGlassAvailable()` checks, `if (Platform.Version >= 26)` branches, or
-parallel legacy styling. A single modern implementation is the whole
-implementation.
+- SwiftUI code — anything importing `@expo/ui/swift-ui` or `expo-glass-effect`
+  — lives only in `*.ios.tsx` files, `src/components/swift-ui/`, or
+  `src/widgets/`. Jetpack Compose code (`@expo/ui/jetpack-compose`) is the
+  mirror: `*.android.tsx` files or `src/components/jetpack-compose/` only.
+  An oxlint `no-restricted-imports` rule enforces both directions; do not
+  weaken it. Universal `@expo/ui` imports are fine anywhere.
+- The two component drawers are deliberately parallel: platform-bound building
+  blocks live unsuffixed in `src/components/swift-ui/` and
+  `src/components/jetpack-compose/` (the directory is the marker), while a
+  component both platforms consume through one specifier is a suffixed
+  `.ios.tsx`/`.android.tsx` pair with an identical props contract
+  (`icon`, `alert-host`, `swiftui-scroll-view`). tsconfig's `moduleSuffixes`
+  typechecks callers against the iOS variant, so the pair's contracts cannot
+  drift silently.
+- Route files under `src/app` stay thin, platform-neutral re-exports from
+  `src/screens`. Expo Router loads every route eagerly and does not support
+  platform suffixes on route files, so a platform-only import in a route
+  crashes the other platform at boot.
+- iOS-only components have no `.android` sibling on purpose: an accidental
+  Android import fails at bundle time, which is the enforcement. A screen not
+  yet built for Android renders `pending-screen.tsx` pointing at its spec.
+- Icons are semantic. `src/components/ui/icon-registry.ts` maps app-level
+  names to an SF Symbol and a Material icon; shared code and data modules
+  speak registry names only. Raw SF Symbol names may appear only inside
+  iOS-only trees (SwiftUI `systemName=` props and the widget). Adding an icon
+  means naming both platform glyphs at once. Tab icons are the one exception
+  (`tab-config.ts` carries an `sf` pair and a Material Symbol side by side —
+  the native tab bar draws from the platform catalog, not the registry).
+- Colors come from `src/constants/theme.ts` on both platforms: UIKit semantic
+  colors on iOS, Material 3 dynamic roles on Android. iOS values are live
+  PlatformColors; Android's resolve *when read*, so anything that captures a
+  color at module scope — a `StyleSheet.create`, a prebuilt options object —
+  pins it to the launch appearance. Read colors during render (the root
+  remounts the tree on an appearance change, which is what repaints Android).
+
+# Deployment targets
+
+- **iOS 26 or newer.** Use iOS 26 APIs — Liquid Glass
+  (`buttonStyle('glass' | 'glassProminent')`, the `glassEffect` modifier)
+  included — directly, without version gates or pre-26 fallbacks. No
+  `isLiquidGlassAvailable()` checks, no parallel legacy styling.
+- **Android: design for Android 12 or newer.** One Material 3 implementation
+  with dynamic color; no pre-Material-You branches. `minSdk` stays at the Expo
+  default — Material dynamic roles already fall back to the baseline palette
+  on older devices, which is the entire legacy story.
 
 # Interaction controls
 
 - Never import `Pressable`, `TouchableOpacity`, or another JavaScript-thread
-  touchable from `react-native`.
-- Prefer native controls from `@expo/ui`, especially SwiftUI `Button`, `List`,
-  `DisclosureGroup`, and `ScrollView` for iOS interfaces.
-- Always use the scrolling containers provided by `@expo/ui`. Do not import
-  `ScrollView`, `FlatList`, or `SectionList` from `react-native`.
+  touchable from `react-native`, on either platform.
+- iOS: prefer native controls from `@expo/ui`, especially SwiftUI `Button`,
+  `List`, `DisclosureGroup`, and `ScrollView`; always use the scrolling
+  containers provided by `@expo/ui` — do not import `ScrollView`, `FlatList`,
+  or `SectionList` from `react-native` in iOS trees.
+- Grouped screens are built from the section primitives in their platform's
+  drawer — `src/components/swift-ui/section.tsx` and
+  `src/components/jetpack-compose/settings.tsx` — never from a local copy. A
+  screen that hand-rolls its own header or card drifts from the app's spacing
+  the moment either changes; `Section` owns the gap between a header and what
+  it labels (`Spacing.two`, the same gap the RN `SectionTitle` carries), so
+  the rhythm is one decision rather than one per screen.
+- Android: prefer universal `@expo/ui` components, then
+  `@expo/ui/jetpack-compose`. A plain React Native `ScrollView` inside an
+  `.android.tsx` file is acceptable where the Compose scroll host doesn't
+  exist yet (`swiftui-scroll-view.android.tsx` is the current instance); each
+  such use carries a comment and gets replaced, not multiplied.
 - When Expo UI cannot express a custom interaction or gesture, use
   `react-native-gesture-handler` instead of a React Native touchable.
-- Preserve native pressed, disabled, focus, accessibility, and haptic behavior;
-  do not recreate those states with JavaScript opacity changes.
+- Preserve native pressed, disabled, focus, accessibility, and haptic
+  behavior; do not recreate those states with JavaScript opacity changes.
+  Haptics funnel through `@/utils/haptics` (native on both platforms).
 
 # Animation
 
@@ -42,8 +98,19 @@ implementation.
 
 # Verification
 
-- Verify the app with a local iOS development build, not Expo Go. Lexy uses
+- Verify with local development builds, not Expo Go: iOS on a device or
+  simulator, Android on the `lexy` emulator AVD (Pixel 8, API 36). Lexy uses
   native modules and Apple targets that Expo Go does not include.
+- **A dev build is not the shipping app.** `expo-updates` is inert in a dev
+  client and live in a release build, so a JavaScript error at launch shows as
+  a red screen in development and as a hard crash through the updates error
+  recovery in production. Anything touching launch — the auth boundary, the
+  persisted cache, the root layout — gets a Release build before it goes out.
+- **Test the upgrade, not just the install.** Every fresh install starts with
+  an empty cache and no keychain session, which is the one state a returning
+  user is never in. When a change touches persisted data, run the previous
+  build first so the new one launches onto real prior state — that is the only
+  way the class of bug `CACHE_VERSION` exists to prevent actually shows up.
 - Prefer text and logs when inspecting or verifying behavior.
 - If a screenshot is necessary, downsample it to roughly 1x point resolution
   or lower before viewing or sharing it. Device screenshots are normally 2x–3x.
@@ -95,14 +162,22 @@ failing loudly.
 Other native imports (`expo-linking`, `expo-network`, `react-native`, `@expo/ui`)
 still need a per-file `vi.mock`. Prefer keeping native imports at the edge, as
 `closure-state.ts` and `update-history-repository.ts` do, so the logic itself
-stays importable in Node.
+stays importable in Node. Node also resolves neither `.ios.tsx` nor
+`.android.tsx` — platform-split components are view-layer edges by definition;
+keep testable logic out of them.
 
 # EAS Updates
 
-Publish updates for iOS only — pass `--platform ios` to `eas update`. Lexy is
-iOS-only, and the default all-platform export fails to bundle for web (the
-`expo-sqlite` web path imports a `.wasm` module). The preview and production
-channels target iOS anyway.
+Publish updates with `--platform ios,android` — never web. The all-platform
+default tries to bundle for web, and the `expo-sqlite` web path imports a
+`.wasm` module that fails the export.
+
+# Home-screen widget
+
+The Lexy status widget is iOS-only. expo-widgets' Android JS API is a no-op
+stub in SDK 57, so the widget module and its timeline updates need no platform
+guards — they safely do nothing on Android. Revisit when expo-widgets ships
+its Android (Glance) renderer.
 
 # Git workflow
 
