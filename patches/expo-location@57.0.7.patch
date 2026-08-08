@@ -1,0 +1,26 @@
+diff --git a/android/src/main/java/expo/modules/location/LocationModule.kt b/android/src/main/java/expo/modules/location/LocationModule.kt
+index 04171f24fa2bf39078aaddaf4f17d927fba9feea..af959154c4fa961261730319ce669c3a65a53390 100644
+--- a/android/src/main/java/expo/modules/location/LocationModule.kt
++++ b/android/src/main/java/expo/modules/location/LocationModule.kt
+@@ -755,10 +755,6 @@ class LocationModule : Module(), LifecycleEventListener, SensorEventListener, Ac
+       throw GeocodeException("Geocoder is not running")
+     }
+ 
+-    if (isMissingForegroundPermissions()) {
+-      throw LocationUnauthorizedException()
+-    }
+-
+     if (!Geocoder.isPresent()) {
+       throw NoGeocodeException()
+     }
+@@ -784,10 +780,6 @@ class LocationModule : Module(), LifecycleEventListener, SensorEventListener, Ac
+       throw GeocodeException("Geocoder is not running")
+     }
+ 
+-    if (isMissingForegroundPermissions()) {
+-      throw LocationUnauthorizedException()
+-    }
+-
+     if (!Geocoder.isPresent()) {
+       throw NoGeocodeException()
+     }

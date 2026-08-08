@@ -172,6 +172,19 @@ Publish updates with `--platform ios,android` — never web. The all-platform
 default tries to bundle for web, and the `expo-sqlite` web path imports a
 `.wasm` module that fails the export.
 
+# Patched dependencies
+
+`patches/expo-location@57.0.7.patch` drops the foreground-permission check from
+`geocode` and `reverseGeocode` in expo-location's Android module. Android's
+`Geocoder` requires no location permission and iOS never checked for one, so the
+check bought nothing and cost the parked address: `app.json` blocks both location
+permissions, which made every reverse geocode on Android throw
+`LocationUnauthorizedException` and leave the address line permanently blank.
+Delete the patch once the upstream fix ships in an SDK 57 patch release.
+
+A patch edits native source, so it moves the fingerprint runtime version. A
+patched build is a new build — it cannot reach existing installs over the air.
+
 # Home-screen widget
 
 The Lexy status widget is iOS-only. expo-widgets' Android JS API is a no-op
