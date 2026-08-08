@@ -68,6 +68,9 @@
       "android": {
         "exclude": [
           "expo-widgets"
+        ],
+        "buildFromSource": [
+          "expo-location"
         ]
       }
     }

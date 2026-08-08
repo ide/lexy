@@ -180,7 +180,22 @@ default tries to bundle for web, and the `expo-sqlite` web path imports a
 check bought nothing and cost the parked address: `app.json` blocks both location
 permissions, which made every reverse geocode on Android throw
 `LocationUnauthorizedException` and leave the address line permanently blank.
-Delete the patch once the upstream fix ships in an SDK 57 patch release.
+Delete the patch once the upstream fix ships in an SDK 57 patch release — both
+halves of it.
+
+**A patch to Android native source does nothing on its own.** Expo modules ship
+a prebuilt `.aar` alongside their Kotlin, and autolinking uses the publication
+by default, so Gradle compiled the original class while the patched source sat
+in `node_modules` being ignored. The build passes, the manifest is right, and
+the behaviour is unchanged — there is no error anywhere. `expo-location` is
+therefore listed in `expo.autolinking.android.buildFromSource` in
+`package.json`, which is what makes Gradle build it as a real subproject
+(`:expo-location:compileDebugKotlin`) and pick the patch up. Any future patch
+to an Expo module's native source needs the same pairing.
+
+Prove it landed rather than assuming: unzip the APK and disassemble the class,
+`dexdump -d classes*.dex`, isolating the method body — matching on the class
+alone bleeds across methods and reads as a false positive.
 
 A patch edits native source, so it moves the fingerprint runtime version. A
 patched build is a new build — it cannot reach existing installs over the air.
