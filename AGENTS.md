@@ -185,6 +185,25 @@ Delete the patch once the upstream fix ships in an SDK 57 patch release.
 A patch edits native source, so it moves the fingerprint runtime version. A
 patched build is a new build — it cannot reach existing installs over the air.
 
+# Blocked Android permissions
+
+`android.blockedPermissions` in `app.json` is the whole permission story: a
+library's manifest is a request, not a decision, and the release APK ships only
+what survives that list. Read the merged result rather than the package
+manifests — `./gradlew :app:processReleaseMainManifest` then
+`app/build/intermediates/merged_manifest/release/…`, since transitive AARs
+contribute permissions no `node_modules` manifest mentions.
+
+Most entries are permissions for code paths the app cannot reach, but
+`FOREGROUND_SERVICE` is a judgement call worth knowing about. It arrives with
+androidx.work, which expo-observe uses to flush metrics, and it is blocked to
+keep the Play Console's foreground-service declaration out of review. That is
+safe only while expo-observe enqueues plain work: `ObservabilityBackgroundWorker`
+overrides `getForegroundInfo()` but never calls `setExpedited()`, so WorkManager
+has no reason to start a foreground service. An expo-observe upgrade that adds
+`setExpedited` turns the block into a `SecurityException` inside a background
+worker — silent, and only in a release build. Re-check that call when bumping it.
+
 # Home-screen widget
 
 The Lexy status widget is iOS-only. expo-widgets' Android JS API is a no-op
