@@ -185,7 +185,7 @@ Delete the patch once the upstream fix ships in an SDK 57 patch release.
 A patch edits native source, so it moves the fingerprint runtime version. A
 patched build is a new build — it cannot reach existing installs over the air.
 
-# Blocked Android permissions
+# What the Android manifest ships
 
 `android.blockedPermissions` in `app.json` is the whole permission story: a
 library's manifest is a request, not a decision, and the release APK ships only
@@ -204,12 +204,27 @@ has no reason to start a foreground service. An expo-observe upgrade that adds
 `setExpedited` turns the block into a `SecurityException` inside a background
 worker — silent, and only in a release build. Re-check that call when bumping it.
 
+Components merge in the same way, and the same audit applies: read the services,
+receivers, providers, and activities out of the merged manifest, not out of
+`node_modules`. Prefer not linking a module over deleting what it declares —
+`plugins/without-location-task-service.js` exists only because expo-location is
+genuinely used for reverse geocoding and just its background-location service
+has to go. When nothing native is used at all, exclude the module from
+autolinking instead and the declarations never appear.
+
 # Home-screen widget
 
 The Lexy status widget is iOS-only. expo-widgets' Android JS API is a no-op
 stub in SDK 57, so the widget module and its timeline updates need no platform
-guards — they safely do nothing on Android. Revisit when expo-widgets ships
-its Android (Glance) renderer.
+guards — they safely do nothing on Android.
+
+Because that stub is plain JavaScript and never calls `requireNativeModule`,
+`package.json` excludes expo-widgets from Android autolinking entirely
+(`expo.autolinking.android.exclude`). The native module was only pulling in
+androidx.glance, whose manifest contributed an exported service, two trampoline
+activities, and three receivers for a widget Android cannot render. iOS
+autolinking is untouched. Drop the exclusion — not just the platform guards —
+when expo-widgets ships its Android (Glance) renderer.
 
 # Git workflow
 
