@@ -45,7 +45,7 @@ export default defineConfig({
   extends: [native],
   // oxlint does not inherit ignorePatterns through extends
   // (https://github.com/oxc-project/oxc/issues/10223).
-  ignorePatterns: ["**/node_modules/**", "**/.expo/**"],
+  ignorePatterns: ["**/node_modules/**", "**/.expo/**", "exact/**"],
   // Shared files may import neither platform tree; each platform's files may
   // import only their own. Universal `@expo/ui` is fine everywhere.
   rules: {
