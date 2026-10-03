@@ -87,6 +87,9 @@ You need these on the Mac:
     images, and controls that write UIKit properties only when they change.
   - Navigation retires its native containers when no route is left (a
     signed-out app showing its sign-in).
+  - The web JS target answers `exactTime` for an app whose data source
+    takes a record argument (Lexy's `status(car)`); before, the page never
+    booted.
 
 The app's Cargo paths point at `../../../exact2`, so it expects the sibling
 layout. If exact2 lives elsewhere, run `bun exact.mjs update`.

@@ -121,7 +121,15 @@ async function identityFetch(url: string, init: RequestInit): Promise<Reply> {
   return response;
 }
 
-const wait = async (ms: number) => { if (native?.available) await native.later({ op: 'wait', ms }); };
+// The demo's latency: the native module's timer (TypeScript sources have
+// none). Where the module has no `wait` (the web's), the demo answers at once.
+const wait = async (ms: number) => {
+  try {
+    if (native?.available) await native.later({ op: 'wait', ms });
+  } catch {
+    // No timer here.
+  }
+};
 
 function transport(store: Store, at: number): Request {
   if (store.get('lexy.demo') === '1') return (url, init) => demoFetch(url, init, at, wait);
