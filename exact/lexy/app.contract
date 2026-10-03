@@ -814,6 +814,11 @@ component Lexy
                 SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
               when e.name == "settings"
                 SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+              when e.name == "updates" or e.name == "dataState" or e.name == "eas"
+                // UIKit's back button pops (and the browser's Back); this is
+                // the control the pop presses, as the other pushed screens have.
+                button id="back" press=back testId="back" aria-label="Back" position="absolute" width=1 height=1 opacity=0
+                  text ""
               when e.name == "updates"
                 UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
               when e.name == "dataState"
