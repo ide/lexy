@@ -1,0 +1,145 @@
+// The Settings tab (src/screens/settings-screen.ios.tsx) and the vehicle-name
+// screen it pushes (src/screens/vehicle-name-screen.ios.tsx). The developer
+// tools (Updates, Data State, Login Flow, EAS) are left out.
+use Car from "./model.contract"
+use Card from "./model.contract"
+use vehicleName from "./model.contract"
+use mapsName from "./model.contract"
+use exactVersion from "./exact-version.contract"
+use MapsApp from "./model.contract"
+use mapsCount from "./model.contract"
+use mapsResolved from "./model.contract"
+use c from "./model.contract"
+
+// src/components/swift-ui/section.tsx: a header, a card, and a footer.
+component SectionHeader
+  props
+    title: string
+  view
+    text title font-size=13 font-weight=600 color="secondary-label" padding-left=16 padding-bottom=4
+
+component SectionFooter
+  props
+    words: string
+  view
+    text words font-size=13 color="secondary-label" padding-top=8 padding-left=16 padding-right=16
+
+// src/components/swift-ui/settings-row.tsx: symbol, title over subtitle, chevron.
+component SettingsRowFace
+  props
+    symbol: string
+    tint: string
+    title: string
+    subtitle: string
+  view
+    row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
+      image `symbol:sf/${symbol}` font-size=22 tint-color=c(tint) object-fit="scale-down" width=28 height=26
+      column flex=1 min-width=0 gap=2
+        text title font-size=17 font-weight=600 color="label"
+        text subtitle font-size=13 font-weight=500 color="secondary-label"
+      image "symbol:sf/chevron.right" font-size=14 font-weight=600 tint-color="secondary-label" object-fit="scale-down" width=12 height=20
+
+component SettingsScreen
+  props
+    car: Car
+    demo: bool
+    demoFailing: bool
+    setDemoFailing: action
+    provider: string
+    apps: MapsApp
+    version: string
+    editName: action
+    chooseMaps: action
+    signOut: action
+    signingOut: bool
+  view
+    scroll testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+      column box-sizing="border-box" padding-bottom=64
+        column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
+          column
+            SectionHeader(title="MAPS")
+            column class=Card
+              // The same chooser as the map's, of the installed apps only
+              // (settings-screen.ios.tsx's promptChoice).
+              button popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
+                SettingsRowFace(symbol="map.fill", tint="blue", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))))
+              column id="settings-maps" popover="auto" role="alertdialog" aria-label="Open location in" position="absolute"
+                when apps.apple
+                  button press=chooseMaps("apple") popovertarget="settings-maps" popovertargetaction="hide" testId="settings-maps-apple"
+                    text "Apple Maps"
+                when apps.google
+                  button press=chooseMaps("google") popovertarget="settings-maps" popovertargetaction="hide" testId="settings-maps-google"
+                    text "Google Maps"
+                when apps.waze
+                  button press=chooseMaps("waze") popovertarget="settings-maps" popovertargetaction="hide" testId="settings-maps-waze"
+                    text "Waze"
+              dialog id="settings-no-maps" closedby="any"
+                text "No maps app installed"
+                text "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions."
+                button commandfor="settings-no-maps" command="close" testId="settings-no-maps-ok"
+                  text "OK"
+            SectionFooter(words="The app used to open your vehicle’s location for directions.")
+          column
+            SectionHeader(title="VEHICLE")
+            column class=Card
+              button press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
+                SettingsRowFace(symbol="car.fill", tint="blue", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)))
+          column
+            SectionHeader(title="LEXUS ACCOUNT")
+            column class=Card
+              button press=signOut disabled=signingOut testId="sign-out" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+                image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 tint-color="system-red" object-fit="scale-down" width=26 height=24
+                text "Sign Out" font-size=17 font-weight=600 color="system-red"
+            when demo
+              SectionFooter(words="Signed in to the demo Lexus.")
+          when demo
+            column
+              SectionHeader(title="DEMO")
+              column class=Card
+                row padding-left=16 padding-right=16 min-height=52 justify-content="space-between" align-items="center" gap=12
+                  text "Simulate Server Errors" font-size=17 flex-shrink=1
+                  input type="checkbox" switch checked=demoFailing change=setDemoFailing aria-label="Simulate Server Errors" testId="demo-failures"
+              SectionFooter(words="Commands, climate changes and renames fail as a server error does, so you can see how the app recovers.")
+          column
+            SectionHeader(title="ABOUT")
+            column class=Card
+              row padding=16 justify-content="space-between" align-items="center"
+                text "Version" font-size=17
+                text version testId="version" font-size=17 color="secondary-label" user-select="text"
+              // A grouped list's divider, inset to the text.
+              box height=0.5 margin-left=16 background-color="separator"
+              row padding=16 justify-content="space-between" align-items="center" gap=16
+                text "Built with" font-size=17
+                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="secondary-label" text-align="right" flex-shrink=1 user-select="text"
+
+component RenameScreen
+  props
+    name: string
+    saved: string
+    saving: bool
+    error: string
+    setName: action
+    clear: action
+    save: action
+    back: action
+  derive changed = trim(name) != "" and trim(name) != saved
+  view
+    scroll testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="grouped-background"
+      // UIKit's back button pops; this is the control the pop presses.
+      button id="back" press=back testId="back" aria-label="Back" position="absolute" width=1 height=1 opacity=0
+        text ""
+      column padding-top=16 padding-left=16 padding-right=16 gap=16
+        // section.tsx: the footer 8 under its field, 16 to what follows.
+        column gap=8
+          row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
+            input id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="label"
+            when name != ""
+              button press=clear testId="clear-name" -exact-apple-button-style="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
+                image "symbol:sf/xmark.circle.fill" font-size=17 tint-color="tertiary-label" object-fit="scale-down" width=22 height=22
+          text "Your car’s name, saved to the Lexus app." font-size=13 color="secondary-label" padding-left=16 padding-right=16
+        when error != ""
+          row gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center" testId="rename-error"
+            image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange" object-fit="scale-down" width=24 height=22
+            text error font-size=13 font-weight=500 flex=1
+        button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+          text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

@@ -1,0 +1,709 @@
+// Lexy, in Contract. Everything the app decides lives here: the sign-in step
+// machine, what a status snapshot means (closures, locks, fuel, tires), lock
+// and engine reconciliation after a command, refresh policy, formatting, and
+// navigation. app.ts is only the I/O beneath it — HTTP, the Keychain, PKCE —
+// and answers in the wire's own terms.
+use LockScreen from "./sign-in.contract"
+use appVersion from "./exact-version.contract"
+use StatusScreen from "./status.contract"
+use SpecsScreen from "./specs.contract"
+use SettingsScreen from "./settings.contract"
+use MapSheet from "./map.contract"
+use RenameScreen from "./settings.contract"
+use Time from "./model.contract"
+use Account from "./model.contract"
+use AuthNode from "./model.contract"
+use Done from "./model.contract"
+use Garage from "./model.contract"
+use Status from "./model.contract"
+use Tires from "./model.contract"
+use Engine from "./model.contract"
+use Spec from "./model.contract"
+use Services from "./model.contract"
+use CommandResult from "./model.contract"
+use Primed from "./model.contract"
+use Climate from "./model.contract"
+use Address from "./model.contract"
+use MapsApp from "./model.contract"
+use Page from "./model.contract"
+use mapsResolved from "./model.contract"
+use Opened from "./model.contract"
+use stepOf from "./model.contract"
+use failureText from "./model.contract"
+use otpCallback from "./model.contract"
+use commandName from "./model.contract"
+use vehicleName from "./model.contract"
+use any from "./model.contract"
+
+routes nav
+  tab status "/"
+    map "/map"
+  tab specs "/specs"
+  tab settings "/settings"
+    rename "/settings/name"
+
+
+component Lexy
+  resource time = exactTime() as shape Time
+  resource page = exactPage() as shape Page
+  state sessionRev = 0
+  state sessionAt = 0
+  state retried = false
+  // Whether the user has moved on from a dead session's explanation (by
+  // signing in again), as auth-context.tsx clears it on submit.
+  state sessionNoticeSeen = false
+  resource account = session() with sessionRev, (sessionAt == 0 ? time.epochAtZero : sessionAt) as shape Account
+  // Until the session's first answer the app does not know whether anyone is
+  // signed in: it shows the signed-in shell's skeleton, never a flash of the
+  // sign-in screen (a signed-out answer carries its 401).
+  derive shell = account.signedIn or (account.status == 0 and account.error == "")
+
+  // --- Clock -----------------------------------------------------------------
+  // Contract's now() counts from the runner's zero; the epoch is time's.
+  state clock = 0
+  task ticker mount
+    every(5000, tick)
+  task boot mount
+    after(1, start)
+
+  // --- Sign-in ----------------------------------------------------------------
+  state email = ""
+  state password = ""
+  state code = ""
+  state signStep = "credentials"
+  state signError = ""
+  // A fresh code is on its way (resend), then that it was sent.
+  state resending = false
+  state signInfo = ""
+  state nodeRaw = ""
+  state nodeTypes = []
+  state choices = []
+  // The choice step's server prompt, which can carry real context.
+  state choicePrompt = ""
+  state lastChoice = -1
+  // The method's label: Resend matches by it, as the tree may reorder.
+  state lastChoiceLabel = ""
+  // A walk restarted from the code screen (Resend, Use a Different Method):
+  // its failures stay on that screen, in that control's words.
+  state restartStage = ""
+  mutation started as shape AuthNode then afterStart
+  mutation named as shape AuthNode then afterName
+  mutation passed as shape AuthNode then afterPassword
+  mutation chose as shape AuthNode then afterChoice
+  mutation verified as shape AuthNode then afterCode
+  mutation finished as shape Done refreshes account then afterFinish
+  mutation demo as shape Done refreshes account then afterDemo
+  // A real sign-in leaves the demo first: a demo flag left in the Keychain
+  // (it outlives a reinstall) would send the credentials to the demo.
+  mutation real as shape Done refreshes account then afterReal
+  mutation left as shape Done refreshes account then afterSignOut
+  // The demo's server errors (Settings → Simulate Server Errors).
+  state demoFailing = false
+  mutation demoFailures as shape Done
+  derive signingIn = pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real)
+
+  // --- Vehicle data -------------------------------------------------------------
+  state garageRev = 0
+  state garageAt = 0
+  state statusRev = 0
+  state statusAt = 0
+  state engineRev = 0
+  state engineAt = 0
+  state lastPrimeAt = 0
+  // The last tick's wall time: a gap means the app was away (resume-refresh.ts).
+  state lastTick = 0
+  state primeOnLaunch = false
+  // Back from the background, the refresh ladder waits for a fresh session:
+  // a token refreshed while the reads are out asks every one of them again.
+  state resumeDue = false
+  // A refresh the app started on its own (launch, resume): the only kind
+  // announced on screen (use-vehicle-auto-refresh.ts useIsAutoRefreshing).
+  state autoRefresh = false
+  // A pull's spinner shows for the loads that pull started, never for the
+  // launch's or the tick's (UIKit would show it half under the bar).
+  state pulling = false
+  // What each answer is comes first; how it is asked (a revision, the time,
+  // the token's expiry) follows `with`, so the last answer a launch kept
+  // paints the first frame. A refreshed token re-asks the garage, and nothing
+  // refreshes in parallel.
+  resource garage = garage(account.signedIn) with account.expiresAt, garageRev, (garageAt == 0 ? time.epochAtZero : garageAt) as shape Garage
+  derive car = garage.car
+  resource status = status(car) with statusRev, (statusAt == 0 ? time.epochAtZero : statusAt) as shape Status
+  resource tires = tires(car) with statusRev, (statusAt == 0 ? time.epochAtZero : statusAt) as shape Tires
+  resource engine = engine(car) with engineRev, (engineAt == 0 ? time.epochAtZero : engineAt) as shape Engine
+  resource spec = spec(car) with (garageAt == 0 ? time.epochAtZero : garageAt) as shape Spec
+  // Remote-start climate: a change is written whole and read back.
+  state climateRev = 0
+  resource climate = climate(car) with climateRev, (garageAt == 0 ? time.epochAtZero : garageAt) as shape Climate
+  mutation climateSaved as shape Climate refreshes climate then afterClimateSave
+  // climate-card.ios.tsx: a rejected change rolls back (the re-read) and
+  // says so.
+  state climateError = ""
+  // Where the user put the switch: UIKit's switch has already moved, so it
+  // stays there while the car is told, rather than snapping back.
+  state climateWanted = false
+  // The defrost a tap asked for, shown while its save is in flight; the
+  // read after it, or a failure, shows the car's again.
+  state defrostFront = false
+  state defrostRear = false
+  state defrostHeld = false
+  state climateTouched = false
+  // The setpoint under the finger (climate-card.ios.tsx draftTemperature):
+  // shown while dragging and until the car's reading follows; the car is
+  // told once, on release, and only of a different value.
+  state tempDraft = 0
+  state tempHeld = false
+  // A release was sent: once it and its read-back land, the car's reading
+  // shows, whatever it says.
+  state tempSaving = false
+  // The parked street line, and the maps app the user picked.
+  resource address = address(status.latitude, status.longitude) as shape Address
+  // Re-probed whenever the map or Settings opens: apps come and go.
+  state mapsRev = 0
+  // The app just picked, shown at once while it is saved and re-read.
+  state mapsPicked = ""
+  // The app last asked to open the location, for its failure's alert.
+  state mapsTried = ""
+  resource mapsApp = mapsApp() with mapsRev as shape MapsApp
+  mutation mapsChosen as shape MapsApp refreshes mapsApp
+  mutation opened as shape Opened
+  // A haptic (src/utils/haptics.ts) where Lexy plays one.
+  mutation felt as shape Opened
+  state moreOpen = false
+  state closuresOpen = false
+  state hazardsOn = false
+  resource services = services(car) with (garageAt == 0 ? time.epochAtZero : garageAt) as shape Services
+
+  // --- Commands and their reconciliation ------------------------------------------
+  // A command's acceptance is not its completion: after a lock or unlock the
+  // status is re-read every tick until the doors agree, priming the car once
+  // halfway, and the pending state is dropped if they never do (Lexy's
+  // lock-reconcile.ts). Engine start/stop re-reads engine status four times,
+  // 20 s apart (engine-status.ts).
+  state lockTarget = ""
+  state lockPolls = 0
+  state engineTarget = ""
+  state enginePolls = 0
+  state notice = ""
+  state noticeAt = 0
+  // A command that failed, as Lexy's "Command failed" alert says it.
+  state commandError = ""
+  mutation sent as shape CommandResult then afterCommand
+  mutation primed as shape Primed then afterPrime
+  derive doors = filter(status.sections, s => s.category != "Other" and s.category != "Trip Details" and includes(s.section, "Door"))
+  derive unlockedDoors = length(filter(doors, d => length(filter(d.values, v => v == "Unlocked")) > 0))
+  derive lockedDoors = length(filter(doors, d => length(filter(d.values, v => v == "Locked")) > 0))
+  derive doorLock = unlockedDoors > 0 ? "unlocked" : (lockedDoors > 0 ? "locked" : "unknown")
+  derive lockPending = lockTarget != "" and lockTarget != doorLock
+  derive engineRunning = engine.status == "1"
+  derive enginePending = engineTarget != "" and engineTarget != (engineRunning ? "running" : "stopped")
+
+  // --- Settings ---------------------------------------------------------------------
+  state draftName = ""
+  state renameError = ""
+  mutation renamed as shape Done then afterRename
+
+  action start
+    // An action reads the state it started with, so this is the time
+    // itself, not `clock` (still 0 here). The launch's asks need nothing
+    // from here: an `…At` of 0 asks at the launch's own time (below).
+    clock = time.epochAtZero + now()
+    lastTick = time.epochAtZero + now()
+    autoRefresh = account.signedIn and car.vin != ""
+    // resume-refresh.ts at launch: a kept status past fifteen minutes old
+    // asks the car to report (the launch's own re-read covers the rest).
+    // The first tick sends it, once the data module can.
+    primeOnLaunch = account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + now() - status.fetchedMs >= 900000
+
+  // An action reads the state it started with: `clock` below is the previous
+  // tick's until this action commits, so the notice timeout reads the time
+  // itself.
+  action tick
+    clock = time.epochAtZero + now()
+    // A launch prime waits for a signed-in car; signed out, there is none.
+    if primeOnLaunch and not account.signedIn and not pending(account)
+      primeOnLaunch = false
+    if autoRefresh and not (pending(status) or pending(primed) or pending(garage) or (primeOnLaunch and account.signedIn))
+      autoRefresh = false
+    if pulling and not (pending(primed) or pending(status) or pending(garage))
+      pulling = false
+    if climateTouched and not (pending(climateSaved) or pending(climate))
+      climateTouched = false
+    if defrostHeld and not (pending(climateSaved) or pending(climate))
+      defrostHeld = false
+    if tempHeld and not (pending(climateSaved) or pending(climate)) and (tempSaving or climate.temperature == tempDraft)
+      tempHeld = false
+      tempSaving = false
+    if mapsPicked != "" and not (pending(mapsChosen) or pending(mapsApp))
+      mapsPicked = ""
+    // Refresh the session ahead of expiry, or once after the gateway
+    // rejects a token it had not expired yet.
+    if account.signedIn and not pending(account)
+      // A refresh that failed (offline) is tried again after 15 s, not
+      // every tick.
+      if (time.epochAtZero + now() > account.expiresAt - 60000 and (account.error == "" or time.epochAtZero + now() - sessionAt > 15000)) or (garage.status == 401 and not retried)
+        retried = garage.status == 401
+        sessionRev = sessionRev + 1
+        sessionAt = time.epochAtZero + now()
+      if garage.ok
+        retried = false
+    if notice != "" and time.epochAtZero + now() - noticeAt > 6000
+      notice = ""
+    if lockTarget != "" and not pending(status)
+      if lockTarget == doorLock
+        lockTarget = ""
+      else
+        // lock-reconcile.ts: quietly stood down; the pending label going
+        // is the whole message.
+        if lockPolls >= 10
+          lockTarget = ""
+        else
+          lockPolls = lockPolls + 1
+          statusRev = statusRev + 1
+          statusAt = clock
+          if lockPolls == 5
+            send primed = prime(car, time.epochAtZero + now())
+    if engineTarget != "" and clock - engineAt >= 20000
+      if not enginePending or enginePolls >= 4
+        engineTarget = ""
+      else
+        enginePolls = enginePolls + 1
+        engineRev = engineRev + 1
+        engineAt = clock
+    if primeOnLaunch and account.signedIn and car.vin != ""
+      primeOnLaunch = false
+      autoRefresh = true
+      lastPrimeAt = time.epochAtZero + now()
+      send primed = prime(car, time.epochAtZero + now())
+    // resume-refresh.ts: back from the background, data
+    // under a minute old stays; older is re-read; past fifteen minutes the
+    // car is asked to report first (at most every three minutes).
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000)) and not account.signedIn
+      resumeDue = false
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000)) and account.signedIn and (pending(account) or time.epochAtZero + now() > account.expiresAt - 60000)
+      resumeDue = true
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000)) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+      resumeDue = false
+      if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
+        lastPrimeAt = time.epochAtZero + now()
+        autoRefresh = true
+        send primed = prime(car, time.epochAtZero + now())
+      else
+        if time.epochAtZero + now() - status.fetchedMs >= 60000
+          autoRefresh = true
+          statusRev = statusRev + 1
+          statusAt = time.epochAtZero + now()
+    // Back from the background: maps apps may have come or gone.
+    if lastTick > 0 and time.epochAtZero + now() - lastTick > 15000
+      mapsRev = mapsRev + 1
+    lastTick = time.epochAtZero + now()
+
+  // Sign-in: one press walks start → email → password, then lands on the
+  // delivery-method choice or the code, as the tree decides.
+  // Editing what was refused clears the refusal.
+  // sign-in-screen.ios.tsx: Return on the email moves on to the password.
+  action focusPassword
+    focus("password")
+  action setEmail(v: string)
+    email = v
+    signError = ""
+  action setPassword(v: string)
+    password = v
+    signError = ""
+  action setCode(v: string)
+    code = v
+    signError = ""
+    signInfo = ""
+  action signIn
+    if not signingIn
+      sessionNoticeSeen = true
+      restartStage = ""
+      resending = false
+      send felt = feel("impact-light")
+      if trim(email) == "" or password == ""
+        signError = "Enter your email and password."
+      else
+        signError = ""
+        lastChoice = -1
+        if account.demo
+          send real = useDemo(false)
+        else
+          send started = authStart()
+  action afterReal
+    send started = authStart()
+  action resend
+    send felt = feel("impact-light")
+    signError = ""
+    code = ""
+    resending = true
+    restartStage = "resend"
+    send started = authStart()
+  action differentMethod
+    send felt = feel("impact-light")
+    signError = ""
+    code = ""
+    lastChoice = -1
+    restartStage = "choice"
+    send started = authStart()
+  action startOver
+    signStep = "credentials"
+    signError = ""
+    code = ""
+    lastChoice = -1
+  // sign-in-elements.ios.tsx NewToLexusCallout: the Lexus app's App Store page.
+  action getLexusApp
+    send felt = feel("impact-light")
+    openURL("https://apps.apple.com/us/app/lexus/id1468484450")
+  action tryDemo
+    sessionNoticeSeen = true
+    signError = ""
+    send demo = useDemo(true)
+  // The demo's password goes straight to the tree, never into the field,
+  // so iOS doesn't offer to save a made-up one.
+  action afterDemo
+    email = "driver@example.com"
+    password = ""
+    send started = authStart()
+  action afterStart
+    match started
+      case some(n)
+        if not n.ok
+          signError = signInError((restartStage != "" ? restartStage : "credentials"), n.status, n.error)
+          if restartStage == ""
+            signStep = "credentials"
+          restartStage = ""
+          resending = false
+        else
+          if stepOf(n.tokenId, n.types, n.asksCode) == "username"
+            send named = authAnswer(n.raw, "NameCallback", trim(email))
+          else
+            signError = "Lexus sent a response the app couldn't understand, so sign-in couldn't continue. Their service may be having a hiccup. Try again in a moment, and update Lexy if it keeps happening."
+            restartStage = ""
+            resending = false
+      case none
+        signError = ""
+  action afterName
+    match named
+      case some(n)
+        if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "password"
+          send passed = authAnswer(n.raw, "PasswordCallback", (password == "" and account.demo ? "demo" : password))
+        else
+          // A tree that answers but won't ask for the password refused the email.
+          signError = signInError((restartStage != "" ? restartStage : "credentials"), (n.ok ? 401 : n.status), n.error)
+          restartStage = ""
+          resending = false
+      case none
+        signError = ""
+  action afterPassword
+    match passed
+      case some(n)
+        if not n.ok
+          signError = signInError((restartStage != "" ? restartStage : "credentials"), n.status, n.error)
+          if restartStage == ""
+            signStep = "credentials"
+          restartStage = ""
+          resending = false
+        else
+          signError = ""
+          // A restart that ends here (no choice to re-pick) is over.
+          if stepOf(n.tokenId, n.types, n.asksCode) != "choice"
+            restartStage = ""
+            resending = false
+          if stepOf(n.tokenId, n.types, n.asksCode) == "complete"
+            send finished = authFinish(n.tokenId, time.epochAtZero + now())
+          if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+            signStep = "otp"
+            nodeRaw = n.raw
+            nodeTypes = n.types
+            signInfo = (resending ? "Lexus sent a new code." : "")
+          if stepOf(n.tokenId, n.types, n.asksCode) == "choice"
+            if length(n.choices) == 0
+              // A choice with nothing to choose is how the tree says "no such account".
+              signError = signInError((restartStage != "" ? restartStage : "credentials"), 401, "")
+              if restartStage == ""
+                signStep = "credentials"
+              restartStage = ""
+              resending = false
+            else
+              // Resend picks the method used last time, by its label;
+              // gone from the list, the user chooses again.
+              if lastChoice >= 0 and any(n.choices, lastChoiceLabel)
+                send chose = authChoose(n.raw, match first(filter(map(n.choices, (m, i) => m == lastChoiceLabel ? i : -1), i => i >= 0)) { case some(i) => i, case none => 0 })
+              else
+                resending = false
+                restartStage = ""
+                signStep = "choice"
+                nodeRaw = n.raw
+                choices = n.choices
+                choicePrompt = match first(n.prompts) { case some(t) => t, case none => "" }
+      case none
+        signError = ""
+  action choose(index: number)
+    send felt = feel("impact-light")
+    signError = ""
+    lastChoice = index
+    lastChoiceLabel = join(filter(choices, (m, i) => i == index), "")
+    send chose = authChoose(nodeRaw, index)
+  action afterChoice
+    match chose
+      case some(n)
+        if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+          signStep = "otp"
+          nodeRaw = n.raw
+          nodeTypes = n.types
+          signError = ""
+          signInfo = (resending ? "Lexus sent a new code." : "")
+          resending = false
+        else
+          signError = signInError(resending ? "resend" : "choice", n.status, n.error)
+          resending = false
+        restartStage = ""
+      case none
+        signError = ""
+  action verify
+    if not signingIn
+      send felt = feel("impact-light")
+      if trim(code) == ""
+        signError = "Enter the code we sent you."
+      else
+        signError = ""
+        send verified = authAnswer(nodeRaw, otpCallback(nodeTypes), trim(code))
+  action afterCode
+    match verified
+      case some(n)
+        if not n.ok
+          signError = signInError("otp", n.status, n.error)
+        else
+          if n.tokenId != ""
+            send finished = authFinish(n.tokenId, time.epochAtZero + now())
+          else
+            // Some trees ask twice; answer the next prompt the same way.
+            nodeRaw = n.raw
+            nodeTypes = n.types
+            signError = "Enter the new code we sent you."
+      case none
+        signError = ""
+  action afterFinish
+    match finished
+      case some(f)
+        if f.ok
+          sessionNoticeSeen = false
+          signStep = "credentials"
+          password = ""
+          code = ""
+          garageRev = garageRev + 1
+          garageAt = time.epochAtZero + now()
+          statusRev = statusRev + 1
+          statusAt = time.epochAtZero + now()
+          engineAt = time.epochAtZero + now()
+          nav = open(nav, "/")
+        else
+          signError = signInError("otp", f.status, f.error)
+          signStep = "credentials"
+      case none
+        signError = ""
+  action setDemoFailing(on: bool)
+    demoFailing = on
+    send demoFailures = setDemoFailures(on)
+  action signOut
+    send left = signOut()
+  action afterSignOut
+    primeOnLaunch = false
+    autoRefresh = false
+    signStep = "credentials"
+    email = ""
+    password = ""
+    code = ""
+    signError = ""
+    lockTarget = ""
+    engineTarget = ""
+    garageRev = garageRev + 1
+    nav = open(nav, "/")
+
+  // Status: pull to refresh primes the car (at most every 3 minutes, Lexy's
+  // refresh-status rate limit) and then re-reads; otherwise it just re-reads.
+  // A pull re-reads the profile and the climate settings too (a name set in
+  // the Lexus app shows).
+  action pullRefresh
+    pulling = true
+    if car.vin != "" and clock - lastPrimeAt > 180000
+      lastPrimeAt = clock
+      send primed = prime(car, time.epochAtZero + now())
+    else
+      statusRev = statusRev + 1
+      statusAt = clock
+    garageRev = garageRev + 1
+    climateRev = climateRev + 1
+  action afterPrime
+    statusRev = statusRev + 1
+    statusAt = clock
+  action reloadGarage
+    pulling = true
+    garageRev = garageRev + 1
+    garageAt = clock
+
+  action dismissCommandError
+    commandError = ""
+  action afterClimateSave
+    match climateSaved
+      case some(r)
+        climateError = (r.ok ? "" : "The vehicle API rejected the change.")
+        // A refused change shows the car's defrost again at once; a saved
+        // one holds until the re-read agrees (the tick lets go).
+        if not r.ok
+          defrostHeld = false
+      case none
+        climateError = ""
+        defrostHeld = false
+  action dismissClimateError
+    climateError = ""
+  // vehicle-controls.ios.tsx: a medium impact on sending, then success or
+  // error when the car answers.
+  action run(command: string)
+    notice = ""
+    noticeAt = clock
+    send felt = feel("impact-medium")
+    send sent = command(car, command, time.epochAtZero + now())
+  action afterCommand
+    match sent
+      case some(c)
+        noticeAt = clock
+        send felt = feel((c.ok and c.returnCode == "000000") ? "success" : "error")
+        if c.ok and c.returnCode == "000000"
+          // Re-read as of now: `clock` is the last tick's, up to 5 s old.
+          statusRev = statusRev + 1
+          statusAt = time.epochAtZero + now()
+          if c.command == "door-lock" or c.command == "door-unlock"
+            lockTarget = (c.command == "door-lock" ? "locked" : "unlocked")
+            lockPolls = 0
+          if c.command == "hazard-on" or c.command == "hazard-off"
+            hazardsOn = c.command == "hazard-on"
+          if c.command == "engine-start" or c.command == "engine-stop"
+            engineTarget = (c.command == "engine-start" ? "running" : "stopped")
+            enginePolls = 0
+            engineAt = time.epochAtZero + now()
+        else
+          commandError = (c.ok ? "The car didn’t accept the command." : failureText(c.status, c.error))
+      case none
+        notice = ""
+  action openMap
+    opened = none
+    mapsRev = mapsRev + 1
+    send felt = feel("selection")
+    nav = push(nav, "/map")
+  // The saved or only app opens as it is; a pick from the chooser is
+  // remembered (use-maps-provider.ts: never the lone app, so a second app
+  // installed later asks).
+  action openIn(provider: string)
+    mapsTried = provider
+    send opened = openMaps(provider, status.latitude, status.longitude, vehicleName(car.nickName, car.modelName))
+  action pickAndOpen(provider: string)
+    mapsTried = provider
+    send opened = openMaps(provider, status.latitude, status.longitude, vehicleName(car.nickName, car.modelName))
+    send mapsChosen = setMapsApp(provider)
+  action dismissOpenError
+    opened = none
+  action chooseMaps(provider: string)
+    mapsPicked = provider
+    send mapsChosen = setMapsApp(provider)
+  action manageSubscriptions
+    send felt = feel("impact-light")
+    // lexus-app.ts: the Lexus app's universal link, its App Store page
+    // when it is not installed.
+    openURL("https://ctlexusapp.com/shop")
+  action toggleMore
+    moreOpen = not moreOpen
+  action toggleClosures
+    closuresOpen = not closuresOpen
+  action setClimateOn(on: bool)
+    climateWanted = on
+    climateTouched = true
+    send climateSaved = setClimate(car, climate.raw, on, climate.temperature, climate.frontEnabled, climate.rearEnabled, time.epochAtZero + now())
+  action dragTemperature(value: number)
+    tempDraft = value
+    tempHeld = true
+    tempSaving = false
+  action setTemperature(value: number)
+    tempDraft = value
+    if value == climate.temperature
+      tempHeld = false
+    else
+      tempHeld = true
+      tempSaving = true
+      send climateSaved = setClimate(car, climate.raw, climate.on, value, climate.frontEnabled, climate.rearEnabled, time.epochAtZero + now())
+  action toggleDefrost(which: string)
+    send felt = feel("selection")
+    defrostFront = (which == "front" ? not climate.frontEnabled : climate.frontEnabled)
+    defrostRear = (which == "rear" ? not climate.rearEnabled : climate.rearEnabled)
+    defrostHeld = true
+    // The values, not the states just set: an action reads state as it began.
+    send climateSaved = setClimate(car, climate.raw, climate.on, climate.temperature, (which == "front" ? not climate.frontEnabled : climate.frontEnabled), (which == "rear" ? not climate.rearEnabled : climate.rearEnabled), time.epochAtZero + now())
+
+  // Navigation
+  action selectTab(name: string)
+    nav = select(nav, name)
+    if name == "settings"
+      mapsRev = mapsRev + 1
+  action back
+    nav = back(nav)
+  action followLink(url: string)
+    nav = go(nav, url)
+  action editName
+    // vehicle-mapping.ts: no nickname reads as the model's name.
+    draftName = vehicleName(car.nickName, car.modelName)
+    renameError = ""
+    nav = push(nav, "/settings/name")
+  action setDraftName(v: string)
+    draftName = v
+    renameError = ""
+  // vehicle-name-screen.ios.tsx: clearing keeps the field focused.
+  action clearDraftName
+    draftName = ""
+    focus("name-input")
+  // vehicle-name-screen.ios.tsx: only a real change, and not twice.
+  action saveName
+    if trim(draftName) != "" and trim(draftName) != vehicleName(car.nickName, car.modelName) and not pending(renamed)
+      send renamed = rename(car, trim(draftName), time.epochAtZero + now())
+  action afterRename
+    match renamed
+      case some(r)
+        if r.ok
+          send felt = feel("success")
+          garageRev = garageRev + 1
+          garageAt = clock
+          nav = back(nav)
+        else
+          send felt = feel("error")
+          renameError = failureText(r.status, r.error)
+      case none
+        renameError = ""
+
+  view
+    main testId="lexy" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
+      when not shell
+        LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, demo=account.demo, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
+      else
+        // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
+        // own navigation controller under a tab bar controller, and a tab
+        // bar tap presses that tab's control below (tab-config.ts items).
+        each t in nav.tabs key=t.name
+          each e in t.stack key=e.id
+            // UIKit's navigation bar: each route's title, large except the
+            // Last Parked sheet's, whose close button is a native bar button.
+            column navigationKey=`${e.id}` navigationPresentation=(e.name == "map" ? "modal" : "") navigationTitle=(e.name == "status" ? (car.vin == "" ? ((pending(garage) or not account.signedIn or garage.ok) ? " " : "My Vehicle") : vehicleName(car.nickName, car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : ""))))) navigationLargeTitle=(e.name == "map" ? "false" : "true") navigationDetent=(e.name == "map" ? "medium large" : "") navigationTrailing=(e.name == "map" ? "back" : "") navigationTrailingSymbol="xmark" navigationBackButton="minimal" navigationTab=t.name navigationTabTitle=(t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) navigationTabSymbol=(t.name == "status" ? "car" : (t.name == "specs" ? "list.bullet.rectangle" : "gearshape")) navigationTabSelectedSymbol=(t.name == "status" ? "car.fill" : (t.name == "specs" ? "list.bullet.rectangle.fill" : "gearshape.fill")) navigationTabControl=`tab-${t.name}` testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
+              when e.name == "status"
+                StatusScreen(garage=garage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=(pending(garage) or pending(status) or not account.signedIn), notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=page.onLine, utcOffset=time.utcOffset, climateLoading=(pending(climate) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climate)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+              when e.name == "map"
+                MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
+              when e.name == "specs"
+                SpecsScreen(garage=garage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), loading=(pending(garage) or not account.signedIn), online=page.onLine, manage=manageSubscriptions)
+              when e.name == "settings"
+                SettingsScreen(car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+              when e.name == "rename"
+                RenameScreen(name=draftName, saved=vehicleName(car.nickName, car.modelName), saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
+        button id="tab-status" press=selectTab("status") testId="tab-status" aria-label="Status" position="absolute" width=1 height=1 opacity=0
+          text ""
+        button id="tab-specs" press=selectTab("specs") testId="tab-specs" aria-label="Specs" position="absolute" width=1 height=1 opacity=0
+          text ""
+        button id="tab-settings" press=selectTab("settings") testId="tab-settings" aria-label="Settings" position="absolute" width=1 height=1 opacity=0
+          text ""

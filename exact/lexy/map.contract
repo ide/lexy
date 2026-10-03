@@ -1,0 +1,72 @@
+// The Last Parked sheet (src/screens/status-map-screen.ios.tsx): the street
+// the car is on, when it was there, the map, and a way into a maps app.
+use Status from "./model.contract"
+use Small from "./model.contract"
+use relative from "./model.contract"
+use c from "./model.contract"
+use mapsName from "./model.contract"
+use MapsApp from "./model.contract"
+use mapsCount from "./model.contract"
+
+component MapSheet
+  props
+    status: Status
+    name: string
+    address: string
+    clock: number
+    provider: string
+    apps: MapsApp
+    opening: bool
+    error: string
+    open: action
+    pick: action
+    tried: string
+    dismissError: action
+    close: action
+  view
+    column testId="map-sheet" flex=1 min-height=0 background-color="grouped-background"
+      // The sheet's navigation bar (title, close) is UIKit's; its close
+      // button presses this control.
+      button id="back" press=close testId="close-map" aria-label="Close" position="absolute" width=1 height=1 opacity=0
+        text ""
+      box height=56 flex-shrink=0
+      when status.latitude == 0 and status.longitude == 0
+        column flex=1 align-items="center" justify-content="center"
+          text "Location unavailable" font-size=16 font-weight=500 color="secondary-label"
+      else
+        column gap=2 padding-left=16 padding-right=16 padding-top=4 padding-bottom=8 flex-shrink=0
+          text (address != "" ? address : " ") testId="map-address" font-size=17 line-height="22px" font-weight=600
+          text `Location as of ${relative(clock, (status.fetchedMs > 0 ? min(status.occurredMs, status.fetchedMs) : status.occurredMs))}` class=Small color="secondary-label"
+        column flex=1 min-height=0 margin-left=16 margin-right=16 border-radius=18 overflow="hidden" background-color="tertiary-fill"
+          lexy-map testId="map" width="100%" height="100%" latitude=status.latitude longitude=status.longitude zoom=16 pin="true" places="true" interactive="true" marker-title=name
+        column padding-left=16 padding-right=16 padding-top=16 padding-bottom="env(safe-area-inset-bottom)" gap=8 flex-shrink=0
+          // use-maps-provider.ts: a link the app didn't answer is an alert.
+          dialog id="open-failed" closedby="any" open=(error != "")
+            text `Couldn't open ${mapsName(tried)}`
+            text error
+            button press=dismissError commandfor="open-failed" command="close" testId="open-failed-ok"
+              text "OK"
+          // The saved (or only) app opens directly; with several the chooser
+          // asks, listing only the installed ones; with none an alert says so
+          // (src/hooks/use-maps-provider.ts, maps-provider-prompt.ios.tsx).
+          when provider != ""
+            button press=open(provider) disabled=opening testId="open-maps" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+              text `Open in ${mapsName(provider)}` font-size=17 font-weight=600 color="#ffffff"
+          else
+            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=c(mapsCount(apps) == 0 ? "fill" : "blue") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+              text "Open in Maps" font-size=17 font-weight=600 color=(mapsCount(apps) == 0 ? "system-blue" : "#ffffff")
+            column id="maps-chooser" popover="auto" role="alertdialog" aria-label="Open location in" position="absolute"
+              when apps.apple
+                button press=pick("apple") popovertarget="maps-chooser" popovertargetaction="hide" testId="maps-apple"
+                  text "Apple Maps"
+              when apps.google
+                button press=pick("google") popovertarget="maps-chooser" popovertargetaction="hide" testId="maps-google"
+                  text "Google Maps"
+              when apps.waze
+                button press=pick("waze") popovertarget="maps-chooser" popovertargetaction="hide" testId="maps-waze"
+                  text "Waze"
+            dialog id="no-maps" closedby="any"
+              text "No maps app installed"
+              text "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions."
+              button commandfor="no-maps" command="close" testId="no-maps-ok"
+                text "OK"

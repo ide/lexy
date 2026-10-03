@@ -1,0 +1,304 @@
+// What app.ts answers (in the wire's own terms), and the pure functions that
+// turn those answers into what Lexy says. Every rule that lived in Lexy's
+// src/data and src/auth modules as TypeScript is a `fn` here.
+
+// Lexy's loading indicators (the skeletons' pulse, the refreshing spinner)
+// keep one rhythm wherever they show (LLP 1055.002).
+timeline Activity
+
+// The device's page facts (Exact's exactPage): online as navigator.onLine.
+shape Page
+  visibilityState: string
+  onLine: bool
+  canShare: bool
+
+shape Time
+  epochAtZero: number
+  utcOffset: number
+
+// The Keychain's session: whether there is one, and when its access token
+// expires. Asking for it refreshes the token when it is due — the one place
+// that does, so a rotating refresh token is never spent twice at once.
+shape Account
+  signedIn: bool
+  demo: bool
+  expiresAt: number
+  status: number
+  error: string
+
+// One step of Lexus's ForgeRock sign-in tree. `raw` is the node verbatim, for
+// answering; the rest is it decoded, for deciding what the step is.
+shape AuthNode
+  ok: bool
+  status: number
+  error: string
+  raw: string
+  tokenId: string
+  types: list<string>
+  prompts: list<string>
+  // The prompts name a code (lexus-auth.ts's test, matched in the source).
+  asksCode: bool
+  choices: list<string>
+
+shape Done
+  ok: bool
+  status: number
+  error: string
+
+// A vehicle from discovery, plus the remote-capability flags that are on.
+shape Car
+  vin: string
+  brand: string
+  generation: string
+  region: string
+  asiCode: string
+  hwType: string
+  nickName: string
+  modelName: string
+  modelYear: string
+  description: string
+  color: string
+  image: string
+  fuelType: string
+  grade: string
+  modelCode: string
+  capabilities: list<string>
+
+shape Garage
+  ok: bool
+  status: number
+  error: string
+  car: Car
+  cars: list<Car>
+
+// One section of the status snapshot's vehicleStatus tree ("Driver Side" /
+// "Rear Door" / ["Closed", "Locked"]).
+shape Section
+  category: string
+  section: string
+  values: list<string>
+  // When its oldest shown reading was observed (a sparse snapshot leaves
+  // windows and openings at an earlier one).
+  at: number
+
+shape Status
+  ok: bool
+  status: number
+  error: string
+  occurredMs: number
+  // When Lexy asked (React Query's dataUpdatedAt): a kept answer's age.
+  fetchedMs: number
+  fuel: number
+  range: number
+  rangeUnit: string
+  odometer: number
+  odometerUnit: string
+  caution: number
+  latitude: number
+  longitude: number
+  tripA: number
+  tripB: number
+  sections: list<Section>
+  // The oldest doors-and-windows reading older than this snapshot, or 0.
+  closuresStaleMs: number
+
+shape Tire
+  position: string
+  value: number
+  low: bool
+
+shape Tires
+  ok: bool
+  status: string
+  unit: string
+  tires: list<Tire>
+
+shape Engine
+  ok: bool
+  status: string
+  startedMs: number
+  timer: number
+
+shape SpecItem
+  name: string
+  value: string
+
+shape Spec
+  ok: bool
+  items: list<SpecItem>
+
+shape Service
+  bucket: string
+  name: string
+  status: string
+  endMs: number
+
+shape Services
+  ok: bool
+  items: list<Service>
+
+shape CommandResult
+  ok: bool
+  status: number
+  error: string
+  command: string
+  returnCode: string
+  at: number
+
+// Remote-start climate (src/data/climate-settings.ts); `raw` is the wire object
+// a change is written back into.
+shape Climate
+  ok: bool
+  raw: string
+  on: bool
+  temperature: number
+  unit: string
+  min: number
+  max: number
+  step: number
+  front: bool
+  frontEnabled: bool
+  rear: bool
+  rearEnabled: bool
+
+shape Address
+  line: string
+
+// The saved maps app (empty when unset, or when it was deleted) and which of
+// the three the phone has.
+shape MapsApp
+  provider: string
+  apple: bool
+  google: bool
+  waze: bool
+
+shape Opened
+  ok: bool
+  error: string
+
+shape Primed
+  ok: bool
+  status: number
+  error: string
+  at: number
+
+// --- Sign-in (src/auth/lexus-auth.ts classifyAuthenticationNode) ---------------
+
+fn any(values: list<string>, value: string): bool = length(filter(values, v => v == value)) > 0
+
+// Whether the prompts name a code is decided in the source, with Lexy's own
+// case-insensitive test (/\botp\b|one[ -]?time password|verification code/i):
+// Contract has no regex or case folding, and a hand-listed set of casings
+// missed ForgeRock's "One Time Password", so choosing email or SMS read the
+// code step as a password step and failed.
+fn stepOf(tokenId: string, types: list<string>, asksCode: bool): string = tokenId != "" ? "complete" : (any(types, "NameCallback") ? "username" : (asksCode ? "otp" : (any(types, "PasswordCallback") ? "password" : (any(types, "TextInputCallback") ? "otp" : "choice"))))
+
+fn otpCallback(types: list<string>): string = any(types, "TextInputCallback") ? "TextInputCallback" : "PasswordCallback"
+
+// src/auth/sign-in-error.ts, by failure class.
+// load-error.ts classifyFailure / describeFailure: what kind of failure a
+// read was, then a short summary (the "Couldn't refresh" banner) or the
+// cause and what to do (the full-screen error).
+fn failureKind(status: number, error: string): string = status == 401 and includes(error, "expired") ? "session" : (status == 401 or status == 403 ? "permission" : (status >= 500 ? "server" : (status >= 400 ? "client" : (status == 0 and (includes(error, "etwork") or includes(error, "offline") or includes(error, "onnection") or includes(error, "nternet") or includes(error, "timed out") or includes(error, "Couldn’t reach")) ? "network" : "unknown"))))
+fn failureSummary(status: number, error: string): string = failureKind(status, error) == "permission" ? "Lexus denied access (a permission problem)." : (failureKind(status, error) == "server" ? "The Lexus service had a server error." : (failureKind(status, error) == "client" ? "Lexus rejected the request (a client error)." : (failureKind(status, error) == "network" ? "The network connection failed." : (failureKind(status, error) == "session" ? "Your Lexus session expired." : "Something unexpected went wrong."))))
+fn failureAdvice(status: number, error: string): string = failureKind(status, error) == "permission" ? "Lexus denied access to your vehicle's data. Try signing out and back in." : (failureKind(status, error) == "server" ? "The Lexus service ran into a server error. It usually recovers on its own — try again in a bit." : (failureKind(status, error) == "client" ? "The Lexus service rejected the app's request. Try again, and update the app if it keeps happening." : (failureKind(status, error) == "network" ? "The network connection failed. Check your connection and try again." : (failureKind(status, error) == "session" ? "Your Lexus session expired. Please sign in again." : "Something unexpected went wrong. Please try again."))))
+fn failureText(status: number, error: string): string = status == 0 ? "Couldn’t reach Lexus. Check your connection and try again." : (status >= 500 ? "Lexus is having trouble right now. Try again in a moment." : (error != "" ? error : `Something went wrong (${status}).`))
+
+// --- Vehicle --------------------------------------------------------------------
+
+fn vehicleName(nick: string, model: string): string = nick != "" ? nick : (model != "" ? model : "My Vehicle")
+
+fn commandName(c: string): string = c == "door-lock" ? "Lock" : (c == "door-unlock" ? "Unlock" : (c == "engine-start" ? "Remote start" : (c == "engine-stop" ? "Engine stop" : (c == "trunk-unlock" ? "Trunk unlock" : (c == "trunk-lock" ? "Trunk lock" : (c == "sound-horn" ? "Horn" : (c == "buzzer-warning" ? "Buzzer" : (c == "hazard-on" ? "Hazards" : (c == "hazard-off" ? "Hazards off" : (c == "headlight-on" ? "Headlights" : c))))))))))
+
+fn can(capabilities: list<string>, flag: string): bool = any(capabilities, flag)
+
+// src/data/remote-capabilities.ts FLAGS, as names.
+fn capabilityName(flag: string): string = flag == "doorLockUnlockCapable" ? "Lock & unlock" : (flag == "remoteEngineStartStop" ? "Remote start" : (flag == "trunkLockUnlockCapable" ? "Trunk" : (flag == "hornCapable" ? "Horn" : (flag == "buzzerCapable" ? "Buzzer" : (flag == "hazardCapable" ? "Hazards" : (flag == "lightsCapable" ? "Headlights" : (flag == "moonroofCloseCapable" ? "Moonroof" : (flag == "powerWindowsCloseCapable" ? "Windows" : ""))))))))
+
+// src/data/vehicle-mapping.ts FUEL_TYPES and HEAD_UNITS.
+fn fuelName(code: string): string = code == "G" ? "Gasoline" : (code == "H" ? "Hybrid" : (code == "E" ? "Electric" : ((code == "P" or code == "L") ? "Plug-in Hybrid" : (code == "F" ? "Fuel Cell" : (code == "" ? "Gasoline" : code)))))
+fn headUnit(generation: string): string = generation == "21MM" ? "Lexus Multimedia (21MM)" : (generation == "24MM" ? "Lexus Interface (24MM)" : generation)
+
+// --- Closures (src/data/closures.ts, closure-display.ts) -------------------------
+
+fn isCorner(s: Section): bool = s.category != "Other" and s.category != "Trip Details" and (includes(s.section, "Door") or includes(s.section, "Window"))
+fn cornerOf(s: Section): string = `${includes(s.section, "Rear") ? "rear" : "front"}-${includes(s.category, "Passenger") ? "passenger" : "driver"}`
+fn partOf(s: Section): string = includes(s.section, "Door") ? "door" : "window"
+fn closureName(s: Section): string = isCorner(s) ? `${includes(s.section, "Rear") ? "Rear" : "Front"} ${includes(s.category, "Passenger") ? "passenger" : "driver"} ${partOf(s)}` : s.section
+// An opening's name inside a sentence ("Windows and trunk closed").
+fn lowerName(name: string): string = includes(name, "Moon") ? "moonroof" : (includes(name, "Trunk") ? "trunk" : (includes(name, "Hood") ? "hood" : (includes(name, "Hatch") ? "hatch" : name)))
+// src/auth/sign-in-error.ts: what happened, why, and what to do next, by
+// the step that failed (credentials, choice, otp, resend).
+fn retryAction(stage: string): string = stage == "choice" ? "choose your verification method again" : (stage == "otp" ? "tap Verify again" : (stage == "resend" ? "request a code again" : "tap Sign In again"))
+fn rejectedText(stage: string): string = stage == "otp" ? "Lexus didn't accept that verification code. It may be mistyped, expired, or already used, since codes work once and only for a few minutes. Tap Resend Code and enter the fresh code right away." : (stage == "choice" ? "Lexus couldn't send a code by that method. The contact info on your account may be out of date. Try another method, or update your details in the Lexus app." : (stage == "resend" ? "Lexus refused to send another code, usually because too many were requested in a row. Wait a few minutes and request a code again." : "Lexus didn't accept that email and password. One of them is likely mistyped (passwords are case-sensitive), or the account is locked after too many attempts. Check both fields and try again, or reset your password in the Lexus app."))
+fn signInError(stage: string, status: number, error: string): string = status == 0 ? `Couldn't reach Lexus. Your device looks offline, or the connection dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.` : (status == 429 ? `Lexus is limiting sign-in attempts after too many recent tries. This clears on its own. Wait a few minutes, then ${retryAction(stage)}.` : (status >= 500 ? `The Lexus sign-in service hit an error on its end, not something you entered. It usually recovers quickly, so wait a moment, then ${retryAction(stage)}.` : (status >= 400 ? rejectedText(stage) : `Something unexpected stopped sign-in${error != "" ? ` (${error})` : ""}. Try again, and restart Lexy if it keeps happening.`)))
+fn isOpen(s: Section): bool = any(s.values, "Open")
+fn isUnlocked(s: Section): bool = any(s.values, "Unlocked")
+// A section says something when it reports a position, a lock, or both; a
+// sparse snapshot after a drive often reports only the lock.
+fn reports(s: Section): bool = any(s.values, "Open") or any(s.values, "Closed") or any(s.values, "Locked") or any(s.values, "Unlocked")
+
+// --- Formatting -------------------------------------------------------------------
+
+fn round(n: number): number = floor(n + 0.5)
+fn pad3(r: number): string = r < 10 ? `00${r}` : (r < 100 ? `0${r}` : `${r}`)
+// 12,482 — Contract's formatNumber only has "compact".
+fn grouped(n: number): string = round(n) < 1000 ? `${round(n)}` : (round(n) < 1000000 ? `${floor(round(n) / 1000)},${pad3(round(n) % 1000)}` : `${floor(round(n) / 1000000)},${pad3(floor(round(n) / 1000) % 1000)},${pad3(round(n) % 1000)}`)
+// toLocaleString with at most one decimal (odometer-card.tsx): "1,272.1", "980".
+// time.ts absoluteLocalTime: "Thu, Oct 1, 2026 at 9:41 PM" (offset in minutes).
+fn clockTime(ms: number, offset: number): string = `${floor(((ms + offset * 60000) % 86400000) / 3600000) % 12 == 0 ? 12 : floor(((ms + offset * 60000) % 86400000) / 3600000) % 12}:${floor((((ms + offset * 60000) % 3600000) / 60000)) < 10 ? "0" : ""}${floor((((ms + offset * 60000) % 3600000) / 60000))} ${floor(((ms + offset * 60000) % 86400000) / 3600000) < 12 ? "AM" : "PM"}`
+fn exactTime(ms: number, offset: number): string = ms <= 0 ? "Unknown time" : `${formatDate(ms, offset, "medium")} at ${clockTime(ms, offset)}`
+fn tenths(n: number): string = floor(n * 10 + 0.5) % 10 == 0 ? grouped(floor(n * 10 + 0.5) / 10) : `${grouped(floor(floor(n * 10 + 0.5) / 10))}.${floor(n * 10 + 0.5) % 10}`
+fn distanceUnit(wire: string): string = (includes(wire, "K") or includes(wire, "k")) ? "km" : "mi"
+fn ago(now: number, then: number, utcOffset: number): string = then <= 0 ? "never" : (now - then < 60000 ? "just now" : (now - then < 3600000 ? `${floor((now - then) / 60000)} min ago` : (now - then < 86400000 ? `${floor((now - then) / 3600000)} hr ago` : formatDate(then, utcOffset, "medium"))))
+fn tireLabel(position: string): string = position == "flTirePressure" ? "Front left" : (position == "frTirePressure" ? "Front right" : (position == "rlTirePressure" ? "Rear left" : "Rear right"))
+
+// --- Lexy's wording (src/data/time.ts, fuel.ts, remote-capabilities.ts) ----------
+
+fn plural(n: number, unit: string): string = n == 1 ? `1 ${unit}` : `${n} ${unit}s`
+// "just now", "40 seconds ago", "5 minutes ago", "2 hours 5 minutes ago", "3 days 4 hours ago"
+fn relative(now: number, then: number): string = then <= 0 ? "unknown" : (now - then < 5000 ? "just now" : (now - then < 60000 ? `${plural(floor((now - then) / 1000), "second")} ago` : (now - then < 3600000 ? `${plural(floor((now - then) / 60000), "minute")} ago` : (now - then < 86400000 ? (floor((now - then) / 60000) % 60 == 0 ? `${plural(floor((now - then) / 3600000), "hour")} ago` : `${plural(floor((now - then) / 3600000), "hour")} ${plural(floor((now - then) / 60000) % 60, "minute")} ago`) : (floor((now - then) / 3600000) % 24 == 0 ? `${plural(floor((now - then) / 86400000), "day")} ago` : `${plural(floor((now - then) / 86400000), "day")} ${plural(floor((now - then) / 3600000) % 24, "hour")} ago`)))))
+
+// fuel.ts levels: full at 100, high above 25, medium above 15, low above 5.
+fn fuelTint(p: number): string = p >= 100 ? "green" : (p > 25 ? "green" : (p > 15 ? "yellow" : (p > 5 ? "orange" : "red")))
+fn fuelText(p: number): string = p >= 100 ? "green" : (p > 25 ? "label" : (p > 15 ? "yellow" : (p > 5 ? "orange" : "red")))
+
+// One extra control's name for "More controls"' subtitle, in Lexy's order.
+fn extraName(flag: string): string = flag == "trunkLockUnlockCapable" ? "trunk" : (flag == "lightsCapable" ? "headlights" : (flag == "hazardCapable" ? "hazards" : (flag == "hornCapable" ? "horn" : (flag == "buzzerCapable" ? "buzzer" : ""))))
+
+fn mapsCount(m: MapsApp): number = (m.apple ? 1 : 0) + (m.google ? 1 : 0) + (m.waze ? 1 : 0)
+// The app Open in uses without asking: the saved one, else the only one
+// installed (not saved, so installing another asks again); empty to ask.
+fn mapsResolved(m: MapsApp): string = m.provider != "" ? m.provider : (mapsCount(m) == 1 ? (m.apple ? "apple" : (m.google ? "google" : "waze")) : "")
+fn mapsName(provider: string): string = provider == "google" ? "Google Maps" : (provider == "waze" ? "Waze" : (provider == "apple" ? "Apple Maps" : "Maps"))
+
+fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "headlights" ? "Headlights" : (name == "hazards" ? "Hazards" : (name == "horn" ? "Horn" : (name == "buzzer" ? "Buzzer" : (name == "moonroof" ? "Moonroof" : (name == "windows" ? "Windows" : name))))))
+
+// --- Palette: UIKit's semantic colors, light and dark ------------------------------
+
+// The app's short names for the platform's colour roles (exact2 LLP 1078), for
+// a colour chosen at runtime: a literal writes the role itself,
+// `color="secondary-label"`, which each platform resolves to its own colour.
+fn c(name: string): string = (name == "secondary" ? "secondary-label" : (name == "tertiary" ? "tertiary-label" : (name == "grouped" ? "grouped-background" : (name == "card" ? "secondary-grouped-background" : (name == "fill" ? "tertiary-fill" : (name == "subtle" ? "quaternary-fill" : (name == "separator" ? "separator" : (name == "blue" ? "system-blue" : (name == "cyan" ? "system-cyan" : (name == "green" ? "system-green" : (name == "orange" ? "system-orange" : (name == "yellow" ? "system-yellow" : (name == "red" ? "system-red" : "label")))))))))))))
+// The same color at 15%: a symbol's badge or a banner's wash.
+fn wash(name: string): string = name == "green" ? "light-dark(#34c75926, #30d15826)" : (name == "orange" ? "light-dark(#ff950026, #ff9f0a26)" : (name == "blue" ? "light-dark(#007aff26, #0a84ff26)" : "light-dark(#3c3c4326, #ebebf526)"))
+// --- Palette ------------------------------------------------------------------------
+
+style Card
+  background-color="secondary-grouped-background" border-radius=18
+// src/components/ui/section-title.tsx: 14/700, secondaryLabel, tracked, inset 8.
+style CardTitle
+  font-size=14 font-weight=700 color="secondary-label" letter-spacing=0.5 margin-left=8
+style Secondary
+  color="secondary-label"
+style Big
+  font-size=17 font-weight=600
+style Fill
+  background-color="tertiary-fill"
+style Small
+  font-size=14 font-weight=500
+style SmallBold
+  font-size=14 font-weight=700
+// iOS's large navigation title, where a navigation bar would put it.
+style LargeTitle
+  font-size=34 font-weight=700 padding-left=16 padding-right=16 padding-top="calc(env(safe-area-inset-top) + 52px)" padding-bottom=8
