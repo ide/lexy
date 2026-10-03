@@ -177,8 +177,8 @@ devices).
 
 EAS builds the same ad hoc `.ipa` on its macOS workers. The `exact` profile in
 `eas.json` runs the custom build `.eas/build/exact.yml`, and the workflow
-`.eas/workflows/build-exact.yml` runs that profile by hand or on a push to
-`main` that touches `exact/`:
+`.eas/workflows/build-exact.yml` runs that profile, by hand only (no push
+starts a build):
 
 ```sh
 eas workflow:run .eas/workflows/build-exact.yml   # or: eas build -p ios --profile exact
