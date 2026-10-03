@@ -21,6 +21,10 @@ export type Reply = {
 // lock, unlock), and the server to persist a climate setting.
 const ACT_AFTER_MS = 3000;
 const PERSIST_MS = 1000;
+// Every call to the vehicle plane takes a second, as the real one does: an
+// instant answer made "Refreshing…" a flicker. Sign-in stays quick (the demo
+// is one tap).
+const ROUND_TRIP_MS = 1000;
 
 const reply = (status: number, body: unknown, location?: string): Reply => ({
   status,
@@ -35,9 +39,13 @@ type Car = {
   engineSince: number;
   nickName: string;
   pending: { command: string; at: number }[];
+  // When the car last reported (the snapshot's occurrenceDate): a minute and
+  // a half before the first read, then whenever it acts on a command or is
+  // asked to report. A read never moves it, as a real car's doesn't.
+  reportedAt: number;
 };
 
-const car: Car = { locked: true, trunkOpen: false, engineSince: 0, nickName: 'IS 350', pending: [] };
+const car: Car = { locked: true, trunkOpen: false, engineSince: 0, nickName: 'IS 350', pending: [], reportedAt: 0 };
 
 function settle(at: number) {
   const due = car.pending.filter(p => p.at + ACT_AFTER_MS <= at);
@@ -49,6 +57,7 @@ function settle(at: number) {
     if (command === 'trunk-lock') car.trunkOpen = false;
     if (command === 'engine-start') car.engineSince = sent + ACT_AFTER_MS;
     if (command === 'engine-stop') car.engineSince = 0;
+    car.reportedAt = Math.max(car.reportedAt, sent + ACT_AFTER_MS);
   }
 }
 
@@ -128,11 +137,12 @@ const discovery = () => ({
 const v = (value: string) => ({ value, status: 0 });
 function status(at: number) {
   settle(at);
+  if (car.reportedAt === 0) car.reportedAt = at - 90_000;
   const lock = v(car.locked ? 'Locked' : 'Unlocked');
   return {
     payload: {
       status: {
-        occurrenceDate: iso(at - 90_000),
+        occurrenceDate: iso(car.reportedAt),
         cautionOverallCount: 0,
         latitude: 37.334606,
         longitude: -122.009102,
@@ -214,12 +224,17 @@ export async function demoFetch(url: string, init: RequestInit, at: number, wait
   if (path.endsWith('/authenticate')) return authenticate(body);
   if (path.endsWith('/authorize')) return reply(302, '', 'com.toyota.oneapp:/oauth2Callback?code=demo-code');
   if (path.endsWith('/access_token')) return reply(200, tokens);
+  await wait(ROUND_TRIP_MS);
+  at += ROUND_TRIP_MS;
   if (path === '/oneapi/v2/vehicle/guid') return reply(200, discovery());
   if (path === '/v1/remote/route/status') {
     const ready = await untilDue(at, wait);
     return reply(200, status(ready));
   }
-  if (path === '/v1/remote/route/refresh-status') return reply(200, { payload: { returnCode: '000000' } });
+  if (path === '/v1/remote/route/refresh-status') {
+    car.reportedAt = Math.max(car.reportedAt, at);
+    return reply(200, { payload: { returnCode: '000000' } });
+  }
   if (path === '/v1/remote/route/engine-status') {
     at = await untilDue(at, wait);
     settle(at);
@@ -247,4 +262,48 @@ export async function demoFetch(url: string, init: RequestInit, at: number, wait
     return reply(200, { payload: {} });
   }
   return reply(404, { message: `The demo has no ${path}` });
+}
+
+// --- Login Flow preview ----------------------------------------------------------
+
+// Settings → Developer Tools → Login Flow: the real sign-in screen and the
+// real step machine against a mock tree, never the Keychain (the session
+// stays as it is). Each scenario steers where the walk succeeds or fails,
+// as src/auth/preview-lexus-backend.ts does for the Expo app. Stateless: the
+// step rides in the node's authId, as ForgeRock threads its own.
+export const PREVIEW_SCENARIOS = ['success-multi', 'success-single', 'wrong-password', 'wrong-code', 'network-error'] as const;
+export type PreviewScenario = (typeof PREVIEW_SCENARIOS)[number];
+
+const previewNode = (step: keyof typeof nodes) => ({ ...(nodes[step] as Record<string, unknown>), authId: `preview-${step}` });
+
+function previewAuthenticate(posted: Record<string, any>, scenario: PreviewScenario): Reply {
+  switch (Array.isArray(posted.callbacks) ? posted.authId : 'start') {
+    case 'preview-username':
+      return reply(200, previewNode('password'));
+    case 'preview-password':
+      if (scenario === 'wrong-password') return reply(401, { message: 'The email or password you entered is incorrect.' });
+      return reply(200, previewNode(scenario === 'success-single' ? 'otp' : 'choice'));
+    case 'preview-choice':
+      return reply(200, previewNode('otp'));
+    case 'preview-otp':
+      if (scenario === 'wrong-code') return reply(401, { message: 'That verification code is incorrect or has expired.' });
+      return reply(200, { tokenId: 'preview-sso-token' });
+    default:
+      return reply(200, previewNode('username'));
+  }
+}
+
+// A beat of latency, so the busy labels ("Signing In…") show as they would.
+const PREVIEW_LATENCY_MS = 350;
+
+export async function previewFetch(scenario: PreviewScenario, url: string, init: RequestInit, wait: Wait): Promise<Reply> {
+  await wait(PREVIEW_LATENCY_MS);
+  // Before any endpoint answers, so the failure surfaces where an outage's would.
+  if (scenario === 'network-error') throw new TypeError('The Internet connection appears to be offline.');
+  const path = new URL(url).pathname;
+  const body = typeof init.body === 'string' && init.body.startsWith('{') ? JSON.parse(init.body) : {};
+  if (path.endsWith('/authenticate')) return previewAuthenticate(body, scenario);
+  if (path.endsWith('/authorize')) return reply(302, '', 'com.toyota.oneapp:/oauth2Callback?code=preview-code');
+  if (path.endsWith('/access_token')) return reply(200, tokens);
+  return reply(404, { message: `The preview has no ${path}` });
 }

@@ -1,6 +1,6 @@
 // The Settings tab (src/screens/settings-screen.ios.tsx) and the vehicle-name
 // screen it pushes (src/screens/vehicle-name-screen.ios.tsx). The developer
-// tools (Updates, Data State, Login Flow, EAS) are left out.
+// tools' own screens are developer.contract's.
 use Car from "./model.contract"
 use Card from "./model.contract"
 use vehicleName from "./model.contract"
@@ -38,8 +38,30 @@ component SettingsRowFace
         text subtitle font-size=13 font-weight=500 color="secondary-label"
       image "symbol:sf/chevron.right" font-size=14 font-weight=600 tint-color="secondary-label" object-fit="scale-down" width=12 height=20
 
+// The Development tab folded into Settings, at its top (settings-screen.ios.tsx
+// DEV_ITEMS). Every Exact build is an internal one, so they are always shown.
+component DeveloperTools
+  props
+    open: action
+  view
+    column
+      SectionHeader(title="DEVELOPER TOOLS")
+      column class=Card
+        button press=open("/settings/updates") testId="dev-updates" display="flex"
+          SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.")
+        box height=0.5 margin-left=60 background-color="separator"
+        button press=open("/settings/data-state") testId="dev-data-state" display="flex"
+          SettingsRowFace(symbol="cylinder.split.1x2.fill", title="Data State", subtitle="Force loading, offline, error, and empty states.")
+        box height=0.5 margin-left=60 background-color="separator"
+        button press=open("/settings/login") testId="dev-login" display="flex"
+          SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.")
+        box height=0.5 margin-left=60 background-color="separator"
+        button press=open("/settings/eas") testId="dev-eas" display="flex"
+          SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
+
 component SettingsScreen
   props
+    openDevTool: action
     car: Car
     demo: bool
     demoFailing: bool
@@ -55,6 +77,7 @@ component SettingsScreen
     scroll testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding-bottom=64
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
+          DeveloperTools(open=openDevTool)
           column
             SectionHeader(title="MAPS")
             column class=Card

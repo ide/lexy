@@ -33,8 +33,9 @@ written in Contract:
 | `lexy/status.contract` | Status tab: hero, fuel, controls with native confirmations, doors & windows, odometer, tires |
 | `lexy/specs.contract` | Specs tab: spec sheet, remote capabilities, connected services |
 | `lexy/settings.contract` | Settings tab and the vehicle-name screen |
+| `lexy/developer.contract` | Settings → Developer Tools: Updates, Data State, Login Flow, EAS |
 | `lexy/app.ts` | The I/O layer |
-| `lexy/demo.ts` | An in-memory Lexus (identity tree + REST plane) for demo mode |
+| `lexy/demo.ts` | An in-memory Lexus (identity tree + REST plane) for demo mode, and the Login Flow preview's mock tree |
 | `lexy/modules/apple/Lexy.swift` | The native module: SF Symbols, the map, geocoding, haptics |
 
 ## Running it
@@ -102,8 +103,15 @@ walks the real sign-in flow:
 - The password `wrong` is refused.
 - Any code except `000000` is accepted.
 
-In demo mode the car acts on a command about 4 seconds after accepting it, so
-"Unlocking…" resolves the way it does against the real API.
+In demo mode every call to the vehicle plane takes a second, and the car acts
+on a command about 3 seconds after accepting it and only then reports (its
+snapshot's `occurrenceDate` moves), so "Refreshing" and "Unlocking…" behave
+the way they do against the real API.
+
+A lock or unlock sent while the other is still unconfirmed (Lock, then Unlock
+before the car reports) keeps its pending label until a car report newer than
+the one held at that moment agrees: the reading the app holds predates both
+commands, so its agreement confirms nothing.
 
 To drive it headlessly, use Exact's agent driver from the exact2 checkout:
 
@@ -179,6 +187,7 @@ devices).
 | Icons (`icon-registry.ts`) | `image "symbol:apple:…"` with the same SF Symbol names, drawn by Exact's host |
 | Haptics (`utils/haptics.ts`) | `native.call({op: "haptic"})` after a command |
 | Last Parked map | An `https://maps.apple.com/?ll=…` link |
+| Developer Tools (`settings-screen.ios.tsx` DEV_ITEMS) | `developer.contract`, at the top of Settings in every build (all Exact builds are internal). **Updates** reads `exactDelivery()` and runs `deliveryCheck`/`deliveryActivate` in place of expo-updates. **Data State** rewrites the garage the Status and Specs tabs are shown (`debugGarage` in app.ts) and their online/loading flags. **Login Flow** runs the real `LockScreen` and step machine with a scenario threaded through the auth sources, so `app.ts` answers from `demo.ts`'s preview tree and keeps nothing in the Keychain. **EAS** links to the project's dashboard pages. |
 
 **Not ported:**
 
@@ -186,9 +195,7 @@ devices).
 - the in-app map and reverse-geocoded address
 - climate settings
 - the maps-provider picker
-- EAS update diagnostics
 - the persisted closure store that merges sparse snapshots across reads
-- the data-state debug overrides
 
 Most of these need native capability that Exact doesn't expose without a Swift
 module (see below).

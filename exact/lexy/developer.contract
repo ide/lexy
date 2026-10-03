@@ -1,0 +1,243 @@
+// Settings → Developer Tools, as the Expo app has them
+// (src/screens/settings-screen.ios.tsx DEV_ITEMS): this build's updates, the
+// data states forced on demand, the sign-in flow walked against a mock, and
+// the project on EAS. The rows that open them are settings.contract's.
+use Card from "./model.contract"
+use MapsApp from "./model.contract"
+use mapsName from "./model.contract"
+use SectionHeader from "./settings.contract"
+use SectionFooter from "./settings.contract"
+use LockScreen from "./sign-in.contract"
+use exactVersion from "./exact-version.contract"
+
+// What the binary knows about its own delivery (Exact LLP 1030 D7), answered
+// by the runner from the update store.
+shape Delivery
+  stream: string
+  seq: number
+  embeddedSeq: number
+  staged: bool
+  sunset: string
+  interpreted: list<string>
+  compatibilityId: string
+
+// data-state.ts DATA_STATE_OPTIONS, in display order.
+fn dataStateTitle(kind: string): string = kind == "live" ? "Live" : (kind == "loading" ? "Loading skeleton" : (kind == "offline-cached" ? "Offline — cached data" : (kind == "offline-empty" ? "Offline — no cache" : (kind == "error-cached" ? "Fetch error — cached data" : (kind == "error-empty" ? "Fetch error — no cache" : "No vehicle on account")))))
+fn dataStateDetail(kind: string): string = kind == "live" ? "Use the real Lexus data — no override." : (kind == "loading" ? "Hold the first-load skeleton." : (kind == "offline-cached" ? "Show the last-seen dashboard behind the offline banner." : (kind == "offline-empty" ? "Offline before anything was ever loaded." : (kind == "error-cached" ? "Show the last-seen dashboard behind the refresh-failed banner." : (kind == "error-empty" ? "Force the full-screen “Vehicle data unavailable” error." : "Force the “No vehicle found” empty state.")))))
+
+// preview-lexus-backend.ts PREVIEW_SCENARIOS.
+fn scenarioTitle(id: string): string = id == "success-multi" ? "Success · Email or SMS" : (id == "success-single" ? "Success · Single Method" : (id == "wrong-password" ? "Error · Wrong Password" : (id == "wrong-code" ? "Error · Invalid Code" : "Error · Network Failure")))
+fn scenarioDetail(id: string): string = id == "success-multi" ? "Two verification methods offered — the full happy path." : (id == "success-single" ? "One method only — the flow skips the picker straight to the code." : (id == "wrong-password" ? "Lexus rejects the credentials." : (id == "wrong-code" ? "Lexus rejects the verification code." : "Requests never reach Lexus.")))
+fn scenarioSymbol(id: string): string = id == "success-multi" ? "checkmark.seal.fill" : (id == "success-single" ? "checkmark.seal" : (id == "wrong-password" ? "xmark.octagon.fill" : (id == "wrong-code" ? "xmark.octagon" : "wifi.slash")))
+
+// A label and its value on one grouped row; the value can be copied.
+component FactRow
+  props
+    label: string
+    value: string
+    id: string
+  view
+    row padding=16 justify-content="space-between" align-items="center" gap=16
+      text label font-size=17 flex-shrink=0
+      text value testId=id font-size=17 color="secondary-label" flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis" user-select="text"
+
+component Divider
+  view
+    box height=0.5 margin-left=16 background-color="separator"
+
+// A choice among several: the title over what it does, checked when chosen.
+component ChoiceRow
+  props
+    title: string
+    detail: string
+    chosen: bool
+    press: action
+    id: string
+  view
+    button press=press testId=id aria-selected=chosen display="flex"
+      row gap=12 padding=16 align-items="center" width="100%" box-sizing="border-box"
+        column flex=1 min-width=0 gap=2
+          text title font-size=17 color="label"
+          text detail font-size=13 color="secondary-label"
+        box width=20 height=20
+          when chosen
+            image "symbol:sf/checkmark" font-size=17 font-weight=600 tint-color="system-blue" object-fit="scale-down" width=20 height=20
+
+// update-diagnostics-screen.ios.tsx, for Exact's update store: what is
+// running, what it shipped with, and whether a newer bundle waits.
+component UpdatesScreen
+  props
+    delivery: Delivery
+    version: string
+    checked: bool
+    check: action
+    apply: action
+  view
+    scroll testId="updates-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+      column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
+        column
+          SectionHeader(title="RUNNING")
+          column class=Card
+            FactRow(label="Version", value=version, id="updates-version")
+            Divider()
+            FactRow(label="Source", value=(delivery.seq > delivery.embeddedSeq ? "Downloaded update" : "Embedded in the build"), id="updates-source")
+            Divider()
+            FactRow(label="Sequence", value=`${delivery.seq}`, id="updates-seq")
+            Divider()
+            FactRow(label="Embedded sequence", value=`${delivery.embeddedSeq}`, id="updates-embedded-seq")
+          SectionFooter(words=`Built with Exact ${exactVersion()}.`)
+        column
+          SectionHeader(title="STREAM")
+          column class=Card
+            FactRow(label="Stream", value=delivery.stream, id="updates-stream")
+            Divider()
+            FactRow(label="Compatibility", value=(delivery.compatibilityId != "" ? delivery.compatibilityId : "—"), id="updates-compat")
+            Divider()
+            FactRow(label="Interpreted", value=(length(delivery.interpreted) == 0 ? "None" : join(delivery.interpreted, ", ")), id="updates-interpreted")
+          SectionFooter(words="A binary takes updates only from the stream its compatibility id names: a bundle built against other native code never reaches it.")
+        when delivery.sunset != ""
+          column gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" testId="updates-sunset"
+            text "This build is being retired" font-size=15 font-weight=600 color="system-orange"
+            text delivery.sunset font-size=13 color="secondary-label"
+        column
+          SectionHeader(title="ACTIONS")
+          column class=Card
+            button press=check testId="updates-check" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 tint-color="system-blue" object-fit="scale-down" width=24 height=22
+              text "Check for Update" font-size=17 color="system-blue"
+            Divider()
+            button press=apply disabled=(not delivery.staged) testId="updates-apply" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+              image "symbol:sf/arrow.down.circle.fill" font-size=17 tint-color=(delivery.staged ? "system-green" : "tertiary-label") object-fit="scale-down" width=24 height=22
+              text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "system-green" : "tertiary-label")
+          SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
+
+// data-state-screen.ios.tsx: one override at a time, Live by default and
+// after every launch (it lives in memory only).
+component DataStateScreen
+  props
+    current: string
+    choose: action
+    apps: MapsApp
+    provider: string
+    clearMaps: action
+  view
+    scroll testId="data-state-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+      column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
+        column
+          SectionHeader(title="DATA STATE")
+          column class=Card
+            ChoiceRow(title=dataStateTitle("live"), detail=dataStateDetail("live"), chosen=(current == "live"), press=choose("live"), id="data-state-live")
+            Divider()
+            ChoiceRow(title=dataStateTitle("loading"), detail=dataStateDetail("loading"), chosen=(current == "loading"), press=choose("loading"), id="data-state-loading")
+            Divider()
+            ChoiceRow(title=dataStateTitle("offline-cached"), detail=dataStateDetail("offline-cached"), chosen=(current == "offline-cached"), press=choose("offline-cached"), id="data-state-offline-cached")
+            Divider()
+            ChoiceRow(title=dataStateTitle("offline-empty"), detail=dataStateDetail("offline-empty"), chosen=(current == "offline-empty"), press=choose("offline-empty"), id="data-state-offline-empty")
+            Divider()
+            ChoiceRow(title=dataStateTitle("error-cached"), detail=dataStateDetail("error-cached"), chosen=(current == "error-cached"), press=choose("error-cached"), id="data-state-error-cached")
+            Divider()
+            ChoiceRow(title=dataStateTitle("error-empty"), detail=dataStateDetail("error-empty"), chosen=(current == "error-empty"), press=choose("error-empty"), id="data-state-error-empty")
+            Divider()
+            ChoiceRow(title=dataStateTitle("no-vehicle"), detail=dataStateDetail("no-vehicle"), chosen=(current == "no-vehicle"), press=choose("no-vehicle"), id="data-state-no-vehicle")
+          SectionFooter(words="The override applies to the Status and Specs tabs, and resets to Live when the app relaunches.")
+        column
+          SectionHeader(title="PERSISTED STATE")
+          column class=Card
+            button press=clearMaps disabled=(provider == "") testId="clear-maps" -exact-apple-button-style="plain" padding=16 display="flex"
+              column gap=2 align-items="flex-start"
+                text "Clear Maps provider" font-size=17 color=(provider == "" ? "tertiary-label" : "system-red")
+                text (provider == "" ? "No saved provider" : `Currently ${mapsName(provider)}`) font-size=13 color="secondary-label"
+          SectionFooter(words="Forgetting it makes the next map hand-off pick the only app installed, or ask again.")
+
+// login-preview-screen.ios.tsx: the real sign-in screen and step machine
+// against a mock tree; the session in the Keychain is never touched.
+component LoginPreviewScreen
+  props
+    scenario: string
+    done: bool
+    chooseScenario: action
+    runAgain: action
+    step: string
+    email: string
+    password: string
+    code: string
+    error: string
+    busy: bool
+    resending: bool
+    info: string
+    choices: list<string>
+    prompt: string
+    method: string
+    setEmail: action
+    setPassword: action
+    setCode: action
+    signIn: action
+    choose: action
+    verify: action
+    resend: action
+    differentMethod: action
+    getLexusApp: action
+    nextField: action
+  view
+    column flex=1 min-height=0 width="100%"
+      // The navigation bar's wrench presses this, and the chooser opens:
+      // which run the next sign-in plays.
+      button id="scenario" popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" position="absolute" top=0 right=24 width=1 height=1 opacity=0
+        text ""
+      column position="absolute"
+        column id="scenario-chooser" popover="auto" role="alertdialog" aria-label="Preview Scenario" position="absolute"
+          button press=chooseScenario("success-multi") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-multi"
+            text scenarioTitle("success-multi")
+          button press=chooseScenario("success-single") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-single"
+            text scenarioTitle("success-single")
+          button press=chooseScenario("wrong-password") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-wrong-password"
+            text scenarioTitle("wrong-password")
+          button press=chooseScenario("wrong-code") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-wrong-code"
+            text scenarioTitle("wrong-code")
+          button press=chooseScenario("network-error") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-network-error"
+            text scenarioTitle("network-error")
+      when not done
+        column flex=1 min-height=0
+          LockScreen(step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+      when done
+        column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
+          image "symbol:sf/checkmark.seal.fill" font-size=56 tint-color="system-green"
+          text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
+          text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="secondary-label" text-align="center"
+          text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="tertiary-label" text-align="center"
+          button press=runAgain testId="run-again" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
+            text "Run Again" font-size=17 font-weight=600 color="#ffffff"
+
+// eas-screen.ios.tsx: the project's pages on expo.dev, in Safari, where the
+// dashboard's session lives.
+component EasScreen
+  props
+    open: action
+  view
+    scroll testId="eas-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+      column box-sizing="border-box" padding=16 padding-bottom=64
+        SectionHeader(title="DASHBOARD")
+        column class=Card
+          button press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
+            EasRow(symbol="house.fill", title="Project Home", subtitle="The project overview and its recent activity.")
+          box height=0.5 margin-left=60 background-color="separator"
+          button press=open("https://expo.dev/accounts/ide/projects/lexy/workflows") testId="eas-workflows" display="flex"
+            EasRow(symbol="flowchart.fill", title="Workflows", subtitle="The runs that build this Exact app.")
+          box height=0.5 margin-left=60 background-color="separator"
+          button press=open("https://expo.dev/accounts/ide/projects/lexy/builds") testId="eas-builds" display="flex"
+            EasRow(symbol="hammer.fill", title="Builds", subtitle="Native builds, their logs, and install links.")
+        SectionFooter(words="Opens expo.dev in Safari for @ide/lexy. You need to be signed in on the dashboard to see anything.")
+
+// A row that leaves the app: an external-link glyph, not a push chevron.
+component EasRow
+  props
+    symbol: string
+    title: string
+    subtitle: string
+  view
+    row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
+      image `symbol:sf/${symbol}` font-size=22 tint-color="system-cyan" object-fit="scale-down" width=28 height=26
+      column flex=1 min-width=0 gap=2
+        text title font-size=17 font-weight=600 color="label"
+        text subtitle font-size=13 font-weight=500 color="secondary-label"
+      image "symbol:sf/arrow.up.right.square" font-size=15 tint-color="secondary-label" object-fit="scale-down" width=18 height=20

@@ -12,6 +12,33 @@ fn readable(p: string): bool = p != "" and includes(p, " ")
 fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "We sent a verification code to your email address." : (channel(method) == "sms" ? "We texted a verification code to your phone." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
 fn choiceSymbol(method: string): string = channel(method) == "email" ? "envelope" : (channel(method) == "sms" ? "message" : "shield.lefthalf.filled")
 
+// The Lexy mark: the app icon's tach ring, its red line, and the L, without
+// the icon's black tile (assets/icon-composer/Lexy.icon). Drawn here rather
+// than shipped as an image so it is on the first frame, and in roles so it
+// follows the appearance: the metal is the label colour fading down the
+// ring, as the icon's metal fades into its black, and the redline is the
+// system red.
+component LexyMark
+  props
+    size: number
+  view
+    svg testId="lexy-mark" aria-label="Lexy" role="img" width=size height=size viewBox="148 163 744 744"
+      defs
+        linearGradient id="mark-metal" gradientUnits="userSpaceOnUse" x1=0 y1=163 x2=0 y2=906
+          stop offset=0 stop-color="label" stop-opacity=0.9
+          stop offset=0.55 stop-color="label" stop-opacity=0.55
+          stop offset=0.95 stop-color="label" stop-opacity=0.2
+        linearGradient id="mark-redline" gradientUnits="userSpaceOnUse" x1=878 y1=540 x2=750 y2=809
+          stop offset=0 stop-color="system-red" stop-opacity=0.7
+          stop offset=1 stop-color="system-red" stop-opacity=0.12
+        linearGradient id="mark-glyph" gradientUnits="userSpaceOnUse" x1=0 y1=364 x2=0 y2=690
+          stop offset=0 stop-color="label"
+          stop offset=1 stop-color="label" stop-opacity=0.78
+      path d="M 436.58 896.58 A 371.30 371.30 0 1 1 705.19 212.92 L 692.33 235.29 A 345.50 345.50 0 1 0 442.38 871.44 Z" fill="url(#mark-metal)"
+      path d="M 706.31 213.57 A 371.30 371.30 0 0 1 891.39 531.56 L 865.59 531.78 A 345.50 345.50 0 0 0 693.37 235.89 Z" fill="system-red"
+      path d="M 891.36 539.98 A 371.30 371.30 0 0 1 758.77 819.23 L 742.18 799.47 A 345.50 345.50 0 0 0 865.57 539.62 Z" fill="url(#mark-redline)"
+      path d="M 505.19 370.66 A 14.00 14.00 0 0 1 517.45 363.99 L 592.07 365.79 A 5.00 5.00 0 0 1 596.18 373.46 L 440.06 620.08 A 12.00 12.00 0 0 0 450.20 638.50 L 742.55 638.50 A 4.00 4.00 0 0 1 745.22 645.48 L 697.02 688.72 A 5.00 5.00 0 0 1 693.69 690.00 L 394.90 690.00 A 48.00 48.00 0 0 1 354.00 616.88 Z" fill="url(#mark-glyph)"
+
 // A step's controls arrive with sign-in-screen.ios.tsx's spring (0.35 s).
 keyframes stepIn
   from opacity=0 translate="0px 8px"
@@ -76,12 +103,25 @@ component LockScreen
     tryDemo: action
     getLexusApp: action
     nextField: action
+    // Settings → Developer Tools → Login Flow: under a navigation bar, and
+    // with no way into the demo (it would sign the real app in).
+    preview: bool
+    // The preview's scenario, named above the form; "" shows nothing.
+    banner: string
+    bannerSymbol: string
   view
     scroll testId="sign-in" keyboardDismissMode="interactive" overflow-x="hidden" width="100%" height="100%"
-      column box-sizing="border-box" padding-top="calc(env(safe-area-inset-top) + 64px)" padding-left=16 padding-right=16 padding-bottom="calc(env(safe-area-inset-bottom) + 16px)" gap=24
+      column box-sizing="border-box" padding-top=(preview ? "24px" : "calc(env(safe-area-inset-top) + 64px)") padding-left=16 padding-right=16 padding-bottom="calc(env(safe-area-inset-bottom) + 16px)" gap=24
+        when banner != ""
+          row testId="preview-banner" align-self="center" gap=6 padding-left=12 padding-right=12 height=30 border-radius=15 background-color="secondary-grouped-background" align-items="center"
+            image `symbol:sf/${bannerSymbol}` font-size=13 tint-color="system-blue"
+            text `Preview · ${banner}` font-size=13 font-weight=600 color="secondary-label"
         // Hero: the step's symbol, title and what to do.
         column align-items="center" gap=8
-          image `symbol:sf/${heroSymbol(step, method)}` font-size=44 tint-color="system-blue" margin-bottom=4
+          when step == "credentials"
+            LexyMark(size=76)
+          when step != "credentials"
+            image `symbol:sf/${heroSymbol(step, method)}` font-size=44 tint-color="system-blue" margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" font-size=28 font-weight=700 text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="secondary-label" text-align="center" padding-left=8 padding-right=8
         // The first step is there on the first frame, as a native form is;
@@ -126,6 +166,6 @@ component LockScreen
       // covers it, and last, so it is above the form. Shown on the first step
       // whatever the stored demo flag says: a flag left in the Keychain (it
       // outlives a reinstall) hid it on a signed-out launch.
-      when step == "credentials"
+      when step == "credentials" and not preview
         button press=tryDemo disabled=busy testId="try-demo" -exact-apple-button-style="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
           text "Try Demo" font-size=17 color="system-blue"

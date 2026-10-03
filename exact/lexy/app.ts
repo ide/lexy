@@ -16,7 +16,7 @@
 // Demo mode swaps the transport for an in-memory Lexus (demo.ts), so the
 // whole app — sign-in included — runs without an account.
 import type { Answer, NativeModule, Result, Sources, Storage, Store } from './app.contract.d.ts';
-import { demoFetch, demoServer, type Reply } from './demo';
+import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario, type Reply } from './demo';
 
 export const appId = 'app.ide.lexy.exact';
 export const grants = [
@@ -121,12 +121,19 @@ async function identityFetch(url: string, init: RequestInit): Promise<Reply> {
   return response;
 }
 
+const wait = async (ms: number) => { if (native?.available) await native.later({ op: 'wait', ms }); };
+
 function transport(store: Store, at: number): Request {
-  if (store.get('lexy.demo') === '1') {
-    const wait = async (ms: number) => { if (native?.available) await native.later({ op: 'wait', ms }); };
-    return (url, init) => demoFetch(url, init, at, wait);
-  }
+  if (store.get('lexy.demo') === '1') return (url, init) => demoFetch(url, init, at, wait);
   return (url, init) => (url.startsWith(IDENTITY + '/') ? identityFetch(url, init) : fetch(url, init));
+}
+
+// Sign-in's transport: the Login Flow preview's scenario when one is named
+// (Settings → Developer Tools), else the app's own.
+function signInTransport(store: Store, preview: string, at: number): Request {
+  const scenario = PREVIEW_SCENARIOS.find(s => s === preview);
+  if (scenario) return (url, init) => previewFetch(scenario as PreviewScenario, url, init, wait);
+  return transport(store, at);
 }
 
 // src/utils/haptics.ts's kinds.
@@ -345,9 +352,9 @@ const AUTH_HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function postNode(store: Store, body: string): Promise<Result<'authStart'>> {
+async function postNode(store: Store, preview: string, body: string): Promise<Result<'authStart'>> {
   try {
-    const response = await transport(store, 0)(AUTHENTICATE_URL, { method: 'POST', headers: AUTH_HEADERS, body });
+    const response = await signInTransport(store, preview, 0)(AUTHENTICATE_URL, { method: 'POST', headers: AUTH_HEADERS, body });
     return decodeNode(await readJson(response));
   } catch (e) {
     return { ...failure(e), raw: '', tokenId: '', types: [], prompts: [], asksCode: false, choices: [] };
@@ -369,9 +376,9 @@ function answered(raw: string, type: string, value: string | number): string {
 const b64url = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-async function finishSignIn(store: Store, tokenId: string, at: number): Promise<Result<'authFinish'>> {
+async function finishSignIn(store: Store, preview: string, tokenId: string, at: number): Promise<Result<'authFinish'>> {
   try {
-    const request = transport(store, at);
+    const request = signInTransport(store, preview, at);
     const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
     const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
     const authorize = await request(AUTHORIZE_URL, {
@@ -411,7 +418,10 @@ async function finishSignIn(store: Store, tokenId: string, at: number): Promise<
         redirect_uri: REDIRECT_URI,
       }).toString(),
     });
-    store.set('lexy.session', JSON.stringify(tokens(await readJson(token), undefined, at)));
+    const session = tokens(await readJson(token), undefined, at);
+    // A preview proves the exchange and keeps nothing: the session in the
+    // Keychain is the user's.
+    if (!preview) store.set('lexy.session', JSON.stringify(session));
     return { ok: true, status: 200, error: '' };
   } catch (e) {
     return failure(e);
@@ -889,13 +899,32 @@ const sources: Sources = {
     await forgetCached();
     return { ok: true, status: 200, error: '' };
   },
-  authStart: (_args, store) => {
+  authStart: ([preview], store) => {
     jar.clear();
-    return postNode(store, '{}');
+    return postNode(store, preview, '{}');
   },
-  authAnswer: ([raw, type, value], store) => postNode(store, answered(raw, type, value)),
-  authChoose: ([raw, index], store) => postNode(store, answered(raw, 'ChoiceCallback', index)),
-  authFinish: ([tokenId, at], store) => finishSignIn(store, tokenId, at),
+  authAnswer: ([preview, raw, type, value], store) => postNode(store, preview, answered(raw, type, value)),
+  authChoose: ([preview, raw, index], store) => postNode(store, preview, answered(raw, 'ChoiceCallback', index)),
+  authFinish: ([preview, tokenId, at], store) => finishSignIn(store, preview, tokenId, at),
+  // Settings → Developer Tools → Data State: the garage the screens are
+  // shown, rewritten in only the fields they branch on, so each forced state
+  // runs the code path a real one does (src/debug/data-state.ts).
+  debugGarage: ([kind, real]) => {
+    const blank = { ...real, car: noCar, cars: [] };
+    switch (kind) {
+      case 'error-cached':
+        return { ...real, ok: false, status: 503, error: 'Service Unavailable' };
+      case 'loading':
+      case 'offline-empty':
+        return blank;
+      case 'error-empty':
+        return { ...blank, ok: false, status: 503, error: 'Service Unavailable' };
+      case 'no-vehicle':
+        return { ...blank, ok: true, status: 200, error: '' };
+      default:
+        return real;
+    }
+  },
   garage: ([_signedIn, _expiresAt, _rev, at], store) => garage(store, at),
   status: ([car, _rev, at], store) => status(store, car, at),
   tires: ([car, _rev, at], store) => tires(store, car, at),
