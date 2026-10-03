@@ -157,6 +157,13 @@ component Lexy
   state defrostRear = false
   state defrostHeld = false
   state climateTouched = false
+  // What the climate card shows: a change still being saved, else the car's.
+  // The controls stay live while a save is out, so the next change is built
+  // from these, not from a reading the first change is about to replace.
+  derive shownClimateOn = climateTouched ? climateWanted : climate.on
+  derive shownFront = defrostHeld ? defrostFront : climate.frontEnabled
+  derive shownRear = defrostHeld ? defrostRear : climate.rearEnabled
+  derive shownTemperature = tempHeld ? tempDraft : climate.temperature
   // The setpoint under the finger (climate-card.ios.tsx draftTemperature):
   // shown while dragging and until the car's reading follows; the car is
   // told once, on release, and only of a different value.
@@ -224,6 +231,7 @@ component Lexy
   derive shownGarage = dataState == "live" ? garage : forcedGarage
   derive shownOnline = (dataState == "offline-cached" or dataState == "offline-empty") ? false : (dataState == "live" or dataState == "loading" ? page.onLine : true)
   derive forcedLoading = dataState == "loading" or dataState == "offline-empty"
+  derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
   // Login Flow: the scenario the sign-in machine plays against a mock tree
   // while its screen is open ("" is the real sign-in), and whether it ended
   // signed in.
@@ -582,14 +590,19 @@ component Lexy
 
   action dismissCommandError
     commandError = ""
+  // The car answering is felt either way; a refused change shows the car's
+  // own settings again at once (the re-read brings them), and a saved one
+  // holds until the re-read agrees (the tick lets go).
   action afterClimateSave
     match climateSaved
       case some(r)
         climateError = (r.ok ? "" : "The vehicle API rejected the change.")
-        // A refused change shows the car's defrost again at once; a saved
-        // one holds until the re-read agrees (the tick lets go).
+        send felt = feel(r.ok ? "success" : "error")
         if not r.ok
           defrostHeld = false
+          climateTouched = false
+          tempHeld = false
+          tempSaving = false
       case none
         climateError = ""
         defrostHeld = false
@@ -660,7 +673,7 @@ component Lexy
   action setClimateOn(on: bool)
     climateWanted = on
     climateTouched = true
-    send climateSaved = setClimate(car, climate.raw, on, climate.temperature, climate.frontEnabled, climate.rearEnabled, time.epochAtZero + now())
+    send climateSaved = setClimate(car, climate.raw, on, shownTemperature, shownFront, shownRear, time.epochAtZero + now())
   action dragTemperature(value: number)
     tempDraft = value
     tempHeld = true
@@ -672,14 +685,14 @@ component Lexy
     else
       tempHeld = true
       tempSaving = true
-      send climateSaved = setClimate(car, climate.raw, climate.on, value, climate.frontEnabled, climate.rearEnabled, time.epochAtZero + now())
+      send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + now())
   action toggleDefrost(which: string)
     send felt = feel("selection")
-    defrostFront = (which == "front" ? not climate.frontEnabled : climate.frontEnabled)
-    defrostRear = (which == "rear" ? not climate.rearEnabled : climate.rearEnabled)
+    defrostFront = (which == "front" ? not shownFront : shownFront)
+    defrostRear = (which == "rear" ? not shownRear : shownRear)
     defrostHeld = true
     // The values, not the states just set: an action reads state as it began.
-    send climateSaved = setClimate(car, climate.raw, climate.on, climate.temperature, (which == "front" ? not climate.frontEnabled : climate.frontEnabled), (which == "rear" ? not climate.rearEnabled : climate.rearEnabled), time.epochAtZero + now())
+    send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + now())
 
   // Developer Tools
   action openDevTool(url: string)
@@ -792,9 +805,9 @@ component Lexy
           each e in t.stack key=e.id
             // UIKit's navigation bar: each route's title, large except the
             // Last Parked sheet's, whose close button is a native bar button.
-            column navigationKey=`${e.id}` navigationPresentation=(e.name == "map" ? "modal" : "") navigationTitle=(e.name == "status" ? (shownGarage.car.vin == "" ? ((pending(garage) or not account.signedIn or shownGarage.ok) ? " " : "My Vehicle") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : ""))))))))) navigationLargeTitle=(e.name == "map" or e.name == "login" ? "false" : "true") navigationDetent=(e.name == "map" ? "medium large" : "") navigationTrailing=(e.name == "map" ? "back" : (e.name == "login" ? "scenario" : "")) navigationTrailingSymbol=(e.name == "login" ? "wrench.and.screwdriver" : "xmark") navigationBackButton="minimal" navigationTab=t.name navigationTabTitle=(t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) navigationTabSymbol=(t.name == "status" ? "car" : (t.name == "specs" ? "list.bullet.rectangle" : "gearshape")) navigationTabSelectedSymbol=(t.name == "status" ? "car.fill" : (t.name == "specs" ? "list.bullet.rectangle.fill" : "gearshape.fill")) navigationTabControl=`tab-${t.name}` testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
+            column navigationKey=`${e.id}` navigationPresentation=(e.name == "map" ? "modal" : "") navigationTitle=(e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Lexus") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : ""))))))))) navigationLargeTitle=(e.name == "map" or e.name == "login" ? "false" : "true") navigationDetent=(e.name == "map" ? "medium large" : "") navigationTrailing=(e.name == "map" ? "back" : (e.name == "login" ? "scenario" : "")) navigationTrailingSymbol=(e.name == "login" ? "wrench.and.screwdriver" : "xmark") navigationBackButton="minimal" navigationTab=t.name navigationTabTitle=(t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) navigationTabSymbol=(t.name == "status" ? "car" : (t.name == "specs" ? "list.bullet.rectangle" : "gearshape")) navigationTabSelectedSymbol=(t.name == "status" ? "car.fill" : (t.name == "specs" ? "list.bullet.rectangle.fill" : "gearshape.fill")) navigationTabControl=`tab-${t.name}` testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
               when e.name == "status"
-                StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=(dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading), notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climate) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climate)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climate) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climate)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
               when e.name == "map"
                 MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
               when e.name == "specs"

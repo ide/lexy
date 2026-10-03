@@ -18,9 +18,8 @@ export type Reply = {
 };
 
 // How long the demo car takes to act on an accepted command (start, stop,
-// lock, unlock), and the server to persist a climate setting.
+// lock, unlock). A climate setting persists within its round trip.
 const ACT_AFTER_MS = 3000;
-const PERSIST_MS = 1000;
 // Every call to the vehicle plane takes a second, as the real one does: an
 // instant answer made "Refreshing…" a flicker. Sign-in stays quick (the demo
 // is one tap).
@@ -245,7 +244,6 @@ export async function demoFetch(url: string, init: RequestInit, at: number, wait
   if (path === '/oneapi/v3/vehicle-subscriptions') return reply(200, subscriptions);
   if (path === '/v1/remote/route/climate-settings') {
     if (init.method === 'PUT') {
-      await wait(PERSIST_MS);
       if (demoServer.failing) return failure();
       Object.assign(climate, body);
     }

@@ -113,11 +113,13 @@ component VehicleState
     press: action
     id: string
   view
-    column align-items="center" gap=16 padding-top=64 padding-left=24 padding-right=24 testId=id
+    // Centred on the screen, over its scroll view (which still pulls to
+    // refresh): the same place on every tab, whatever sits above it.
+    column position="absolute" top=0 right=0 bottom=0 left=0 justify-content="center" align-items="center" gap=16 padding-left=24 padding-right=24 pointer-events="none" testId=id
       image `symbol:sf/${symbol}` font-size=44 tint-color="secondary-label"
       text title font-size=34 font-weight=700 text-align="center"
       text message font-size=17 color="secondary-label" text-align="center"
-      button press=press testId=`${id}-retry` -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
+      button press=press testId=`${id}-retry` pointer-events="auto" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
         text label font-size=17 color="#ffffff"
 
 // status-banner.tsx's amber banner: a symbol, a bold line and a lighter one.
@@ -378,12 +380,12 @@ component StatusScreen
                         text (enginePending ? (engineTarget == "running" ? "Starting" : "Stopping") : (engineRunning ? "Started" : "Stopped")) class=SmallBold color=(engineRunning ? "system-green" : "secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
                 // vehicle-controls.ios.tsx: Lock, Unlock and Start/Stop, always.
                 row gap=8
-                  ControlButton(command="door-lock", label="Lock", symbol="lock.fill", tint="system-green", title="Lock your vehicle?", message="This locks all doors.", action="Lock", destructive=false, disabled=busy, glass=true, iconSize=20, run=run)
-                  ControlButton(command="door-unlock", label="Unlock", symbol="lock.open.fill", tint="system-orange", title="Unlock your vehicle?", message="This unlocks the doors. Only do this when you’re near the vehicle.", action="Unlock", destructive=true, disabled=busy, glass=true, iconSize=20, run=run)
+                  ControlButton(command="door-lock", label="Lock", symbol="lock.fill", tint="system-green", title="Lock your vehicle?", message="This locks all doors.", action="Lock", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
+                  ControlButton(command="door-unlock", label="Unlock", symbol="lock.open.fill", tint="system-orange", title="Unlock your vehicle?", message="This unlocks the doors. Only do this when you’re near the vehicle.", action="Unlock", destructive=true, disabled=false, glass=true, iconSize=20, run=run)
                   when engineRunning
-                    ControlButton(command="engine-stop", label="Stop", symbol="power", tint="system-red", title="Stop the engine?", message="This ends the remote start.", action="Stop Engine", destructive=false, disabled=busy, glass=true, iconSize=20, run=run)
+                    ControlButton(command="engine-stop", label="Stop", symbol="power", tint="system-red", title="Stop the engine?", message="This ends the remote start.", action="Stop Engine", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
                   else
-                    ControlButton(command="engine-start", label="Start", symbol="power", tint="system-blue", title="Remotely start the engine?", message="Never remotely start the engine in an enclosed space, or with a child or pet inside the vehicle.", action="Start Engine", destructive=true, disabled=busy, glass=true, iconSize=20, run=run)
+                    ControlButton(command="engine-start", label="Start", symbol="power", tint="system-blue", title="Remotely start the engine?", message="Never remotely start the engine in an enclosed space, or with a child or pet inside the vehicle.", action="Start Engine", destructive=true, disabled=false, glass=true, iconSize=20, run=run)
                 when length(extras) > 0
                   column class=Card margin-top=8 overflow="hidden" testId="more-controls"
                     button press=toggleMore testId="toggle-more" min-height=56 padding-top=12 padding-bottom=12 box-sizing="content-box" padding-left=16 padding-right=16 display="flex" flex-direction="row" align-items="center" gap=8
@@ -401,24 +403,24 @@ component StatusScreen
                       row flex-wrap="wrap" gap=8 padding-left=16 padding-right=16 padding-bottom=16
                         when can(car.capabilities, "trunkLockUnlockCapable")
                           column width="calc(33.333% - 5.34px)"
-                            ControlButton(command="trunk-lock", label="Lock Trunk", symbol="car.side.rear.crop.trunk.partition.fill", tint="system-green", title="Lock the trunk?", message="This locks the trunk.", action="Lock Trunk", destructive=false, disabled=busy, glass=false, iconSize=20, run=run)
+                            ControlButton(command="trunk-lock", label="Lock Trunk", symbol="car.side.rear.crop.trunk.partition.fill", tint="system-green", title="Lock the trunk?", message="This locks the trunk.", action="Lock Trunk", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
                           column width="calc(33.333% - 5.34px)"
-                            ControlButton(command="trunk-unlock", label="Unlock Trunk", symbol="car.side.rear.crop.trunk.partition", tint="system-orange", title="Unlock the trunk?", message="This unlocks the trunk. Only do this when you’re near the vehicle.", action="Unlock Trunk", destructive=true, disabled=busy, glass=false, iconSize=20, run=run)
+                            ControlButton(command="trunk-unlock", label="Unlock Trunk", symbol="car.side.rear.crop.trunk.partition", tint="system-orange", title="Unlock the trunk?", message="This unlocks the trunk. Only do this when you’re near the vehicle.", action="Unlock Trunk", destructive=true, disabled=false, glass=false, iconSize=20, run=run)
                         when can(car.capabilities, "hazardCapable")
                           column width="calc(33.333% - 5.34px)"
                             when hazardsOn
-                              ControlButton(command="hazard-off", label="Hazards Off", symbol="car.rear.hazardsign", tint="system-blue", title="Turn off the hazards?", message="This stops the hazard lights.", action="Turn Off", destructive=false, disabled=busy, glass=false, iconSize=20, run=run)
+                              ControlButton(command="hazard-off", label="Hazards Off", symbol="car.rear.hazardsign", tint="system-blue", title="Turn off the hazards?", message="This stops the hazard lights.", action="Turn Off", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
                             else
-                              ControlButton(command="hazard-on", label="Hazard Lights", symbol="car.rear.hazardsign.fill", tint="system-red", title="Flash the hazards?", message="The hazard lights start flashing until you turn them off.", action="Turn On", destructive=false, disabled=busy, glass=false, iconSize=20, run=run)
+                              ControlButton(command="hazard-on", label="Hazard Lights", symbol="car.rear.hazardsign.fill", tint="system-red", title="Flash the hazards?", message="The hazard lights start flashing until you turn them off.", action="Turn On", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
                         when can(car.capabilities, "lightsCapable")
                           column width="calc(33.333% - 5.34px)"
-                            ControlButton(command="headlight-on", label="Flash Lights", symbol="headlight.low.beam.fill", tint="system-cyan", title="Flash the headlights?", message="The headlights come on to help you find the vehicle.", action="Flash", destructive=false, disabled=busy, glass=false, iconSize=19, run=run)
+                            ControlButton(command="headlight-on", label="Flash Lights", symbol="headlight.low.beam.fill", tint="system-cyan", title="Flash the headlights?", message="The headlights come on to help you find the vehicle.", action="Flash", destructive=false, disabled=false, glass=false, iconSize=19, run=run)
                         when can(car.capabilities, "buzzerCapable")
                           column width="calc(33.333% - 5.34px)"
-                            ControlButton(command="buzzer-warning", label="Play Beeps", symbol="bell.and.waves.left.and.right.fill", tint="system-yellow", title="Sound the buzzer?", message="The vehicle beeps ten times.", action="Play Beeps", destructive=false, disabled=busy, glass=false, iconSize=18, run=run)
+                            ControlButton(command="buzzer-warning", label="Play Beeps", symbol="bell.and.waves.left.and.right.fill", tint="system-yellow", title="Sound the buzzer?", message="The vehicle beeps ten times.", action="Play Beeps", destructive=false, disabled=false, glass=false, iconSize=18, run=run)
                         when can(car.capabilities, "hornCapable")
                           column width="calc(33.333% - 5.34px)"
-                            ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=busy, glass=false, iconSize=17, run=run)
+                            ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=false, glass=false, iconSize=17, run=run)
               // Remote-start climate (climate-card.ios.tsx). Every control
               // is disabled while a change is being written (and read back),
               // so a second change can't race the first; a disabled control
@@ -433,7 +435,7 @@ component StatusScreen
                         image "symbol:sf/thermometer.medium" font-size=17 tint-color="system-blue" object-fit="scale-down" width=17 height=17
                         text "Remote Start Climate" class=SmallBold color="secondary-label"
                       when climate.ok
-                        input type="checkbox" switch checked=(climateSaving ? climateWanted : climate.on) change=setClimateOn disabled=climateSaving aria-label="Remote start climate" testId="climate-switch" margin-right=8
+                        input type="checkbox" switch checked=(climateSaving ? climateWanted : climate.on) change=setClimateOn aria-label="Remote start climate" testId="climate-switch" margin-right=8
                       when climateLoading and not climate.ok
                         box width=63 height=28 border-radius=14 margin-right=6 background-color="tertiary-fill"
                     text "Settings for when you start your vehicle remotely." class=Small color="secondary-label"
@@ -442,16 +444,16 @@ component StatusScreen
                       // Hidden when the settings carry no range.
                       when climate.max > climate.min
                         row gap=16 align-items="center"
-                          input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(not climate.on or climateSaving) aria-label="Temperature" testId="climate-temperature" flex=1 height=28
+                          input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(not climate.on) aria-label="Temperature" testId="climate-temperature" flex=1 height=28
                           text `${floor(temperature * 10 + 0.5) / 10}°${climate.unit}` class=SmallBold min-width=52 text-align="right" font-variant-numeric="tabular-nums"
                       when climate.front or climate.rear
                         row gap=8
                           when climate.front
-                            button press=toggleDefrost("front") disabled=(not climate.on or climateSaving) testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                            button press=toggleDefrost("front") disabled=(not climate.on) testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                               image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "system-blue" : "secondary-label") object-fit="scale-down" width=22 height=20
                               text "Front Defrost" class=Small color=(frontDefrost ? "system-blue" : "secondary-label")
                           when climate.rear
-                            button press=toggleDefrost("rear") disabled=(not climate.on or climateSaving) testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                            button press=toggleDefrost("rear") disabled=(not climate.on) testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                               image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "system-blue" : "secondary-label") object-fit="scale-down" width=22 height=20
                               text "Rear Defrost" class=Small color=(rearDefrost ? "system-blue" : "secondary-label")
               // Doors & windows (closures-summary.ios.tsx)
