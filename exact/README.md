@@ -173,6 +173,42 @@ devices).
    `itms-services://?action=download-manifest&url=https://<host>/manifest.plist`.
    Slack doesn't link that scheme, so serve an https URL that redirects to it.
 
+### On EAS (CI)
+
+EAS builds the same ad hoc `.ipa` on its macOS workers. The `exact` profile in
+`eas.json` runs the custom build `.eas/build/exact.yml`, and the workflow
+`.eas/workflows/build-exact.yml` runs that profile by hand or on a push to
+`main` that touches `exact/`:
+
+```sh
+eas workflow:run .eas/workflows/build-exact.yml   # or: eas build -p ios --profile exact
+```
+
+The build does the steps above on a clean Mac, with `exact/ci/ios.sh` doing
+one phase per step:
+
+- **Toolchains.** Bun, and Rust from `exact/lexy/rust-toolchain.toml` with
+  `aarch64-apple-ios`.
+- **exact2.** A clone at `EXACT2_COMMIT` (`exact/ci/pins.sh`) beside the repo
+  root. Bump that pin to build against newer Lexy patches.
+- **Hermes.** Only what exact2 links is built: the headers, `hermesc`, and
+  lean VMs for macOS (the bake) and iOS devices. There is no full ibex
+  build. The result is cached on EAS, keyed by `HERMES_PIN` and the Xcode
+  build.
+- **Signing.** Uses `app.ide.lexy`'s ad hoc credentials from EAS.
+- **The archive.** Switches the app id to `app.ide.lexy` in the build's
+  checkout only, regenerates `exact-version.contract`, and runs
+  `bun exact.mjs ios --device --archive`.
+
+The version is `app.json`'s, one patch up. The build number is EAS's remote
+counter for `app.ide.lexy`, which it shares with the Expo app's builds. The
+`.ipa` is the build's artifact, and installs from the build page like any
+internal build.
+
+The script runs on a developer Mac too. Set `EXACT_IDENTITY` and
+`EXACT_PROFILE` in place of the signing phase, then run
+`exact/ci/ios.sh toolchain`, `deps`, `hermes` and `archive` in order.
+
 ## What carried over
 
 | Lexy (Expo) | Here |

@@ -1,0 +1,65 @@
+# The Exact app (exact/lexy) as an ad hoc .ipa for the team's registered
+# devices, signed with the ad hoc credentials EAS keeps for app.ide.lexy, so it
+# installs over the Expo app. Used by eas.json's `exact` profile. exact/lexy is
+# not an Xcode project: exact/ci/ios.sh does the work, one phase per step
+# (see that file, and exact/README.md "On a phone (ad hoc)").
+build:
+  name: Lexy on Exact (iOS, ad hoc)
+  steps:
+    - eas/checkout
+
+    - run:
+        name: Toolchains (Bun, Rust, Metal)
+        command: bash exact/ci/ios.sh toolchain
+
+    - run:
+        name: exact2 at the pinned commit
+        id: deps
+        outputs: [hermes_key, hermes_cache]
+        command: bash exact/ci/ios.sh deps
+
+    # The Hermes inputs exact2 links take ~15 minutes to build from source;
+    # they are keyed on the Hermes pin and the Xcode build.
+    - eas/restore_cache:
+        name: Restore Hermes
+        inputs:
+          key: ${ steps.deps.hermes_key }
+          path: ${ steps.deps.hermes_cache }
+
+    - run:
+        name: Hermes
+        command: bash exact/ci/ios.sh hermes
+
+    - eas/save_cache:
+        name: Save Hermes
+        inputs:
+          key: ${ steps.deps.hermes_key }
+          path: ${ steps.deps.hermes_cache }
+
+    - run:
+        name: Signing (ad hoc keychain and profile)
+        command: |
+          creds=$(mktemp)
+          cat > "$creds" <<'EXACT_CI_CREDENTIALS'
+          ${ eas.job.secrets.buildCredentials }
+          EXACT_CI_CREDENTIALS
+          bash exact/ci/ios.sh signing "$creds"
+
+    - run:
+        name: Build Lexy.ipa
+        id: archive
+        outputs: [ipa, version, build_number]
+        inputs:
+          build_number: ${ eas.job.version.buildNumber }
+        command: EXACT_CI_BUILD_NUMBER='${ inputs.build_number }' bash exact/ci/ios.sh archive
+
+    - eas/upload_artifact:
+        name: Upload Lexy.ipa
+        inputs:
+          type: application-archive
+          path: ${ steps.archive.ipa }
+
+    - run:
+        name: Remove the keychain
+        if: ${ always() }
+        command: bash exact/ci/ios.sh cleanup

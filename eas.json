@@ -16,6 +16,16 @@
       },
       "channel": "preview"
     },
+    "exact": {
+      "autoIncrement": true,
+      "distribution": "internal",
+      "ios": {
+        "config": "exact.yml",
+        "enterpriseProvisioning": "adhoc",
+        "image": "macos-tahoe-26.6-xcode-27.0",
+        "resourceClass": "large"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"

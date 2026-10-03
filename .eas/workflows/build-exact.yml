@@ -1,0 +1,25 @@
+# The Exact app (exact/lexy) as an ad hoc .ipa: eas.json's `exact` profile,
+# whose custom build is .eas/build/exact.yml. Run by hand with
+# `eas workflow:run build-exact.yml`, or on a push to main that touches it.
+name: Build Lexy on Exact (iOS ad hoc)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ['main']
+    paths:
+      - 'exact/**'
+      - '.eas/build/exact.yml'
+      - '.eas/workflows/build-exact.yml'
+
+concurrency:
+  group: build-exact
+  cancel_in_progress: true
+
+jobs:
+  build_exact:
+    name: Build Lexy.ipa
+    type: build
+    params:
+      platform: ios
+      profile: exact
