@@ -3,10 +3,37 @@
 use Status from "./model.contract"
 use Small from "./model.contract"
 use relative from "./model.contract"
-use c from "./model.contract"
 use mapsName from "./model.contract"
 use MapsApp from "./model.contract"
 use mapsCount from "./model.contract"
+
+// maps-provider-prompt.ios.tsx: the installed maps apps as a chooser
+// anchored to its invoker, and the alert for when there are none. `prefix`
+// keeps the map sheet's and Settings' ids apart.
+component MapsChooser
+  props
+    prefix: string
+    apps: MapsApp
+    choose: action
+  view
+    // Out of flow, as the popover and the dialog are: the invoker's
+    // container keeps its layout.
+    column position="absolute"
+      column id=`${prefix}maps-chooser` popover="auto" role="alertdialog" aria-label="Open location in" position="absolute"
+        when apps.apple
+          button press=choose("apple") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-apple`
+            text "Apple Maps"
+        when apps.google
+          button press=choose("google") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-google`
+            text "Google Maps"
+        when apps.waze
+          button press=choose("waze") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-waze`
+            text "Waze"
+      dialog id=`${prefix}no-maps` closedby="any"
+        text "No maps app installed"
+        text "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions."
+        button commandfor=`${prefix}no-maps` command="close" testId=`${prefix}no-maps-ok`
+          text "OK"
 
 component MapSheet
   props
@@ -53,20 +80,6 @@ component MapSheet
             button press=open(provider) disabled=opening testId="open-maps" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
               text `Open in ${mapsName(provider)}` font-size=17 font-weight=600 color="#ffffff"
           else
-            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=c(mapsCount(apps) == 0 ? "fill" : "blue") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=(mapsCount(apps) == 0 ? "tertiary-fill" : "system-blue") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
               text "Open in Maps" font-size=17 font-weight=600 color=(mapsCount(apps) == 0 ? "system-blue" : "#ffffff")
-            column id="maps-chooser" popover="auto" role="alertdialog" aria-label="Open location in" position="absolute"
-              when apps.apple
-                button press=pick("apple") popovertarget="maps-chooser" popovertargetaction="hide" testId="maps-apple"
-                  text "Apple Maps"
-              when apps.google
-                button press=pick("google") popovertarget="maps-chooser" popovertargetaction="hide" testId="maps-google"
-                  text "Google Maps"
-              when apps.waze
-                button press=pick("waze") popovertarget="maps-chooser" popovertargetaction="hide" testId="maps-waze"
-                  text "Waze"
-            dialog id="no-maps" closedby="any"
-              text "No maps app installed"
-              text "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions."
-              button commandfor="no-maps" command="close" testId="no-maps-ok"
-                text "OK"
+            MapsChooser(prefix="", apps=apps, choose=pick)

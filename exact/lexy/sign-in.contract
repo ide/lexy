@@ -1,7 +1,6 @@
 // Sign-in: email and password, then the delivery-method choice and the code
 // when Lexus asks for them (src/screens/sign-in-screen.ios.tsx and
 // sign-in/sign-in-elements.ios.tsx; copy from src/auth/sign-in-copy.ts).
-use c from "./model.contract"
 
 // sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
 fn channel(method: string): string = (includes(method, "mail") or includes(method, "Mail") or includes(method, "E-mail")) ? "email" : ((includes(method, "SMS") or includes(method, "sms") or includes(method, "Text") or includes(method, "text") or includes(method, "hone") or includes(method, "obile") or includes(method, "all")) ? "sms" : "unknown")
@@ -40,33 +39,17 @@ component SecondaryButton
     button press=press disabled=disabled testId=id -exact-apple-button-style="gray" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600 color="system-blue"
 
-// LinkButton: borderless, for what is outside the flow.
-component LinkButton
+// InfoNotice and ErrorNotice: a symbol and the message on a card (a code was
+// sent; what went wrong), the message in the label colour.
+component Notice
   props
-    label: string
-    disabled: bool
-    press: action
     id: string
-  view
-    button press=press disabled=disabled testId=id -exact-apple-button-style="plain" height=44 display="flex" flex-direction="row" align-items="center" justify-content="center"
-      text label font-size=15 color="system-blue"
-
-// InfoNotice: a confirmation on a card (a code was sent).
-component InfoNotice
-  props
+    symbol: string
+    tint: string
     message: string
   view
-    row testId="sign-in-info" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center"
-      image "symbol:sf/checkmark.circle.fill" font-size=18 tint-color="system-green"
-      text message font-size=13 font-weight=500 color="label" flex=1 min-width=0
-
-// ErrorNotice: the warning on a card, the message in the label colour.
-component ErrorNotice
-  props
-    message: string
-  view
-    row testId="sign-in-error" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center"
-      image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange"
+    row testId=id gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center"
+      image `symbol:sf/${symbol}` font-size=18 tint-color=tint
       text message font-size=13 font-weight=500 color="label" flex=1 min-width=0
 
 component LockScreen
@@ -82,7 +65,6 @@ component LockScreen
     choices: list<string>
     prompt: string
     method: string
-    demo: bool
     setEmail: action
     setPassword: action
     setCode: action
@@ -127,9 +109,9 @@ component LockScreen
               when length(choices) > 1
                 SecondaryButton(label="Use a Different Method", disabled=busy, press=differentMethod, id="different-method")
         when error != ""
-          ErrorNotice(message=error)
+          Notice(id="sign-in-error", symbol="exclamationmark.triangle.fill", tint="system-orange", message=error)
         when error == "" and info != ""
-          InfoNotice(message=info)
+          Notice(id="sign-in-info", symbol="checkmark.circle.fill", tint="system-green", message=info)
         when step == "credentials"
           // NewToLexusCallout: the account comes from Lexus's own app.
           column testId="new-to-lexus" align-items="flex-start" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background"

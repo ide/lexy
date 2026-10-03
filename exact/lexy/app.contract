@@ -31,9 +31,9 @@ use Opened from "./model.contract"
 use stepOf from "./model.contract"
 use failureText from "./model.contract"
 use otpCallback from "./model.contract"
-use commandName from "./model.contract"
 use vehicleName from "./model.contract"
 use any from "./model.contract"
+use orEpoch from "./model.contract"
 
 routes nav
   tab status "/"
@@ -52,7 +52,7 @@ component Lexy
   // Whether the user has moved on from a dead session's explanation (by
   // signing in again), as auth-context.tsx clears it on submit.
   state sessionNoticeSeen = false
-  resource account = session() with sessionRev, (sessionAt == 0 ? time.epochAtZero : sessionAt) as shape Account
+  resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account
   // Until the session's first answer the app does not know whether anyone is
   // signed in: it shows the signed-in shell's skeleton, never a flash of the
   // sign-in screen (a signed-out answer carries its 401).
@@ -126,15 +126,15 @@ component Lexy
   // the token's expiry) follows `with`, so the last answer a launch kept
   // paints the first frame. A refreshed token re-asks the garage, and nothing
   // refreshes in parallel.
-  resource garage = garage(account.signedIn) with account.expiresAt, garageRev, (garageAt == 0 ? time.epochAtZero : garageAt) as shape Garage
+  resource garage = garage(account.signedIn) with account.expiresAt, garageRev, orEpoch(garageAt, time.epochAtZero) as shape Garage
   derive car = garage.car
-  resource status = status(car) with statusRev, (statusAt == 0 ? time.epochAtZero : statusAt) as shape Status
-  resource tires = tires(car) with statusRev, (statusAt == 0 ? time.epochAtZero : statusAt) as shape Tires
-  resource engine = engine(car) with engineRev, (engineAt == 0 ? time.epochAtZero : engineAt) as shape Engine
-  resource spec = spec(car) with (garageAt == 0 ? time.epochAtZero : garageAt) as shape Spec
+  resource status = status(car) with statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
+  resource tires = tires(car) with statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
+  resource engine = engine(car) with engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
+  resource spec = spec(car) with orEpoch(garageAt, time.epochAtZero) as shape Spec
   // Remote-start climate: a change is written whole and read back.
   state climateRev = 0
-  resource climate = climate(car) with climateRev, (garageAt == 0 ? time.epochAtZero : garageAt) as shape Climate
+  resource climate = climate(car) with climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
   mutation climateSaved as shape Climate refreshes climate then afterClimateSave
   // climate-card.ios.tsx: a rejected change rolls back (the re-read) and
   // says so.
@@ -172,7 +172,7 @@ component Lexy
   state moreOpen = false
   state closuresOpen = false
   state hazardsOn = false
-  resource services = services(car) with (garageAt == 0 ? time.epochAtZero : garageAt) as shape Services
+  resource services = services(car) with orEpoch(garageAt, time.epochAtZero) as shape Services
 
   // --- Commands and their reconciliation ------------------------------------------
   // A command's acceptance is not its completion: after a lock or unlock the
@@ -681,7 +681,7 @@ component Lexy
   view
     main testId="lexy" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
       when not shell
-        LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, demo=account.demo, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
+        LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
       else
         // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
         // own navigation controller under a tab bar controller, and a tab

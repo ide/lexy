@@ -9,12 +9,11 @@ use Small from "./model.contract"
 use SmallBold from "./model.contract"
 use fuelName from "./model.contract"
 use headUnit from "./model.contract"
-use c from "./model.contract"
 use RefreshingNote from "./status.contract"
 use failureSummary from "./model.contract"
 use failureAdvice from "./model.contract"
-use wash from "./model.contract"
 use VehicleState from "./status.contract"
+use WarningBanner from "./status.contract"
 use Activity from "./model.contract"
 
 fn specValue(spec: Spec, name: string, fallback: string): string = match first(filter(spec.items, i => i.name == name and i.value != "")) { case some(i) => i.value, case none => fallback }
@@ -62,18 +61,12 @@ component SpecsScreen
       scroll testId="specs-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
         column box-sizing="border-box" padding-bottom=64
           when not online
-            row testId="specs-offline" margin-left=16 margin-right=16 margin-top=16 gap=8 padding-left=16 padding-right=16 padding-top=8 padding-bottom=8 border-radius=14 background-color=wash("orange") align-items="center"
-              image "symbol:sf/wifi.slash" font-size=17 tint-color="system-orange"
-              column gap=2 flex=1
-                text "You're offline" font-size=14 font-weight=700 color="system-orange"
-                text (car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle.") font-size=14 font-weight=500 color="system-orange" opacity=0.85
+            column margin-left=16 margin-right=16 margin-top=16
+              WarningBanner(id="specs-offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           when online and car.vin != "" and not garage.ok and not loading and garage.status != 401
-            row testId="specs-garage-error" margin-left=16 margin-right=16 margin-top=16 gap=8 padding-left=16 padding-right=16 padding-top=8 padding-bottom=8 border-radius=14 background-color=wash("orange") align-items="center"
-              image "symbol:sf/exclamationmark.triangle.fill" font-size=17 tint-color="system-orange"
-              column gap=2 flex=1
-                text "Couldn’t refresh" font-size=14 font-weight=700 color="system-orange"
-                text `${failureSummary(garage.status, garage.error)} Showing the latest data we saved.` font-size=14 font-weight=500 color="system-orange" opacity=0.85
+            column margin-left=16 margin-right=16 margin-top=16
+              WarningBanner(id="specs-garage-error", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved.`)
           when car.vin == "" and loading
             // details-screen.tsx's skeleton: the vehicle card's place.
             column box-sizing="border-box" padding=16 gap=8 testId="specs-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
@@ -117,7 +110,7 @@ component SpecsScreen
                         column flex-shrink=1
                           text s.name class=Small color="label" user-select="text"
                           text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="secondary-label"
-                        text s.status class=SmallBold color=c(s.status == "Active" ? "green" : "secondary")
+                        text s.status class=SmallBold color=(s.status == "Active" ? "system-green" : "secondary-label")
                     button press=manage testId="manage-subscriptions" -exact-apple-button-style="plain" padding-top=16 padding-bottom=16 display="flex" align-items="center"
                       text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="system-blue" text-align="center"
       RefreshingNote(visible=(updating and not refreshing))

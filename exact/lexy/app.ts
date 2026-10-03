@@ -640,69 +640,74 @@ async function foldClosures(vin: string, at: number, sections: Section[], since 
   return [...folded, ...passed];
 }
 
-async function tires(store: Store, car: Car, at: number): Promise<Result<'tires'>> {
+// A read that keeps its last good answer through a failed one (load-error.ts):
+// the answer is remembered for the car, and a failure recalls it, else `empty`.
+async function keepingLast<T>(key: string, vin: string, empty: T, read: () => Promise<T>): Promise<T> {
   const since = generation;
-  if (!car.vin) return { ok: false, status: '', unit: '', tires: [] };
   try {
-    const p = rec((await authorized(store, at, (s, r) => get(TIRES_URL, vehicleHeaders(s, car))(r))).payload);
+    return await remember(key, vin, await read(), since);
+  } catch {
+    return (await recall<T>(key, vin)) ?? empty;
+  }
+}
+
+// A vehicle-scoped GET's payload.
+async function payload(store: Store, car: Car, at: number, url: string): Promise<Json> {
+  return rec((await authorized(store, at, (s, r) => get(url, vehicleHeaders(s, car))(r))).payload);
+}
+
+async function tires(store: Store, car: Car, at: number): Promise<Result<'tires'>> {
+  const empty: Result<'tires'> = { ok: false, status: '', unit: '', tires: [] };
+  if (!car.vin) return empty;
+  return keepingLast('tires', car.vin, empty, async () => {
+    const p = await payload(store, car, at, TIRES_URL);
     const tire = (position: string) => ({ position, value: num(rec(p[position]).value), low: rec(p[position]).displayLowTirePressureWarning === true });
-    return await remember('tires', car.vin, {
+    return {
       ok: !!p.tirePressureStatus,
       status: str(p.tirePressureStatus),
       unit: str(rec(p.flTirePressure).unit),
       tires: [tire('flTirePressure'), tire('frTirePressure'), tire('rlTirePressure'), tire('rrTirePressure')],
-    }, since);
-  } catch {
-    return await recall<Result<'tires'>>('tires', car.vin) ?? { ok: false, status: '', unit: '', tires: [] };
-  }
+    };
+  });
 }
 
 async function engine(store: Store, car: Car, at: number): Promise<Result<'engine'>> {
-  const since = generation;
-  if (!car.vin || !car.capabilities.includes('remoteEngineStartStop')) return { ok: false, status: '', startedMs: 0, timer: 0 };
-  try {
-    const p = rec((await authorized(store, at, (s, r) => get(ENGINE_URL, vehicleHeaders(s, car))(r))).payload);
-    return await remember('engine', car.vin, { ok: true, status: str(p.status), startedMs: epochMs(p.date), timer: num(p.timer) }, since);
-  } catch {
-    return await recall<Result<'engine'>>('engine', car.vin) ?? { ok: false, status: '', startedMs: 0, timer: 0 };
-  }
+  const empty: Result<'engine'> = { ok: false, status: '', startedMs: 0, timer: 0 };
+  if (!car.vin || !car.capabilities.includes('remoteEngineStartStop')) return empty;
+  return keepingLast('engine', car.vin, empty, async () => {
+    const p = await payload(store, car, at, ENGINE_URL);
+    return { ok: true, status: str(p.status), startedMs: epochMs(p.date), timer: num(p.timer) };
+  });
 }
 
 async function spec(store: Store, car: Car, at: number): Promise<Result<'spec'>> {
-  const since = generation;
-  if (!car.vin) return { ok: false, items: [] };
-  try {
-    const p = rec((await authorized(store, at, (s, r) => get(SPEC_URL, vehicleHeaders(s, car))(r))).payload);
+  const empty: Result<'spec'> = { ok: false, items: [] };
+  if (!car.vin) return empty;
+  return keepingLast('spec', car.vin, empty, async () => {
+    const p = await payload(store, car, at, SPEC_URL);
     const items = ['vehicleSpecifications', 'additionalDetails'].flatMap(key =>
       arr(rec(p[key]).dataItems).map(rec).map(i => ({ name: str(i.dataName), value: str(i.dataValue) })),
     );
-    return await remember('spec', car.vin, { ok: true, items }, since);
-  } catch {
-    return await recall<Result<'spec'>>('spec', car.vin) ?? { ok: false, items: [] };
-  }
+    return { ok: true, items };
+  });
 }
 
 async function services(store: Store, car: Car, at: number): Promise<Result<'services'>> {
-  const since = generation;
-  if (!car.vin || !car.region || !car.asiCode || !car.hwType) return { ok: false, items: [] };
-  try {
-    const p = rec(
-      (
-        await authorized(store, at, (s, r) =>
-          get(SUBSCRIPTIONS_URL, {
-            ...businessHeaders(s),
-            VIN: car.vin,
-            'X-BRAND': car.brand,
-            GENERATION: car.generation,
-            REGION: car.region,
-            'ASI-CODE': car.asiCode,
-            'HW-TYPE': car.hwType,
-            DATETIME: String(at),
-            entryPoint: 'SUBSCRIPTIONS',
-          })(r),
-        )
-      ).payload,
-    );
+  const empty: Result<'services'> = { ok: false, items: [] };
+  if (!car.vin || !car.region || !car.asiCode || !car.hwType) return empty;
+  return keepingLast('services', car.vin, empty, async () => {
+    const headers = (s: Session) => ({
+      ...businessHeaders(s),
+      VIN: car.vin,
+      'X-BRAND': car.brand,
+      GENERATION: car.generation,
+      REGION: car.region,
+      'ASI-CODE': car.asiCode,
+      'HW-TYPE': car.hwType,
+      DATETIME: String(at),
+      entryPoint: 'SUBSCRIPTIONS',
+    });
+    const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s))(r))).payload);
     const items = (['paid', 'trial', 'complimentary'] as const).flatMap(bucket =>
       arr(p[`${bucket}Subscriptions`]).map(rec).map(sub => ({
         bucket,
@@ -712,10 +717,8 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
         endMs: epochMs(sub.subscriptionEndDate),
       })),
     );
-    return await remember('services', car.vin, { ok: true, items: items.filter(i => i.name) }, since);
-  } catch {
-    return await recall<Result<'services'>>('services', car.vin) ?? { ok: false, items: [] };
-  }
+    return { ok: true, items: items.filter(i => i.name) };
+  });
 }
 
 // --- Writes ----------------------------------------------------------------------
@@ -796,13 +799,8 @@ function decodeClimate(body: Json): Climate {
 }
 
 async function climate(store: Store, car: Car, at: number): Promise<Climate> {
-  const since = generation;
   if (!car.vin) return noClimate;
-  try {
-    return await remember('climate', car.vin, decodeClimate(await authorized(store, at, (s, r) => get(CLIMATE_URL, vehicleHeaders(s, car))(r))), since);
-  } catch {
-    return await recall<Climate>('climate', car.vin) ?? noClimate;
-  }
+  return keepingLast('climate', car.vin, noClimate, async () => decodeClimate(await authorized(store, at, (s, r) => get(CLIMATE_URL, vehicleHeaders(s, car))(r))));
 }
 
 async function setClimate(store: Store, car: Car, raw: string, on: boolean, temperature: number, front: boolean, rear: boolean, at: number): Promise<Climate> {
