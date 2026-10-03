@@ -1,0 +1,3 @@
+// Generated at build: this build's version and the Exact framework it was made with.
+fn appVersion(): string = "1.0.1 (dev)"
+fn exactVersion(): string = "0.1.0 (52f593a3)"

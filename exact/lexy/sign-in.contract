@@ -1,0 +1,149 @@
+// Sign-in: email and password, then the delivery-method choice and the code
+// when Lexus asks for them (src/screens/sign-in-screen.ios.tsx and
+// sign-in/sign-in-elements.ios.tsx; copy from src/auth/sign-in-copy.ts).
+use c from "./model.contract"
+
+// sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
+fn channel(method: string): string = (includes(method, "mail") or includes(method, "Mail") or includes(method, "E-mail")) ? "email" : ((includes(method, "SMS") or includes(method, "sms") or includes(method, "Text") or includes(method, "text") or includes(method, "hone") or includes(method, "obile") or includes(method, "all")) ? "sms" : "unknown")
+fn heroSymbol(step: string, method: string): string = step == "choice" ? "lock.shield.fill" : (step == "otp" ? (channel(method) == "email" ? "envelope.fill" : (channel(method) == "sms" ? "message.fill" : "number")) : "key.fill")
+fn heroTitle(step: string, method: string): string = step == "choice" ? "Verify It's You" : (step == "otp" ? (channel(method) == "email" ? "Check Your Email" : (channel(method) == "sms" ? "Check Your Messages" : "Enter Your Code")) : "Welcome to Lexy")
+// The server's prompt is shown only when it reads as prose: the real tree's
+// choice step carries a message key ("OTP_VIA_PHONE_OR_ALERNATE_OPTION").
+fn readable(p: string): bool = p != "" and includes(p, " ")
+fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "We sent a verification code to your email address." : (channel(method) == "sms" ? "We texted a verification code to your phone." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
+fn choiceSymbol(method: string): string = channel(method) == "email" ? "envelope" : (channel(method) == "sms" ? "message" : "shield.lefthalf.filled")
+
+// A step's controls arrive with sign-in-screen.ios.tsx's spring (0.35 s).
+keyframes stepIn
+  from opacity=0 translate="0px 8px"
+
+// PrimaryButton: borderedProminent, large, blue; dims only while empty,
+// keeping its fill while busy (its action ignores a second press).
+component PrimaryButton
+  props
+    label: string
+    disabled: bool
+    press: action
+    id: string
+  view
+    button press=press disabled=disabled testId=id -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
+      text label font-size=17 font-weight=600 color="#ffffff"
+
+// SecondaryButton: a grey bordered capsule, for the step's other ways on.
+component SecondaryButton
+  props
+    label: string
+    disabled: bool
+    press: action
+    id: string
+  view
+    button press=press disabled=disabled testId=id -exact-apple-button-style="gray" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
+      text label font-size=17 font-weight=600 color="system-blue"
+
+// LinkButton: borderless, for what is outside the flow.
+component LinkButton
+  props
+    label: string
+    disabled: bool
+    press: action
+    id: string
+  view
+    button press=press disabled=disabled testId=id -exact-apple-button-style="plain" height=44 display="flex" flex-direction="row" align-items="center" justify-content="center"
+      text label font-size=15 color="system-blue"
+
+// InfoNotice: a confirmation on a card (a code was sent).
+component InfoNotice
+  props
+    message: string
+  view
+    row testId="sign-in-info" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center"
+      image "symbol:sf/checkmark.circle.fill" font-size=18 tint-color="system-green"
+      text message font-size=13 font-weight=500 color="label" flex=1 min-width=0
+
+// ErrorNotice: the warning on a card, the message in the label colour.
+component ErrorNotice
+  props
+    message: string
+  view
+    row testId="sign-in-error" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center"
+      image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange"
+      text message font-size=13 font-weight=500 color="label" flex=1 min-width=0
+
+component LockScreen
+  props
+    step: string
+    email: string
+    password: string
+    code: string
+    error: string
+    busy: bool
+    resending: bool
+    info: string
+    choices: list<string>
+    prompt: string
+    method: string
+    demo: bool
+    setEmail: action
+    setPassword: action
+    setCode: action
+    signIn: action
+    choose: action
+    verify: action
+    resend: action
+    differentMethod: action
+    tryDemo: action
+    getLexusApp: action
+    nextField: action
+  view
+    scroll testId="sign-in" keyboardDismissMode="interactive" overflow-x="hidden" width="100%" height="100%"
+      column box-sizing="border-box" padding-top="calc(env(safe-area-inset-top) + 64px)" padding-left=16 padding-right=16 padding-bottom="calc(env(safe-area-inset-bottom) + 16px)" gap=24
+        // Hero: the step's symbol, title and what to do.
+        column align-items="center" gap=8
+          image `symbol:sf/${heroSymbol(step, method)}` font-size=44 tint-color="system-blue" margin-bottom=4
+          text heroTitle(step, method) testId="sign-in-title" font-size=28 font-weight=700 text-align="center"
+          text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="secondary-label" text-align="center" padding-left=8 padding-right=8
+        // The first step is there on the first frame, as a native form is;
+        // the later steps arrive with stepIn.
+        when step == "credentials"
+          column gap=16
+            column border-radius=16 background-color="secondary-grouped-background" overflow="hidden"
+              input value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
+              box height=0.5 margin-left=16 background-color="separator"
+              input value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
+            PrimaryButton(label=(busy ? "Signing In…" : "Sign In"), disabled=(trim(email) == "" or password == ""), press=signIn, id="sign-in-button")
+        when step == "choice"
+          // One row of equal-width choices (ChoiceButton: bordered, large).
+          row gap=8 animation="stepIn 350ms ease-out"
+            each m, i in choices key=m
+              button press=choose(i) disabled=busy testId=`method-${i}` -exact-apple-button-style="tinted" accent-color="system-blue" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+                image `symbol:sf/${choiceSymbol(m)}` font-size=17 tint-color="system-blue"
+                text m font-size=17 font-weight=600 color="system-blue" line-clamp=1
+        when step == "otp"
+          column gap=16 animation="stepIn 350ms ease-out"
+            input value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="secondary-grouped-background" font-size=17 color="label"
+            PrimaryButton(label=(busy and not resending ? "Verifying…" : "Verify"), disabled=(trim(code) == ""), press=verify, id="verify-button")
+            column gap=8
+              SecondaryButton(label="Resend Code", disabled=busy, press=resend, id="resend")
+              when length(choices) > 1
+                SecondaryButton(label="Use a Different Method", disabled=busy, press=differentMethod, id="different-method")
+        when error != ""
+          ErrorNotice(message=error)
+        when error == "" and info != ""
+          InfoNotice(message=info)
+        when step == "credentials"
+          // NewToLexusCallout: the account comes from Lexus's own app.
+          column testId="new-to-lexus" align-items="flex-start" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background"
+            text "New to Lexus?" font-size=13 font-weight=600 color="label"
+            text "Create an account and add your vehicle in the Lexus app, then come back here to sign in." font-size=13 color="secondary-label"
+            // Only the link is a control (sign-in-elements.ios.tsx).
+            button press=getLexusApp testId="get-lexus-app" -exact-apple-button-style="plain"
+              text "Get the Lexus App" font-size=13 font-weight=600 color="system-blue"
+        text "Your password and verification code go directly to Lexus. Lexy never stores them or collects your information." font-size=13 font-weight=500 color="secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
+      // Not in Lexy: an in-memory Lexus, for trying the app without an
+      // account. One tap signs in. In the corner, where the keyboard never
+      // covers it, and last, so it is above the form. Shown on the first step
+      // whatever the stored demo flag says: a flag left in the Keychain (it
+      // outlives a reinstall) hid it on a signed-out launch.
+      when step == "credentials"
+        button press=tryDemo disabled=busy testId="try-demo" -exact-apple-button-style="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
+          text "Try Demo" font-size=17 color="system-blue"
