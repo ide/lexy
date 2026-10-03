@@ -195,7 +195,12 @@ fn stepOf(tokenId: string, types: list<string>, asksCode: bool): string = tokenI
 
 fn otpCallback(types: list<string>): string = any(types, "TextInputCallback") ? "TextInputCallback" : "PasswordCallback"
 
-// src/auth/sign-in-error.ts, by failure class.
+// src/auth/sign-in-error.ts: what happened, why, and what to do next, by
+// the step that failed (credentials, choice, otp, resend).
+fn retryAction(stage: string): string = stage == "choice" ? "choose your verification method again" : (stage == "otp" ? "tap Verify again" : (stage == "resend" ? "request a code again" : "tap Sign In again"))
+fn rejectedText(stage: string): string = stage == "otp" ? "Lexus didn't accept that verification code. It may be mistyped, expired, or already used, since codes work once and only for a few minutes. Tap Resend Code and enter the fresh code right away." : (stage == "choice" ? "Lexus couldn't send a code by that method. The contact info on your account may be out of date. Try another method, or update your details in the Lexus app." : (stage == "resend" ? "Lexus refused to send another code, usually because too many were requested in a row. Wait a few minutes and request a code again." : "Lexus didn't accept that email and password. One of them is likely mistyped (passwords are case-sensitive), or the account is locked after too many attempts. Check both fields and try again, or reset your password in the Lexus app."))
+fn signInError(stage: string, status: number, error: string): string = status == 0 ? `Couldn't reach Lexus. Your device looks offline, or the connection dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.` : (status == 429 ? `Lexus is limiting sign-in attempts after too many recent tries. This clears on its own. Wait a few minutes, then ${retryAction(stage)}.` : (status >= 500 ? `The Lexus sign-in service hit an error on its end, not something you entered. It usually recovers quickly, so wait a moment, then ${retryAction(stage)}.` : (status >= 400 ? rejectedText(stage) : `Something unexpected stopped sign-in${error != "" ? ` (${error})` : ""}. Try again, and restart Lexy if it keeps happening.`)))
+
 // load-error.ts classifyFailure / describeFailure: what kind of failure a
 // read was, then a short summary (the "Couldn't refresh" banner) or the
 // cause and what to do (the full-screen error).
@@ -208,12 +213,7 @@ fn failureText(status: number, error: string): string = status == 0 ? "Couldn’
 
 fn vehicleName(nick: string, model: string): string = nick != "" ? nick : (model != "" ? model : "My Vehicle")
 
-fn commandName(c: string): string = c == "door-lock" ? "Lock" : (c == "door-unlock" ? "Unlock" : (c == "engine-start" ? "Remote start" : (c == "engine-stop" ? "Engine stop" : (c == "trunk-unlock" ? "Trunk unlock" : (c == "trunk-lock" ? "Trunk lock" : (c == "sound-horn" ? "Horn" : (c == "buzzer-warning" ? "Buzzer" : (c == "hazard-on" ? "Hazards" : (c == "hazard-off" ? "Hazards off" : (c == "headlight-on" ? "Headlights" : c))))))))))
-
 fn can(capabilities: list<string>, flag: string): bool = any(capabilities, flag)
-
-// src/data/remote-capabilities.ts FLAGS, as names.
-fn capabilityName(flag: string): string = flag == "doorLockUnlockCapable" ? "Lock & unlock" : (flag == "remoteEngineStartStop" ? "Remote start" : (flag == "trunkLockUnlockCapable" ? "Trunk" : (flag == "hornCapable" ? "Horn" : (flag == "buzzerCapable" ? "Buzzer" : (flag == "hazardCapable" ? "Hazards" : (flag == "lightsCapable" ? "Headlights" : (flag == "moonroofCloseCapable" ? "Moonroof" : (flag == "powerWindowsCloseCapable" ? "Windows" : ""))))))))
 
 // src/data/vehicle-mapping.ts FUEL_TYPES and HEAD_UNITS.
 fn fuelName(code: string): string = code == "G" ? "Gasoline" : (code == "H" ? "Hybrid" : (code == "E" ? "Electric" : ((code == "P" or code == "L") ? "Plug-in Hybrid" : (code == "F" ? "Fuel Cell" : (code == "" ? "Gasoline" : code)))))
@@ -227,11 +227,6 @@ fn partOf(s: Section): string = includes(s.section, "Door") ? "door" : "window"
 fn closureName(s: Section): string = isCorner(s) ? `${includes(s.section, "Rear") ? "Rear" : "Front"} ${includes(s.category, "Passenger") ? "passenger" : "driver"} ${partOf(s)}` : s.section
 // An opening's name inside a sentence ("Windows and trunk closed").
 fn lowerName(name: string): string = includes(name, "Moon") ? "moonroof" : (includes(name, "Trunk") ? "trunk" : (includes(name, "Hood") ? "hood" : (includes(name, "Hatch") ? "hatch" : name)))
-// src/auth/sign-in-error.ts: what happened, why, and what to do next, by
-// the step that failed (credentials, choice, otp, resend).
-fn retryAction(stage: string): string = stage == "choice" ? "choose your verification method again" : (stage == "otp" ? "tap Verify again" : (stage == "resend" ? "request a code again" : "tap Sign In again"))
-fn rejectedText(stage: string): string = stage == "otp" ? "Lexus didn't accept that verification code. It may be mistyped, expired, or already used, since codes work once and only for a few minutes. Tap Resend Code and enter the fresh code right away." : (stage == "choice" ? "Lexus couldn't send a code by that method. The contact info on your account may be out of date. Try another method, or update your details in the Lexus app." : (stage == "resend" ? "Lexus refused to send another code, usually because too many were requested in a row. Wait a few minutes and request a code again." : "Lexus didn't accept that email and password. One of them is likely mistyped (passwords are case-sensitive), or the account is locked after too many attempts. Check both fields and try again, or reset your password in the Lexus app."))
-fn signInError(stage: string, status: number, error: string): string = status == 0 ? `Couldn't reach Lexus. Your device looks offline, or the connection dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.` : (status == 429 ? `Lexus is limiting sign-in attempts after too many recent tries. This clears on its own. Wait a few minutes, then ${retryAction(stage)}.` : (status >= 500 ? `The Lexus sign-in service hit an error on its end, not something you entered. It usually recovers quickly, so wait a moment, then ${retryAction(stage)}.` : (status >= 400 ? rejectedText(stage) : `Something unexpected stopped sign-in${error != "" ? ` (${error})` : ""}. Try again, and restart Lexy if it keeps happening.`)))
 fn isOpen(s: Section): bool = any(s.values, "Open")
 fn isUnlocked(s: Section): bool = any(s.values, "Unlocked")
 // A section says something when it reports a position, a lock, or both; a
@@ -241,13 +236,15 @@ fn reports(s: Section): bool = any(s.values, "Open") or any(s.values, "Closed") 
 // --- Formatting -------------------------------------------------------------------
 
 fn round(n: number): number = floor(n + 0.5)
+// A read's time: when the app last asked, else the epoch (the launch's).
+fn orEpoch(at: number, epoch: number): number = at == 0 ? epoch : at
 fn pad3(r: number): string = r < 10 ? `00${r}` : (r < 100 ? `0${r}` : `${r}`)
 // 12,482 — Contract's formatNumber only has "compact".
 fn grouped(n: number): string = round(n) < 1000 ? `${round(n)}` : (round(n) < 1000000 ? `${floor(round(n) / 1000)},${pad3(round(n) % 1000)}` : `${floor(round(n) / 1000000)},${pad3(floor(round(n) / 1000) % 1000)},${pad3(round(n) % 1000)}`)
-// toLocaleString with at most one decimal (odometer-card.tsx): "1,272.1", "980".
-// time.ts absoluteLocalTime: "Thu, Oct 1, 2026 at 9:41 PM" (offset in minutes).
+// time.ts absoluteLocalTime: "Oct 1, 2026 at 9:41 PM" (offset in minutes).
 fn clockTime(ms: number, offset: number): string = `${floor(((ms + offset * 60000) % 86400000) / 3600000) % 12 == 0 ? 12 : floor(((ms + offset * 60000) % 86400000) / 3600000) % 12}:${floor((((ms + offset * 60000) % 3600000) / 60000)) < 10 ? "0" : ""}${floor((((ms + offset * 60000) % 3600000) / 60000))} ${floor(((ms + offset * 60000) % 86400000) / 3600000) < 12 ? "AM" : "PM"}`
 fn exactTime(ms: number, offset: number): string = ms <= 0 ? "Unknown time" : `${formatDate(ms, offset, "medium")} at ${clockTime(ms, offset)}`
+// toLocaleString with at most one decimal (odometer-card.tsx): "1,272.1", "980".
 fn tenths(n: number): string = floor(n * 10 + 0.5) % 10 == 0 ? grouped(floor(n * 10 + 0.5) / 10) : `${grouped(floor(floor(n * 10 + 0.5) / 10))}.${floor(n * 10 + 0.5) % 10}`
 fn distanceUnit(wire: string): string = (includes(wire, "K") or includes(wire, "k")) ? "km" : "mi"
 fn ago(now: number, then: number, utcOffset: number): string = then <= 0 ? "never" : (now - then < 60000 ? "just now" : (now - then < 3600000 ? `${floor((now - then) / 60000)} min ago` : (now - then < 86400000 ? `${floor((now - then) / 3600000)} hr ago` : formatDate(then, utcOffset, "medium"))))
@@ -260,8 +257,8 @@ fn plural(n: number, unit: string): string = n == 1 ? `1 ${unit}` : `${n} ${unit
 fn relative(now: number, then: number): string = then <= 0 ? "unknown" : (now - then < 5000 ? "just now" : (now - then < 60000 ? `${plural(floor((now - then) / 1000), "second")} ago` : (now - then < 3600000 ? `${plural(floor((now - then) / 60000), "minute")} ago` : (now - then < 86400000 ? (floor((now - then) / 60000) % 60 == 0 ? `${plural(floor((now - then) / 3600000), "hour")} ago` : `${plural(floor((now - then) / 3600000), "hour")} ${plural(floor((now - then) / 60000) % 60, "minute")} ago`) : (floor((now - then) / 3600000) % 24 == 0 ? `${plural(floor((now - then) / 86400000), "day")} ago` : `${plural(floor((now - then) / 86400000), "day")} ${plural(floor((now - then) / 3600000) % 24, "hour")} ago`)))))
 
 // fuel.ts levels: full at 100, high above 25, medium above 15, low above 5.
-fn fuelTint(p: number): string = p >= 100 ? "green" : (p > 25 ? "green" : (p > 15 ? "yellow" : (p > 5 ? "orange" : "red")))
-fn fuelText(p: number): string = p >= 100 ? "green" : (p > 25 ? "label" : (p > 15 ? "yellow" : (p > 5 ? "orange" : "red")))
+fn fuelTint(p: number): string = p > 25 ? "system-green" : (p > 15 ? "system-yellow" : (p > 5 ? "system-orange" : "system-red"))
+fn fuelText(p: number): string = p >= 100 ? "system-green" : (p > 25 ? "label" : fuelTint(p))
 
 // One extra control's name for "More controls"' subtitle, in Lexy's order.
 fn extraName(flag: string): string = flag == "trunkLockUnlockCapable" ? "trunk" : (flag == "lightsCapable" ? "headlights" : (flag == "hazardCapable" ? "hazards" : (flag == "hornCapable" ? "horn" : (flag == "buzzerCapable" ? "buzzer" : ""))))
@@ -274,31 +271,21 @@ fn mapsName(provider: string): string = provider == "google" ? "Google Maps" : (
 
 fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "headlights" ? "Headlights" : (name == "hazards" ? "Hazards" : (name == "horn" ? "Horn" : (name == "buzzer" ? "Buzzer" : (name == "moonroof" ? "Moonroof" : (name == "windows" ? "Windows" : name))))))
 
-// --- Palette: UIKit's semantic colors, light and dark ------------------------------
-
-// The app's short names for the platform's colour roles (exact2 LLP 1078), for
-// a colour chosen at runtime: a literal writes the role itself,
-// `color="secondary-label"`, which each platform resolves to its own colour.
-fn c(name: string): string = (name == "secondary" ? "secondary-label" : (name == "tertiary" ? "tertiary-label" : (name == "grouped" ? "grouped-background" : (name == "card" ? "secondary-grouped-background" : (name == "fill" ? "tertiary-fill" : (name == "subtle" ? "quaternary-fill" : (name == "separator" ? "separator" : (name == "blue" ? "system-blue" : (name == "cyan" ? "system-cyan" : (name == "green" ? "system-green" : (name == "orange" ? "system-orange" : (name == "yellow" ? "system-yellow" : (name == "red" ? "system-red" : "label")))))))))))))
-// The same color at 15%: a symbol's badge or a banner's wash.
-fn wash(name: string): string = name == "green" ? "light-dark(#34c75926, #30d15826)" : (name == "orange" ? "light-dark(#ff950026, #ff9f0a26)" : (name == "blue" ? "light-dark(#007aff26, #0a84ff26)" : "light-dark(#3c3c4326, #ebebf526)"))
 // --- Palette ------------------------------------------------------------------------
 
+// A system colour at 15%, for a symbol's badge or a banner's wash: written
+// out until relative colour over a role (rgb(from …)) exists.
+fn wash(role: string): string = role == "system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "system-blue" ? "light-dark(#007aff26, #0a84ff26)" : "light-dark(#3c3c4326, #ebebf526)"))
 style Card
   background-color="secondary-grouped-background" border-radius=18
 // src/components/ui/section-title.tsx: 14/700, secondaryLabel, tracked, inset 8.
 style CardTitle
   font-size=14 font-weight=700 color="secondary-label" letter-spacing=0.5 margin-left=8
-style Secondary
-  color="secondary-label"
-style Big
-  font-size=17 font-weight=600
-style Fill
-  background-color="tertiary-fill"
 style Small
   font-size=14 font-weight=500
 style SmallBold
   font-size=14 font-weight=700
-// iOS's large navigation title, where a navigation bar would put it.
-style LargeTitle
-  font-size=34 font-weight=700 padding-left=16 padding-right=16 padding-top="calc(env(safe-area-inset-top) + 52px)" padding-bottom=8
+// status-banner.tsx: a tinted row of a symbol and words (the tint's wash is
+// the node's own background-color).
+style Banner
+  gap=8 padding-left=16 padding-right=16 padding-top=8 padding-bottom=8 border-radius=14 align-items="center"

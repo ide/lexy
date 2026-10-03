@@ -9,7 +9,7 @@ use exactVersion from "./exact-version.contract"
 use MapsApp from "./model.contract"
 use mapsCount from "./model.contract"
 use mapsResolved from "./model.contract"
-use c from "./model.contract"
+use MapsChooser from "./map.contract"
 
 // src/components/swift-ui/section.tsx: a header, a card, and a footer.
 component SectionHeader
@@ -28,12 +28,11 @@ component SectionFooter
 component SettingsRowFace
   props
     symbol: string
-    tint: string
     title: string
     subtitle: string
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:sf/${symbol}` font-size=22 tint-color=c(tint) object-fit="scale-down" width=28 height=26
+      image `symbol:sf/${symbol}` font-size=22 tint-color="system-blue" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="label"
         text subtitle font-size=13 font-weight=500 color="secondary-label"
@@ -61,29 +60,15 @@ component SettingsScreen
             column class=Card
               // The same chooser as the map's, of the installed apps only
               // (settings-screen.ios.tsx's promptChoice).
-              button popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
-                SettingsRowFace(symbol="map.fill", tint="blue", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))))
-              column id="settings-maps" popover="auto" role="alertdialog" aria-label="Open location in" position="absolute"
-                when apps.apple
-                  button press=chooseMaps("apple") popovertarget="settings-maps" popovertargetaction="hide" testId="settings-maps-apple"
-                    text "Apple Maps"
-                when apps.google
-                  button press=chooseMaps("google") popovertarget="settings-maps" popovertargetaction="hide" testId="settings-maps-google"
-                    text "Google Maps"
-                when apps.waze
-                  button press=chooseMaps("waze") popovertarget="settings-maps" popovertargetaction="hide" testId="settings-maps-waze"
-                    text "Waze"
-              dialog id="settings-no-maps" closedby="any"
-                text "No maps app installed"
-                text "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions."
-                button commandfor="settings-no-maps" command="close" testId="settings-no-maps-ok"
-                  text "OK"
+              button popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps-chooser") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
+                SettingsRowFace(symbol="map.fill", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))))
+              MapsChooser(prefix="settings-", apps=apps, choose=chooseMaps)
             SectionFooter(words="The app used to open your vehicle’s location for directions.")
           column
             SectionHeader(title="VEHICLE")
             column class=Card
               button press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
-                SettingsRowFace(symbol="car.fill", tint="blue", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)))
+                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)))
           column
             SectionHeader(title="LEXUS ACCOUNT")
             column class=Card

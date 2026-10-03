@@ -7,6 +7,8 @@
 // - `native.later({op: "geocode"})`: the parked street line
 //   (src/hooks/use-parking-address.ts, src/data/parking-address.ts).
 // - `native.later({op: "installed"})`: which maps apps the phone has.
+// - `native.later({op: "wait"})`: the demo server's latency (demo.ts), at
+//   once under the agent's clock.
 // - `native.call({op: "haptic"})`: UIKit feedback (src/utils/haptics.ts).
 //
 // Lexy is iOS-only. The build also compiles these sources for macOS to read
@@ -103,29 +105,6 @@ final class LexyModule: ExactModule {
 let exactModule: ExactModule.Type = LexyModule.self
 
 #if os(iOS)
-// MARK: - Colors
-
-/// A system color by name (they follow light and dark), or `#rrggbb`.
-private func color(_ name: String?) -> UIColor {
-    switch name ?? "" {
-    case "blue", "": return .systemBlue
-    case "green": return .systemGreen
-    case "orange": return .systemOrange
-    case "red": return .systemRed
-    case "yellow": return .systemYellow
-    case "cyan": return .systemCyan
-    case "gray": return .systemGray
-    case "label": return .label
-    case "secondary": return .secondaryLabel
-    case "tertiary": return .tertiaryLabel
-    case "white": return .white
-    case let hex where hex.hasPrefix("#") && hex.count == 7:
-        let v = UInt32(hex.dropFirst(), radix: 16) ?? 0
-        return UIColor(red: CGFloat((v >> 16) & 0xff) / 255, green: CGFloat((v >> 8) & 0xff) / 255, blue: CGFloat(v & 0xff) / 255, alpha: 1)
-    default: return .systemBlue
-    }
-}
-
 private func png(_ view: UIView) throws -> Data {
     let size = view.bounds.size
     guard size.width > 0, size.height > 0 else { throw ExactNativeRefusal("no bounds yet") }
