@@ -59,18 +59,21 @@ keyframes spin
   to rotate="360deg"
 
 // refreshing-note.tsx: a refresh the user didn't ask for, floating over the
-// content under the navigation bar (nothing moves to make room), fading
-// and settling in. Bare secondary words beside a spinner read as status,
-// not a control; it never takes touches.
+// content under the navigation bar (nothing moves to make room). It arrives
+// a beat late, so a quick read never flashes it, and leaves at once; its
+// words never change while it fades, and the spinner turns throughout.
+// Bare secondary words beside a spinner read as status, not a control; it
+// never takes touches.
 component RefreshingNote
   props
     visible: bool
   view
-    row testId="refreshing-note" position="absolute" top="calc(env(safe-area-inset-top) + 8px)" left=0 right=0 justify-content="center" align-items="center" gap=8 pointer-events="none" opacity=(visible ? 1 : 0) translate=(visible ? "0px 0px" : "0px -6px") transition="opacity 220ms ease, translate 220ms ease"
-      image "symbol:sf/progress.indicator" font-size=15 tint-color="secondary-label" animation=(visible ? "spin 1s steps(8) infinite" : "none") animation-timeline=Activity object-fit="scale-down" width=18 height=18
-      // A live region: VoiceOver hears the words arrive (nothing moves
-      // focus to them); empty while hidden, so each refresh is announced.
-      text (visible ? "Refreshing…" : "") class=Small color="secondary-label" aria-live="polite" min-width=80
+    row testId="refreshing-note" position="absolute" top="calc(env(safe-area-inset-top) + 8px)" left=0 right=0 justify-content="center" align-items="center" gap=8 pointer-events="none" opacity=(visible ? 1 : 0) translate=(visible ? "0px 0px" : "0px -6px") transition=(visible ? "opacity 240ms ease-out 250ms, translate 240ms ease-out 250ms" : "opacity 180ms ease-in, translate 180ms ease-in")
+      image "symbol:sf/progress.indicator" font-size=15 tint-color="secondary-label" animation="spin 1s steps(8) infinite" animation-timeline=Activity object-fit="scale-down" width=18 height=18
+      text "Refreshing…" class=Small color="secondary-label" aria-hidden=true animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
+      // A live region apart from the words drawn: VoiceOver hears each
+      // refresh arrive (nothing moves focus to it).
+      text (visible ? "Refreshing" : "") aria-live="polite" position="absolute" width=1 height=1 overflow="hidden" opacity=0
 
 component ControlButton
   props
@@ -119,7 +122,7 @@ component VehicleState
       image `symbol:sf/${symbol}` font-size=44 tint-color="secondary-label"
       text title font-size=34 font-weight=700 text-align="center"
       text message font-size=17 color="secondary-label" text-align="center"
-      button press=press testId=`${id}-retry` pointer-events="auto" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
+      button press=press testId=`${id}-retry` pointer-events="auto" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
         text label font-size=17 color="#ffffff"
 
 // status-banner.tsx's amber banner: a symbol, a bold line and a lighter one.
@@ -342,7 +345,7 @@ component StatusScreen
                     image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
                 row width="100%" justify-content="flex-end" pointer-events="none"
                   button press=openMap pointer-events="auto" testId="last-parked" -exact-apple-button-style="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
-                    image "symbol:sf/map.fill" font-size=15 tint-color="system-blue" object-fit="scale-down" width=20 height=18
+                    image "symbol:sf/map.fill" font-size=15 tint-color="AccentColor" object-fit="scale-down" width=20 height=18
                     text "Last Parked" font-size=15 font-weight=600 color="label"
               // Fuel (fuel-bar.tsx)
               column class=Card testId="fuel" padding=16 gap=8
@@ -391,8 +394,8 @@ component StatusScreen
                     button press=toggleMore testId="toggle-more" min-height=56 padding-top=12 padding-bottom=12 box-sizing="content-box" padding-left=16 padding-right=16 display="flex" flex-direction="row" align-items="center" gap=8
                       // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                       row flex=1 min-width=0 align-items="center" gap=12
-                        box width=36 height=36 border-radius=18 background-color=wash("system-blue") display="flex" align-items="center" justify-content="center"
-                          image "symbol:sf/slider.horizontal.3" font-size=16 tint-color="system-blue" object-fit="scale-down" width=22 height=20
+                        box width=36 height=36 border-radius=18 background-color=wash("AccentColor") display="flex" align-items="center" justify-content="center"
+                          image "symbol:sf/slider.horizontal.3" font-size=16 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
                         column flex=1 min-width=0 gap=2
                           text "More controls" font-size=17 font-weight=600 color="label"
                           text extrasText font-size=13 color="secondary-label"
@@ -450,12 +453,12 @@ component StatusScreen
                         row gap=8
                           when climate.front
                             button press=toggleDefrost("front") disabled=(not climate.on) testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
-                              image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "system-blue" : "secondary-label") object-fit="scale-down" width=22 height=20
-                              text "Front Defrost" class=Small color=(frontDefrost ? "system-blue" : "secondary-label")
+                              image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
+                              text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
                           when climate.rear
                             button press=toggleDefrost("rear") disabled=(not climate.on) testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
-                              image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "system-blue" : "secondary-label") object-fit="scale-down" width=22 height=20
-                              text "Rear Defrost" class=Small color=(rearDefrost ? "system-blue" : "secondary-label")
+                              image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
+                              text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
               // Doors & windows (closures-summary.ios.tsx)
               when length(rows) > 0
                 column gap=8 testId="closures"

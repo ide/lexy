@@ -275,7 +275,7 @@ fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "hea
 
 // A system colour at 15%, for a symbol's badge or a banner's wash: written
 // out until relative colour over a role (rgb(from …)) exists.
-fn wash(role: string): string = role == "system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "system-blue" ? "light-dark(#007aff26, #0a84ff26)" : "light-dark(#3c3c4326, #ebebf526)"))
+fn wash(role: string): string = role == "system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : ((role == "system-blue" or role == "AccentColor") ? "light-dark(#007aff26, #0a84ff26)" : "light-dark(#3c3c4326, #ebebf526)"))
 style Card
   background-color="secondary-grouped-background" border-radius=18
 // src/components/ui/section-title.tsx: 14/700, secondaryLabel, tracked, inset 8.

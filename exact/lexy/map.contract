@@ -77,9 +77,9 @@ component MapSheet
           // asks, listing only the installed ones; with none an alert says so
           // (src/hooks/use-maps-provider.ts, maps-provider-prompt.ios.tsx).
           when provider != ""
-            button press=open(provider) disabled=opening testId="open-maps" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+            button press=open(provider) disabled=opening testId="open-maps" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
               text `Open in ${mapsName(provider)}` font-size=17 font-weight=600 color="#ffffff"
           else
-            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=(mapsCount(apps) == 0 ? "tertiary-fill" : "system-blue") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
-              text "Open in Maps" font-size=17 font-weight=600 color=(mapsCount(apps) == 0 ? "system-blue" : "#ffffff")
+            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=(mapsCount(apps) == 0 ? "tertiary-fill" : "AccentColor") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+              text "Open in Maps" font-size=17 font-weight=600 color=(mapsCount(apps) == 0 ? "AccentColor" : "#ffffff")
             MapsChooser(prefix="", apps=apps, choose=pick)

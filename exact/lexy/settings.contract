@@ -32,7 +32,7 @@ component SettingsRowFace
     subtitle: string
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:sf/${symbol}` font-size=22 tint-color="system-blue" object-fit="scale-down" width=28 height=26
+      image `symbol:sf/${symbol}` font-size=22 tint-color="AccentColor" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="label"
         text subtitle font-size=13 font-weight=500 color="secondary-label"
@@ -149,5 +149,5 @@ component RenameScreen
           row gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center" testId="rename-error"
             image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
-        button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="system-blue" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+        button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"
