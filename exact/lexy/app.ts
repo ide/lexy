@@ -121,14 +121,16 @@ async function identityFetch(url: string, init: RequestInit): Promise<Reply> {
   return response;
 }
 
-// The demo's latency: the native module's timer (TypeScript sources have
-// none). Where the module has no `wait` (the web's), the demo answers at once.
+// The demo's latency. Hermes gives a TypeScript source no timer, so on Apple
+// it is the native module's; the web's module has none, but the page does.
 const wait = async (ms: number) => {
   try {
-    if (native?.available) await native.later({ op: 'wait', ms });
+    if (native?.available) return void (await native.later({ op: 'wait', ms }));
   } catch {
-    // No timer here.
+    // This module has no `wait`: the page's timer, below.
   }
+  const timer = (globalThis as { setTimeout?: (f: () => void, ms: number) => unknown }).setTimeout;
+  if (typeof timer === 'function') await new Promise<void>(done => { timer(done, ms); });
 };
 
 function transport(store: Store, at: number): Request {

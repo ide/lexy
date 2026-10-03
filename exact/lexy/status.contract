@@ -365,8 +365,9 @@ component StatusScreen
                 row justify-content="space-between" align-items="center" gap=16
                   text "REMOTE CONTROLS" class=CardTitle margin-top=4
                   row gap=8 margin-right=8 align-items="center"
-                    // Always drawn: "Locked" only when every reporting door is.
-                    when true
+                    // "Locked" only when every reporting door is; before any door
+                    // has reported, nothing (a guess would read as a state).
+                    when lockPending or doorLock != "unknown"
                       row gap=4 align-items="center" testId="lock-state"
                         image `symbol:sf/${((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "lock.fill" : "lock.open.fill")}` font-size=13 tint-color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "system-green" : "system-orange") object-fit="scale-down" width=13 height=13
                         text (lockPending ? (lockTarget == "locked" ? "Locking" : "Unlocking") : (doorLock == "locked" ? "Locked" : "Unlocked")) class=SmallBold color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "system-green" : "system-orange") animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
