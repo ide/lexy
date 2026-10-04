@@ -778,6 +778,21 @@ component Lexy
     signInfo = ""
     lastChoice = -1
     nav = back(nav)
+  // UIKit's back button, its long-press menu, the swipe, a sheet pulled
+  // down, the browser's Back: the platform took the person back to the route
+  // keyed `entry`, however many screens that was (exact2 LLP 1035.001.000).
+  action returnTo(entry: string)
+    if top(nav).name == "login"
+      previewScenario = ""
+      previewDone = false
+      signStep = "credentials"
+      email = ""
+      password = ""
+      code = ""
+      signError = ""
+      signInfo = ""
+      lastChoice = -1
+    nav = backTo(nav, entry)
   action openExternal(url: string)
     send felt = feel("selection")
     openURL(url)
@@ -822,7 +837,7 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
+    main testId="lexy" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
       when not shell
         LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
       else
