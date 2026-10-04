@@ -438,7 +438,7 @@ component StatusScreen
                         image "symbol:sf/thermometer.medium" font-size=17 tint-color="system-blue" object-fit="scale-down" width=17 height=17
                         text "Remote Start Climate" class=SmallBold color="secondary-label"
                       when climate.ok
-                        input type="checkbox" switch checked=(climateSaving ? climateWanted : climate.on) change=setClimateOn aria-label="Remote start climate" testId="climate-switch" margin-right=8
+                        input type="checkbox" switch checked=(climateSaving ? climateWanted : climate.on) change=setClimateOn disabled=climateSaving aria-label="Remote start climate" testId="climate-switch" margin-right=8
                       when climateLoading and not climate.ok
                         box width=63 height=28 border-radius=14 margin-right=6 background-color="tertiary-fill"
                     text "Settings for when you start your vehicle remotely." class=Small color="secondary-label"
@@ -447,16 +447,16 @@ component StatusScreen
                       // Hidden when the settings carry no range.
                       when climate.max > climate.min
                         row gap=16 align-items="center"
-                          input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(not climate.on) aria-label="Temperature" testId="climate-temperature" flex=1 height=28
+                          input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(not climate.on or climateSaving) aria-label="Temperature" testId="climate-temperature" flex=1 height=28
                           text `${floor(temperature * 10 + 0.5) / 10}°${climate.unit}` class=SmallBold min-width=52 text-align="right" font-variant-numeric="tabular-nums"
                       when climate.front or climate.rear
                         row gap=8
                           when climate.front
-                            button press=toggleDefrost("front") disabled=(not climate.on) testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                            button press=toggleDefrost("front") disabled=(not climate.on or climateSaving) testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                               image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                               text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
                           when climate.rear
-                            button press=toggleDefrost("rear") disabled=(not climate.on) testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                            button press=toggleDefrost("rear") disabled=(not climate.on or climateSaving) testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                               image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                               text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
               // Doors & windows (closures-summary.ios.tsx)

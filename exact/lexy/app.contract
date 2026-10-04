@@ -158,8 +158,9 @@ component Lexy
   state defrostHeld = false
   state climateTouched = false
   // What the climate card shows: a change still being saved, else the car's.
-  // The controls stay live while a save is out, so the next change is built
-  // from these, not from a reading the first change is about to replace.
+  // The card's controls hold still while a change is written and read back
+  // (unlike the remote commands, which stay live); a change is built from
+  // these all the same.
   derive shownClimateOn = climateTouched ? climateWanted : climate.on
   derive shownFront = defrostHeld ? defrostFront : climate.frontEnabled
   derive shownRear = defrostHeld ? defrostRear : climate.rearEnabled
