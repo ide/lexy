@@ -268,6 +268,9 @@ component StatusScreen
   derive verdictTint = lockPending ? "secondary-label" : (issues == 0 ? "system-green" : "system-orange")
   derive verdictSymbol = lockPending ? (lockTarget == "locked" ? "lock.fill" : "lock.open.fill") : (issues == 0 ? (allLocked ? "checkmark.shield.fill" : "checkmark.circle.fill") : (issues == 1 ? singleSymbol : (length(openRows) == 0 ? "lock.open.fill" : "exclamationmark.triangle.fill")))
   derive fuel = round(status.fuel)
+  // Not read yet is not empty: until the first reading, the fuel card
+  // shows its shape and no number (loading and 0 % are different facts).
+  derive fuelKnown = status.ok
   derive electric = car.fuelType == "E"
   derive unit = distanceUnit(status.rangeUnit)
   derive odoUnit = distanceUnit(status.odometerUnit)
@@ -351,11 +354,14 @@ component StatusScreen
               column class=Card testId="fuel" padding=16 gap=8
                 row justify-content="space-between" align-items="center"
                   row gap=4 align-items="center"
-                    image `symbol:sf/${(electric ? "bolt.fill" : "fuelpump.fill")}` font-size=17 tint-color=fuelTint(fuel) object-fit="scale-down" width=17 height=17
+                    image `symbol:sf/${(electric ? "bolt.fill" : "fuelpump.fill")}` font-size=17 tint-color=(fuelKnown ? fuelTint(fuel) : "tertiary-label") object-fit="scale-down" width=17 height=17
                     text (electric ? "Charge" : "Fuel") class=SmallBold color="secondary-label"
-                  row
-                    text (fuel >= 100 ? "Full" : `${fuel}%`) testId="fuel-value" class=SmallBold color=fuelText(fuel) font-variant-numeric="tabular-nums"
-                    text ` · ${grouped(status.range)} ${unit}` testId="range" class=SmallBold color="label" font-variant-numeric="tabular-nums"
+                  when fuelKnown
+                    row
+                      text (fuel >= 100 ? "Full" : `${fuel}%`) testId="fuel-value" class=SmallBold color=fuelText(fuel) font-variant-numeric="tabular-nums"
+                      text ` · ${grouped(status.range)} ${unit}` testId="range" class=SmallBold color="label" font-variant-numeric="tabular-nums"
+                  when not fuelKnown
+                    box testId="fuel-pending" width=110 height=16 border-radius=6 background-color="tertiary-fill" animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
                 row gap=4
                   box flex=1 height=8 border-radius=4 background-color="tertiary-fill" overflow="hidden"
                     box height="100%" border-radius=4 width=`${min(100, max(0, fuel * 4))}%` background-color=fuelTint(fuel)
