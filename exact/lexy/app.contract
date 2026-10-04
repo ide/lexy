@@ -210,6 +210,9 @@ component Lexy
   // agreeing with it confirms nothing. Only a report newer than the one held
   // when the second command was accepted settles it.
   state lockChained = false
+  // What showed before the last command was sent, put back if it is refused.
+  state lockPrev = ""
+  state enginePrev = ""
   state lockBaseline = 0
   state engineTarget = ""
   state enginePolls = 0
@@ -296,7 +299,7 @@ component Lexy
         retried = false
     if notice != "" and time.epochAtZero + now() - noticeAt > 6000
       notice = ""
-    if lockTarget != "" and not pending(status)
+    if lockTarget != "" and not pending(status) and not pending(sent)
       if lockSettled
         lockTarget = ""
       else
@@ -310,7 +313,7 @@ component Lexy
           statusAt = clock
           if lockPolls == 5
             send primed = prime(car, time.epochAtZero + now())
-    if engineTarget != "" and clock - engineAt >= 20000
+    if engineTarget != "" and clock - engineAt >= 20000 and not pending(sent)
       if not enginePending or enginePolls >= 4
         engineTarget = ""
       else
@@ -621,10 +624,26 @@ component Lexy
     climateError = ""
   // vehicle-controls.ios.tsx: a medium impact on sending, then success or
   // error when the car answers.
+  // The pending word shows the moment the command is sent (Locking…,
+  // Starting…): the app is trying to, and says so; a refused command puts
+  // back what was showing.
   action run(command: string)
     notice = ""
     noticeAt = clock
     send felt = feel("impact-medium")
+    if command == "door-lock" or command == "door-unlock"
+      lockPrev = lockTarget
+      lockTarget = (command == "door-lock" ? "locked" : "unlocked")
+      lockPolls = 0
+      // `lockPending` reads as it was before this action: a command the
+      // car had not yet confirmed is still standing.
+      lockChained = lockPending
+      lockBaseline = status.occurredMs
+    if command == "engine-start" or command == "engine-stop"
+      enginePrev = engineTarget
+      engineTarget = (command == "engine-start" ? "running" : "stopped")
+      enginePolls = 0
+      engineAt = time.epochAtZero + now()
     send sent = command(car, command, time.epochAtZero + now())
   action afterCommand
     match sent
@@ -636,19 +655,17 @@ component Lexy
           statusRev = statusRev + 1
           statusAt = time.epochAtZero + now()
           if c.command == "door-lock" or c.command == "door-unlock"
-            lockTarget = (c.command == "door-lock" ? "locked" : "unlocked")
             lockPolls = 0
-            // `lockPending` reads as it was before this action: a command
-            // the car had not yet confirmed is still standing.
-            lockChained = lockPending
-            lockBaseline = status.occurredMs
           if c.command == "hazard-on" or c.command == "hazard-off"
             hazardsOn = c.command == "hazard-on"
           if c.command == "engine-start" or c.command == "engine-stop"
-            engineTarget = (c.command == "engine-start" ? "running" : "stopped")
             enginePolls = 0
             engineAt = time.epochAtZero + now()
         else
+          if c.command == "door-lock" or c.command == "door-unlock"
+            lockTarget = lockPrev
+          if c.command == "engine-start" or c.command == "engine-stop"
+            engineTarget = enginePrev
           commandError = (c.ok ? "The car didn’t accept the command." : failureText(c.status, c.error))
       case none
         notice = ""
