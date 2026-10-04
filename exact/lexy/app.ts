@@ -833,7 +833,9 @@ async function setClimate(store: Store, car: Car, raw: string, on: boolean, temp
       acParameters: arr(o.acParameters).map(rec).map(x => x.name === 'frontDefrost' ? { ...x, enabled: front } : x.name === 'rearDefrost' ? { ...x, enabled: rear } : x),
     });
     await authorized(store, at, (s, r) => r(CLIMATE_URL, { method: 'PUT', headers: vehicleHeaders(s, car), body: JSON.stringify(p) }));
-    return await climate(store, car, at);
+    // Accepted is saved: the settings answer as written, with no read-back,
+    // and are kept as the last reading (a relaunch shows them).
+    return await remember('climate', car.vin, decodeClimate(p));
   } catch {
     return noClimate;
   }

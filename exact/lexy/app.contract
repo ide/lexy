@@ -143,8 +143,14 @@ component Lexy
   resource spec = spec(car) with orEpoch(garageAt, time.epochAtZero) as shape Spec
   // Remote-start climate: a change is written whole and read back.
   state climateRev = 0
-  resource climate = climate(car) with climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
-  mutation climateSaved as shape Climate refreshes climate then afterClimateSave
+  resource climateRead = climate(car) with climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
+  // A change is written, not read back: once the car accepts it, the card
+  // shows what was written until the next read (a pull asks again); a
+  // refused one leaves the card at what it showed before.
+  mutation climateSaved as shape Climate then afterClimateSave
+  // The last change the car accepted, newer than the last read until a pull.
+  state climateWritten = none
+  derive climate = match climateWritten { case some(c) => c, case none => climateRead }
   // climate-card.ios.tsx: a rejected change rolls back (the re-read) and
   // says so.
   state climateError = ""
@@ -268,11 +274,11 @@ component Lexy
       autoRefresh = false
     if pulling and not (pending(primed) or pending(status) or pending(garage))
       pulling = false
-    if climateTouched and not (pending(climateSaved) or pending(climate))
+    if climateTouched and not (pending(climateSaved) or pending(climateRead))
       climateTouched = false
-    if defrostHeld and not (pending(climateSaved) or pending(climate))
+    if defrostHeld and not (pending(climateSaved) or pending(climateRead))
       defrostHeld = false
-    if tempHeld and not (pending(climateSaved) or pending(climate)) and (tempSaving or climate.temperature == tempDraft)
+    if tempHeld and not (pending(climateSaved) or pending(climateRead)) and (tempSaving or climate.temperature == tempDraft)
       tempHeld = false
       tempSaving = false
     if mapsPicked != "" and not (pending(mapsChosen) or pending(mapsApp))
@@ -555,6 +561,7 @@ component Lexy
   action signOut
     send left = signOut()
   action afterSignOut
+    climateWritten = none
     primeOnLaunch = false
     autoRefresh = false
     signStep = "credentials"
@@ -581,6 +588,7 @@ component Lexy
       statusAt = clock
     garageRev = garageRev + 1
     climateRev = climateRev + 1
+    climateWritten = none
   action afterPrime
     statusRev = statusRev + 1
     statusAt = clock
@@ -599,6 +607,8 @@ component Lexy
       case some(r)
         climateError = (r.ok ? "" : "The vehicle API rejected the change.")
         send felt = feel(r.ok ? "success" : "error")
+        if r.ok
+          climateWritten = some(r)
         if not r.ok
           defrostHeld = false
           climateTouched = false
@@ -808,7 +818,7 @@ component Lexy
             // Last Parked sheet's, whose close button is a native bar button.
             column navigationKey=`${e.id}` navigationPresentation=(e.name == "map" ? "modal" : "") navigationTitle=(e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Lexus") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : ""))))))))) navigationLargeTitle=(e.name == "map" or e.name == "login" ? "false" : "true") navigationDetent=(e.name == "map" ? "medium large" : "") navigationTrailing=(e.name == "map" ? "back" : (e.name == "login" ? "scenario" : "")) navigationTrailingSymbol=(e.name == "login" ? "wrench.and.screwdriver" : "xmark") navigationBackButton="minimal" navigationTab=t.name navigationTabTitle=(t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) navigationTabSymbol=(t.name == "status" ? "car" : (t.name == "specs" ? "list.bullet.rectangle" : "gearshape")) navigationTabSelectedSymbol=(t.name == "status" ? "car.fill" : (t.name == "specs" ? "list.bullet.rectangle.fill" : "gearshape.fill")) navigationTabControl=`tab-${t.name}` testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
               when e.name == "status"
-                StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climate) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climate)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climateRead)), updating=(autoRefresh and (pending(status) or pending(garage) or pending(primed))), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
               when e.name == "map"
                 MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
               when e.name == "specs"
