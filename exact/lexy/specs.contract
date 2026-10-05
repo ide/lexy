@@ -9,7 +9,6 @@ use Small from "./model.contract"
 use SmallBold from "./model.contract"
 use fuelName from "./model.contract"
 use headUnit from "./model.contract"
-use RefreshingNote from "./status.contract"
 use failureSummary from "./model.contract"
 use failureAdvice from "./model.contract"
 use VehicleState from "./status.contract"
@@ -51,7 +50,6 @@ component SpecsScreen
     utcOffset: number
     reload: action
     refreshing: bool
-    updating: bool
     loading: bool
     online: bool
     manage: action
@@ -113,4 +111,3 @@ component SpecsScreen
                         text s.status class=SmallBold color=(s.status == "Active" ? "system-green" : "secondary-label")
                     button press=manage testId="manage-subscriptions" -exact-apple-button-style="plain" padding-top=16 padding-bottom=16 display="flex" align-items="center"
                       text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="AccentColor" text-align="center"
-      RefreshingNote(visible=(updating and not refreshing))

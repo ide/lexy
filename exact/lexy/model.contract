@@ -2,7 +2,7 @@
 // turn those answers into what Lexy says. Every rule that lived in Lexy's
 // src/data and src/auth modules as TypeScript is a `fn` here.
 
-// Lexy's loading indicators (the skeletons' pulse, the refreshing spinner)
+// Lexy's loading indicators (the skeletons' pulse, the fuel bar's)
 // keep one rhythm wherever they show (LLP 1055.002).
 timeline Activity
 

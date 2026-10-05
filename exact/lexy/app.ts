@@ -896,6 +896,12 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
 
 const sources: Sources = {
   session: ([_rev, at], store) => session(store, at),
+  // A wait the host keeps (`wait`): how long an app-started refresh runs
+  // before the Status title says "Updating…", and how long it says so.
+  pause: async ([ms]) => {
+    await wait(ms);
+    return { ok: true, status: 200, error: '' };
+  },
   setDemoFailures: ([on]) => {
     demoServer.failing = on === true;
     return { ok: true, status: 200, error: '' };

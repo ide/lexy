@@ -57,7 +57,8 @@ You need these on the Mac:
   - A button's new `UIButton.Configuration` is shown at once (the update
     handler goes in before the configuration).
   - Routes can show UIKit's navigation bar (`navigationTitle`, large or
-    inline titles, `navigationTrailing`, `navigationBackButton`).
+    inline titles, `navigationSubtitle`, `navigationTrailing`,
+    `navigationBackButton`).
   - Tabs (`navigationTab`, its title, SF Symbols and control) project into a
     native `UITabBarController`, one container per tab, each keeping its own
     stack. A tab's root route names its container with

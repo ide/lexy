@@ -53,28 +53,6 @@ keyframes pending
   from opacity=0.4
   to opacity=1
 
-// refreshing-note.tsx: the system spinner's eight steps.
-keyframes spin
-  from rotate="0deg"
-  to rotate="360deg"
-
-// refreshing-note.tsx: a refresh the user didn't ask for, floating over the
-// content under the navigation bar (nothing moves to make room). It arrives
-// a beat late, so a quick read never flashes it, and leaves at once; its
-// words never change while it fades, and the spinner turns throughout.
-// Bare secondary words beside a spinner read as status, not a control; it
-// never takes touches.
-component RefreshingNote
-  props
-    visible: bool
-  view
-    row testId="refreshing-note" position="absolute" top="calc(env(safe-area-inset-top) + 8px)" left=0 right=0 justify-content="center" align-items="center" gap=8 pointer-events="none" opacity=(visible ? 1 : 0) translate=(visible ? "0px 0px" : "0px -6px") transition=(visible ? "opacity 240ms ease-out 250ms, translate 240ms ease-out 250ms" : "opacity 180ms ease-in, translate 180ms ease-in")
-      image "symbol:sf/progress.indicator" font-size=15 tint-color="secondary-label" animation="spin 1s steps(8) infinite" animation-timeline=Activity object-fit="scale-down" width=18 height=18
-      text "Refreshing…" class=Small color="secondary-label" aria-hidden=true animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
-      // A live region apart from the words drawn: VoiceOver hears each
-      // refresh arrive (nothing moves focus to it).
-      text (visible ? "Refreshing" : "") aria-live="polite" position="absolute" width=1 height=1 overflow="hidden" opacity=0
-
 component ControlButton
   props
     command: string
@@ -217,9 +195,6 @@ component StatusScreen
     climateLoading: bool
     utcOffset: number
     online: bool
-    // A read the app started itself (status-screen.ios.tsx's footer); a
-    // pull shows its own spinner instead.
-    updating: bool
     commandError: string
     dismissError: action
     climateError: string
@@ -556,7 +531,6 @@ component StatusScreen
                 column id="synced-at" popover="auto" position="absolute" padding=16
                   text exactTime((checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs), utcOffset) font-size=16
                 button popovertarget="checked-at" testId="checked-line" -exact-apple-button-style="plain"
-                  text (updating and not refreshing ? "Updating…" : `Lexy checked for data ${relative(clock, checkedAt)}.`) font-size=13 color="secondary-label" text-align="center"
+                  text `Lexy checked for data ${relative(clock, checkedAt)}.` font-size=13 color="secondary-label" text-align="center"
                 column id="checked-at" popover="auto" position="absolute" padding=16
                   text exactTime(checkedAt, utcOffset) font-size=16
-      RefreshingNote(visible=(updating and not refreshing))
