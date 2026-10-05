@@ -52,7 +52,7 @@ component PrimaryButton
     press: action
     id: string
   view
-    button press=press disabled=disabled testId=id background-color="AccentColor" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
+    button press=press disabled=disabled testId=id -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600 color="#ffffff"
 
 // SecondaryButton: a grey bordered capsule, for the step's other ways on.
@@ -63,7 +63,7 @@ component SecondaryButton
     press: action
     id: string
   view
-    button press=press disabled=disabled testId=id background-color="tertiary-fill" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
+    button press=press disabled=disabled testId=id -exact-apple-button-style="gray" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600 color="AccentColor"
 
 // InfoNotice and ErrorNotice: a symbol and the message on a card (a code was
@@ -137,7 +137,7 @@ component LockScreen
           // One row of equal-width choices (ChoiceButton: bordered, large).
           row gap=8 animation="stepIn 350ms ease-out"
             each m, i in choices key=m
-              button press=choose(i) disabled=busy testId=`method-${i}` background-color="tertiary-fill" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button press=choose(i) disabled=busy testId=`method-${i}` -exact-apple-button-style="tinted" accent-color="AccentColor" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image `symbol:sf/${choiceSymbol(m)}` font-size=17 tint-color="AccentColor"
                 text m font-size=17 font-weight=600 color="AccentColor" line-clamp=1
         when step == "otp"
@@ -158,7 +158,7 @@ component LockScreen
             text "New to Lexus?" font-size=13 font-weight=600 color="label"
             text "Create an account and add your vehicle in the Lexus app, then come back here to sign in." font-size=13 color="secondary-label"
             // Only the link is a control (sign-in-elements.ios.tsx).
-            button press=getLexusApp testId="get-lexus-app"
+            button press=getLexusApp testId="get-lexus-app" -exact-apple-button-style="plain"
               text "Get the Lexus App" font-size=13 font-weight=600 color="AccentColor"
         text "Your password and verification code go directly to Lexus. Lexy never stores them or collects your information." font-size=13 font-weight=500 color="secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
       // Not in Lexy: an in-memory Lexus, for trying the app without an
@@ -167,5 +167,5 @@ component LockScreen
       // whatever the stored demo flag says: a flag left in the Keychain (it
       // outlives a reinstall) hid it on a signed-out launch.
       when step == "credentials" and not preview
-        button press=tryDemo disabled=busy testId="try-demo" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
+        button press=tryDemo disabled=busy testId="try-demo" -exact-apple-button-style="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
           text "Try Demo" font-size=17 color="AccentColor"

@@ -95,7 +95,7 @@ component SettingsScreen
           column
             SectionHeader(title="LEXUS ACCOUNT")
             column class=Card
-              button press=signOut disabled=signingOut testId="sign-out" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button press=signOut disabled=signingOut testId="sign-out" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 tint-color="system-red" object-fit="scale-down" width=26 height=24
                 text "Sign Out" font-size=17 font-weight=600 color="system-red"
             when demo
@@ -113,12 +113,12 @@ component SettingsScreen
             column class=Card
               row padding=16 justify-content="space-between" align-items="center"
                 text "Version" font-size=17
-                text version testId="version" font-size=17 color="secondary-label"
+                text version testId="version" font-size=17 color="secondary-label" user-select="text"
               // A grouped list's divider, inset to the text.
               box height=0.5 margin-left=16 background-color="separator"
               row padding=16 justify-content="space-between" align-items="center" gap=16
                 text "Built with" font-size=17
-                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="secondary-label" text-align="right" flex-shrink=1
+                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="secondary-label" text-align="right" flex-shrink=1 user-select="text"
 
 component RenameScreen
   props
@@ -139,12 +139,12 @@ component RenameScreen
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
             input id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="label"
             when name != ""
-              button press=clear testId="clear-name" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
+              button press=clear testId="clear-name" -exact-apple-button-style="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
                 image "symbol:sf/xmark.circle.fill" font-size=17 tint-color="tertiary-label" object-fit="scale-down" width=22 height=22
           text "Your car’s name, saved to the Lexus app." font-size=13 color="secondary-label" padding-left=16 padding-right=16
         when error != ""
           row gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center" testId="rename-error"
             image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
-        button press=save disabled=(not changed or saving) testId="save-name" background-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+        button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

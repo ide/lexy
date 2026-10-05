@@ -31,7 +31,7 @@ component InfoRow
     row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=(last ? 0 : 0.5) border-bottom-style="solid" border-color="separator" testId=`row-${label}`
       text label class=Small color="secondary-label"
       // Selectable, as the Expo row's value is: a long press offers Copy.
-      text (value != "" ? value : "—") class=Small color="label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums"
+      text (value != "" ? value : "—") class=Small color="label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums" user-select=(value != "" ? "text" : "auto")
 
 component Capability
   props
@@ -105,8 +105,8 @@ component SpecsScreen
                   each s, i in services.items key=`${s.bucket}-${s.name}`
                     row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="separator" testId=`service-${i}`
                       column flex-shrink=1
-                        text s.name class=Small color="label"
+                        text s.name class=Small color="label" user-select="text"
                         text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="secondary-label"
                       text s.status class=SmallBold color=(s.status == "Active" ? "system-green" : "secondary-label")
-                  button press=manage testId="manage-subscriptions" padding-top=16 padding-bottom=16 display="flex" align-items="center"
+                  button press=manage testId="manage-subscriptions" -exact-apple-button-style="plain" padding-top=16 padding-bottom=16 display="flex" align-items="center"
                     text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="AccentColor" text-align="center"
