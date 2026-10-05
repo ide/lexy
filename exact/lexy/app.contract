@@ -122,6 +122,8 @@ component Lexy
   state lastPrimeAt = 0
   // The last tick's wall time: a gap means the app was away (resume-refresh.ts).
   state lastTick = 0
+  // The page was hidden at the last tick (exactPage's visibilityState).
+  state wasHidden = false
   state primeOnLaunch = false
   // Back from the background, the refresh ladder waits for a fresh session:
   // a token refreshed while the reads are out asks every one of them again.
@@ -254,10 +256,10 @@ component Lexy
   derive forcedLoading = dataState == "loading" or dataState == "offline-empty"
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
   // Under the Status title, quietly, how fresh the data shown is; a refresh
-  // the app started says "Updating…" once it has run a while (a pull shows
-  // its own spinner). Nothing before there is data, or signed out. Before
+  // the native app started says "Updating…" once it has run a while (a pull
+  // shows its own spinner; a web page's load is the fetch asked for). Nothing before there is data, or signed out. Before
   // the first tick, the time is the launch's, so the first frame has it.
-  derive statusSubtitle = account.signedIn and shownGarage.car.vin != "" and status.fetchedMs > 0 and time.epochAtZero > 0 ? (updatingSlow and (updating or pending(held)) and not pulling ? "Updating…" : `Updated ${ago(orEpoch(clock, time.epochAtZero), status.fetchedMs, time.utcOffset)}`) : ""
+  derive statusSubtitle = account.signedIn and shownGarage.car.vin != "" and status.fetchedMs > 0 and time.epochAtZero > 0 ? (updatingSlow and (updating or pending(held)) and not pulling and not page.document ? "Updating…" : `Updated ${ago(orEpoch(clock, time.epochAtZero), status.fetchedMs, time.utcOffset)}`) : ""
   // Login Flow: the scenario the sign-in machine plays against a mock tree
   // while its screen is open ("" is the real sign-in), and whether it ended
   // signed in.
@@ -354,11 +356,11 @@ component Lexy
     // resume-refresh.ts: back from the background, data
     // under a minute old stays; older is re-read; past fifteen minutes the
     // car is asked to report first (at most every three minutes).
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000)) and not account.signedIn
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and not account.signedIn
       resumeDue = false
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000)) and account.signedIn and (pending(account) or time.epochAtZero + now() > account.expiresAt - 60000)
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and account.signedIn and (pending(account) or time.epochAtZero + now() > account.expiresAt - 60000)
       resumeDue = true
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000)) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
       resumeDue = false
       if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
         lastPrimeAt = time.epochAtZero + now()
@@ -374,8 +376,12 @@ component Lexy
           statusRev = statusRev + 1
           statusAt = time.epochAtZero + now()
     // Back from the background: maps apps may have come or gone.
-    if lastTick > 0 and time.epochAtZero + now() - lastTick > 15000
+    if lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible"
       mapsRev = mapsRev + 1
+    // Seen hidden at this tick: the next tick that sees the page again is
+    // a return to the foreground, however the clock moved meanwhile (a
+    // host that kept ticking in the background shows no gap).
+    wasHidden = page.visibilityState == "hidden"
     lastTick = time.epochAtZero + now()
 
   // Sign-in: one press walks start → email → password, then lands on the

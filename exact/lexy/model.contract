@@ -11,6 +11,9 @@ shape Page
   visibilityState: string
   onLine: bool
   canShare: bool
+  // A web document (a page the browser loaded) rather than a native app:
+  // a page's load is the fetch the person asked for, so it says nothing.
+  document: bool
 
 shape Time
   epochAtZero: number
