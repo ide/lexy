@@ -31,7 +31,7 @@ component InfoRow
     row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=(last ? 0 : 0.5) border-bottom-style="solid" border-color="separator" testId=`row-${label}`
       text label class=Small color="secondary-label"
       // Selectable, as the Expo row's value is: a long press offers Copy.
-      text (value != "" ? value : "—") class=Small color="label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums" user-select=(value != "" ? "text" : "auto")
+      text (value != "" ? value : "—") class=Small color="label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums"
 
 component Capability
   props
@@ -55,59 +55,58 @@ component SpecsScreen
     manage: action
   derive car = garage.car
   view
-    column flex=1 min-height=0 width="100%"
-      scroll testId="specs-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-        column box-sizing="border-box" padding-bottom=64
-          when not online
-            column margin-left=16 margin-right=16 margin-top=16
-              WarningBanner(id="specs-offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
-          // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
-          when online and car.vin != "" and not garage.ok and not loading and garage.status != 401
-            column margin-left=16 margin-right=16 margin-top=16
-              WarningBanner(id="specs-garage-error", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved.`)
-          when car.vin == "" and loading
-            // details-screen.tsx's skeleton: the vehicle card's place.
-            column box-sizing="border-box" padding=16 gap=8 testId="specs-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
-              box width=80 height=17 border-radius=6 margin-left=8 background-color="tertiary-fill"
-              column class=Card height=600
-          when car.vin == "" and not loading and garage.ok and length(garage.cars) == 0
-            VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="specs-no-vehicle")
-          when car.vin == "" and not loading and not garage.ok and garage.status != 401
-            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
-          when car.vin != ""
-            column box-sizing="border-box" padding=16 gap=16
+    scroll id="screen-scroll" testId="specs-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+      column box-sizing="border-box" padding-bottom=64
+        when not online
+          column margin-left=16 margin-right=16 margin-top=16
+            WarningBanner(id="specs-offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
+        // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
+        when online and car.vin != "" and not garage.ok and not loading and garage.status != 401
+          column margin-left=16 margin-right=16 margin-top=16
+            WarningBanner(id="specs-garage-error", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved.`)
+        when car.vin == "" and loading
+          // details-screen.tsx's skeleton: the vehicle card's place.
+          column box-sizing="border-box" padding=16 gap=8 testId="specs-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
+            box width=80 height=17 border-radius=6 margin-left=8 background-color="tertiary-fill"
+            column class=Card height=600
+        when car.vin == "" and not loading and garage.ok and length(garage.cars) == 0
+          VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="specs-no-vehicle")
+        when car.vin == "" and not loading and not garage.ok and garage.status != 401
+          VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
+        when car.vin != ""
+          column box-sizing="border-box" padding=16 gap=16
+            column gap=8
+              text "VEHICLE" class=CardTitle
+              column class=Card padding-left=16 padding-right=16
+                InfoRow(label="VIN", value=car.vin, last=false)
+                InfoRow(label="Model Code", value=car.modelCode, last=false)
+                InfoRow(label="Exterior", value=car.color, last=false)
+                InfoRow(label="Trim", value=specValue(spec, "Grade", car.grade), last=false)
+                InfoRow(label="Region", value=car.region, last=false)
+                InfoRow(label="Telematics", value=car.generation, last=false)
+                InfoRow(label="Head Unit", value=headUnit(car.generation), last=false)
+                InfoRow(label="Fuel Type", value=fuelName(car.fuelType), last=false)
+                InfoRow(label="Transmission", value=specValue(spec, "Transmission", "—"), last=false)
+                InfoRow(label="Drivetrain", value=specValue(spec, "Drive Type", "—"), last=false)
+                InfoRow(label="Built", value=specValue(spec, "Order Date", "—"), last=false)
+                InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true)
+            // src/data/vehicle-mapping.ts lists the same four for every car.
+            column gap=8
+              text "REMOTE CAPABILITIES" class=CardTitle
+              row class=Card flex-wrap="wrap" padding=16 gap=16
+                Capability(symbol="lock.fill", label="Lock & unlock")
+                Capability(symbol="power", label="Engine start")
+                Capability(symbol="thermometer.medium", label="Climate")
+                Capability(symbol="location.fill", label="Location")
+            when services.ok and length(services.items) > 0
               column gap=8
-                text "VEHICLE" class=CardTitle
+                text "CONNECTED SERVICES" class=CardTitle
                 column class=Card padding-left=16 padding-right=16
-                  InfoRow(label="VIN", value=car.vin, last=false)
-                  InfoRow(label="Model Code", value=car.modelCode, last=false)
-                  InfoRow(label="Exterior", value=car.color, last=false)
-                  InfoRow(label="Trim", value=specValue(spec, "Grade", car.grade), last=false)
-                  InfoRow(label="Region", value=car.region, last=false)
-                  InfoRow(label="Telematics", value=car.generation, last=false)
-                  InfoRow(label="Head Unit", value=headUnit(car.generation), last=false)
-                  InfoRow(label="Fuel Type", value=fuelName(car.fuelType), last=false)
-                  InfoRow(label="Transmission", value=specValue(spec, "Transmission", "—"), last=false)
-                  InfoRow(label="Drivetrain", value=specValue(spec, "Drive Type", "—"), last=false)
-                  InfoRow(label="Built", value=specValue(spec, "Order Date", "—"), last=false)
-                  InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true)
-              // src/data/vehicle-mapping.ts lists the same four for every car.
-              column gap=8
-                text "REMOTE CAPABILITIES" class=CardTitle
-                row class=Card flex-wrap="wrap" padding=16 gap=16
-                  Capability(symbol="lock.fill", label="Lock & unlock")
-                  Capability(symbol="power", label="Engine start")
-                  Capability(symbol="thermometer.medium", label="Climate")
-                  Capability(symbol="location.fill", label="Location")
-              when services.ok and length(services.items) > 0
-                column gap=8
-                  text "CONNECTED SERVICES" class=CardTitle
-                  column class=Card padding-left=16 padding-right=16
-                    each s, i in services.items key=`${s.bucket}-${s.name}`
-                      row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="separator" testId=`service-${i}`
-                        column flex-shrink=1
-                          text s.name class=Small color="label" user-select="text"
-                          text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="secondary-label"
-                        text s.status class=SmallBold color=(s.status == "Active" ? "system-green" : "secondary-label")
-                    button press=manage testId="manage-subscriptions" -exact-apple-button-style="plain" padding-top=16 padding-bottom=16 display="flex" align-items="center"
-                      text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="AccentColor" text-align="center"
+                  each s, i in services.items key=`${s.bucket}-${s.name}`
+                    row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="separator" testId=`service-${i}`
+                      column flex-shrink=1
+                        text s.name class=Small color="label"
+                        text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="secondary-label"
+                      text s.status class=SmallBold color=(s.status == "Active" ? "system-green" : "secondary-label")
+                  button press=manage testId="manage-subscriptions" padding-top=16 padding-bottom=16 display="flex" align-items="center"
+                    text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="AccentColor" text-align="center"

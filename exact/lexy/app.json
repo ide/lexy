@@ -42,7 +42,9 @@
         "height": 860
       }
     },
-    "web": {}
+    "web": {
+      "navigationChrome": "ios"
+    }
   },
   "rust": false,
   "deploy": {

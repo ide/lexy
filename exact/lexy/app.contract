@@ -39,6 +39,7 @@ use DataStateScreen from "./developer.contract"
 use LoginPreviewScreen from "./developer.contract"
 use EasScreen from "./developer.contract"
 use Delivery from "./developer.contract"
+use signInError from "./model.contract"
 
 routes nav
   tab status "/"
@@ -336,8 +337,6 @@ component Lexy
           lockPolls = lockPolls + 1
           statusRev = statusRev + 1
           statusAt = clock
-          if lockPolls == 5
-            send primed = prime(car, time.epochAtZero + now())
     if engineTarget != "" and clock - engineAt >= 20000 and not pending(sent)
       if not enginePending or enginePolls >= 4
         engineTarget = ""
@@ -349,9 +348,7 @@ component Lexy
       primeOnLaunch = false
       autoRefresh = true
       updatingSlow = false
-      send waited = pause(1500)
       lastPrimeAt = time.epochAtZero + now()
-      send primed = prime(car, time.epochAtZero + now())
     // resume-refresh.ts: back from the background, data
     // under a minute old stays; older is re-read; past fifteen minutes the
     // car is asked to report first (at most every three minutes).
@@ -365,13 +362,10 @@ component Lexy
         lastPrimeAt = time.epochAtZero + now()
         autoRefresh = true
         updatingSlow = false
-        send waited = pause(1500)
-        send primed = prime(car, time.epochAtZero + now())
       else
         if time.epochAtZero + now() - status.fetchedMs >= 60000
           autoRefresh = true
           updatingSlow = false
-          send waited = pause(1500)
           statusRev = statusRev + 1
           statusAt = time.epochAtZero + now()
     // Back from the background: maps apps may have come or gone.
@@ -380,6 +374,17 @@ component Lexy
     // Seen hidden at this tick: the next tick that sees the page again is
     // a return to the foreground, however the clock moved meanwhile (a
     // host that kept ticking in the background shows no gap).
+    // One send of each, from the conditions above (LLP 1016 D5): asking
+    // the car to report, and the wait before "Updating…" shows.
+    let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
+    let primeLaunch = primeOnLaunch and account.signedIn and car.vin != ""
+    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+    let primeResume = resumes and time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
+    let rereads = resumes and time.epochAtZero + now() - status.fetchedMs >= 60000
+    if primeLock or primeLaunch or primeResume
+      send primed = prime(car, time.epochAtZero + now())
+    if primeLaunch or rereads
+      send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
     lastTick = time.epochAtZero + now()
 
@@ -872,48 +877,61 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
+    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
       when not shell
         LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
       else
         // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
         // own navigation controller under a tab bar controller, and a tab
-        // bar tap presses that tab's control below (tab-config.ts items).
-        each t in nav.tabs key=t.name
-          each e in t.stack key=e.id
-            // UIKit's navigation bar: each route's title, large except the
-            // Last Parked sheet's, whose close button is a native bar button;
-            // Status's subtitle says how fresh its data is.
-            column navigationKey=`${e.id}` navigationPresentation=(e.name == "map" ? "modal" : "") navigationTitle=(e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Lexus") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : ""))))))))) navigationLargeTitle=(e.name == "map" or e.name == "login" ? "false" : "true") navigationSubtitle=(e.name == "status" ? statusSubtitle : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationTrailing=(e.name == "map" ? "back" : (e.name == "login" ? "scenario" : "")) navigationTrailingSymbol=(e.name == "login" ? "wrench.and.screwdriver" : "xmark") navigationBackButton="minimal" navigationTab=t.name navigationTabTitle=(t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) navigationTabSymbol=(t.name == "status" ? "car" : (t.name == "specs" ? "list.bullet.rectangle" : "gearshape")) navigationTabSelectedSymbol=(t.name == "status" ? "car.fill" : (t.name == "specs" ? "list.bullet.rectangle.fill" : "gearshape.fill")) navigationTabControl=`tab-${t.name}` testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
-              when e.name == "status"
-                StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climateRead)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
-              when e.name == "map"
-                MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
-              when e.name == "specs"
-                SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
-              when e.name == "settings"
-                SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
-              when e.name == "updates" or e.name == "dataState" or e.name == "eas"
-                // UIKit's back button pops (and the browser's Back); this is
-                // the control the pop presses, as the other pushed screens have.
-                button id="back" press=back testId="back" aria-label="Back" position="absolute" width=1 height=1 opacity=0
-                  text ""
-              when e.name == "updates"
-                UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
-              when e.name == "dataState"
-                DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
-              when e.name == "login"
-                // UIKit's back button pops; this is the control the pop presses.
-                button id="back" press=leavePreview testId="back" aria-label="Back" position="absolute" width=1 height=1 opacity=0
-                  text ""
-                LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
-              when e.name == "eas"
-                EasScreen(open=openExternal)
-              when e.name == "rename"
-                RenameScreen(name=draftName, saved=vehicleName(car.nickName, car.modelName), saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
-        button id="tab-status" press=selectTab("status") testId="tab-status" aria-label="Status" position="absolute" width=1 height=1 opacity=0
-          text ""
-        button id="tab-specs" press=selectTab("specs") testId="tab-specs" aria-label="Specs" position="absolute" width=1 height=1 opacity=0
-          text ""
-        button id="tab-settings" press=selectTab("settings") testId="tab-settings" aria-label="Settings" position="absolute" width=1 height=1 opacity=0
-          text ""
+        // bar tap is the navigator's `tabselect` (tab-config.ts items).
+        // Every tab keeps its own stack (nav.tabs) in its tabpanel: UIKit
+        // holds each in its own navigation controller under a tab bar
+        // controller, whose items are the tablist below (exact2 LLP 1075.003
+        // §3.7). Each route's header is its bar: the heading its title (large
+        // at level 1), the status line under it its subtitle, the Back button
+        // UIKit's back button, the buttons after the heading its items.
+        column flex=1 min-height=0 position="relative"
+          each t in nav.tabs key=t.name
+            column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
+              each e in t.stack key=e.id
+                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
+                  header display="flex" flex-direction="row" align-items="center" gap=8 padding-left=16 padding-right=16 padding-top=(e.name == "map" ? "8px" : "env(safe-area-inset-top)") padding-bottom=8 flex-shrink=0
+                    when e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
+                      button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        image "symbol:sf/chevron.backward" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+                    column flex=1 min-width=0
+                      text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Lexus") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : ""))))))))) aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="label"
+                      when e.name == "status" and statusSubtitle != ""
+                        text statusSubtitle font-size=12 color="secondary-label"
+                    when e.name == "map"
+                      button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        image "symbol:sf/xmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+                    when e.name == "login"
+                      button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        image "symbol:sf/wrench.and.screwdriver" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
+                  when e.name == "status"
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climateRead)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                  when e.name == "map"
+                    MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
+                  when e.name == "specs"
+                    SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
+                  when e.name == "settings"
+                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                  when e.name == "updates"
+                    UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
+                  when e.name == "dataState"
+                    DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
+                  when e.name == "login"
+                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
+                  when e.name == "eas"
+                    EasScreen(open=openExternal)
+                  when e.name == "rename"
+                    RenameScreen(name=draftName, saved=vehicleName(car.nickName, car.modelName), saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
+
+        // The tab bar's items: a symbol over a label, the `-fill` symbol
+        // when selected (tab-config.ts).
+        row role="tablist" aria-label="Tabs" display="flex" flex-shrink=0 height=56 align-items="stretch" background-color="secondary-grouped-background"
+          each t in nav.tabs key=t.name
+            button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1 display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 color=(nav.tab == t.name ? "AccentColor" : "secondary-label")
+              image (t.name == "status" ? "symbol:sf/car" : (t.name == "specs" ? "symbol:sf/list.bullet.rectangle" : "symbol:sf/gearshape")) width=26 height=22 object-fit="scale-down"
+              text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) font-size=10 font-weight=500

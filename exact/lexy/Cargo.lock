@@ -152,6 +152,7 @@ dependencies = [
  "exact-num",
  "exact-plan",
  "icu_locale",
+ "serde_json",
 ]
 
 [[package]]
@@ -221,6 +222,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cssparser"
+version = "0.37.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c9cdaae01d5ed7882b04d795e7f752f46ff52d2fa3b50a20d28c464510bba98"
+dependencies = [
+ "dtoa-short",
+ "itoa",
+ "smallvec",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "4.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -277,6 +289,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.4",
+]
+
+[[package]]
+name = "dtoa"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c3cf4824e2d5f025c7b531afcb2325364084a16806f6d47fbc1f5fbd9960590"
+
+[[package]]
+name = "dtoa-short"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd1511a7b6a56299bd043a9c167a6d2bfb37bf84a6dfceaba651168adfb43c87"
+dependencies = [
+ "dtoa",
 ]
 
 [[package]]
@@ -383,6 +410,7 @@ dependencies = [
 name = "exact-canvas"
 version = "0.1.0"
 dependencies = [
+ "exact-motion",
  "exact-num",
 ]
 
@@ -406,6 +434,7 @@ dependencies = [
  "libc",
  "serde_json",
  "sha2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -420,6 +449,7 @@ dependencies = [
 name = "exact-grants"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "url",
 ]
 
@@ -474,8 +504,10 @@ dependencies = [
 name = "exact-kernel"
 version = "0.1.0"
 dependencies = [
+ "cssparser",
  "exact-motion",
  "exact-num",
+ "exact-svg-filter",
  "exact-textflow",
  "serde",
  "serde_json",
@@ -556,6 +588,10 @@ dependencies = [
  "exact-route",
  "sha2",
 ]
+
+[[package]]
+name = "exact-svg-filter"
+version = "0.1.0"
 
 [[package]]
 name = "exact-textflow"
@@ -798,6 +834,7 @@ dependencies = [
  "ureq",
  "url",
  "webpki-roots",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1539,6 +1576,7 @@ name = "taffy"
 version = "0.14.0"
 dependencies = [
  "arrayvec",
+ "cssparser",
  "serde",
  "slotmap",
  "smallvec",

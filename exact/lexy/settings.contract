@@ -47,16 +47,16 @@ component DeveloperTools
     column
       SectionHeader(title="DEVELOPER TOOLS")
       column class=Card
-        button press=open("/settings/updates") testId="dev-updates" display="flex"
+        button text-align="left" press=open("/settings/updates") testId="dev-updates" display="flex"
           SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.")
         box height=0.5 margin-left=60 background-color="separator"
-        button press=open("/settings/data-state") testId="dev-data-state" display="flex"
+        button text-align="left" press=open("/settings/data-state") testId="dev-data-state" display="flex"
           SettingsRowFace(symbol="cylinder.split.1x2.fill", title="Data State", subtitle="Force loading, offline, error, and empty states.")
         box height=0.5 margin-left=60 background-color="separator"
-        button press=open("/settings/login") testId="dev-login" display="flex"
+        button text-align="left" press=open("/settings/login") testId="dev-login" display="flex"
           SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.")
         box height=0.5 margin-left=60 background-color="separator"
-        button press=open("/settings/eas") testId="dev-eas" display="flex"
+        button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
 
 component SettingsScreen
@@ -74,7 +74,7 @@ component SettingsScreen
     signOut: action
     signingOut: bool
   view
-    scroll testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding-bottom=64
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
           DeveloperTools(open=openDevTool)
@@ -83,19 +83,19 @@ component SettingsScreen
             column class=Card
               // The same chooser as the map's, of the installed apps only
               // (settings-screen.ios.tsx's promptChoice).
-              button popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps-chooser") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
+              button text-align="left" popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps-chooser") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
                 SettingsRowFace(symbol="map.fill", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))))
               MapsChooser(prefix="settings-", apps=apps, choose=chooseMaps)
             SectionFooter(words="The app used to open your vehicle’s location for directions.")
           column
             SectionHeader(title="VEHICLE")
             column class=Card
-              button press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
+              button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
                 SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)))
           column
             SectionHeader(title="LEXUS ACCOUNT")
             column class=Card
-              button press=signOut disabled=signingOut testId="sign-out" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button press=signOut disabled=signingOut testId="sign-out" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 tint-color="system-red" object-fit="scale-down" width=26 height=24
                 text "Sign Out" font-size=17 font-weight=600 color="system-red"
             when demo
@@ -113,12 +113,12 @@ component SettingsScreen
             column class=Card
               row padding=16 justify-content="space-between" align-items="center"
                 text "Version" font-size=17
-                text version testId="version" font-size=17 color="secondary-label" user-select="text"
+                text version testId="version" font-size=17 color="secondary-label"
               // A grouped list's divider, inset to the text.
               box height=0.5 margin-left=16 background-color="separator"
               row padding=16 justify-content="space-between" align-items="center" gap=16
                 text "Built with" font-size=17
-                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="secondary-label" text-align="right" flex-shrink=1 user-select="text"
+                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="secondary-label" text-align="right" flex-shrink=1
 
 component RenameScreen
   props
@@ -132,22 +132,19 @@ component RenameScreen
     back: action
   derive changed = trim(name) != "" and trim(name) != saved
   view
-    scroll testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="grouped-background"
-      // UIKit's back button pops; this is the control the pop presses.
-      button id="back" press=back testId="back" aria-label="Back" position="absolute" width=1 height=1 opacity=0
-        text ""
+    scroll id="screen-scroll" testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="grouped-background"
       column padding-top=16 padding-left=16 padding-right=16 gap=16
         // section.tsx: the footer 8 under its field, 16 to what follows.
         column gap=8
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
             input id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="label"
             when name != ""
-              button press=clear testId="clear-name" -exact-apple-button-style="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
+              button press=clear testId="clear-name" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
                 image "symbol:sf/xmark.circle.fill" font-size=17 tint-color="tertiary-label" object-fit="scale-down" width=22 height=22
           text "Your car’s name, saved to the Lexus app." font-size=13 color="secondary-label" padding-left=16 padding-right=16
         when error != ""
           row gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center" testId="rename-error"
             image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
-        button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+        button press=save disabled=(not changed or saving) testId="save-name" background-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"
