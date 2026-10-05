@@ -11,9 +11,10 @@ shape Page
   visibilityState: string
   onLine: bool
   canShare: bool
-  // A web document (a page the browser loaded) rather than a native app:
-  // a page's load is the fetch the person asked for, so it says nothing.
-  document: bool
+  // How the browser loaded the page (Navigation Timing's type: navigate,
+  // reload, back_forward); "" in the native app. A page's load is the
+  // fetch the person asked for, so it announces nothing.
+  navigationType: string
 
 shape Time
   epochAtZero: number

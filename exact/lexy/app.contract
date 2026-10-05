@@ -34,7 +34,6 @@ use otpCallback from "./model.contract"
 use vehicleName from "./model.contract"
 use any from "./model.contract"
 use orEpoch from "./model.contract"
-use ago from "./model.contract"
 use UpdatesScreen from "./developer.contract"
 use DataStateScreen from "./developer.contract"
 use LoginPreviewScreen from "./developer.contract"
@@ -255,11 +254,11 @@ component Lexy
   derive shownOnline = (dataState == "offline-cached" or dataState == "offline-empty") ? false : (dataState == "live" or dataState == "loading" ? page.onLine : true)
   derive forcedLoading = dataState == "loading" or dataState == "offline-empty"
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
-  // Under the Status title, quietly, how fresh the data shown is; a refresh
-  // the native app started says "Updating…" once it has run a while (a pull
-  // shows its own spinner; a web page's load is the fetch asked for). Nothing before there is data, or signed out. Before
+  // Under the Status title, only while the native app is refreshing on its
+  // own and it has run a while: "Updating…". Nothing otherwise (a pull shows
+  // its own spinner; a web page's load is the fetch the person asked for). Nothing before there is data, or signed out. Before
   // the first tick, the time is the launch's, so the first frame has it.
-  derive statusSubtitle = account.signedIn and shownGarage.car.vin != "" and status.fetchedMs > 0 and time.epochAtZero > 0 ? (updatingSlow and (updating or pending(held)) and not pulling and not page.document ? "Updating…" : `Updated ${ago(orEpoch(clock, time.epochAtZero), status.fetchedMs, time.utcOffset)}`) : ""
+  derive statusSubtitle = account.signedIn and shownGarage.car.vin != "" and updatingSlow and (updating or pending(held)) and not pulling and page.navigationType == "" ? "Updating…" : ""
   // Login Flow: the scenario the sign-in machine plays against a mock tree
   // while its screen is open ("" is the real sign-in), and whether it ended
   // signed in.
