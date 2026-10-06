@@ -608,10 +608,14 @@ component Lexy
         signError = ""
   // The Status screen's Refresh: what a pull does, and the car asked to
   // report whatever the throttle says, with "Updating…" under the title.
+  // "Updating…" shows at once (the person asked; no wait for a slow one)
+  // and for at least the hold, so a quick answer still reads as done.
   action refreshNow
     send felt = feel("selection")
     autoRefresh = car.vin != ""
-    updatingSlow = false
+    updatingSlow = car.vin != ""
+    if car.vin != ""
+      send held = pause(600)
     if car.vin != ""
       lastPrimeAt = time.epochAtZero + now()
       send primed = prime(car, time.epochAtZero + now())
