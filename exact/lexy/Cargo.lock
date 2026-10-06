@@ -368,6 +368,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 name = "exact-apple"
 version = "0.1.0"
 dependencies = [
+ "exact-color",
  "exact-data",
  "exact-kernel",
  "exact-markdown",
@@ -396,6 +397,7 @@ name = "exact-bake"
 version = "0.1.0"
 dependencies = [
  "contract",
+ "exact-color",
  "exact-filesystem",
  "exact-gpu-reflect",
  "exact-kernel",
@@ -410,7 +412,15 @@ dependencies = [
 name = "exact-canvas"
 version = "0.1.0"
 dependencies = [
+ "exact-color",
  "exact-motion",
+ "exact-num",
+]
+
+[[package]]
+name = "exact-color"
+version = "0.1.0"
+dependencies = [
  "exact-num",
 ]
 
@@ -505,6 +515,7 @@ name = "exact-kernel"
 version = "0.1.0"
 dependencies = [
  "cssparser",
+ "exact-color",
  "exact-motion",
  "exact-num",
  "exact-svg-filter",
@@ -544,6 +555,7 @@ version = "0.1.0"
 name = "exact-motion"
 version = "0.1.0"
 dependencies = [
+ "exact-color",
  "exact-num",
  "libm",
 ]

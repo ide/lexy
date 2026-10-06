@@ -20,6 +20,15 @@
     "id": "app.ide.lexy.exact",
     "name": "Lexy"
   },
+  "launch": [
+    "observe"
+  ],
+  "moduleConfig": {
+    "observe": {
+      "projectId": "50920011-b780-458b-9aaa-e305a424af77",
+      "dispatchInDebug": true
+    }
+  },
   "modules": [
     "lexy-map"
   ],
