@@ -52,7 +52,6 @@ component MapSheet
     close: action
   view
     column testId="map-sheet" flex=1 min-height=0 background-color="grouped-background"
-      box height=56 flex-shrink=0
       when status.latitude == 0 and status.longitude == 0
         column flex=1 align-items="center" justify-content="center"
           text "Location unavailable" font-size=16 font-weight=500 color="secondary-label"

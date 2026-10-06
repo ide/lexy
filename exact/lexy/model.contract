@@ -279,7 +279,12 @@ fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "hea
 
 // A system colour at 15%, for a symbol's badge or a banner's wash: written
 // out until relative colour over a role (rgb(from …)) exists.
-fn wash(role: string): string = role == "system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : ((role == "system-blue" or role == "AccentColor") ? "light-dark(#007aff26, #0a84ff26)" : "light-dark(#3c3c4326, #ebebf526)"))
+// Lexy's accent: the tach's red, in Display P3 (the app icon's #F0232C,
+// more vivid), lighter in dark mode. The root sets it as `accent-color`.
+fn accent(): string = "light-dark(color(display-p3 0.91 0.11 0.14), color(display-p3 1 0.27 0.28))"
+// A role's wash: its colour at 15%. The accent's is written out, as Contract
+// has no `color-mix()` yet.
+fn wash(role: string): string = role == "system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "system-blue" ? "light-dark(#007aff26, #0a84ff26)" : (role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" : "light-dark(#3c3c4326, #ebebf526)")))
 style Card
   background-color="secondary-grouped-background" border-radius=18
 // src/components/ui/section-title.tsx: 14/700, secondaryLabel, tracked, inset 8.

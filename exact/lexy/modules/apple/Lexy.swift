@@ -119,7 +119,12 @@ private func png(_ view: UIView) throws -> Data {
 /// The map fades in once MapKit has drawn its first region, as Lexy's does.
 private final class MapDelegate: NSObject, MKMapViewDelegate {
     var rendered: (() -> Void)?
-    func mapViewDidFinishRenderingMap(_ mapView: MKMapView, fullyRendered: Bool) { rendered?() }
+    /// Only a whole render at the map's own size shows the car's region:
+    /// one at no size, or with tiles still missing, is MapKit's ocean or
+    /// its empty grid, which would flash before the street.
+    func mapViewDidFinishRenderingMap(_ mapView: MKMapView, fullyRendered: Bool) {
+        if fullyRendered, !mapView.bounds.isEmpty { rendered?() }
+    }
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         let view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "car")
         view.glyphImage = UIImage(systemName: "car.fill")
@@ -129,8 +134,21 @@ private final class MapDelegate: NSObject, MKMapViewDelegate {
     }
 }
 
+/// A map that sets its camera again once it has a size: a camera set at no
+/// size frames the wrong region until the next render.
+private final class SizedMap: MKMapView {
+    var cameraAtSize: MKMapCamera?
+    private var sized = CGSize.zero
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.size != sized, !bounds.isEmpty else { return }
+        sized = bounds.size
+        if let c = cameraAtSize { setCamera(c, animated: false) }
+    }
+}
+
 private final class MapView: ExactNativeInstance {
-    private let map = MKMapView(frame: .zero)
+    private let map = SizedMap(frame: .zero)
     private let delegate = MapDelegate()
     private let pin = MKPointAnnotation()
     private var shown = false
@@ -140,7 +158,8 @@ private final class MapView: ExactNativeInstance {
         map.delegate = delegate
         map.alpha = 0
         delegate.rendered = { [weak self] in self?.fadeIn() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in self?.fadeIn() }
+        // Shown anyway if the tiles never finish (offline): late, not wrong.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in self?.fadeIn() }
         apply(props)
         events.load()
     }
@@ -159,7 +178,9 @@ private final class MapView: ExactNativeInstance {
         let zoom = Double(props["zoom"] ?? "") ?? 16
         // A web-map zoom level as a camera distance: zoom 16 is a few blocks.
         let distance = 40_000_000 / pow(2, zoom) * 1.6
-        map.setCamera(MKMapCamera(lookingAtCenter: centre, fromDistance: distance, pitch: 0, heading: 0), animated: false)
+        let camera = MKMapCamera(lookingAtCenter: centre, fromDistance: distance, pitch: 0, heading: 0)
+        map.cameraAtSize = camera
+        map.setCamera(camera, animated: false)
         map.pointOfInterestFilter = props["places"] == "false" ? .excludingAll : .includingAll
         let interactive = props["interactive"] != "false"
         map.isScrollEnabled = interactive; map.isZoomEnabled = interactive

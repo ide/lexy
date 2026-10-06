@@ -10,7 +10,7 @@ use SpecsScreen from "./specs.contract"
 use SettingsScreen from "./settings.contract"
 use MapSheet from "./map.contract"
 use RenameScreen from "./settings.contract"
-use Time from "./model.contract"
+use Time, accent from "./model.contract"
 use Account from "./model.contract"
 use AuthNode from "./model.contract"
 use Done from "./model.contract"
@@ -877,7 +877,7 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label" accent-color="light-dark(color(display-p3 0.91 0.11 0.14), color(display-p3 1 0.27 0.28))"
+    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label" accent-color=accent()
       when not shell
         LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
       else
@@ -894,7 +894,7 @@ component Lexy
           each t in nav.tabs key=t.name
             column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
               each e in t.stack key=e.id
-                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
+                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "large medium" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="grouped-background" display="flex" flex-direction="column"
                   header display="flex" flex-direction="row" align-items="center" gap=8 padding-left=16 padding-right=16 padding-top=(e.name == "map" ? "8px" : "env(safe-area-inset-top)") padding-bottom=8 flex-shrink=0
                     when e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"

@@ -106,7 +106,7 @@ component SettingsScreen
               column class=Card
                 row padding-left=16 padding-right=16 min-height=52 justify-content="space-between" align-items="center" gap=12
                   text "Simulate Server Errors" font-size=17 flex-shrink=1
-                  input type="checkbox" switch checked=demoFailing change=setDemoFailing aria-label="Simulate Server Errors" testId="demo-failures"
+                  input type="checkbox" switch checked=demoFailing change=setDemoFailing aria-label="Simulate Server Errors" testId="demo-failures" accent-color="auto"
               SectionFooter(words="Commands, climate changes and renames fail as a server error does, so you can see how the app recovers.")
           column
             SectionHeader(title="ABOUT")
