@@ -217,6 +217,9 @@ component EasScreen
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
             EasRow(symbol="house.fill", title="Project Home", subtitle="The project overview and its recent activity.")
           box height=0.5 margin-left=60 background-color="separator"
+          button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/observe") testId="eas-observe" display="flex"
+            EasRow(symbol="waveform.path.ecg", title="Observe", subtitle="Launch, render, and navigation metrics from real devices.")
+          box height=0.5 margin-left=60 background-color="separator"
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/workflows") testId="eas-workflows" display="flex"
             EasRow(symbol="flowchart.fill", title="Workflows", subtitle="The runs that build this Exact app.")
           box height=0.5 margin-left=60 background-color="separator"
