@@ -78,6 +78,9 @@ component Lexy
   // so a quick trip away left no trace for the tick to find.
   task returned when page.visibilityState == "visible"
     after(1, onVisible)
+  // The hero's breath: a timer only while it pulses (LLP 1092 D7).
+  task pulse when pulseOn
+    every(1200, pulseStep)
   task boot mount
     after(1, start)
 
@@ -153,8 +156,6 @@ component Lexy
   // steps neither jumps nor restarts it, and the end fades out.
   state pulseOn = false
   state pulseDim = false
-  mutation pulseIn as shape Done then pulseDown
-  mutation pulseOut as shape Done then pulseUp
   // A pull's spinner shows for the loads that pull started, never for the
   // launch's or the tick's (UIKit would show it half under the bar).
   state pulling = false
@@ -307,18 +308,16 @@ component Lexy
     if updating and not pulseOn
       pulseOn = true
       pulseDim = true
-      send pulseIn = pause(1200)
   // Dimmed: back up to opaque. Opaque: another breath while the refresh
   // runs, else the pulse ends here, where the boxes already stand.
-  action pulseDown
-    pulseDim = false
-    send pulseOut = pause(1200)
-  action pulseUp
-    if heroPulsing
-      pulseDim = true
-      send pulseIn = pause(1200)
+  action pulseStep
+    if pulseDim
+      pulseDim = false
     else
-      pulseOn = false
+      if heroPulsing
+        pulseDim = true
+      else
+        pulseOn = false
 
   // An action reads the state it started with: `clock` below is the previous
   // tick's until this action commits, so the notice timeout reads the time
@@ -643,7 +642,6 @@ component Lexy
     if car.vin != "" and not pulseOn
       pulseOn = true
       pulseDim = true
-      send pulseIn = pause(1200)
     if car.vin != ""
       lastPrimeAt = time.epochAtZero + now()
       send primed = prime(car, time.epochAtZero + now())
