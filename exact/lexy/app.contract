@@ -146,6 +146,15 @@ component Lexy
   state updatingSlow = false
   mutation waited as shape Done then afterWait
   mutation held as shape Done
+  // The hero's pulse (status.contract): one continuous breath while a
+  // refresh runs. `pulseDim` flips every 1.2 s and the boxes ease to it,
+  // so it starts from opaque; once on, it stops only at the opaque end of
+  // a breath after the refresh is done, so a moment between a refresh's
+  // steps neither jumps nor restarts it, and the end fades out.
+  state pulseOn = false
+  state pulseDim = false
+  mutation pulseIn as shape Done then pulseDown
+  mutation pulseOut as shape Done then pulseUp
   // A pull's spinner shows for the loads that pull started, never for the
   // launch's or the tick's (UIKit would show it half under the bar).
   state pulling = false
@@ -295,6 +304,21 @@ component Lexy
     updatingSlow = updating
     if updating
       send held = pause(600)
+    if updating and not pulseOn
+      pulseOn = true
+      pulseDim = true
+      send pulseIn = pause(1200)
+  // Dimmed: back up to opaque. Opaque: another breath while the refresh
+  // runs, else the pulse ends here, where the boxes already stand.
+  action pulseDown
+    pulseDim = false
+    send pulseOut = pause(1200)
+  action pulseUp
+    if heroPulsing
+      pulseDim = true
+      send pulseIn = pause(1200)
+    else
+      pulseOn = false
 
   // An action reads the state it started with: `clock` below is the previous
   // tick's until this action commits, so the notice timeout reads the time
@@ -616,6 +640,10 @@ component Lexy
     updatingSlow = car.vin != ""
     if car.vin != ""
       send held = pause(600)
+    if car.vin != "" and not pulseOn
+      pulseOn = true
+      pulseDim = true
+      send pulseIn = pause(1200)
     if car.vin != ""
       lastPrimeAt = time.epochAtZero + now()
       send primed = prime(car, time.epochAtZero + now())
@@ -943,7 +971,7 @@ component Lexy
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
                   when e.name == "status"
-                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), updating=heroPulsing, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climateRead)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=(pending(climateSaved) or pending(climateRead)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
                   when e.name == "map"
                     MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
                   when e.name == "specs"
