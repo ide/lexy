@@ -409,9 +409,11 @@ component StatusScreen
                         column width="calc(33.333% - 5.34px)"
                           ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=false, glass=false, iconSize=17, run=run)
             // Remote-start climate (climate-card.ios.tsx). A second change
-            // can't race the first: the switch and slider are disabled while
-            // one is written (and read back); the defrost buttons ignore a
-            // press then instead, so they don't dim on every save.
+            // can't race the first: the switch, the slider and the defrost
+            // buttons are disabled while one is written (and read back). A
+            // disabled defrost keeps its colours at 60% (Exact keeps an
+            // author's colours on a disabled button), so disabled never
+            // reads as defrost off.
             // climate-card.ios.tsx: the header always shows; the switch
             // only with settings (a placeholder while they load).
             when true
@@ -437,11 +439,11 @@ component StatusScreen
                     when climate.front or climate.rear
                       row gap=8
                         when climate.front
-                          button press=toggleDefrost("front") disabled=(not climateWanted) testId="defrost-front" transition="-exact-enabled -exact-system" -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("front") disabled=(climateSaving or not climateWanted) testId="defrost-front" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition="opacity -exact-system" -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
                         when climate.rear
-                          button press=toggleDefrost("rear") disabled=(not climateWanted) testId="defrost-rear" transition="-exact-enabled -exact-system" -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("rear") disabled=(climateSaving or not climateWanted) testId="defrost-rear" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition="opacity -exact-system" -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
