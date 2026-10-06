@@ -94,13 +94,14 @@ component VehicleState
     press: action
     id: string
   view
-    // Centred on the screen, over its scroll view (which still pulls to
-    // refresh): the same place on every tab, whatever sits above it.
-    column position="absolute" top=0 right=0 bottom=0 left=0 justify-content="center" align-items="center" gap=16 padding-left=24 padding-right=24 pointer-events="none" testId=id
+    // In the scroller's flow, at its natural height with some padding: it
+    // takes the room left under any banner and centres in it, and on a
+    // phone too short for it the screen scrolls a little instead.
+    column flex-grow=1 justify-content="center" align-items="center" gap=16 padding-top=32 padding-bottom=32 padding-left=24 padding-right=24 testId=id
       image `symbol:sf/${symbol}` font-size=44 tint-color="secondary-label"
       text title font-size=34 font-weight=700 text-align="center"
       text message font-size=17 color="secondary-label" text-align="center"
-      button press=press testId=`${id}-retry` pointer-events="auto" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
+      button press=press testId=`${id}-retry` -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
         text label font-size=17 color="#ffffff"
 
 // status-banner.tsx's amber banner: a symbol, a bold line and a lighter one.
@@ -255,8 +256,8 @@ component StatusScreen
   derive canEngine = can(car.capabilities, "remoteEngineStartStop")
   view
     scroll id="screen-scroll" testId="status-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
-      column box-sizing="border-box" padding-bottom=8
-        column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=16
+      column box-sizing="border-box" padding-bottom=8 min-height="100%"
+        column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=16 flex-grow=(car.vin == "" and not loading ? 1 : 0)
           // Banners (src/components/ui/status-banner.tsx)
           // use-vehicle-screen.tsx / status-banner.tsx: offline, amber.
           when not online

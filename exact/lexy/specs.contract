@@ -56,7 +56,7 @@ component SpecsScreen
   derive car = garage.car
   view
     scroll id="screen-scroll" testId="specs-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding-bottom=64
+      column box-sizing="border-box" padding-bottom=(car.vin == "" and not loading ? 0 : 64) min-height="100%"
         when not online
           column margin-left=16 margin-right=16 margin-top=16
             WarningBanner(id="specs-offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
