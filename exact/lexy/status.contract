@@ -409,10 +409,10 @@ component StatusScreen
                       when can(car.capabilities, "hornCapable")
                         column width="calc(33.333% - 5.34px)"
                           ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=false, glass=false, iconSize=17, run=run)
-            // Remote-start climate (climate-card.ios.tsx). Every control
-            // is disabled while a change is being written (and read back),
-            // so a second change can't race the first; a disabled control
-            // takes no press, so it plays no haptic either.
+            // Remote-start climate (climate-card.ios.tsx). A second change
+            // can't race the first: the switch and slider are disabled while
+            // one is written (and read back); the defrost buttons ignore a
+            // press then instead, so they don't dim on every save.
             // climate-card.ios.tsx: the header always shows; the switch
             // only with settings (a placeholder while they load).
             when true
@@ -438,11 +438,11 @@ component StatusScreen
                     when climate.front or climate.rear
                       row gap=8
                         when climate.front
-                          button press=toggleDefrost("front") disabled=climateSaving testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("front") testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
                         when climate.rear
-                          button press=toggleDefrost("rear") disabled=climateSaving testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("rear") testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
@@ -530,9 +530,9 @@ component StatusScreen
             // When it last synced (status-screen.ios.tsx footer)
             // status-screen.ios.tsx FooterTimeRow: a tap shows the exact time
             // in a popover anchored to the sentence.
-            // The scroller ends where the tab bar begins; the footer keeps
-            // its own room below it, as Specs' does.
-            column align-items="center" gap=2 padding-top=24 padding-bottom=16 margin-bottom=16 testId="synced"
+            // As much room below as above, then the screen's own margin: the
+            // scroller ends where the tab bar begins.
+            column align-items="center" gap=2 padding-top=24 padding-bottom=24 margin-bottom=16 testId="synced"
               button popovertarget="synced-at" testId="synced-line" -exact-apple-button-style="plain"
                 text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="secondary-label" text-align="center"
               column id="synced-at" popover="auto" position="absolute" padding=16

@@ -10,7 +10,7 @@ use SpecsScreen from "./specs.contract"
 use SettingsScreen from "./settings.contract"
 use MapSheet from "./map.contract"
 use RenameScreen from "./settings.contract"
-use Time, accent from "./model.contract"
+use Time, accent, RefreshNext from "./model.contract"
 use Account from "./model.contract"
 use AuthNode from "./model.contract"
 use Done from "./model.contract"
@@ -202,6 +202,14 @@ component Lexy
   state mapsTried = ""
   resource mapsApp = mapsApp() with mapsRev as shape MapsApp
   mutation mapsChosen as shape MapsApp refreshes mapsApp
+  // Developer Tools: the next launch or return to the foreground does the
+  // whole refresh (the car asked to report, then every read), whatever the
+  // resume ladder's thresholds say, and clears the flag.
+  resource refreshNext = refreshNext() as shape RefreshNext
+  // Whether this launch's first tick has passed with the flag read: a flag
+  // set later waits for a return to the foreground.
+  state launchSeen = false
+  mutation refreshNextSet as shape RefreshNext refreshes refreshNext
   mutation opened as shape Opened
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
@@ -344,7 +352,7 @@ component Lexy
         enginePolls = enginePolls + 1
         engineRev = engineRev + 1
         engineAt = clock
-    if primeOnLaunch and account.signedIn and car.vin != ""
+    if (primeOnLaunch or (refreshNext.on and not launchSeen and not pending(refreshNext))) and account.signedIn and car.vin != ""
       primeOnLaunch = false
       autoRefresh = true
       updatingSlow = false
@@ -358,7 +366,7 @@ component Lexy
       resumeDue = true
     if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
       resumeDue = false
-      if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
+      if refreshNext.on or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000)
         lastPrimeAt = time.epochAtZero + now()
         autoRefresh = true
         updatingSlow = false
@@ -377,16 +385,22 @@ component Lexy
     // One send of each, from the conditions above (LLP 1016 D5): asking
     // the car to report, and the wait before "Updating…" shows.
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
-    let primeLaunch = primeOnLaunch and account.signedIn and car.vin != ""
+    let primeLaunch = (primeOnLaunch or (refreshNext.on and not launchSeen and not pending(refreshNext))) and account.signedIn and car.vin != ""
     let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
-    let primeResume = resumes and time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
-    let rereads = resumes and time.epochAtZero + now() - status.fetchedMs >= 60000
+    let primeResume = resumes and (refreshNext.on or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000))
+    let rereads = resumes and (refreshNext.on or time.epochAtZero + now() - status.fetchedMs >= 60000)
+    // The forced refresh is spent once it is sent.
+    let spent = refreshNext.on and (primeLaunch or primeResume)
     if primeLock or primeLaunch or primeResume
       send primed = prime(car, time.epochAtZero + now())
+    if spent
+      send refreshNextSet = setRefreshNext(false)
     if primeLaunch or rereads
       send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
     lastTick = time.epochAtZero + now()
+    if not pending(refreshNext)
+      launchSeen = true
 
   // Sign-in: one press walks start → email → password, then lands on the
   // delivery-method choice or the code, as the tree decides.
@@ -598,6 +612,8 @@ component Lexy
           signStep = "credentials"
       case none
         signError = ""
+  action setRefreshNextOpen(on: bool)
+    send refreshNextSet = setRefreshNext(on)
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)
@@ -754,13 +770,17 @@ component Lexy
       tempHeld = true
       tempSaving = true
       send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + now())
+  // Not while a climate change is written or read back. The buttons stay
+  // as they are meanwhile (dimming them on every save of the switch or the
+  // temperature flickered), and a press then does nothing.
   action toggleDefrost(which: string)
-    send felt = feel("selection")
-    defrostFront = (which == "front" ? not shownFront : shownFront)
-    defrostRear = (which == "rear" ? not shownRear : shownRear)
-    defrostHeld = true
-    // The values, not the states just set: an action reads state as it began.
-    send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + now())
+    if not (pending(climateSaved) or pending(climateRead))
+      send felt = feel("selection")
+      defrostFront = (which == "front" ? not shownFront : shownFront)
+      defrostRear = (which == "rear" ? not shownRear : shownRear)
+      defrostHeld = true
+      // The values, not the states just set: an action reads state as it began.
+      send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + now())
 
   // Developer Tools
   action openDevTool(url: string)
@@ -916,7 +936,7 @@ component Lexy
                   when e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
                   when e.name == "settings"
-                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, refreshNextOpen=refreshNext.on, setRefreshNextOpen=setRefreshNextOpen, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
                   when e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   when e.name == "dataState"

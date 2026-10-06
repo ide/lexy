@@ -960,6 +960,12 @@ const sources: Sources = {
     await save('maps', provider);
     return mapsApp(store);
   },
+  // Developer Tools' "Refresh on Next Open": a file, kept across launches.
+  refreshNext: async () => ({ on: (await load('refresh-next')) === 'true' }),
+  setRefreshNext: async ([on]) => {
+    await save('refresh-next', on ? 'true' : 'false');
+    return { on: on === true };
+  },
   feel: ([kind]) => {
     haptic(kind as 'selection');
     return { ok: true, error: '' };

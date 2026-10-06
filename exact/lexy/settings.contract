@@ -43,6 +43,8 @@ component SettingsRowFace
 component DeveloperTools
   props
     open: action
+    refreshNextOpen: bool
+    setRefreshNextOpen: action
   view
     column
       SectionHeader(title="DEVELOPER TOOLS")
@@ -58,6 +60,13 @@ component DeveloperTools
         box height=0.5 margin-left=60 background-color="separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
+        box height=0.5 margin-left=60 background-color="separator"
+        row gap=16 padding=16 align-items="center" testId="dev-refresh-next"
+          image "symbol:sf/arrow.clockwise" font-size=22 tint-color="AccentColor" object-fit="scale-down" width=28 height=26
+          column flex=1 min-width=0 gap=2
+            text "Refresh on Next Open" font-size=17 font-weight=600 color="label"
+            text "The next launch or return to the app asks the car to report and reads everything, however fresh the data is." font-size=13 font-weight=500 color="secondary-label"
+          input type="checkbox" switch checked=refreshNextOpen change=setRefreshNextOpen aria-label="Refresh on Next Open" testId="dev-refresh-next-switch" accent-color="auto"
 
 component SettingsScreen
   props
@@ -66,6 +75,8 @@ component SettingsScreen
     demo: bool
     demoFailing: bool
     setDemoFailing: action
+    refreshNextOpen: bool
+    setRefreshNextOpen: action
     provider: string
     apps: MapsApp
     version: string
@@ -77,7 +88,7 @@ component SettingsScreen
     scroll id="screen-scroll" testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding-bottom=64
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
-          DeveloperTools(open=openDevTool)
+          DeveloperTools(open=openDevTool, refreshNextOpen=refreshNextOpen, setRefreshNextOpen=setRefreshNextOpen)
           column
             SectionHeader(title="MAPS")
             column class=Card
