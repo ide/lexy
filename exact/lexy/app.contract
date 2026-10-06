@@ -613,7 +613,7 @@ component Lexy
     autoRefresh = car.vin != ""
     updatingSlow = false
     if car.vin != ""
-      lastPrimeAt = clock
+      lastPrimeAt = time.epochAtZero + now()
       send primed = prime(car, time.epochAtZero + now())
     garageRev = garageRev + 1
     climateRev = climateRev + 1
@@ -637,24 +637,28 @@ component Lexy
     garageRev = garageRev + 1
     nav = open(nav, "/")
 
-  // Status: pull to refresh primes the car (at most every 3 minutes, Lexy's
-  // refresh-status rate limit) and then re-reads; otherwise it just re-reads.
-  // A pull re-reads the profile and the climate settings too (a name set in
-  // the Lexus app shows).
+  // Status: a pull asks the car to report and then re-reads. Lexy's
+  // 3-minute window between asks (refresh-status.ts: the car's battery and
+  // radio) bounds only the refreshes Lexy starts itself; a pull or the
+  // Refresh button is the person asking, and always asks. A pull re-reads
+  // the profile and the climate settings too (a name set in the Lexus app
+  // shows).
   action pullRefresh
     pulling = true
-    if car.vin != "" and clock - lastPrimeAt > 180000
-      lastPrimeAt = clock
+    if car.vin != ""
+      lastPrimeAt = time.epochAtZero + now()
       send primed = prime(car, time.epochAtZero + now())
     else
       statusRev = statusRev + 1
-      statusAt = clock
+      statusAt = time.epochAtZero + now()
     garageRev = garageRev + 1
     climateRev = climateRev + 1
     climateWritten = none
+  // Re-read as of now: `clock` is the last tick's, up to 5 s old, which would
+  // stamp the read before the report it asked for.
   action afterPrime
     statusRev = statusRev + 1
-    statusAt = clock
+    statusAt = time.epochAtZero + now()
   action reloadGarage
     pulling = true
     garageRev = garageRev + 1
