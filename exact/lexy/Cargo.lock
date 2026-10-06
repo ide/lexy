@@ -153,6 +153,7 @@ dependencies = [
  "exact-plan",
  "icu_locale",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

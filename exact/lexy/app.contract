@@ -205,15 +205,14 @@ component Lexy
   // Developer Tools: the next launch or return to the foreground does the
   // whole refresh (the car asked to report, then every read), whatever the
   // resume ladder's thresholds say, and clears the flag.
+  // The file, read once at launch into `refreshArmed`, which is the truth
+  // from then on; every change of it is written back.
   resource refreshNext = refreshNext() as shape RefreshNext
-  // Whether this launch's first tick has passed with the flag read: a flag
-  // set later waits for a return to the foreground.
+  mutation refreshNextSet as shape RefreshNext
+  state refreshArmed = false
+  // The launch's flag has been read (the first tick after it lands): an
+  // arming after that waits for a return to the foreground.
   state launchSeen = false
-  mutation refreshNextSet as shape RefreshNext refreshes refreshNext then afterRefreshNextSet
-  // What the switch was last set to, shown until the write lands: the stored
-  // value alone flips the switch back while it is in flight.
-  state refreshWanted = false
-  state refreshTouched = false
   mutation opened as shape Opened
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
@@ -370,7 +369,7 @@ component Lexy
       resumeDue = true
     if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
       resumeDue = false
-      if refreshNext.on or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000)
+      if refreshArmed or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000)
         lastPrimeAt = time.epochAtZero + now()
         autoRefresh = true
         updatingSlow = false
@@ -391,20 +390,23 @@ component Lexy
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
     let primeLaunch = (primeOnLaunch or (refreshNext.on and not launchSeen and not pending(refreshNext))) and account.signedIn and car.vin != ""
     let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
-    let primeResume = resumes and (refreshNext.on or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000))
-    let rereads = resumes and (refreshNext.on or time.epochAtZero + now() - status.fetchedMs >= 60000)
+    let primeResume = resumes and (refreshArmed or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000))
+    let rereads = resumes and (refreshArmed or time.epochAtZero + now() - status.fetchedMs >= 60000)
     // The forced refresh is spent once it is sent.
-    let spent = refreshNext.on and (primeLaunch or primeResume)
+    let spent = (refreshArmed or (refreshNext.on and not launchSeen)) and (primeLaunch or primeResume)
     if primeLock or primeLaunch or primeResume
       send primed = prime(car, time.epochAtZero + now())
     if spent
+      refreshArmed = false
       send refreshNextSet = setRefreshNext(false)
     if primeLaunch or rereads
       send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
     lastTick = time.epochAtZero + now()
-    if not pending(refreshNext)
+    if not pending(refreshNext) and not launchSeen
       launchSeen = true
+      // Armed by the last run and not spent by this launch's refresh above.
+      refreshArmed = refreshNext.on and not (primeLaunch or primeResume)
 
   // Sign-in: one press walks start → email → password, then lands on the
   // delivery-method choice or the code, as the tree decides.
@@ -616,12 +618,10 @@ component Lexy
           signStep = "credentials"
       case none
         signError = ""
-  action setRefreshNextOpen(on: bool)
-    refreshWanted = on
-    refreshTouched = true
-    send refreshNextSet = setRefreshNext(on)
-  action afterRefreshNextSet
-    refreshTouched = false
+  action toggleRefreshNext
+    send felt = feel("selection")
+    refreshArmed = not refreshArmed
+    send refreshNextSet = setRefreshNext(not refreshArmed)
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)
@@ -934,6 +934,11 @@ component Lexy
                     when e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+                    // Developer Tools: arm the next launch or return to the
+                    // app to refresh everything (filled while armed).
+                    when e.name == "settings"
+                      button press=toggleRefreshNext testId="refresh-next" aria-label="Refresh on Next Open" aria-pressed=refreshArmed width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        image (refreshArmed ? "symbol:sf/arrow.clockwise.circle.fill" : "symbol:sf/arrow.clockwise.circle") font-size=20 tint-color="AccentColor" object-fit="scale-down" width=24 height=24
                     when e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
@@ -944,7 +949,7 @@ component Lexy
                   when e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
                   when e.name == "settings"
-                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, refreshNextOpen=(refreshTouched ? refreshWanted : refreshNext.on), setRefreshNextOpen=setRefreshNextOpen, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
                   when e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   when e.name == "dataState"
