@@ -877,7 +877,7 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label"
+    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="grouped-background" color="label" accent-color="light-dark(color(display-p3 0.91 0.11 0.14), color(display-p3 1 0.27 0.28))"
       when not shell
         LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
       else
