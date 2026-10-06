@@ -80,7 +80,7 @@ component Lexy
     after(1, onVisible)
   // The hero's breath: a timer only while it pulses (LLP 1092 D7).
   task pulse when pulseOn
-    every(1200, pulseStep)
+    every(1000, pulseStep)
   task boot mount
     after(1, start)
 
@@ -150,7 +150,7 @@ component Lexy
   mutation waited as shape Done then afterWait
   mutation held as shape Done
   // The hero's pulse (status.contract): one continuous breath while a
-  // refresh runs. `pulseDim` flips every 1.2 s and the boxes ease to it,
+  // refresh runs. `pulseDim` flips every second and the boxes ease to it,
   // so it starts from opaque; once on, it stops only at the opaque end of
   // a breath after the refresh is done, so a moment between a refresh's
   // steps neither jumps nor restarts it, and the end fades out.

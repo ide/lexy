@@ -313,7 +313,7 @@ component StatusScreen
               column class=Card height=80
           when car.vin != ""
             // Hero card (hero-card.ios.tsx): the car over its parked map.
-            column class=Card testId="hero" opacity=(heroDim ? 0.7 : 1) transition="opacity 1200ms ease-in-out" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative"
+            column class=Card testId="hero" opacity=(heroDim ? 0.7 : 1) transition="opacity 1000ms ease-in-out" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative"
               when status.ok and (status.latitude != 0 or status.longitude != 0)
                 // The map fades itself in, so the dimming is its box's.
                 column position="absolute" top=0 right=0 bottom=0 left=0 opacity=0.48
