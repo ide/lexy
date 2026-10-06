@@ -170,10 +170,6 @@ shape Address
 
 // The saved maps app (empty when unset, or when it was deleted) and which of
 // the three the phone has.
-// Developer Tools' "Refresh on Next Open": kept across launches.
-shape RefreshNext
-  on: bool
-
 shape MapsApp
   provider: string
   apple: bool

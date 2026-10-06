@@ -10,7 +10,7 @@ use SpecsScreen from "./specs.contract"
 use SettingsScreen from "./settings.contract"
 use MapSheet from "./map.contract"
 use RenameScreen from "./settings.contract"
-use Time, accent, RefreshNext from "./model.contract"
+use Time, accent from "./model.contract"
 use Account from "./model.contract"
 use AuthNode from "./model.contract"
 use Done from "./model.contract"
@@ -73,6 +73,11 @@ component Lexy
   state clock = 0
   task ticker mount
     every(5000, tick)
+  // A return to the foreground, from the page's own visibility change: iOS
+  // suspends the app as it leaves, often before a tick has seen it hidden,
+  // so a quick trip away left no trace for the tick to find.
+  task returned when page.visibilityState == "visible"
+    after(1, onVisible)
   task boot mount
     after(1, start)
 
@@ -202,17 +207,6 @@ component Lexy
   state mapsTried = ""
   resource mapsApp = mapsApp() with mapsRev as shape MapsApp
   mutation mapsChosen as shape MapsApp refreshes mapsApp
-  // Developer Tools: the next launch or return to the foreground does the
-  // whole refresh (the car asked to report, then every read), whatever the
-  // resume ladder's thresholds say, and clears the flag.
-  // The file, read once at launch into `refreshArmed`, which is the truth
-  // from then on; every change of it is written back.
-  resource refreshNext = refreshNext() as shape RefreshNext
-  mutation refreshNextSet as shape RefreshNext
-  state refreshArmed = false
-  // The launch's flag has been read (the first tick after it lands): an
-  // arming after that waits for a return to the foreground.
-  state launchSeen = false
   mutation opened as shape Opened
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
@@ -305,6 +299,9 @@ component Lexy
   // An action reads the state it started with: `clock` below is the previous
   // tick's until this action commits, so the notice timeout reads the time
   // itself.
+  action onVisible
+    if lastTick > 0
+      resumeDue = true
   action tick
     clock = time.epochAtZero + now()
     // A launch prime waits for a signed-in car; signed out, there is none.
@@ -355,7 +352,7 @@ component Lexy
         enginePolls = enginePolls + 1
         engineRev = engineRev + 1
         engineAt = clock
-    if (primeOnLaunch or (refreshNext.on and not launchSeen and not pending(refreshNext))) and account.signedIn and car.vin != ""
+    if (primeOnLaunch) and account.signedIn and car.vin != ""
       primeOnLaunch = false
       autoRefresh = true
       updatingSlow = false
@@ -369,7 +366,7 @@ component Lexy
       resumeDue = true
     if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
       resumeDue = false
-      if refreshArmed or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000)
+      if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
         lastPrimeAt = time.epochAtZero + now()
         autoRefresh = true
         updatingSlow = false
@@ -388,25 +385,16 @@ component Lexy
     // One send of each, from the conditions above (LLP 1016 D5): asking
     // the car to report, and the wait before "Updating…" shows.
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
-    let primeLaunch = (primeOnLaunch or (refreshNext.on and not launchSeen and not pending(refreshNext))) and account.signedIn and car.vin != ""
+    let primeLaunch = (primeOnLaunch) and account.signedIn and car.vin != ""
     let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
-    let primeResume = resumes and (refreshArmed or (time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000))
-    let rereads = resumes and (refreshArmed or time.epochAtZero + now() - status.fetchedMs >= 60000)
-    // The forced refresh is spent once it is sent.
-    let spent = (refreshArmed or (refreshNext.on and not launchSeen)) and (primeLaunch or primeResume)
+    let primeResume = resumes and time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
+    let rereads = resumes and time.epochAtZero + now() - status.fetchedMs >= 60000
     if primeLock or primeLaunch or primeResume
       send primed = prime(car, time.epochAtZero + now())
-    if spent
-      refreshArmed = false
-      send refreshNextSet = setRefreshNext(false)
     if primeLaunch or rereads
       send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
     lastTick = time.epochAtZero + now()
-    if not pending(refreshNext) and not launchSeen
-      launchSeen = true
-      // Armed by the last run and not spent by this launch's refresh above.
-      refreshArmed = refreshNext.on and not (primeLaunch or primeResume)
 
   // Sign-in: one press walks start → email → password, then lands on the
   // delivery-method choice or the code, as the tree decides.
@@ -618,10 +606,18 @@ component Lexy
           signStep = "credentials"
       case none
         signError = ""
-  action toggleRefreshNext
+  // The Status screen's Refresh: what a pull does, and the car asked to
+  // report whatever the throttle says, with "Updating…" under the title.
+  action refreshNow
     send felt = feel("selection")
-    refreshArmed = not refreshArmed
-    send refreshNextSet = setRefreshNext(not refreshArmed)
+    autoRefresh = car.vin != ""
+    updatingSlow = false
+    if car.vin != ""
+      lastPrimeAt = clock
+      send primed = prime(car, time.epochAtZero + now())
+    garageRev = garageRev + 1
+    climateRev = climateRev + 1
+    climateWritten = none
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)
@@ -934,11 +930,9 @@ component Lexy
                     when e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
-                    // Developer Tools: arm the next launch or return to the
-                    // app to refresh everything (filled while armed).
-                    when e.name == "settings"
-                      button press=toggleRefreshNext testId="refresh-next" aria-label="Refresh on Next Open" aria-pressed=refreshArmed width=44 height=44 display="flex" align-items="center" justify-content="center"
-                        image (refreshArmed ? "symbol:sf/arrow.clockwise.circle.fill" : "symbol:sf/arrow.clockwise.circle") font-size=20 tint-color="AccentColor" object-fit="scale-down" width=24 height=24
+                    when e.name == "status" and shownGarage.car.vin != ""
+                      button press=refreshNow disabled=updating testId="refresh" aria-label="Refresh" width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        image "symbol:sf/arrow.clockwise" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=22 height=22
                     when e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
