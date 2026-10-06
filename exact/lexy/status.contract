@@ -42,7 +42,6 @@ use Activity from "./model.contract"
 // message, one action and a cancel, which iOS presents as its alert.
 // climate-card.ios.tsx: an active defrost chip is the blue wash over the
 // chip's grey, on the card (composited, one colour).
-fn defrostOnColor(): string = wash("AccentColor")
 
 // A pending lock or engine word pulses (pulsing-text.tsx: 0.4 to 1 over
 // 800 ms, back and forth), and two pending at once pulse together: each
@@ -433,16 +432,16 @@ component StatusScreen
                     // Hidden when the settings carry no range.
                     when climate.max > climate.min
                       row gap=16 align-items="center"
-                        input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=climateSaving aria-label="Temperature" testId="climate-temperature" flex=1 height=28
+                        input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(climateSaving or not climateWanted) aria-label="Temperature" testId="climate-temperature" flex=1 height=28
                         text `${floor(temperature * 10 + 0.5) / 10}°${climate.unit}` class=SmallBold min-width=52 text-align="right" font-variant-numeric="tabular-nums"
                     when climate.front or climate.rear
                       row gap=8
                         when climate.front
-                          button press=toggleDefrost("front") testId="defrost-front" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(frontDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("front") disabled=(not climateWanted) testId="defrost-front" -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
                         when climate.rear
-                          button press=toggleDefrost("rear") testId="defrost-rear" -exact-apple-button-style="plain" flex=1 padding-top=8 padding-bottom=8 border-radius=12 background-color=(rearDefrost ? defrostOnColor() : "quaternary-fill") display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("rear") disabled=(not climateWanted) testId="defrost-rear" -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
             // Doors & windows (closures-summary.ios.tsx)

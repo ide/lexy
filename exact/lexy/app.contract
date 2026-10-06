@@ -209,7 +209,11 @@ component Lexy
   // Whether this launch's first tick has passed with the flag read: a flag
   // set later waits for a return to the foreground.
   state launchSeen = false
-  mutation refreshNextSet as shape RefreshNext refreshes refreshNext
+  mutation refreshNextSet as shape RefreshNext refreshes refreshNext then afterRefreshNextSet
+  // What the switch was last set to, shown until the write lands: the stored
+  // value alone flips the switch back while it is in flight.
+  state refreshWanted = false
+  state refreshTouched = false
   mutation opened as shape Opened
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
@@ -613,7 +617,11 @@ component Lexy
       case none
         signError = ""
   action setRefreshNextOpen(on: bool)
+    refreshWanted = on
+    refreshTouched = true
     send refreshNextSet = setRefreshNext(on)
+  action afterRefreshNextSet
+    refreshTouched = false
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)
@@ -936,7 +944,7 @@ component Lexy
                   when e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
                   when e.name == "settings"
-                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, refreshNextOpen=refreshNext.on, setRefreshNextOpen=setRefreshNextOpen, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                    SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, refreshNextOpen=(refreshTouched ? refreshWanted : refreshNext.on), setRefreshNextOpen=setRefreshNextOpen, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
                   when e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   when e.name == "dataState"
