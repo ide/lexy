@@ -56,7 +56,7 @@ component SpecsScreen
   derive car = garage.car
   view
     scroll id="screen-scroll" testId="specs-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding-bottom=(car.vin == "" and not loading ? 0 : 64) min-height="100%"
+      column box-sizing="border-box" min-height="100%"
         when not online
           column margin-left=16 margin-right=16 margin-top=16
             WarningBanner(id="specs-offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
@@ -74,7 +74,8 @@ component SpecsScreen
         when car.vin == "" and not loading and not garage.ok and garage.status != 401
           VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
         when car.vin != ""
-          column box-sizing="border-box" padding=16 gap=16
+          // Its last card keeps its own room below it, as Status' footer does.
+          column box-sizing="border-box" padding=16 gap=16 margin-bottom=16
             column gap=8
               text "VEHICLE" class=CardTitle
               column class=Card padding-left=16 padding-right=16
