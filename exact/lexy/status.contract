@@ -423,10 +423,10 @@ component StatusScreen
                       image "symbol:sf/thermometer.medium" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=17 height=17
                       text "Remote Start Climate" class=SmallBold color="secondary-label"
                     // The real switch from the first frame, as the buttons
-                    // are: disabled and off until the settings arrive, so
-                    // the header never changes height.
-                    when climate.ok or climateLoading
-                      input type="checkbox" switch checked=(climate.ok and (climateSaving ? climateWanted : climate.on)) change=setClimateOn disabled=(climateSaving or not climate.ok) aria-label="Remote start climate" testId="climate-switch" margin-right=8 accent-color="auto"
+                    // are: disabled and off until the settings arrive (and
+                    // before their read has even begun), so the header
+                    // never changes height.
+                    input type="checkbox" switch checked=(climate.ok and (climateSaving ? climateWanted : climate.on)) change=setClimateOn disabled=(climateSaving or not climate.ok) aria-label="Remote start climate" testId="climate-switch" margin-right=8 accent-color="auto"
                   text "Settings for when you start your vehicle remotely." class=Small color="secondary-label"
                 when climate.ok
                   column gap=16

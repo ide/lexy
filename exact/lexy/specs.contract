@@ -70,9 +70,15 @@ component SpecsScreen
             box width=80 height=17 border-radius=6 margin-left=8 background-color="tertiary-fill"
             column class=Card height=600
         when car.vin == "" and not loading and garage.ok and length(garage.cars) == 0
-          VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="specs-no-vehicle")
+          // 16 above, as Status' padded column and its gap give its state,
+          // so the two screens' states stand in the same place.
+          column flex-grow=1 margin-top=16
+            VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="specs-no-vehicle")
         when car.vin == "" and not loading and not garage.ok and garage.status != 401
-          VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
+          // 16 above, as Status' padded column and its gap give its state,
+          // so the two screens' states stand in the same place.
+          column flex-grow=1 margin-top=16
+            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
         when car.vin != ""
           // Its last card keeps its own room below it, as Status' footer does.
           column box-sizing="border-box" padding=16 gap=16 margin-bottom=16
