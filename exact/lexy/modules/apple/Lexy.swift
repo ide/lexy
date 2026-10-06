@@ -7,6 +7,8 @@
 // - `native.later({op: "geocode"})`: the parked street line
 //   (src/hooks/use-parking-address.ts, src/data/parking-address.ts).
 // - `native.later({op: "installed"})`: which maps apps the phone has.
+// - `native.later({op: "observe"})`: this device's Observe metrics, from
+//   Exact's Observe service (`service("observe", …)`).
 // - `native.later({op: "wait"})`: the demo server's latency (demo.ts), at
 //   once under the agent's clock.
 // - `native.call({op: "haptic"})`: UIKit feedback (src/utils/haptics.ts).
@@ -39,6 +41,14 @@ final class LexyModule: ExactModule {
             let ms = (request["ms"] as? Double) ?? 0
             if context.agent || ms <= 0 { return reply.send([:]) }
             DispatchQueue.main.asyncAfter(deadline: .now() + ms / 1000) { reply.send([:]) }
+            return
+        }
+        // This device's Observe metrics: the service's own answer, as it gives it.
+        if request["op"] as? String == "observe" {
+            let limit = (request["limit"] as? Int) ?? Int((request["limit"] as? Double) ?? 50)
+            service("observe", ["op": "recent", "limit": limit]) { answer in
+                reply.send(answer ?? [:])
+            }
             return
         }
         // Any app's URL: Contract's openURL takes only http(s), mailto and tel,

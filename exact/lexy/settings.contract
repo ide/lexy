@@ -56,6 +56,9 @@ component DeveloperTools
         button text-align="left" press=open("/settings/login") testId="dev-login" display="flex"
           SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.")
         box height=0.5 margin-left=60 background-color="separator"
+        button text-align="left" press=open("/settings/performance") testId="dev-performance" display="flex"
+          SettingsRowFace(symbol="gauge.with.dots.needle.67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.")
+        box height=0.5 margin-left=60 background-color="separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
 

@@ -965,7 +965,36 @@ const sources: Sources = {
     return { ok: true, error: '' };
   },
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),
+  observed: ([limit]) => observed(limit),
 };
+
+// --- Performance: this device's Observe metrics ---------------------------------------
+// Exact's Observe service keeps every metric it records for 7 days; the native
+// module asks it for the newest. Each startup mark's median is over those kept.
+type Observed = Result<'observed'>;
+const noObserved: Observed = { ok: false, session: '', launch: '', metrics: [], summary: [] };
+
+async function observed(limit: number): Promise<Observed> {
+  if (!native?.available || limit <= 0) return noObserved;
+  try {
+    const r = await native.later({ op: 'observe', limit });
+    if (!Array.isArray(r.metrics)) return noObserved;
+    const metrics = (r.metrics as Record<string, unknown>[]).map(m => ({
+      session: str(m.session), time: num(m.time), category: str(m.category), name: str(m.name), value: num(m.value),
+      route: str(m.route), sent: m.sent === true, trace: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.trace']),
+    }));
+    const startup = new Map<string, number[]>();
+    for (const m of metrics) if (m.category === 'appStartup') startup.set(m.name, [...(startup.get(m.name) ?? []), m.value]);
+    const summary = [...startup].map(([name, values]) => {
+      const sorted = [...values].sort((a, b) => a - b), mid = Math.floor(sorted.length / 2);
+      return { name, count: sorted.length, median: sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2 };
+    });
+    const launch = metrics.find(m => m.category === 'appStartup')?.session ?? str(r.session);
+    return { ok: true, session: str(r.session), launch, metrics, summary };
+  } catch {
+    return noObserved;
+  }
+}
 
 export const answer: Answer = (source, args, store, storage, module) => {
   native = module ?? null;

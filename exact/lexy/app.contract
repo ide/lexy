@@ -38,6 +38,7 @@ use UpdatesScreen from "./developer.contract"
 use DataStateScreen from "./developer.contract"
 use LoginPreviewScreen from "./developer.contract"
 use EasScreen from "./developer.contract"
+use PerformanceScreen, Observed from "./developer.contract"
 use Delivery from "./developer.contract"
 use signInError from "./model.contract"
 
@@ -51,6 +52,7 @@ routes nav
     dataState "/settings/data-state"
     login "/settings/login"
     eas "/settings/eas"
+    performance "/settings/performance"
 
 
 component Lexy
@@ -262,6 +264,10 @@ component Lexy
   // --- Developer Tools ---------------------------------------------------------------
   // This binary's delivery, and whether Check was pressed here.
   resource delivery = exactDelivery() as shape Delivery
+  // This device's Observe metrics, read when Performance opens and again
+  // each time (none asked before it first does).
+  state observedRev = 0
+  resource observed = observed(observedRev > 0 ? 200 : 0) with observedRev as shape Observed
   state updateChecked = false
   // Data State: the override the vehicle screens are shown, Live at launch.
   state dataState = "live"
@@ -823,6 +829,8 @@ component Lexy
   // Developer Tools
   action openDevTool(url: string)
     send felt = feel("selection")
+    if url == "/settings/performance"
+      observedRev = observedRev + 1
     if url == "/settings/login"
       previewScenario = "success-multi"
       previewDone = false
@@ -958,7 +966,7 @@ component Lexy
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/chevron.backward" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
                     column flex=1 min-width=0
-                      text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Vehicle") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : ""))))))))) aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="label"
+                      text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Vehicle") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="label"
                     when e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
@@ -984,6 +992,8 @@ component Lexy
                     LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
                   when e.name == "eas"
                     EasScreen(open=openExternal)
+                  when e.name == "performance"
+                    PerformanceScreen(observed=observed)
                   when e.name == "rename"
                     RenameScreen(name=draftName, saved=vehicleName(car.nickName, car.modelName), saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 

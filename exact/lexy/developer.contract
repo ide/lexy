@@ -10,6 +10,35 @@ use SectionFooter from "./settings.contract"
 use LockScreen from "./sign-in.contract"
 use exactVersion from "./exact-version.contract"
 
+// This device's own Observe metrics (Exact's modules/observe keeps them for 7
+// days before and after sending; app.ts reads them through the native module).
+shape ObservedMetric
+  session: string
+  time: number
+  category: string
+  name: string
+  value: number
+  route: string
+  sent: bool
+  trace: string
+
+shape ObservedSummary
+  name: string
+  count: number
+  median: number
+
+shape Observed
+  ok: bool
+  session: string
+  // The newest launch with its startup marks (the one running may not have
+  // reported them yet: TTI waits for the first settled frame).
+  launch: string
+  metrics: list<ObservedMetric>
+  summary: list<ObservedSummary>
+
+fn metricLabel(name: string): string = name == "coldLaunchTime" ? "Cold launch" : (name == "warmLaunchTime" ? "Warm launch" : (name == "timeToFirstRender" ? "First render" : (name == "timeToInteractive" ? "Interactive" : (name == "cold_ttr" ? "Render, first visit" : (name == "warm_ttr" ? "Render" : (name == "tti" ? "Interactive" : (name == "ttr" ? "Render" : (name == "download_time" or name == "downloadTime" ? "Update download" : name))))))))
+fn milliseconds(seconds: number): string = `${floor(seconds * 1000 + 0.5)} ms`
+
 // What the binary knows about its own delivery (Exact LLP 1030 D7), answered
 // by the runner from the update store.
 shape Delivery
@@ -240,3 +269,48 @@ component EasRow
         text title font-size=17 font-weight=600 color="label"
         text subtitle font-size=13 font-weight=500 color="secondary-label"
       image "symbol:sf/arrow.up.right.square" font-size=15 tint-color="secondary-label" object-fit="scale-down" width=18 height=20
+
+// Performance: this device's Observe metrics, read back from Exact's local
+// queue — this launch's startup marks (and what TTI waited on), each screen's
+// render and interactive times this launch, and the median of each startup
+// mark over the launches kept.
+component PerformanceScreen
+  props
+    observed: Observed
+  view
+    scroll id="screen-scroll" testId="performance-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+      column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
+        when not observed.ok
+          SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
+        when observed.ok
+          column
+            SectionHeader(title=(observed.launch == observed.session ? "THIS LAUNCH" : "LAST LAUNCH"))
+            column class=Card
+              each m, i in filter(observed.metrics, (m, i) => m.session == observed.launch and m.category == "appStartup") key=`${m.name}-${m.time}`
+                column
+                  when i > 0
+                    Divider()
+                  FactRow(label=metricLabel(m.name), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
+                  when m.trace != ""
+                    text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12 margin-top=-8 user-select="text"
+          column
+            SectionHeader(title="SCREENS THIS SESSION")
+            column class=Card
+              each m, i in filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
+                column
+                  when i > 0
+                    Divider()
+                  row padding=16 justify-content="space-between" align-items="center" gap=16
+                    column flex=1 min-width=0 gap=2
+                      text metricLabel(m.name) font-size=17
+                      text (m.route == "" ? "/" : m.route) font-size=13 color="secondary-label" overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
+                    text milliseconds(m.value) testId=`perf-nav-${i}` font-size=17 color="secondary-label" flex-shrink=0
+          column
+            SectionHeader(title="LAST 7 DAYS, MEDIAN")
+            column class=Card
+              each s, i in observed.summary key=s.name
+                column
+                  when i > 0
+                    Divider()
+                  FactRow(label=metricLabel(s.name), value=`${milliseconds(s.median)} · ${s.count}×`, id=`perf-median-${s.name}`)
+            SectionFooter(words=`${length(filter(observed.metrics, (m, i) => m.sent))} of the ${length(observed.metrics)} newest metrics have been sent to Observe. They stay on this device for 7 days.`)
