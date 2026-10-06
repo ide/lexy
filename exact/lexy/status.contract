@@ -187,7 +187,8 @@ component StatusScreen
     busy: bool
     refreshing: bool
     // The hero's breath while a refresh runs (app.contract `pulseDim`):
-    // the boxes ease to it, down and back up, never jumping.
+    // the card eases to it as one group, down and back up, never jumping,
+    // so the car never shows the map through it.
     heroDim: bool
     loading: bool
     notice: string
@@ -312,11 +313,11 @@ component StatusScreen
               column class=Card height=80
           when car.vin != ""
             // Hero card (hero-card.ios.tsx): the car over its parked map.
-            column class=Card testId="hero" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative"
+            column class=Card testId="hero" opacity=(heroDim ? 0.7 : 1) transition="opacity 1200ms ease-in-out" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative"
               when status.ok and (status.latitude != 0 or status.longitude != 0)
                 // The map fades itself in, so the dimming is its box's.
                 column position="absolute" top=0 right=0 bottom=0 left=0 opacity=0.48
-                  lexy-map width="100%" height="100%" opacity=(heroDim ? 0.7 : 1) transition="opacity 1200ms ease-in-out" latitude=status.latitude longitude=status.longitude zoom=16 pin="false" places="false" interactive="false"
+                  lexy-map width="100%" height="100%" latitude=status.latitude longitude=status.longitude zoom=16 pin="false" places="false" interactive="false"
               // The veil, the car and the button row let a touch through to
               // the map below them, whose Legal link MapKit requires to work.
               box position="absolute" top=0 right=0 bottom=0 left=0 background-color="light-dark(#ffffff38, #1c1c1e38)" pointer-events="none"
@@ -324,10 +325,10 @@ component StatusScreen
               // clipped to a 185pt frame, which trims its empty margins.
               // Positioned, as the map and its wash are, so it paints over
               // them in tree order (CSS paints positioned boxes after flow).
-              row position="relative" width="100%" height=185 overflow="hidden" align-items="center" justify-content="center" pointer-events="none" opacity=(heroDim ? 0.7 : 1) transition="opacity 1200ms ease-in-out"
+              row position="relative" width="100%" height=185 overflow="hidden" align-items="center" justify-content="center" pointer-events="none"
                 when car.image != ""
                   image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
-              row position="relative" width="100%" justify-content="flex-end" pointer-events="none" opacity=(heroDim ? 0.7 : 1) transition="opacity 1200ms ease-in-out"
+              row position="relative" width="100%" justify-content="flex-end" pointer-events="none"
                 button press=openMap pointer-events="auto" testId="last-parked" -exact-apple-button-style="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                   image "symbol:sf/map.fill" font-size=15 tint-color="AccentColor" object-fit="scale-down" width=20 height=18
                   text "Last Parked" font-size=15 font-weight=600 color="label"
