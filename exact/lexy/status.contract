@@ -228,6 +228,7 @@ component StatusScreen
     dragTemperature: action
     toggleDefrost: action
   derive car = garage.car
+  derive engineWord = enginePending ? (engineTarget == "running" ? "Starting" : "Stopping") : (engineRunning ? "Started" : "Stopped")
   derive rows = filter(status.sections, s => s.category != "Trip Details" and reports(s))
   derive corners = filter(rows, s => isCorner(s))
   derive openings = filter(rows, s => not isCorner(s))
@@ -374,7 +375,14 @@ component StatusScreen
                   when canEngine and (engineKnown or enginePending)
                     row gap=4 align-items="center" testId="engine-state"
                       image "symbol:sf/power" font-size=13 -exact-tint-color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") object-fit="scale-down" width=13 height=13
-                      text (enginePending ? (engineTarget == "running" ? "Starting" : "Stopping") : (engineRunning ? "Started" : "Stopped")) class=SmallBold color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
+                      // One label, its width the longest the engine can say:
+                      // hidden copies of every word share its cell and size it
+                      // at any text size, so Locked beside it never moves. The
+                      // label is the one element that changes.
+                      box display="grid"
+                        each word in ["Stopped", "Starting", "Started", "Stopping"] key=word
+                          text word class=SmallBold grid-row="1" grid-column="1" visibility="hidden"
+                        text engineWord class=SmallBold grid-row="1" grid-column="1" color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
               // vehicle-controls.ios.tsx: Lock, Unlock and Start/Stop, always.
               row gap=8
                 ControlButton(command="door-lock", label="Lock", symbol="lock.fill", tint="-exact-system-green", title="Lock your vehicle?", message="This locks all doors.", action="Lock", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
