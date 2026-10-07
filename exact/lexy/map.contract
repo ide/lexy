@@ -51,15 +51,15 @@ component MapSheet
     dismissError: action
     close: action
   view
-    column testId="map-sheet" flex=1 min-height=0 background-color="grouped-background"
+    column testId="map-sheet" flex=1 min-height=0 background-color="-exact-grouped-background"
       when status.latitude == 0 and status.longitude == 0
         column flex=1 align-items="center" justify-content="center"
-          text "Location unavailable" font-size=16 font-weight=500 color="secondary-label"
+          text "Location unavailable" font-size=16 font-weight=500 color="-exact-secondary-label"
       else
         column gap=2 padding-left=16 padding-right=16 padding-top=4 padding-bottom=8 flex-shrink=0
           text (address != "" ? address : " ") testId="map-address" font-size=17 line-height="22px" font-weight=600
-          text `Location as of ${relative(clock, (status.fetchedMs > 0 ? min(status.occurredMs, status.fetchedMs) : status.occurredMs))}` class=Small color="secondary-label"
-        column flex=1 min-height=0 margin-left=16 margin-right=16 border-radius=18 overflow="hidden" background-color="tertiary-fill"
+          text `Location as of ${relative(clock, (status.fetchedMs > 0 ? min(status.occurredMs, status.fetchedMs) : status.occurredMs))}` class=Small color="-exact-secondary-label"
+        column flex=1 min-height=0 margin-left=16 margin-right=16 border-radius=18 overflow="hidden" background-color="-exact-tertiary-fill"
           lexy-map testId="map" width="100%" height="100%" latitude=status.latitude longitude=status.longitude zoom=16 pin="true" places="true" interactive="true" marker-title=name
         column padding-left=16 padding-right=16 padding-top=16 padding-bottom="env(safe-area-inset-bottom)" gap=8 flex-shrink=0
           // use-maps-provider.ts: a link the app didn't answer is an alert.
@@ -75,6 +75,6 @@ component MapSheet
             button press=open(provider) disabled=opening testId="open-maps" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
               text `Open in ${mapsName(provider)}` font-size=17 font-weight=600 color="#ffffff"
           else
-            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=(mapsCount(apps) == 0 ? "tertiary-fill" : "AccentColor") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+            button popovertarget=(mapsCount(apps) == 0 ? "" : "maps-chooser") commandfor=(mapsCount(apps) == 0 ? "no-maps" : "") command="show-modal" disabled=opening testId="open-maps" -exact-apple-button-style=(mapsCount(apps) == 0 ? "gray" : "filled") accent-color=(mapsCount(apps) == 0 ? "-exact-tertiary-fill" : "AccentColor") height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
               text "Open in Maps" font-size=17 font-weight=600 color=(mapsCount(apps) == 0 ? "AccentColor" : "#ffffff")
             MapsChooser(prefix="", apps=apps, choose=pick)

@@ -265,8 +265,8 @@ fn plural(n: number, unit: string): string = n == 1 ? `1 ${unit}` : `${n} ${unit
 fn relative(now: number, then: number): string = then <= 0 ? "unknown" : (now - then < 5000 ? "just now" : (now - then < 60000 ? `${plural(floor((now - then) / 1000), "second")} ago` : (now - then < 3600000 ? `${plural(floor((now - then) / 60000), "minute")} ago` : (now - then < 86400000 ? (floor((now - then) / 60000) % 60 == 0 ? `${plural(floor((now - then) / 3600000), "hour")} ago` : `${plural(floor((now - then) / 3600000), "hour")} ${plural(floor((now - then) / 60000) % 60, "minute")} ago`) : (floor((now - then) / 3600000) % 24 == 0 ? `${plural(floor((now - then) / 86400000), "day")} ago` : `${plural(floor((now - then) / 86400000), "day")} ${plural(floor((now - then) / 3600000) % 24, "hour")} ago`)))))
 
 // fuel.ts levels: full at 100, high above 25, medium above 15, low above 5.
-fn fuelTint(p: number): string = p > 25 ? "system-green" : (p > 15 ? "system-yellow" : (p > 5 ? "system-orange" : "system-red"))
-fn fuelText(p: number): string = p >= 100 ? "system-green" : (p > 25 ? "label" : fuelTint(p))
+fn fuelTint(p: number): string = p > 25 ? "-exact-system-green" : (p > 15 ? "-exact-system-yellow" : (p > 5 ? "-exact-system-orange" : "-exact-system-red"))
+fn fuelText(p: number): string = p >= 100 ? "-exact-system-green" : (p > 25 ? "-exact-label" : fuelTint(p))
 
 // One extra control's name for "More controls"' subtitle, in Lexy's order.
 fn extraName(flag: string): string = flag == "trunkLockUnlockCapable" ? "trunk" : (flag == "lightsCapable" ? "headlights" : (flag == "hazardCapable" ? "hazards" : (flag == "hornCapable" ? "horn" : (flag == "buzzerCapable" ? "buzzer" : ""))))
@@ -288,12 +288,12 @@ fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "hea
 fn accent(): string = "light-dark(color(display-p3 0.91 0.11 0.14), color(display-p3 1 0.27 0.28))"
 // A role's wash: its colour at 15%. The accent's is written out, as Contract
 // has no `color-mix()` yet.
-fn wash(role: string): string = role == "system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "system-blue" ? "light-dark(#007aff26, #0a84ff26)" : (role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" : "light-dark(#3c3c4326, #ebebf526)")))
+fn wash(role: string): string = role == "-exact-system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "-exact-system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "-exact-system-blue" ? "light-dark(#007aff26, #0a84ff26)" : (role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" : "light-dark(#3c3c4326, #ebebf526)")))
 style Card
-  background-color="secondary-grouped-background" border-radius=18
+  background-color="-exact-secondary-grouped-background" border-radius=18
 // src/components/ui/section-title.tsx: 14/700, secondaryLabel, tracked, inset 8.
 style CardTitle
-  font-size=14 font-weight=700 color="secondary-label" letter-spacing=0.5 margin-left=8
+  font-size=14 font-weight=700 color="-exact-secondary-label" letter-spacing=0.5 margin-left=8
 style Small
   font-size=14 font-weight=500
 style SmallBold

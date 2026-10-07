@@ -69,9 +69,9 @@ component ControlButton
     run: action
   view
     column flex=1 min-width=0
-      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label -exact-apple-button-style="filled" accent-color=(glass ? "secondary-grouped-background" : "quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center"
-        image `symbol:sf/${symbol}` font-size=iconSize tint-color=tint
-        text label font-size=13 font-weight=600 color="label" line-clamp=1
+      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label -exact-apple-button-style="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center"
+        image `symbol:sf/${symbol}` font-size=iconSize -exact-tint-color=tint
+        text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
       // A centred alert, as Lexy's (alert-host.tsx): the same place for
       // every control.
       dialog id=`confirm-${command}` closedby="any"
@@ -99,9 +99,9 @@ component VehicleState
     // The text keeps one measure wherever the state sits (Status pads its
     // column, Specs does not), so it wraps the same on both.
     column flex-grow=1 justify-content="center" align-items="center" gap=16 padding-top=32 padding-bottom=32 testId=id
-      image `symbol:sf/${symbol}` font-size=44 tint-color="secondary-label"
+      image `symbol:sf/${symbol}` font-size=44 -exact-tint-color="-exact-secondary-label"
       text title font-size=34 font-weight=700 text-align="center" max-width=320
-      text message font-size=17 color="secondary-label" text-align="center" max-width=320
+      text message font-size=17 color="-exact-secondary-label" text-align="center" max-width=320
       button press=press testId=`${id}-retry` -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
         text label font-size=17 color="#ffffff"
 
@@ -115,14 +115,14 @@ component WarningBanner
     title: string
     message: string
   view
-    row testId=id class=Banner background-color=wash("system-orange")
+    row testId=id class=Banner background-color=wash("-exact-system-orange")
       when framed
-        image `symbol:sf/${symbol}` font-size=17 tint-color="system-orange" object-fit="scale-down" width=22 height=22
+        image `symbol:sf/${symbol}` font-size=17 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=22 height=22
       else
-        image `symbol:sf/${symbol}` font-size=17 tint-color="system-orange"
+        image `symbol:sf/${symbol}` font-size=17 -exact-tint-color="-exact-system-orange"
       column gap=2 flex=1
-        text title class=SmallBold color="system-orange"
-        text message class=Small color="system-orange" opacity=0.85
+        text title class=SmallBold color="-exact-system-orange"
+        text message class=Small color="-exact-system-orange" opacity=0.85
 
 // A status line in a corner of Doors & Windows: symbol, then words.
 component StatusLine
@@ -133,8 +133,8 @@ component StatusLine
     words: string
   view
     row gap=4 align-items="center"
-      image `symbol:sf/${symbol}` font-size=pointsize tint-color=tint object-fit="scale-down" width=22 height=20
-      text words font-size=15 color="label"
+      image `symbol:sf/${symbol}` font-size=pointsize -exact-tint-color=tint object-fit="scale-down" width=22 height=20
+      text words font-size=15 color="-exact-label"
 
 // A corner of the car: its door and window (closures-summary.ios.tsx).
 component Corner
@@ -147,27 +147,27 @@ component Corner
     lockTarget: string
   view
     column flex=1 min-width=0 gap=8 testId=`corner-${title}`
-      text title font-size=14 font-weight=700 color="secondary-label"
+      text title font-size=14 font-weight=700 color="-exact-secondary-label"
       match door
         case some(d)
           when isOpen(d)
-            StatusLine(symbol="lock.open.fill", pointsize=15, tint="system-orange", words="Door open")
+            StatusLine(symbol="lock.open.fill", pointsize=15, tint="-exact-system-orange", words="Door open")
           else
             when lockPending
-              StatusLine(symbol=(lockTarget == "locked" ? "lock.fill" : "lock.open.fill"), pointsize=15, tint=(lockTarget == "locked" ? "system-green" : "system-orange"), words=(lockTarget == "locked" ? "Locking…" : "Unlocking…"))
+              StatusLine(symbol=(lockTarget == "locked" ? "lock.fill" : "lock.open.fill"), pointsize=15, tint=(lockTarget == "locked" ? "-exact-system-green" : "-exact-system-orange"), words=(lockTarget == "locked" ? "Locking…" : "Unlocking…"))
             else
               when isUnlocked(d)
-                StatusLine(symbol="lock.open.fill", pointsize=15, tint="system-orange", words="Door unlocked")
+                StatusLine(symbol="lock.open.fill", pointsize=15, tint="-exact-system-orange", words="Door unlocked")
               else
                 when any(d.values, "Locked")
-                  StatusLine(symbol="lock.fill", pointsize=15, tint="system-green", words="Door locked")
+                  StatusLine(symbol="lock.fill", pointsize=15, tint="-exact-system-green", words="Door locked")
                 else
-                  StatusLine(symbol="checkmark.circle.fill", pointsize=15, tint="system-green", words="Door closed")
+                  StatusLine(symbol="checkmark.circle.fill", pointsize=15, tint="-exact-system-green", words="Door closed")
         case none
           box
       match window
         case some(w)
-          StatusLine(symbol=(driver ? "car.window.right" : "car.window.left"), pointsize=12, tint=(isOpen(w) ? "system-orange" : "system-green"), words=(isOpen(w) ? "Window open" : "Window closed"))
+          StatusLine(symbol=(driver ? "car.window.right" : "car.window.left"), pointsize=12, tint=(isOpen(w) ? "-exact-system-orange" : "-exact-system-green"), words=(isOpen(w) ? "Window open" : "Window closed"))
         case none
           box
 
@@ -252,7 +252,7 @@ component StatusScreen
   derive subline = lockPending ? restText : (issues == 0 ? (doorsPart != "" and restText != "" ? `${doorsPart} · ${restText}` : `${doorsPart}${restText}`) : ((doorsPart != "" ? 1 : 0) + restCount == 0 ? "" : (doorsPart == "Doors locked" ? "Everything else closed and locked" : "Everything else closed")))
   // The one exception's own symbol: a door, a window, an opening.
   derive singleSymbol = match first(openRows) { case some(s) => (isCorner(s) ? (partOf(s) == "door" ? "lock.open.fill" : (includes(s.category, "Passenger") ? "car.window.left" : "car.window.right")) : (includes(s.section, "Moon") ? "moon.fill" : (includes(s.section, "Hood") ? "engine.combustion.fill" : "car.side.rear.crop.trunk.partition.fill"))), case none => "lock.open.fill" }
-  derive verdictTint = lockPending ? "secondary-label" : (issues == 0 ? "system-green" : "system-orange")
+  derive verdictTint = lockPending ? "-exact-secondary-label" : (issues == 0 ? "-exact-system-green" : "-exact-system-orange")
   derive verdictSymbol = lockPending ? (lockTarget == "locked" ? "lock.fill" : "lock.open.fill") : (issues == 0 ? (allLocked ? "checkmark.shield.fill" : "checkmark.circle.fill") : (issues == 1 ? singleSymbol : (length(openRows) == 0 ? "lock.open.fill" : "exclamationmark.triangle.fill")))
   derive fuel = round(status.fuel)
   // Not read yet is not empty: until the first reading, the fuel card
@@ -266,7 +266,7 @@ component StatusScreen
   derive extrasText = length(extras) == 0 ? "" : (length(extras) == 1 ? capitalized(join(extras, "")) : `${join(map(filter(extras, (n, i) => i < length(extras) - 1), (n, i) => i == 0 ? capitalized(n) : n), ", ")}${length(extras) > 2 ? "," : ""} and ${join(filter(extras, (n, i) => i == length(extras) - 1), "")}`)
   derive canEngine = can(car.capabilities, "remoteEngineStartStop")
   view
-    scroll id="screen-scroll" testId="status-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
+    scroll id="screen-scroll" testId="status-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
       column box-sizing="border-box" min-height="100%"
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=16 flex-grow=(car.vin == "" and not loading ? 1 : 0)
           // Banners (src/components/ui/status-banner.tsx)
@@ -292,9 +292,9 @@ component StatusScreen
             button press=dismissError commandfor="command-failed" command="close" testId="command-failed-ok"
               text "OK"
           when notice != ""
-            row testId="notice" class=Banner background-color=wash("system-blue")
-              image "symbol:sf/checkmark.circle.fill" font-size=17 tint-color="system-blue" object-fit="scale-down" width=22 height=22
-              text notice class=SmallBold color="system-blue" flex=1
+            row testId="notice" class=Banner background-color=wash("-exact-system-blue")
+              image "symbol:sf/checkmark.circle.fill" font-size=17 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=22
+              text notice class=SmallBold color="-exact-system-blue" flex=1
           // Until the first garage arrives: the cards' shapes, redacted, as
           // Lexy's skeleton (Redactable), never placeholder words.
           when car.vin == "" and loading
@@ -304,18 +304,18 @@ component StatusScreen
             // Redactable: the group pulses while loading, holds still offline.
             column gap=16 testId="skeleton" animation=(online ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
               column class=Card height=265 padding-right=16 padding-bottom=16 box-sizing="border-box" justify-content="flex-end" align-items="flex-end"
-                box width=148 height=48 border-radius=24 background-color="tertiary-fill"
+                box width=148 height=48 border-radius=24 background-color="-exact-tertiary-fill"
               column class=Card padding=16 gap=12
                 row justify-content="space-between"
-                  box width=72 height=16 border-radius=6 background-color="tertiary-fill"
-                  box width=110 height=16 border-radius=6 background-color="tertiary-fill"
-                box height=8 border-radius=4 background-color="tertiary-fill"
+                  box width=72 height=16 border-radius=6 background-color="-exact-tertiary-fill"
+                  box width=110 height=16 border-radius=6 background-color="-exact-tertiary-fill"
+                box height=8 border-radius=4 background-color="-exact-tertiary-fill"
               column gap=8
-                box width=140 height=17 border-radius=6 margin-left=8 background-color="tertiary-fill"
+                box width=140 height=17 border-radius=6 margin-left=8 background-color="-exact-tertiary-fill"
                 row gap=8
-                  box flex=1 height=76 border-radius=18 background-color="secondary-grouped-background"
-                  box flex=1 height=76 border-radius=18 background-color="secondary-grouped-background"
-                  box flex=1 height=76 border-radius=18 background-color="secondary-grouped-background"
+                  box flex=1 height=76 border-radius=18 background-color="-exact-secondary-grouped-background"
+                  box flex=1 height=76 border-radius=18 background-color="-exact-secondary-grouped-background"
+                  box flex=1 height=76 border-radius=18 background-color="-exact-secondary-grouped-background"
               column class=Card height=80
           when car.vin != ""
             // Hero card (hero-card.ios.tsx): the car over its parked map.
@@ -336,28 +336,28 @@ component StatusScreen
                   image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
               row position="relative" width="100%" justify-content="flex-end" pointer-events="none"
                 button press=openMap pointer-events="auto" testId="last-parked" -exact-apple-button-style="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center"
-                  image "symbol:sf/map.fill" font-size=15 tint-color="AccentColor" object-fit="scale-down" width=20 height=18
-                  text "Last Parked" font-size=15 font-weight=600 color="label"
+                  image "symbol:sf/map.fill" font-size=15 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=18
+                  text "Last Parked" font-size=15 font-weight=600 color="-exact-label"
             // Fuel (fuel-bar.tsx)
             column class=Card testId="fuel" padding=16 gap=8
               row justify-content="space-between" align-items="center"
                 row gap=4 align-items="center"
-                  image `symbol:sf/${(electric ? "bolt.fill" : "fuelpump.fill")}` font-size=17 tint-color=(fuelKnown ? fuelTint(fuel) : "tertiary-label") object-fit="scale-down" width=17 height=17
-                  text (electric ? "Charge" : "Fuel") class=SmallBold color="secondary-label"
+                  image `symbol:sf/${(electric ? "bolt.fill" : "fuelpump.fill")}` font-size=17 -exact-tint-color=(fuelKnown ? fuelTint(fuel) : "-exact-tertiary-label") object-fit="scale-down" width=17 height=17
+                  text (electric ? "Charge" : "Fuel") class=SmallBold color="-exact-secondary-label"
                 when fuelKnown
                   row
                     text (fuel >= 100 ? "Full" : `${fuel}%`) testId="fuel-value" class=SmallBold color=fuelText(fuel) font-variant-numeric="tabular-nums"
-                    text ` · ${grouped(status.range)} ${unit}` testId="range" class=SmallBold color="label" font-variant-numeric="tabular-nums"
+                    text ` · ${grouped(status.range)} ${unit}` testId="range" class=SmallBold color="-exact-label" font-variant-numeric="tabular-nums"
                 when not fuelKnown
-                  box testId="fuel-pending" width=110 height=16 border-radius=6 background-color="tertiary-fill" animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
+                  box testId="fuel-pending" width=110 height=16 border-radius=6 background-color="-exact-tertiary-fill" animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
               row gap=4
-                box flex=1 height=8 border-radius=4 background-color="tertiary-fill" overflow="hidden"
+                box flex=1 height=8 border-radius=4 background-color="-exact-tertiary-fill" overflow="hidden"
                   box height="100%" border-radius=4 width=`${min(100, max(0, fuel * 4))}%` background-color=fuelTint(fuel)
-                box flex=1 height=8 border-radius=4 background-color="tertiary-fill" overflow="hidden"
+                box flex=1 height=8 border-radius=4 background-color="-exact-tertiary-fill" overflow="hidden"
                   box height="100%" border-radius=4 width=`${min(100, max(0, (fuel - 25) * 4))}%` background-color=fuelTint(fuel)
-                box flex=1 height=8 border-radius=4 background-color="tertiary-fill" overflow="hidden"
+                box flex=1 height=8 border-radius=4 background-color="-exact-tertiary-fill" overflow="hidden"
                   box height="100%" border-radius=4 width=`${min(100, max(0, (fuel - 50) * 4))}%` background-color=fuelTint(fuel)
-                box flex=1 height=8 border-radius=4 background-color="tertiary-fill" overflow="hidden"
+                box flex=1 height=8 border-radius=4 background-color="-exact-tertiary-fill" overflow="hidden"
                   box height="100%" border-radius=4 width=`${min(100, max(0, (fuel - 75) * 4))}%` background-color=fuelTint(fuel)
             // Remote controls (vehicle-controls.ios.tsx)
             column gap=8 testId="controls"
@@ -368,56 +368,56 @@ component StatusScreen
                   // has reported, nothing (a guess would read as a state).
                   when lockPending or doorLock != "unknown"
                     row gap=4 align-items="center" testId="lock-state"
-                      image `symbol:sf/${((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "lock.fill" : "lock.open.fill")}` font-size=13 tint-color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "system-green" : "system-orange") object-fit="scale-down" width=13 height=13
-                      text (lockPending ? (lockTarget == "locked" ? "Locking" : "Unlocking") : (doorLock == "locked" ? "Locked" : "Unlocked")) class=SmallBold color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "system-green" : "system-orange") animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
+                      image `symbol:sf/${((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "lock.fill" : "lock.open.fill")}` font-size=13 -exact-tint-color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") object-fit="scale-down" width=13 height=13
+                      text (lockPending ? (lockTarget == "locked" ? "Locking" : "Unlocking") : (doorLock == "locked" ? "Locked" : "Unlocked")) class=SmallBold color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
                   // No reading yet, no indicator (vehicle-controls.ios.tsx).
                   when canEngine and (engineKnown or enginePending)
                     row gap=4 align-items="center" testId="engine-state"
-                      image "symbol:sf/power" font-size=13 tint-color=(engineRunning ? "system-green" : "secondary-label") object-fit="scale-down" width=13 height=13
-                      text (enginePending ? (engineTarget == "running" ? "Starting" : "Stopping") : (engineRunning ? "Started" : "Stopped")) class=SmallBold color=(engineRunning ? "system-green" : "secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
+                      image "symbol:sf/power" font-size=13 -exact-tint-color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") object-fit="scale-down" width=13 height=13
+                      text (enginePending ? (engineTarget == "running" ? "Starting" : "Stopping") : (engineRunning ? "Started" : "Stopped")) class=SmallBold color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
               // vehicle-controls.ios.tsx: Lock, Unlock and Start/Stop, always.
               row gap=8
-                ControlButton(command="door-lock", label="Lock", symbol="lock.fill", tint="system-green", title="Lock your vehicle?", message="This locks all doors.", action="Lock", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
-                ControlButton(command="door-unlock", label="Unlock", symbol="lock.open.fill", tint="system-orange", title="Unlock your vehicle?", message="This unlocks the doors. Only do this when you’re near the vehicle.", action="Unlock", destructive=true, disabled=false, glass=true, iconSize=20, run=run)
+                ControlButton(command="door-lock", label="Lock", symbol="lock.fill", tint="-exact-system-green", title="Lock your vehicle?", message="This locks all doors.", action="Lock", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
+                ControlButton(command="door-unlock", label="Unlock", symbol="lock.open.fill", tint="-exact-system-orange", title="Unlock your vehicle?", message="This unlocks the doors. Only do this when you’re near the vehicle.", action="Unlock", destructive=true, disabled=false, glass=true, iconSize=20, run=run)
                 when engineRunning
-                  ControlButton(command="engine-stop", label="Stop", symbol="power", tint="system-red", title="Stop the engine?", message="This ends the remote start.", action="Stop Engine", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
+                  ControlButton(command="engine-stop", label="Stop", symbol="power", tint="-exact-system-red", title="Stop the engine?", message="This ends the remote start.", action="Stop Engine", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
                 else
-                  ControlButton(command="engine-start", label="Start", symbol="power", tint="system-blue", title="Remotely start the engine?", message="Never remotely start the engine in an enclosed space, or with a child or pet inside the vehicle.", action="Start Engine", destructive=true, disabled=false, glass=true, iconSize=20, run=run)
+                  ControlButton(command="engine-start", label="Start", symbol="power", tint="-exact-system-blue", title="Remotely start the engine?", message="Never remotely start the engine in an enclosed space, or with a child or pet inside the vehicle.", action="Start Engine", destructive=true, disabled=false, glass=true, iconSize=20, run=run)
               when length(extras) > 0
                 column class=Card margin-top=8 overflow="hidden" testId="more-controls"
                   button text-align="left" press=toggleMore testId="toggle-more" min-height=56 padding-top=12 padding-bottom=12 box-sizing="content-box" padding-left=16 padding-right=16 display="flex" flex-direction="row" align-items="center" gap=8
                     // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                     row flex=1 min-width=0 align-items="center" gap=12
-                      box width=36 height=36 border-radius=18 background-color=wash("system-blue") display="flex" align-items="center" justify-content="center"
-                        image "symbol:sf/slider.horizontal.3" font-size=16 tint-color="system-blue" object-fit="scale-down" width=22 height=20
+                      box width=36 height=36 border-radius=18 background-color=wash("-exact-system-blue") display="flex" align-items="center" justify-content="center"
+                        image "symbol:sf/slider.horizontal.3" font-size=16 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=20
                       column flex=1 min-width=0 gap=2
-                        text "More controls" font-size=17 font-weight=600 color="label"
-                        text extrasText font-size=13 color="secondary-label"
-                    image "symbol:sf/chevron.right" font-size=14 font-weight=600 tint-color="secondary-label" object-fit="scale-down" width=16 height=20 rotate=(moreOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
+                        text "More controls" font-size=17 font-weight=600 color="-exact-label"
+                        text extrasText font-size=13 color="-exact-secondary-label"
+                    image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=16 height=20 rotate=(moreOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
                   // expandable-card.tsx: the detail's height eases from 0 to its own
                   // over 300 ms (EXPAND_TIMING), clipped, with the chevron.
                   column box-sizing="border-box" overflow="hidden" height=(moreOpen ? "auto" : "0px") interpolate-size="allow-keywords" transition="height 300ms ease-in-out" inert=(not moreOpen) testId="more-detail"
                     row flex-wrap="wrap" gap=8 padding-left=16 padding-right=16 padding-bottom=16
                       when can(car.capabilities, "trunkLockUnlockCapable")
                         column width="calc(33.333% - 5.34px)"
-                          ControlButton(command="trunk-lock", label="Lock Trunk", symbol="car.side.rear.crop.trunk.partition.fill", tint="system-green", title="Lock the trunk?", message="This locks the trunk.", action="Lock Trunk", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
+                          ControlButton(command="trunk-lock", label="Lock Trunk", symbol="car.side.rear.crop.trunk.partition.fill", tint="-exact-system-green", title="Lock the trunk?", message="This locks the trunk.", action="Lock Trunk", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
                         column width="calc(33.333% - 5.34px)"
-                          ControlButton(command="trunk-unlock", label="Unlock Trunk", symbol="car.side.rear.crop.trunk.partition", tint="system-orange", title="Unlock the trunk?", message="This unlocks the trunk. Only do this when you’re near the vehicle.", action="Unlock Trunk", destructive=true, disabled=false, glass=false, iconSize=20, run=run)
+                          ControlButton(command="trunk-unlock", label="Unlock Trunk", symbol="car.side.rear.crop.trunk.partition", tint="-exact-system-orange", title="Unlock the trunk?", message="This unlocks the trunk. Only do this when you’re near the vehicle.", action="Unlock Trunk", destructive=true, disabled=false, glass=false, iconSize=20, run=run)
                       when can(car.capabilities, "hazardCapable")
                         column width="calc(33.333% - 5.34px)"
                           when hazardsOn
-                            ControlButton(command="hazard-off", label="Hazards Off", symbol="car.rear.hazardsign", tint="system-blue", title="Turn off the hazards?", message="This stops the hazard lights.", action="Turn Off", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
+                            ControlButton(command="hazard-off", label="Hazards Off", symbol="car.rear.hazardsign", tint="-exact-system-blue", title="Turn off the hazards?", message="This stops the hazard lights.", action="Turn Off", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
                           else
-                            ControlButton(command="hazard-on", label="Hazard Lights", symbol="car.rear.hazardsign.fill", tint="system-red", title="Flash the hazards?", message="The hazard lights start flashing until you turn them off.", action="Turn On", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
+                            ControlButton(command="hazard-on", label="Hazard Lights", symbol="car.rear.hazardsign.fill", tint="-exact-system-red", title="Flash the hazards?", message="The hazard lights start flashing until you turn them off.", action="Turn On", destructive=false, disabled=false, glass=false, iconSize=20, run=run)
                       when can(car.capabilities, "lightsCapable")
                         column width="calc(33.333% - 5.34px)"
-                          ControlButton(command="headlight-on", label="Flash Lights", symbol="headlight.low.beam.fill", tint="system-cyan", title="Flash the headlights?", message="The headlights come on to help you find the vehicle.", action="Flash", destructive=false, disabled=false, glass=false, iconSize=19, run=run)
+                          ControlButton(command="headlight-on", label="Flash Lights", symbol="headlight.low.beam.fill", tint="-exact-system-cyan", title="Flash the headlights?", message="The headlights come on to help you find the vehicle.", action="Flash", destructive=false, disabled=false, glass=false, iconSize=19, run=run)
                       when can(car.capabilities, "buzzerCapable")
                         column width="calc(33.333% - 5.34px)"
-                          ControlButton(command="buzzer-warning", label="Play Beeps", symbol="bell.and.waves.left.and.right.fill", tint="system-yellow", title="Sound the buzzer?", message="The vehicle beeps ten times.", action="Play Beeps", destructive=false, disabled=false, glass=false, iconSize=18, run=run)
+                          ControlButton(command="buzzer-warning", label="Play Beeps", symbol="bell.and.waves.left.and.right.fill", tint="-exact-system-yellow", title="Sound the buzzer?", message="The vehicle beeps ten times.", action="Play Beeps", destructive=false, disabled=false, glass=false, iconSize=18, run=run)
                       when can(car.capabilities, "hornCapable")
                         column width="calc(33.333% - 5.34px)"
-                          ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=false, glass=false, iconSize=17, run=run)
+                          ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="-exact-system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=false, glass=false, iconSize=17, run=run)
             // Remote-start climate (climate-card.ios.tsx). A second change
             // can't race the first: the switch, the slider and the defrost
             // buttons are disabled while one is written to the server (never
@@ -431,14 +431,14 @@ component StatusScreen
                 column gap=4
                   row justify-content="space-between" align-items="center"
                     row gap=4 align-items="center"
-                      image "symbol:sf/thermometer.medium" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=17 height=17
-                      text "Remote Start Climate" class=SmallBold color="secondary-label"
+                      image "symbol:sf/thermometer.medium" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=17 height=17
+                      text "Remote Start Climate" class=SmallBold color="-exact-secondary-label"
                     // The real switch from the first frame, as the buttons
                     // are: disabled and off until the settings arrive (and
                     // before their read has even begun), so the header
                     // never changes height.
                     input type="checkbox" switch checked=(climate.ok and climateWanted) change=setClimateOn disabled=(climateSaving or not climate.ok) aria-label="Remote start climate" testId="climate-switch" margin-right=8 accent-color="auto"
-                  text "Settings for when you start your vehicle remotely." class=Small color="secondary-label"
+                  text "Settings for when you start your vehicle remotely." class=Small color="-exact-secondary-label"
                 when climate.ok
                   column gap=16
                     // Hidden when the settings carry no range.
@@ -450,12 +450,12 @@ component StatusScreen
                       row gap=8
                         when climate.front
                           button press=toggleDefrost("front") disabled=(climateSaving or not climateWanted) testId="defrost-front" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
-                            image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
-                            text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
+                            image "symbol:sf/windshield.front.and.heat.waves" font-size=17 -exact-tint-color=(frontDefrost ? "AccentColor" : "-exact-secondary-label") object-fit="scale-down" width=22 height=20
+                            text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                         when climate.rear
                           button press=toggleDefrost("rear") disabled=(climateSaving or not climateWanted) testId="defrost-rear" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
-                            image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
-                            text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
+                            image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 -exact-tint-color=(rearDefrost ? "AccentColor" : "-exact-secondary-label") object-fit="scale-down" width=22 height=20
+                            text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
             when length(rows) > 0
               column gap=8 testId="closures"
@@ -465,11 +465,11 @@ component StatusScreen
                     // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                     row flex=1 min-width=0 align-items="center" gap=12
                       box width=36 height=36 border-radius=18 background-color=wash(verdictTint) display="flex" align-items="center" justify-content="center"
-                        image `symbol:sf/${verdictSymbol}` font-size=18 tint-color=verdictTint object-fit="scale-down" width=24 height=22
+                        image `symbol:sf/${verdictSymbol}` font-size=18 -exact-tint-color=verdictTint object-fit="scale-down" width=24 height=22
                       column flex=1 min-width=0 gap=2
-                        text headline testId="closures-headline" font-size=17 font-weight=600 color="label" line-clamp=1
-                        text subline font-size=13 color="secondary-label" line-clamp=1
-                    image "symbol:sf/chevron.right" font-size=14 font-weight=600 tint-color="secondary-label" object-fit="scale-down" width=16 height=20 rotate=(closuresOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
+                        text headline testId="closures-headline" font-size=17 font-weight=600 color="-exact-label" line-clamp=1
+                        text subline font-size=13 color="-exact-secondary-label" line-clamp=1
+                    image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=16 height=20 rotate=(closuresOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
                   column box-sizing="border-box" overflow="hidden" height=(closuresOpen ? "auto" : "0px") interpolate-size="allow-keywords" transition="height 300ms ease-in-out" inert=(not closuresOpen) testId="closures-detail"
                     column gap=16 padding-top=2 padding-left=16 padding-right=16 padding-bottom=16
                       when length(filter(corners, s => includes(cornerOf(s), "front-"))) > 0
@@ -484,41 +484,41 @@ component StatusScreen
                         column gap=8
                           // closures.ts OPENING_ORDER: moonroof, trunk, hood.
                           each o in filter(openings, o => includes(o.section, "Moon")) key=o.section
-                            StatusLine(symbol="moon.fill", pointsize=13, tint=(isOpen(o) ? "system-orange" : "system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
+                            StatusLine(symbol="moon.fill", pointsize=13, tint=(isOpen(o) ? "-exact-system-orange" : "-exact-system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
                           each o in filter(openings, o => includes(o.section, "Trunk")) key=o.section
-                            StatusLine(symbol="car.side.rear.crop.trunk.partition.fill", pointsize=15, tint=(isOpen(o) ? "system-orange" : "system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
+                            StatusLine(symbol="car.side.rear.crop.trunk.partition.fill", pointsize=15, tint=(isOpen(o) ? "-exact-system-orange" : "-exact-system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
                           each o in filter(openings, o => includes(o.section, "Hood")) key=o.section
-                            StatusLine(symbol="engine.combustion.fill", pointsize=12, tint=(isOpen(o) ? "system-orange" : "system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
+                            StatusLine(symbol="engine.combustion.fill", pointsize=12, tint=(isOpen(o) ? "-exact-system-orange" : "-exact-system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
                           each o in filter(openings, o => not includes(o.section, "Moon") and not includes(o.section, "Trunk") and not includes(o.section, "Hood")) key=o.section
-                            StatusLine(symbol=(includes(o.section, "Moon") ? "moon.fill" : (includes(o.section, "Hood") ? "engine.combustion.fill" : "car.side.rear.crop.trunk.partition.fill")), pointsize=(includes(o.section, "Trunk") ? 15 : (includes(o.section, "Moon") ? 13 : 12)), tint=(isOpen(o) ? "system-orange" : "system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
+                            StatusLine(symbol=(includes(o.section, "Moon") ? "moon.fill" : (includes(o.section, "Hood") ? "engine.combustion.fill" : "car.side.rear.crop.trunk.partition.fill")), pointsize=(includes(o.section, "Trunk") ? 15 : (includes(o.section, "Moon") ? 13 : 12)), tint=(isOpen(o) ? "-exact-system-orange" : "-exact-system-green"), words=`${o.section} ${isOpen(o) ? "open" : "closed"}`)
                 // closures-summary.ios.tsx StaleNote: some readings weren't in the
                 // latest snapshot (windows after a drive), so say how old.
                 when status.closuresStaleMs > 0
                   row testId="closures-stale" justify-content="center" align-items="center" gap=4
-                    image "symbol:sf/clock.arrow.circlepath" font-size=12 tint-color="secondary-label" object-fit="scale-down" width=12 height=12
-                    text `Some readings as of ${relative(clock, status.closuresStaleMs)}` font-size=13 line-height="18px" color="secondary-label"
+                    image "symbol:sf/clock.arrow.circlepath" font-size=12 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=12
+                    text `Some readings as of ${relative(clock, status.closuresStaleMs)}` font-size=13 line-height="18px" color="-exact-secondary-label"
             // Odometer (odometer-card.tsx)
             column gap=8 testId="odometer"
               text "ODOMETER" class=CardTitle margin-top=4
               row class=Card padding=16 align-items="center" gap=8
                 column flex=1 gap=4
                   row gap=4 align-items="center"
-                    image "symbol:sf/gauge.with.dots.needle.67percent" font-size=17 tint-color="secondary-label" object-fit="scale-down" width=17 height=17
-                    text "Total" class=SmallBold color="secondary-label"
+                    image "symbol:sf/gauge.with.dots.needle.67percent" font-size=17 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=17 height=17
+                    text "Total" class=SmallBold color="-exact-secondary-label"
                   row gap=3 align-items="flex-end"
                     text grouped(status.odometer) testId="odometer-value" font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
-                    text odoUnit class=Small color="secondary-label"
-                row flex=2 gap=8 padding-top=8 padding-bottom=8 padding-left=16 padding-right=16 border-radius=12 background-color="quaternary-fill"
+                    text odoUnit class=Small color="-exact-secondary-label"
+                row flex=2 gap=8 padding-top=8 padding-bottom=8 padding-left=16 padding-right=16 border-radius=12 background-color="-exact-quaternary-fill"
                   column flex=1 gap=4
-                    text "Trip A" class=SmallBold color="secondary-label"
+                    text "Trip A" class=SmallBold color="-exact-secondary-label"
                     row gap=3 align-items="flex-end"
                       text tenths(status.tripA) font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
-                      text odoUnit class=Small color="secondary-label"
+                      text odoUnit class=Small color="-exact-secondary-label"
                   column flex=1 gap=4
-                    text "Trip B" class=SmallBold color="secondary-label"
+                    text "Trip B" class=SmallBold color="-exact-secondary-label"
                     row gap=3 align-items="flex-end"
                       text tenths(status.tripB) font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
-                      text odoUnit class=Small color="secondary-label"
+                      text odoUnit class=Small color="-exact-secondary-label"
             // Tire pressure (tire-pressure-card.tsx)
             when tires.ok and length(tires.tires) > 0
               column gap=8 testId="tires"
@@ -527,17 +527,17 @@ component StatusScreen
                   column gap=16
                     each t in filter(tires.tires, t => t.position == "flTirePressure" or t.position == "rlTirePressure") key=t.position
                       column gap=2 testId=`tire-${t.position}`
-                        text tireLabel(t.position) class=SmallBold color="secondary-label"
+                        text tireLabel(t.position) class=SmallBold color="-exact-secondary-label"
                         row align-items="baseline"
-                          text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "system-orange" : "label") font-variant-numeric="tabular-nums"
-                          text ` ${tires.unit}` class=Small color="secondary-label"
+                          text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
+                          text ` ${tires.unit}` class=Small color="-exact-secondary-label"
                   column gap=16
                     each t in filter(tires.tires, t => t.position == "frTirePressure" or t.position == "rrTirePressure") key=t.position
                       column gap=2 testId=`tire-${t.position}`
-                        text tireLabel(t.position) class=SmallBold color="secondary-label"
+                        text tireLabel(t.position) class=SmallBold color="-exact-secondary-label"
                         row align-items="baseline"
-                          text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "system-orange" : "label") font-variant-numeric="tabular-nums"
-                          text ` ${tires.unit}` class=Small color="secondary-label"
+                          text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
+                          text ` ${tires.unit}` class=Small color="-exact-secondary-label"
             // When it last synced (status-screen.ios.tsx footer)
             // status-screen.ios.tsx FooterTimeRow: a tap shows the exact time
             // in a popover anchored to the sentence.
@@ -545,10 +545,10 @@ component StatusScreen
             // scroller ends where the tab bar begins.
             column align-items="center" gap=2 padding-top=24 padding-bottom=24 margin-bottom=16 testId="synced"
               button popovertarget="synced-at" testId="synced-line" -exact-apple-button-style="plain"
-                text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="secondary-label" text-align="center"
+                text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="-exact-secondary-label" text-align="center"
               column id="synced-at" popover="auto" position="absolute" padding=16
                 text exactTime((checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs), utcOffset) font-size=16
               button popovertarget="checked-at" testId="checked-line" -exact-apple-button-style="plain"
-                text `Lexy checked for data ${relative(clock, checkedAt)}.` font-size=13 color="secondary-label" text-align="center"
+                text `Lexy checked for data ${relative(clock, checkedAt)}.` font-size=13 color="-exact-secondary-label" text-align="center"
               column id="checked-at" popover="auto" position="absolute" padding=16
                 text exactTime(checkedAt, utcOffset) font-size=16

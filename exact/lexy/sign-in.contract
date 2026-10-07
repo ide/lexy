@@ -25,17 +25,17 @@ component LexyMark
     svg testId="lexy-mark" aria-label="Lexy" role="img" width=size height=size viewBox="148 163 744 744"
       defs
         linearGradient id="mark-metal" gradientUnits="userSpaceOnUse" x1=0 y1=163 x2=0 y2=906
-          stop offset=0 stop-color="label" stop-opacity=0.9
-          stop offset=0.55 stop-color="label" stop-opacity=0.55
-          stop offset=0.95 stop-color="label" stop-opacity=0.2
+          stop offset=0 stop-color="-exact-label" stop-opacity=0.9
+          stop offset=0.55 stop-color="-exact-label" stop-opacity=0.55
+          stop offset=0.95 stop-color="-exact-label" stop-opacity=0.2
         linearGradient id="mark-redline" gradientUnits="userSpaceOnUse" x1=878 y1=540 x2=750 y2=809
-          stop offset=0 stop-color="system-red" stop-opacity=0.7
-          stop offset=1 stop-color="system-red" stop-opacity=0.12
+          stop offset=0 stop-color="-exact-system-red" stop-opacity=0.7
+          stop offset=1 stop-color="-exact-system-red" stop-opacity=0.12
         linearGradient id="mark-glyph" gradientUnits="userSpaceOnUse" x1=0 y1=364 x2=0 y2=690
-          stop offset=0 stop-color="label"
-          stop offset=1 stop-color="label" stop-opacity=0.78
+          stop offset=0 stop-color="-exact-label"
+          stop offset=1 stop-color="-exact-label" stop-opacity=0.78
       path d="M 436.58 896.58 A 371.30 371.30 0 1 1 705.19 212.92 L 692.33 235.29 A 345.50 345.50 0 1 0 442.38 871.44 Z" fill="url(#mark-metal)"
-      path d="M 706.31 213.57 A 371.30 371.30 0 0 1 891.39 531.56 L 865.59 531.78 A 345.50 345.50 0 0 0 693.37 235.89 Z" fill="system-red"
+      path d="M 706.31 213.57 A 371.30 371.30 0 0 1 891.39 531.56 L 865.59 531.78 A 345.50 345.50 0 0 0 693.37 235.89 Z" fill="-exact-system-red"
       path d="M 891.36 539.98 A 371.30 371.30 0 0 1 758.77 819.23 L 742.18 799.47 A 345.50 345.50 0 0 0 865.57 539.62 Z" fill="url(#mark-redline)"
       path d="M 505.19 370.66 A 14.00 14.00 0 0 1 517.45 363.99 L 592.07 365.79 A 5.00 5.00 0 0 1 596.18 373.46 L 440.06 620.08 A 12.00 12.00 0 0 0 450.20 638.50 L 742.55 638.50 A 4.00 4.00 0 0 1 745.22 645.48 L 697.02 688.72 A 5.00 5.00 0 0 1 693.69 690.00 L 394.90 690.00 A 48.00 48.00 0 0 1 354.00 616.88 Z" fill="url(#mark-glyph)"
 
@@ -75,9 +75,9 @@ component Notice
     tint: string
     message: string
   view
-    row testId=id gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center"
-      image `symbol:sf/${symbol}` font-size=18 tint-color=tint
-      text message font-size=13 font-weight=500 color="label" flex=1 min-width=0
+    row testId=id gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center"
+      image `symbol:sf/${symbol}` font-size=18 -exact-tint-color=tint
+      text message font-size=13 font-weight=500 color="-exact-label" flex=1 min-width=0
 
 component LockScreen
   props
@@ -113,56 +113,56 @@ component LockScreen
     scroll testId="sign-in" keyboardDismissMode="interactive" overflow-x="hidden" width="100%" height="100%"
       column box-sizing="border-box" padding-top=(preview ? "24px" : "calc(env(safe-area-inset-top) + 64px)") padding-left=16 padding-right=16 padding-bottom="calc(env(safe-area-inset-bottom) + 16px)" gap=24
         when banner != ""
-          row testId="preview-banner" align-self="center" gap=6 padding-left=12 padding-right=12 height=30 border-radius=15 background-color="secondary-grouped-background" align-items="center"
-            image `symbol:sf/${bannerSymbol}` font-size=13 tint-color="system-blue"
-            text `Preview · ${banner}` font-size=13 font-weight=600 color="secondary-label"
+          row testId="preview-banner" align-self="center" gap=6 padding-left=12 padding-right=12 height=30 border-radius=15 background-color="-exact-secondary-grouped-background" align-items="center"
+            image `symbol:sf/${bannerSymbol}` font-size=13 -exact-tint-color="-exact-system-blue"
+            text `Preview · ${banner}` font-size=13 font-weight=600 color="-exact-secondary-label"
         // Hero: the step's symbol, title and what to do.
         column align-items="center" gap=8
           when step == "credentials"
             LexyMark(size=76)
           when step != "credentials"
-            image `symbol:sf/${heroSymbol(step, method)}` font-size=44 tint-color="system-blue" margin-bottom=4
+            image `symbol:sf/${heroSymbol(step, method)}` font-size=44 -exact-tint-color="-exact-system-blue" margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" font-size=28 font-weight=700 text-align="center"
-          text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="secondary-label" text-align="center" padding-left=8 padding-right=8
+          text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
         // The first step is there on the first frame, as a native form is;
         // the later steps arrive with stepIn.
         when step == "credentials"
           column gap=16
             // The group is the fields' look, so each is a bare box
             // (appearance="none": no default field border).
-            column border-radius=16 background-color="secondary-grouped-background" overflow="hidden"
-              input appearance="none" value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
-              box height=0.5 margin-left=16 background-color="separator"
-              input appearance="none" value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
+            column border-radius=16 background-color="-exact-secondary-grouped-background" overflow="hidden"
+              input appearance="none" value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
+              box height=0.5 margin-left=16 background-color="-exact-separator"
+              input appearance="none" value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
             PrimaryButton(label=(busy ? "Signing In…" : "Sign In"), disabled=(trim(email) == "" or password == ""), press=signIn, id="sign-in-button")
         when step == "choice"
           // One row of equal-width choices (ChoiceButton: bordered, large).
           row gap=8 animation="stepIn 350ms ease-out"
             each m, i in choices key=m
               button press=choose(i) disabled=busy testId=`method-${i}` -exact-apple-button-style="tinted" accent-color="AccentColor" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
-                image `symbol:sf/${choiceSymbol(m)}` font-size=17 tint-color="AccentColor"
+                image `symbol:sf/${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
                 text m font-size=17 font-weight=600 color="AccentColor" line-clamp=1
         when step == "otp"
           column gap=16 animation="stepIn 350ms ease-out"
-            input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="secondary-grouped-background" font-size=17 color="label"
+            input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="-exact-secondary-grouped-background" font-size=17 color="-exact-label"
             PrimaryButton(label=(busy and not resending ? "Verifying…" : "Verify"), disabled=(trim(code) == ""), press=verify, id="verify-button")
             column gap=8
               SecondaryButton(label="Resend Code", disabled=busy, press=resend, id="resend")
               when length(choices) > 1
                 SecondaryButton(label="Use a Different Method", disabled=busy, press=differentMethod, id="different-method")
         when error != ""
-          Notice(id="sign-in-error", symbol="exclamationmark.triangle.fill", tint="system-orange", message=error)
+          Notice(id="sign-in-error", symbol="exclamationmark.triangle.fill", tint="-exact-system-orange", message=error)
         when error == "" and info != ""
-          Notice(id="sign-in-info", symbol="checkmark.circle.fill", tint="system-green", message=info)
+          Notice(id="sign-in-info", symbol="checkmark.circle.fill", tint="-exact-system-green", message=info)
         when step == "credentials"
           // NewToLexusCallout: the account comes from Lexus's own app.
-          column testId="new-to-lexus" align-items="flex-start" gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background"
-            text "New to Lexus?" font-size=13 font-weight=600 color="label"
-            text "Create an account and add your vehicle in the Lexus app, then come back here to sign in." font-size=13 color="secondary-label"
+          column testId="new-to-lexus" align-items="flex-start" gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background"
+            text "New to Lexus?" font-size=13 font-weight=600 color="-exact-label"
+            text "Create an account and add your vehicle in the Lexus app, then come back here to sign in." font-size=13 color="-exact-secondary-label"
             // Only the link is a control (sign-in-elements.ios.tsx).
             button press=getLexusApp testId="get-lexus-app" -exact-apple-button-style="plain"
               text "Get the Lexus App" font-size=13 font-weight=600 color="AccentColor"
-        text "Your password and verification code go directly to Lexus. Lexy never stores them or collects your information." font-size=13 font-weight=500 color="secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
+        text "Your password and verification code go directly to Lexus. Lexy never stores them or collects your information." font-size=13 font-weight=500 color="-exact-secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
       // Not in Lexy: an in-memory Lexus, for trying the app without an
       // account. One tap signs in. In the corner, where the keyboard never
       // covers it, and last, so it is above the form. Shown on the first step

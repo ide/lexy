@@ -16,13 +16,13 @@ component SectionHeader
   props
     title: string
   view
-    text title font-size=13 font-weight=600 color="secondary-label" padding-left=16 padding-bottom=4
+    text title font-size=13 font-weight=600 color="-exact-secondary-label" padding-left=16 padding-bottom=4
 
 component SectionFooter
   props
     words: string
   view
-    text words font-size=13 color="secondary-label" padding-top=8 padding-left=16 padding-right=16
+    text words font-size=13 color="-exact-secondary-label" padding-top=8 padding-left=16 padding-right=16
 
 // src/components/swift-ui/settings-row.tsx: symbol, title over subtitle, chevron.
 component SettingsRowFace
@@ -32,11 +32,11 @@ component SettingsRowFace
     subtitle: string
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:sf/${symbol}` font-size=22 tint-color="AccentColor" object-fit="scale-down" width=28 height=26
+      image `symbol:sf/${symbol}` font-size=22 -exact-tint-color="AccentColor" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
-        text title font-size=17 font-weight=600 color="label"
-        text subtitle font-size=13 font-weight=500 color="secondary-label"
-      image "symbol:sf/chevron.right" font-size=14 font-weight=600 tint-color="secondary-label" object-fit="scale-down" width=12 height=20
+        text title font-size=17 font-weight=600 color="-exact-label"
+        text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
+      image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // The Development tab folded into Settings, at its top (settings-screen.ios.tsx
 // DEV_ITEMS). Every Exact build is an internal one, so they are always shown.
@@ -51,26 +51,26 @@ component DeveloperTools
       column class=Card
         button text-align="left" press=open("/settings/updates") testId="dev-updates" display="flex"
           SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.")
-        box height=0.5 margin-left=60 background-color="separator"
+        box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/data-state") testId="dev-data-state" display="flex"
           SettingsRowFace(symbol="cylinder.split.1x2.fill", title="Data State", subtitle="Force loading, offline, error, and empty states.")
-        box height=0.5 margin-left=60 background-color="separator"
+        box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/login") testId="dev-login" display="flex"
           SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.")
-        box height=0.5 margin-left=60 background-color="separator"
+        box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/performance") testId="dev-performance" display="flex"
           SettingsRowFace(symbol="gauge.with.dots.needle.67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.")
-        box height=0.5 margin-left=60 background-color="separator"
+        box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
-        box height=0.5 margin-left=60 background-color="separator"
+        box height=0.5 margin-left=60 background-color="-exact-separator"
         // A debug override: off hides the Status map until it is on again,
         // across launches (app.ts keeps it beside the maps choice).
         row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-          image "symbol:sf/map.fill" font-size=22 tint-color="AccentColor" object-fit="scale-down" width=28 height=26
+          image "symbol:sf/map.fill" font-size=22 -exact-tint-color="AccentColor" object-fit="scale-down" width=28 height=26
           column flex=1 min-width=0 gap=2
-            text "Status Map" font-size=17 font-weight=600 color="label"
-            text "The parked map behind the car. Off leaves it out until you turn it back on." font-size=13 font-weight=500 color="secondary-label"
+            text "Status Map" font-size=17 font-weight=600 color="-exact-label"
+            text "The parked map behind the car. Off leaves it out until you turn it back on." font-size=13 font-weight=500 color="-exact-secondary-label"
           input type="checkbox" switch checked=showMap change=setShowMap aria-label="Status map" testId="dev-status-map"
 
 component SettingsScreen
@@ -90,7 +90,7 @@ component SettingsScreen
     showMap: bool
     setShowMap: action
   view
-    scroll id="screen-scroll" testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding-bottom=64
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
           DeveloperTools(open=openDevTool, showMap=showMap, setShowMap=setShowMap)
@@ -112,8 +112,8 @@ component SettingsScreen
             SectionHeader(title="LEXUS ACCOUNT")
             column class=Card
               button press=signOut disabled=signingOut testId="sign-out" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
-                image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 tint-color="system-red" object-fit="scale-down" width=26 height=24
-                text "Sign Out" font-size=17 font-weight=600 color="system-red"
+                image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red" object-fit="scale-down" width=26 height=24
+                text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
             when demo
               SectionFooter(words="Signed in to the demo Lexus.")
           when demo
@@ -129,12 +129,12 @@ component SettingsScreen
             column class=Card
               row padding=16 justify-content="space-between" align-items="center"
                 text "Version" font-size=17
-                text version testId="version" font-size=17 color="secondary-label" user-select="text"
+                text version testId="version" font-size=17 color="-exact-secondary-label" user-select="text"
               // A grouped list's divider, inset to the text.
-              box height=0.5 margin-left=16 background-color="separator"
+              box height=0.5 margin-left=16 background-color="-exact-separator"
               row padding=16 justify-content="space-between" align-items="center" gap=16
                 text "Built with" font-size=17
-                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="secondary-label" text-align="right" flex-shrink=1 user-select="text"
+                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="-exact-secondary-label" text-align="right" flex-shrink=1 user-select="text"
 
 component RenameScreen
   props
@@ -148,19 +148,19 @@ component RenameScreen
     back: action
   derive changed = trim(name) != "" and trim(name) != saved
   view
-    scroll id="screen-scroll" testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="grouped-background"
+    scroll id="screen-scroll" testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="-exact-grouped-background"
       column padding-top=16 padding-left=16 padding-right=16 gap=16
         // section.tsx: the footer 8 under its field, 16 to what follows.
         column gap=8
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
-            input appearance="none" id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="label"
+            input appearance="none" id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="-exact-label"
             when name != ""
               button press=clear testId="clear-name" -exact-apple-button-style="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
-                image "symbol:sf/xmark.circle.fill" font-size=17 tint-color="tertiary-label" object-fit="scale-down" width=22 height=22
-          text "Your car’s name, saved to the Lexus app." font-size=13 color="secondary-label" padding-left=16 padding-right=16
+                image "symbol:sf/xmark.circle.fill" font-size=17 -exact-tint-color="-exact-tertiary-label" object-fit="scale-down" width=22 height=22
+          text "Your car’s name, saved to the Lexus app." font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16
         when error != ""
-          row gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" align-items="center" testId="rename-error"
-            image "symbol:sf/exclamationmark.triangle.fill" font-size=18 tint-color="system-orange" object-fit="scale-down" width=24 height=22
+          row gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center" testId="rename-error"
+            image "symbol:sf/exclamationmark.triangle.fill" font-size=18 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
         button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

@@ -28,10 +28,10 @@ component InfoRow
     value: string
     last: bool
   view
-    row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=(last ? 0 : 0.5) border-bottom-style="solid" border-color="separator" testId=`row-${label}`
-      text label class=Small color="secondary-label"
+    row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=(last ? 0 : 0.5) border-bottom-style="solid" border-color="-exact-separator" testId=`row-${label}`
+      text label class=Small color="-exact-secondary-label"
       // Selectable, as the Expo row's value is: a long press offers Copy.
-      text (value != "" ? value : "—") class=Small color="label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums" user-select=(value != "" ? "text" : "auto")
+      text (value != "" ? value : "—") class=Small color="-exact-label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums" user-select=(value != "" ? "text" : "auto")
 
 component Capability
   props
@@ -39,8 +39,8 @@ component Capability
     label: string
   view
     row flex-grow=1 flex-basis="40%" gap=8 align-items="center"
-      image `symbol:sf/${symbol}` font-size=20 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
-      text label class=Small color="label"
+      image `symbol:sf/${symbol}` font-size=20 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+      text label class=Small color="-exact-label"
 
 component SpecsScreen
   props
@@ -55,7 +55,7 @@ component SpecsScreen
     manage: action
   derive car = garage.car
   view
-    scroll id="screen-scroll" testId="specs-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="specs-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" min-height="100%"
         when not online
           column margin-left=16 margin-right=16 margin-top=16
@@ -67,7 +67,7 @@ component SpecsScreen
         when car.vin == "" and loading
           // details-screen.tsx's skeleton: the vehicle card's place.
           column box-sizing="border-box" padding=16 gap=8 testId="specs-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
-            box width=80 height=17 border-radius=6 margin-left=8 background-color="tertiary-fill"
+            box width=80 height=17 border-radius=6 margin-left=8 background-color="-exact-tertiary-fill"
             column class=Card height=600
         when car.vin == "" and not loading and garage.ok and length(garage.cars) == 0
           // 16 above, as Status' padded column and its gap give its state,
@@ -110,10 +110,10 @@ component SpecsScreen
                 text "CONNECTED SERVICES" class=CardTitle
                 column class=Card padding-left=16 padding-right=16
                   each s, i in services.items key=`${s.bucket}-${s.name}`
-                    row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="separator" testId=`service-${i}`
+                    row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`
                       column flex-shrink=1
-                        text s.name class=Small color="label" user-select="text"
-                        text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="secondary-label"
-                      text s.status class=SmallBold color=(s.status == "Active" ? "system-green" : "secondary-label")
+                        text s.name class=Small color="-exact-label" user-select="text"
+                        text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="-exact-secondary-label"
+                      text s.status class=SmallBold color=(s.status == "Active" ? "-exact-system-green" : "-exact-secondary-label")
                   button press=manage testId="manage-subscriptions" -exact-apple-button-style="plain" padding-top=16 padding-bottom=16 display="flex" align-items="center"
                     text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="AccentColor" text-align="center"

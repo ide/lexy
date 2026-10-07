@@ -90,11 +90,11 @@ component FactRow
   view
     row padding=16 justify-content="space-between" align-items="center" gap=16
       text label font-size=17 flex-shrink=0
-      text value testId=id font-size=17 color="secondary-label" flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis" user-select="text"
+      text value testId=id font-size=17 color="-exact-secondary-label" flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis" user-select="text"
 
 component Divider
   view
-    box height=0.5 margin-left=16 background-color="separator"
+    box height=0.5 margin-left=16 background-color="-exact-separator"
 
 // A choice among several: the title over what it does, checked when chosen.
 component ChoiceRow
@@ -108,11 +108,11 @@ component ChoiceRow
     button text-align="left" press=press testId=id aria-selected=chosen display="flex"
       row gap=12 padding=16 align-items="center" width="100%" box-sizing="border-box"
         column flex=1 min-width=0 gap=2
-          text title font-size=17 color="label"
-          text detail font-size=13 color="secondary-label"
+          text title font-size=17 color="-exact-label"
+          text detail font-size=13 color="-exact-secondary-label"
         box width=20 height=20
           when chosen
-            image "symbol:sf/checkmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+            image "symbol:sf/checkmark" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
 
 // update-diagnostics-screen.ios.tsx, for Exact's update store: what is
 // running, what it shipped with, and whether a newer bundle waits.
@@ -124,7 +124,7 @@ component UpdatesScreen
     check: action
     apply: action
   view
-    scroll id="screen-scroll" testId="updates-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="updates-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
         column
           SectionHeader(title="RUNNING")
@@ -147,19 +147,19 @@ component UpdatesScreen
             FactRow(label="Interpreted", value=(length(delivery.interpreted) == 0 ? "None" : join(delivery.interpreted, ", ")), id="updates-interpreted")
           SectionFooter(words="A binary takes updates only from the stream its compatibility id names: a bundle built against other native code never reaches it.")
         when delivery.sunset != ""
-          column gap=8 padding=16 border-radius=14 background-color="secondary-grouped-background" testId="updates-sunset"
-            text "This build is being retired" font-size=15 font-weight=600 color="system-orange"
-            text delivery.sunset font-size=13 color="secondary-label"
+          column gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" testId="updates-sunset"
+            text "This build is being retired" font-size=15 font-weight=600 color="-exact-system-orange"
+            text delivery.sunset font-size=13 color="-exact-secondary-label"
         column
           SectionHeader(title="ACTIONS")
           column class=Card
             button text-align="left" press=check testId="updates-check" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=24 height=22
+              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=24 height=22
               text "Check for Update" font-size=17 color="AccentColor"
             Divider()
             button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:sf/arrow.down.circle.fill" font-size=17 tint-color=(delivery.staged ? "system-green" : "tertiary-label") object-fit="scale-down" width=24 height=22
-              text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "system-green" : "tertiary-label")
+              image "symbol:sf/arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label") object-fit="scale-down" width=24 height=22
+              text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
           SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
 
 // data-state-screen.ios.tsx: one override at a time, Live by default and
@@ -172,7 +172,7 @@ component DataStateScreen
     provider: string
     clearMaps: action
   view
-    scroll id="screen-scroll" testId="data-state-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="data-state-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
         column
           SectionHeader(title="DATA STATE")
@@ -196,8 +196,8 @@ component DataStateScreen
           column class=Card
             button text-align="left" press=clearMaps disabled=(provider == "") testId="clear-maps" -exact-apple-button-style="plain" padding=16 display="flex"
               column gap=2 align-items="flex-start"
-                text "Clear Maps provider" font-size=17 color=(provider == "" ? "tertiary-label" : "system-red")
-                text (provider == "" ? "No saved provider" : `Currently ${mapsName(provider)}`) font-size=13 color="secondary-label"
+                text "Clear Maps provider" font-size=17 color=(provider == "" ? "-exact-tertiary-label" : "-exact-system-red")
+                text (provider == "" ? "No saved provider" : `Currently ${mapsName(provider)}`) font-size=13 color="-exact-secondary-label"
           SectionFooter(words="Forgetting it makes the next map hand-off pick the only app installed, or ask again.")
 
 // login-preview-screen.ios.tsx: the real sign-in screen and step machine
@@ -248,10 +248,10 @@ component LoginPreviewScreen
           LockScreen(step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       when done
         column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
-          image "symbol:sf/checkmark.seal.fill" font-size=56 tint-color="system-green"
+          image "symbol:sf/checkmark.seal.fill" font-size=56 -exact-tint-color="-exact-system-green"
           text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
-          text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="secondary-label" text-align="center"
-          text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="tertiary-label" text-align="center"
+          text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
+          text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
           button press=runAgain testId="run-again" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
             text "Run Again" font-size=17 font-weight=600 color="#ffffff"
 
@@ -261,19 +261,19 @@ component EasScreen
   props
     open: action
   view
-    scroll id="screen-scroll" testId="eas-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="eas-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 padding-bottom=64
         SectionHeader(title="DASHBOARD")
         column class=Card
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
             EasRow(symbol="house.fill", title="Project Home", subtitle="The project overview and its recent activity.")
-          box height=0.5 margin-left=60 background-color="separator"
+          box height=0.5 margin-left=60 background-color="-exact-separator"
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/observe") testId="eas-observe" display="flex"
             EasRow(symbol="waveform.path.ecg", title="Observe", subtitle="Launch, render, and navigation metrics from real devices.")
-          box height=0.5 margin-left=60 background-color="separator"
+          box height=0.5 margin-left=60 background-color="-exact-separator"
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/workflows") testId="eas-workflows" display="flex"
             EasRow(symbol="flowchart.fill", title="Workflows", subtitle="The runs that build this Exact app.")
-          box height=0.5 margin-left=60 background-color="separator"
+          box height=0.5 margin-left=60 background-color="-exact-separator"
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/builds") testId="eas-builds" display="flex"
             EasRow(symbol="hammer.fill", title="Builds", subtitle="Native builds, their logs, and install links.")
         SectionFooter(words="Opens expo.dev in Safari for @ide/lexy. You need to be signed in on the dashboard to see anything.")
@@ -286,11 +286,11 @@ component EasRow
     subtitle: string
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:sf/${symbol}` font-size=22 tint-color="system-cyan" object-fit="scale-down" width=28 height=26
+      image `symbol:sf/${symbol}` font-size=22 -exact-tint-color="-exact-system-cyan" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
-        text title font-size=17 font-weight=600 color="label"
-        text subtitle font-size=13 font-weight=500 color="secondary-label"
-      image "symbol:sf/arrow.up.right.square" font-size=15 tint-color="secondary-label" object-fit="scale-down" width=18 height=20
+        text title font-size=17 font-weight=600 color="-exact-label"
+        text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
+      image "symbol:sf/arrow.up.right.square" font-size=15 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=18 height=20
 
 // A metric: its pill and route over when it was recorded, its value at the end.
 component MetricRow
@@ -304,10 +304,10 @@ component MetricRow
     row padding-left=16 padding-right=16 padding-top=10 padding-bottom=10 justify-content="space-between" align-items="center" gap=12
       column flex=1 min-width=0 gap=4
         row align-items="center" gap=8
-          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "system-green" : (metricPill(name) == "WARM TTR" ? "system-orange" : (includes(metricPill(name), "TTR") ? "system-blue" : "secondary-label"))) background-color="tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=4 padding-bottom=4 text-box="trim-both cap alphabetic" flex-shrink=0
+          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "-exact-system-green" : (metricPill(name) == "WARM TTR" ? "-exact-system-orange" : (includes(metricPill(name), "TTR") ? "-exact-system-blue" : "-exact-secondary-label"))) background-color="-exact-tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=4 padding-bottom=4 text-box="trim-both cap alphabetic" flex-shrink=0
           text metricWhere(name, route) font-family="ui-monospace" font-size=15 flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
-        text detail font-size=13 color="secondary-label"
-      text value testId=id font-size=17 color="secondary-label" flex-shrink=0
+        text detail font-size=13 color="-exact-secondary-label"
+      text value testId=id font-size=17 color="-exact-secondary-label" flex-shrink=0
 
 // Performance: this device's Observe metrics, read back from Exact's local
 // queue — the last launch, each screen this launch, and the 7-day median of
@@ -317,7 +317,7 @@ component PerformanceScreen
     observed: Observed
     utcOffset: number
   view
-    scroll id="screen-scroll" testId="performance-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
         when not observed.ok
           SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
@@ -334,15 +334,15 @@ component PerformanceScreen
                     Divider()
                   MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
                   when m.fromStart != ""
-                    text m.fromStart font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    text m.fromStart font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.phases != ""
-                    text `Phases: ${m.phases}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    text `Phases: ${m.phases}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.items != ""
-                    text `Held by (ms from process start): ${m.items}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    text `Held by (ms from process start): ${m.items}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.changes != ""
-                    text `Still changing: ${m.changes}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    text `Still changing: ${m.changes}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.trace != ""
-                    text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12
+                    text `Waited on: ${m.trace}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=12
         when observed.ok and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) > 0
           column
             SectionHeader(title="SCREENS")
@@ -353,7 +353,7 @@ component PerformanceScreen
                     Divider()
                   MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
                   when m.steps != ""
-                    text m.steps font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=10
+                    text m.steps font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=10
         when observed.ok and length(observed.summary) > 0
           column
             SectionHeader(title="MEDIAN")

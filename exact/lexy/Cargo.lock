@@ -2203,8 +2203,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[patch.unused]]
-name = "cosmic-text"
-version = "0.19.0"
+name = "fontique"
+version = "0.11.1"
+
+[[patch.unused]]
+name = "parley"
+version = "0.11.1"
 
 [[patch.unused]]
 name = "wgpu-hal"
