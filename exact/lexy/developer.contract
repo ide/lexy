@@ -52,8 +52,9 @@ shape Observed
   summary: list<ObservedSummary>
 
 // The pill: what was measured. TTR is the first frame; TTI the first frame
-// with nothing loading.
-fn metricPill(name: string): string = name == "coldLaunchTime" or name == "warmLaunchTime" ? "LAUNCH" : (name == "timeToFirstRender" or name == "ttr" or name == "warm_ttr" or name == "cold_ttr" ? "TTR" : (name == "timeToInteractive" or name == "tti" ? "TTI" : (name == "download_time" or name == "downloadTime" ? "UPDATE" : name)))
+// with nothing loading. A screen's TTR is cold for a new screen, warm for one
+// shown before (back, a tab seen before).
+fn metricPill(name: string): string = name == "coldLaunchTime" or name == "warmLaunchTime" ? "LAUNCH" : (name == "cold_ttr" ? "COLD TTR" : (name == "warm_ttr" ? "WARM TTR" : (name == "timeToFirstRender" or name == "ttr" ? "TTR" : (name == "timeToInteractive" or name == "tti" ? "TTI" : (name == "download_time" or name == "downloadTime" ? "UPDATE" : name)))))
 // Beside the pill, in monospace: the route, or which kind of launch.
 fn metricWhere(name: string, route: string): string = name == "coldLaunchTime" ? "cold" : (name == "warmLaunchTime" ? "warm" : (route == "" ? "/" : route))
 fn milliseconds(seconds: number): string = `${floor(seconds * 1000 + 0.5)} ms`
@@ -301,7 +302,7 @@ component MetricRow
     row padding-left=16 padding-right=16 padding-top=10 padding-bottom=10 justify-content="space-between" align-items="center" gap=12
       column flex=1 min-width=0 gap=4
         row align-items="center" gap=8
-          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "system-green" : (metricPill(name) == "TTR" ? "system-blue" : "secondary-label")) background-color="tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=2 padding-bottom=2 flex-shrink=0
+          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "system-green" : (includes(metricPill(name), "TTR") ? "system-blue" : "secondary-label")) background-color="tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=2 padding-bottom=2 flex-shrink=0
           text metricWhere(name, route) font-family="ui-monospace" font-size=15 flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
         text detail font-size=13 color="secondary-label"
       text value testId=id font-size=17 color="secondary-label" flex-shrink=0
@@ -348,7 +349,7 @@ component PerformanceScreen
                 column
                   when i > 0
                     Divider()
-                  MetricRow(name=m.name, route=m.route, detail=(m.name == "cold_ttr" ? `First visit · ${exactTime(m.time * 1000, utcOffset)}` : exactTime(m.time * 1000, utcOffset)), value=milliseconds(m.value), id=`perf-nav-${i}`)
+                  MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
         when observed.ok and length(observed.summary) > 0
           column
             SectionHeader(title="LAST 7 DAYS, MEDIAN")
