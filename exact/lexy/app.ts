@@ -977,13 +977,16 @@ const sources: Sources = {
 type Observed = Result<'observed'>;
 const noObserved: Observed = { ok: false, session: '', launch: '', latest: [], metrics: [], summary: [] };
 // Observe's launch phases, in the order they happen, as one line.
-const PHASES: [string, string][] = [['phase.scene', 'scene'], ['phase.boot_wait', 'boot wait'], ['phase.boot', 'boot'], ['boot.runner', 'runner + first layout'], ['boot.apply', 'first batch to UIKit'], ['phase.present', 'first frame'], ['phase.activate', 'activation'], ['data.draw_receipt', 'until first draw'], ['data.app_module', 'app module'], ['data.wait', 'data module wait'], ['data.ready', 'data ready'], ['data.apply', 'first data batch']];
+const PHASES: [string, string][] = [['phase.exec', 'exec'], ['phase.initializers', 'initializers'], ['phase.uikit', 'UIKit to app delegate'], ['phase.launching', 'app delegate launch'], ['phase.scene', 'scene'], ['phase.boot_wait', 'boot wait'], ['phase.boot', 'boot'], ['boot.runner', 'runner + first layout'], ['boot.apply', 'first batch to UIKit'], ['phase.present', 'first frame'], ['phase.activate', 'activation'], ['data.draw_receipt', 'until first draw'], ['data.app_module', 'app module'], ['data.wait', 'data module wait'], ['data.ready', 'data ready'], ['data.apply', 'first data batch']];
 function phases(params: Record<string, unknown> | undefined, name: string): string {
   if (!params || name !== 'timeToInteractive') return '';
-  return PHASES.flatMap(([key, label]) => {
+  const line = PHASES.flatMap(([key, label]) => {
     const v = params[`exact.${key}`];
     return typeof v === 'number' ? [`${label} ${Math.round(v * 1000)} ms`] : [];
   }).join(', ');
+  // The first batch to UIKit, by its largest parts (ms).
+  const parts = params['exact.boot.apply_parts'];
+  return typeof parts === 'string' && parts ? `${line}. First batch: ${parts}` : line;
 }
 
 // Clear hides what is recorded so far from this screen only: Observe still
@@ -1044,6 +1047,14 @@ async function observed(limit: number): Promise<Observed> {
         steps: steps(params, category, num(m.value)),
       };
     });
+    // A screen's render, then its interactive: newest first, a TTI is
+    // recorded just after its own TTR, so put the pair the way it happened.
+    for (let i = 0; i + 1 < metrics.length; i++) {
+      const a = metrics[i], b = metrics[i + 1];
+      if (a.category === 'navigation' && a.name === 'tti' && b.category === 'navigation' && b.name !== 'tti' && b.session === a.session && b.route === a.route) {
+        metrics[i] = b; metrics[i + 1] = a; i++;
+      }
+    }
     const startup = new Map<string, number[]>();
     for (const m of metrics) if (m.category === 'appStartup') startup.set(m.name, [...(startup.get(m.name) ?? []), m.value]);
     const summary = [...startup].map(([name, values]) => {
