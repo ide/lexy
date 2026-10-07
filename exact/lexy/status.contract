@@ -199,7 +199,11 @@ component StatusScreen
     moreOpen: bool
     closuresOpen: bool
     // A save, or the re-read after it, is in flight: the controls hold still.
+    // A write to the server is in flight: the whole climate UI waits.
     climateSaving: bool
+    // The person just changed climate: its controls ease into their new
+    // state; at launch and on a background read they start in it.
+    climateAnimates: bool
     climateLoading: bool
     utcOffset: number
     online: bool
@@ -416,10 +420,10 @@ component StatusScreen
                           ControlButton(command="sound-horn", label="Honk Horn", symbol="horn.blast.fill", tint="system-orange", title="Sound the horn?", message="The vehicle will sound its horn. Be sure not to startle anyone.", action="Honk Horn", destructive=true, disabled=false, glass=false, iconSize=17, run=run)
             // Remote-start climate (climate-card.ios.tsx). A second change
             // can't race the first: the switch, the slider and the defrost
-            // buttons are disabled while one is written (and read back). A
-            // disabled defrost keeps its colours at 60% (Exact keeps an
-            // author's colours on a disabled button), so disabled never
-            // reads as defrost off.
+            // buttons are disabled while one is written to the server (never
+            // for a read). A disabled defrost keeps its colours at 60%, so
+            // disabled never reads as defrost off; they ease into a new state
+            // only when the person just changed climate, and start in it.
             // climate-card.ios.tsx: the header always shows; the switch
             // only with settings (a placeholder while they load).
             when true
@@ -433,23 +437,23 @@ component StatusScreen
                     // are: disabled and off until the settings arrive (and
                     // before their read has even begun), so the header
                     // never changes height.
-                    input type="checkbox" switch checked=(climate.ok and (climateSaving ? climateWanted : climate.on)) change=setClimateOn disabled=(climateSaving or not climate.ok) aria-label="Remote start climate" testId="climate-switch" margin-right=8 accent-color="auto"
+                    input type="checkbox" switch checked=(climate.ok and climateWanted) change=setClimateOn disabled=(climateSaving or not climate.ok) aria-label="Remote start climate" testId="climate-switch" margin-right=8 accent-color="auto"
                   text "Settings for when you start your vehicle remotely." class=Small color="secondary-label"
                 when climate.ok
                   column gap=16
                     // Hidden when the settings carry no range.
                     when climate.max > climate.min
                       row gap=16 align-items="center"
-                        input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(climateSaving or not climateWanted) aria-label="Temperature" transition="-exact-enabled -exact-system" testId="climate-temperature" flex=1 height=28
+                        input type="range" min=climate.min max=climate.max step=climate.step value=temperature input=dragTemperature change=setTemperature disabled=(climateSaving or not climateWanted) aria-label="Temperature" transition=(climateAnimates ? "-exact-enabled -exact-system" : "none") testId="climate-temperature" flex=1 height=28
                         text `${floor(temperature * 10 + 0.5) / 10}°${climate.unit}` class=SmallBold min-width=52 text-align="right" font-variant-numeric="tabular-nums"
                     when climate.front or climate.rear
                       row gap=8
                         when climate.front
-                          button press=toggleDefrost("front") disabled=(climateSaving or not climateWanted) testId="defrost-front" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition="opacity -exact-system" -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("front") disabled=(climateSaving or not climateWanted) testId="defrost-front" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.front.and.heat.waves" font-size=17 tint-color=(frontDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Front Defrost" class=Small color=(frontDefrost ? "AccentColor" : "secondary-label")
                         when climate.rear
-                          button press=toggleDefrost("rear") disabled=(climateSaving or not climateWanted) testId="defrost-rear" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition="opacity -exact-system" -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                          button press=toggleDefrost("rear") disabled=(climateSaving or not climateWanted) testId="defrost-rear" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
                             image "symbol:sf/windshield.rear.and.heat.waves" font-size=17 tint-color=(rearDefrost ? "AccentColor" : "secondary-label") object-fit="scale-down" width=22 height=20
                             text "Rear Defrost" class=Small color=(rearDefrost ? "AccentColor" : "secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
