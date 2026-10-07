@@ -302,7 +302,7 @@ component MetricRow
     row padding-left=16 padding-right=16 padding-top=10 padding-bottom=10 justify-content="space-between" align-items="center" gap=12
       column flex=1 min-width=0 gap=4
         row align-items="center" gap=8
-          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "system-green" : (includes(metricPill(name), "TTR") ? "system-blue" : "secondary-label")) background-color="tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=2 padding-bottom=2 flex-shrink=0
+          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "system-green" : (metricPill(name) == "WARM TTR" ? "system-orange" : (includes(metricPill(name), "TTR") ? "system-blue" : "secondary-label"))) background-color="tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=2 padding-bottom=2 flex-shrink=0
           text metricWhere(name, route) font-family="ui-monospace" font-size=15 flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
         text detail font-size=13 color="secondary-label"
       text value testId=id font-size=17 color="secondary-label" flex-shrink=0
