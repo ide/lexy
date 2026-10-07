@@ -988,13 +988,23 @@ function phases(params: Record<string, unknown> | undefined, name: string): stri
 
 // Clear hides what is recorded so far from this screen only: Observe still
 // sends it and keeps it its 7 days. It keeps the newest metric's time, so it
-// needs no clock of its own.
+// needs no clock of its own; with nothing read, nothing is hidden.
 async function clearObserved(): Promise<Result<'clearObserved'>> {
   if (!native?.available) return { ok: false };
   const r = await native.later({ op: 'observe', limit: 1 }).catch(() => null);
-  const newest = Array.isArray(r?.metrics) ? num((r.metrics as Record<string, unknown>[])[0]?.time) : 0;
+  if (!Array.isArray(r?.metrics)) return { ok: false };
+  const newest = num((r.metrics as Record<string, unknown>[])[0]?.time);
   if (newest > 0) await save('observe-cleared', String(newest));
   return { ok: true };
+}
+
+// A screen's render, step by step from its start (the tap, or the route
+// change): when the route changed, when its batch committed, the frame.
+function steps(params: Record<string, unknown>, category: string, value: number): string {
+  const route = params['exact.nav.route_change'], commit = params['exact.nav.commit'];
+  if (category !== 'navigation' || typeof route !== 'number' || typeof commit !== 'number') return '';
+  const ms = (v: number) => `${Math.round(v * 1000)} ms`;
+  return `${params['exact.nav.cause'] === 'input' ? 'Tap' : 'Start'} → route ${ms(route)} → commit ${ms(commit)} → frame ${ms(value)}`;
 }
 
 const ORDER = ['coldLaunchTime', 'warmLaunchTime', 'timeToFirstRender', 'timeToInteractive'];
@@ -1009,27 +1019,31 @@ async function observed(limit: number): Promise<Observed> {
     const cleared = Number(await load('observe-cleared') ?? 0) || 0;
     const r = await native.later({ op: 'observe', limit });
     if (!Array.isArray(r.metrics)) return noObserved;
-    const metrics = (r.metrics as Record<string, unknown>[]).map(m => ({
-      session: str(m.session), time: num(m.time), category: str(m.category), name: str(m.name), value: num(m.value),
-      route: str(m.route), sent: m.sent === true, trace: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.trace']),
-      phases: phases(m.params as Record<string, unknown> | undefined, str(m.name)),
-      items: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.items']),
-      changes: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.changes']),
-      fromStart: '',
-    }))
-      // The launch route's own render and interactive marks count from Exact's
-      // boot, a little after the launch's: the launch's TTR and TTI say it.
-      .filter(m => !(m.category === 'navigation' && (r.metrics as Record<string, unknown>[]).some(x => num(x.time) === m.time && str(x.name) === m.name && (x.params as Record<string, unknown> | undefined)?.['exact.nav.anchor'] === 'boot')))
-      .filter(m => m.time > cleared);
-    // The launch's TTR and TTI again from process start (the kernel's), shown under its TTI.
-    const params = (m: { time: number; name: string }) => (r.metrics as Record<string, unknown>[]).find(x => num(x.time) === m.time && str(x.name) === m.name)?.params as Record<string, unknown> | undefined;
-    for (const m of metrics) {
-      if (m.category !== 'appStartup' || m.name !== 'timeToInteractive') continue;
-      const ttr = metrics.find(x => x.session === m.session && x.name === 'timeToFirstRender');
-      const r1 = ttr && params(ttr)?.['exact.since_process_start.ttr'], i1 = params(m)?.['exact.since_process_start.tti'];
-      const parts = [typeof r1 === 'number' ? `TTR ${Math.round(r1 * 1000)} ms` : '', typeof i1 === 'number' ? `TTI ${Math.round(i1 * 1000)} ms` : ''].filter(Boolean);
-      if (parts.length) m.fromStart = `From process start: ${parts.join(', ')}`;
-    }
+    const records = (r.metrics as Record<string, unknown>[])
+      .map(m => ({ m, params: (m.params ?? {}) as Record<string, unknown> }))
+      .filter(({ m }) => num(m.time) > cleared);
+    // The launch route's own render and interactive marks count from Exact's
+    // boot, a little after the launch's: the launch's TTR and TTI say it, and
+    // name its route.
+    const launchRoute = new Map<string, string>();
+    for (const { m, params } of records) if (params['exact.nav.anchor'] === 'boot') launchRoute.set(str(m.session), str(m.route));
+    const kept = records.filter(({ params }) => params['exact.nav.anchor'] !== 'boot');
+    const metrics = kept.map(({ m, params }) => {
+      const session = str(m.session), name = str(m.name), category = str(m.category);
+      const ttr = name === 'timeToInteractive' ? kept.find(x => str(x.m.session) === session && str(x.m.name) === 'timeToFirstRender') : undefined;
+      const r1 = ttr?.params['exact.since_process_start.ttr'], i1 = params['exact.since_process_start.tti'];
+      // The launch's TTR and TTI again from process start (the kernel's), shown under its TTI.
+      const fromStart = name !== 'timeToInteractive' ? []
+        : [typeof r1 === 'number' ? `TTR ${Math.round(r1 * 1000)} ms` : '', typeof i1 === 'number' ? `TTI ${Math.round(i1 * 1000)} ms` : ''].filter(Boolean);
+      return {
+        session, time: num(m.time), category, name, value: num(m.value),
+        route: category === 'appStartup' ? launchRoute.get(session) ?? '' : str(m.route),
+        sent: m.sent === true, trace: str(params['exact.tti.trace']), phases: phases(params, name),
+        items: str(params['exact.tti.items']), changes: str(params['exact.tti.changes']),
+        fromStart: fromStart.length ? `From process start: ${fromStart.join(', ')}` : '',
+        steps: steps(params, category, num(m.value)),
+      };
+    });
     const startup = new Map<string, number[]>();
     for (const m of metrics) if (m.category === 'appStartup') startup.set(m.name, [...(startup.get(m.name) ?? []), m.value]);
     const summary = [...startup].map(([name, values]) => {

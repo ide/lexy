@@ -30,6 +30,8 @@ shape ObservedMetric
   changes: string
   // TTR and TTI again from process start (the kernel's), on the launch's TTI.
   fromStart: string
+  // A screen's render step by step: route change, commit, frame.
+  steps: string
 
 shape ObservedSummary
   name: string
@@ -56,7 +58,7 @@ shape Observed
 // shown before (back, a tab seen before).
 fn metricPill(name: string): string = name == "coldLaunchTime" or name == "warmLaunchTime" ? "LAUNCH" : (name == "cold_ttr" ? "COLD TTR" : (name == "warm_ttr" ? "WARM TTR" : (name == "timeToFirstRender" or name == "ttr" ? "TTR" : (name == "timeToInteractive" or name == "tti" ? "TTI" : (name == "download_time" or name == "downloadTime" ? "UPDATE" : name)))))
 // Beside the pill, in monospace: the route, or which kind of launch.
-fn metricWhere(name: string, route: string): string = name == "coldLaunchTime" ? "cold" : (name == "warmLaunchTime" ? "warm" : (route == "" ? "/" : route))
+fn metricWhere(name: string, route: string): string = name == "coldLaunchTime" ? "cold" : (name == "warmLaunchTime" ? "warm" : (route == "" ? "launch" : route))
 fn milliseconds(seconds: number): string = `${floor(seconds * 1000 + 0.5)} ms`
 
 // What the binary knows about its own delivery (Exact LLP 1030 D7), answered
@@ -319,8 +321,8 @@ component PerformanceScreen
       column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
         when not observed.ok
           SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
-        when observed.ok and length(observed.metrics) == 0
-          SectionFooter(words="Nothing recorded since you cleared. Relaunch the app or open a screen.")
+        when observed.ok and length(observed.latest) == 0 and length(observed.summary) == 0 and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) == 0
+          SectionFooter(words="Nothing recorded yet. Open a screen or relaunch the app.")
         when observed.ok and length(observed.latest) > 0
           column
             SectionHeader(title=(observed.launch == observed.session ? "THIS LAUNCH" : "LAST LAUNCH"))
@@ -346,13 +348,15 @@ component PerformanceScreen
             SectionHeader(title="SCREENS")
             column class=Card
               each m, i in filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
-                column
+                column user-select="text"
                   when i > 0
                     Divider()
                   MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
+                  when m.steps != ""
+                    text m.steps font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=10
         when observed.ok and length(observed.summary) > 0
           column
-            SectionHeader(title="LAST 7 DAYS, MEDIAN")
+            SectionHeader(title="MEDIAN")
             column class=Card
               each s, i in observed.summary key=s.name
                 column

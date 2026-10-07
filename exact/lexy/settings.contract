@@ -153,7 +153,7 @@ component RenameScreen
         // section.tsx: the footer 8 under its field, 16 to what follows.
         column gap=8
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
-            input id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="label"
+            input appearance="none" id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="label"
             when name != ""
               button press=clear testId="clear-name" -exact-apple-button-style="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
                 image "symbol:sf/xmark.circle.fill" font-size=17 tint-color="tertiary-label" object-fit="scale-down" width=22 height=22

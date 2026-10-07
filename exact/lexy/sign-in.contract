@@ -128,10 +128,12 @@ component LockScreen
         // the later steps arrive with stepIn.
         when step == "credentials"
           column gap=16
+            // The group is the fields' look, so each is a bare box
+            // (appearance="none": no default field border).
             column border-radius=16 background-color="secondary-grouped-background" overflow="hidden"
-              input value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
+              input appearance="none" value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
               box height=0.5 margin-left=16 background-color="separator"
-              input value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
+              input appearance="none" value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="label"
             PrimaryButton(label=(busy ? "Signing In…" : "Sign In"), disabled=(trim(email) == "" or password == ""), press=signIn, id="sign-in-button")
         when step == "choice"
           // One row of equal-width choices (ChoiceButton: bordered, large).
@@ -142,7 +144,7 @@ component LockScreen
                 text m font-size=17 font-weight=600 color="AccentColor" line-clamp=1
         when step == "otp"
           column gap=16 animation="stepIn 350ms ease-out"
-            input value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="secondary-grouped-background" font-size=17 color="label"
+            input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="secondary-grouped-background" font-size=17 color="label"
             PrimaryButton(label=(busy and not resending ? "Verifying…" : "Verify"), disabled=(trim(code) == ""), press=verify, id="verify-button")
             column gap=8
               SecondaryButton(label="Resend Code", disabled=busy, press=resend, id="resend")

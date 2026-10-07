@@ -69,7 +69,7 @@ component ControlButton
     run: action
   view
     column flex=1 min-width=0
-      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label -exact-apple-button-style="filled" accent-color=(glass ? "secondary-grouped-background" : "quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center" gap=4
+      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label -exact-apple-button-style="filled" accent-color=(glass ? "secondary-grouped-background" : "quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center"
         image `symbol:sf/${symbol}` font-size=iconSize tint-color=tint
         text label font-size=13 font-weight=600 color="label" line-clamp=1
       // A centred alert, as Lexy's (alert-host.tsx): the same place for
@@ -335,7 +335,7 @@ component StatusScreen
                 when car.image != ""
                   image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
               row position="relative" width="100%" justify-content="flex-end" pointer-events="none"
-                button press=openMap pointer-events="auto" testId="last-parked" -exact-apple-button-style="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=4
+                button press=openMap pointer-events="auto" testId="last-parked" -exact-apple-button-style="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center"
                   image "symbol:sf/map.fill" font-size=15 tint-color="AccentColor" object-fit="scale-down" width=20 height=18
                   text "Last Parked" font-size=15 font-weight=600 color="label"
             // Fuel (fuel-bar.tsx)
