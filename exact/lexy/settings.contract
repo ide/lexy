@@ -43,6 +43,8 @@ component SettingsRowFace
 component DeveloperTools
   props
     open: action
+    showMap: bool
+    setShowMap: action
   view
     column
       SectionHeader(title="DEVELOPER TOOLS")
@@ -61,6 +63,15 @@ component DeveloperTools
         box height=0.5 margin-left=60 background-color="separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
+        box height=0.5 margin-left=60 background-color="separator"
+        // A debug override: off hides the Status map until it is on again,
+        // across launches (app.ts keeps it beside the maps choice).
+        row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
+          image "symbol:sf/map.fill" font-size=22 tint-color="AccentColor" object-fit="scale-down" width=28 height=26
+          column flex=1 min-width=0 gap=2
+            text "Status Map" font-size=17 font-weight=600 color="label"
+            text "The parked map behind the car. Off leaves it out until you turn it back on." font-size=13 font-weight=500 color="secondary-label"
+          input type="checkbox" switch checked=showMap change=setShowMap aria-label="Status map" testId="dev-status-map"
 
 component SettingsScreen
   props
@@ -76,11 +87,13 @@ component SettingsScreen
     chooseMaps: action
     signOut: action
     signingOut: bool
+    showMap: bool
+    setShowMap: action
   view
     scroll id="screen-scroll" testId="settings-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding-bottom=64
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
-          DeveloperTools(open=openDevTool)
+          DeveloperTools(open=openDevTool, showMap=showMap, setShowMap=setShowMap)
           column
             SectionHeader(title="MAPS")
             column class=Card
