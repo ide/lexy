@@ -976,11 +976,11 @@ const sources: Sources = {
 type Observed = Result<'observed'>;
 const noObserved: Observed = { ok: false, session: '', launch: '', metrics: [], summary: [] };
 // Observe's launch phases, in the order they happen, as one line.
-const PHASES: [string, string][] = [['scene', 'scene'], ['boot_wait', 'boot wait'], ['boot', 'boot'], ['present', 'first frame'], ['activate', 'activation']];
+const PHASES: [string, string][] = [['phase.scene', 'scene'], ['phase.boot_wait', 'boot wait'], ['phase.boot', 'boot'], ['boot.runner', 'runner + first layout'], ['boot.apply', 'first batch to UIKit'], ['phase.present', 'first frame'], ['phase.activate', 'activation'], ['data.draw_receipt', 'until first draw'], ['data.app_module', 'app module'], ['data.wait', 'data module wait'], ['data.ready', 'data ready'], ['data.apply', 'first data batch']];
 function phases(params: Record<string, unknown> | undefined, name: string): string {
   if (!params || name !== 'timeToInteractive') return '';
   return PHASES.flatMap(([key, label]) => {
-    const v = params[`exact.phase.${key}`];
+    const v = params[`exact.${key}`];
     return typeof v === 'number' ? [`${label} ${Math.round(v * 1000)} ms`] : [];
   }).join(', ');
 }
