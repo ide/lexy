@@ -966,6 +966,7 @@ const sources: Sources = {
   },
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),
   observed: ([limit]) => observed(limit),
+  clearObserved: () => clearObserved(),
   mapOverride: () => mapOverride(),
   setMapHidden: ([hidden]) => setMapHidden(hidden),
 };
@@ -974,7 +975,7 @@ const sources: Sources = {
 // Exact's Observe service keeps every metric it records for 7 days; the native
 // module asks it for the newest. Each startup mark's median is over those kept.
 type Observed = Result<'observed'>;
-const noObserved: Observed = { ok: false, session: '', launch: '', metrics: [], summary: [] };
+const noObserved: Observed = { ok: false, session: '', launch: '', latest: [], metrics: [], summary: [] };
 // Observe's launch phases, in the order they happen, as one line.
 const PHASES: [string, string][] = [['phase.scene', 'scene'], ['phase.boot_wait', 'boot wait'], ['phase.boot', 'boot'], ['boot.runner', 'runner + first layout'], ['boot.apply', 'first batch to UIKit'], ['phase.present', 'first frame'], ['phase.activate', 'activation'], ['data.draw_receipt', 'until first draw'], ['data.app_module', 'app module'], ['data.wait', 'data module wait'], ['data.ready', 'data ready'], ['data.apply', 'first data batch']];
 function phases(params: Record<string, unknown> | undefined, name: string): string {
@@ -985,27 +986,27 @@ function phases(params: Record<string, unknown> | undefined, name: string): stri
   }).join(', ');
 }
 
-// What each metric measures, from → to, in words.
-const STARTUP_SPANS: Record<string, string> = {
-  coldLaunchTime: 'process start → app ready: iOS loading the app, then its own launch work (first since a reboot or update)',
-  warmLaunchTime: 'process start → app ready: iOS loading the app, then its own launch work (already cached)',
-  timeToFirstRender: 'didFinishLaunching → first frame',
-  timeToInteractive: 'didFinishLaunching → first frame with nothing loading',
-  endToEndFirstRender: 'process start → first frame',
-  endToEndInteractive: 'process start → first frame with nothing loading',
-};
-function span(category: string, name: string, params: Record<string, unknown> | undefined): string {
-  if (category === 'appStartup') return STARTUP_SPANS[name] ?? '';
-  const from = params?.['exact.nav.anchor'] === 'boot' ? 'Exact starts building the launch screen'
-    : params?.['exact.nav.platform'] === true ? 'UIKit starts its transition'
-    : params?.['exact.nav.cause'] === 'input' ? 'your tap' : 'the route change';
-  const to = name === 'tti' ? 'nothing loading' : 'first frame';
-  return `${from} → ${to}`;
+// Clear hides what is recorded so far from this screen only: Observe still
+// sends it and keeps it its 7 days. It keeps the newest metric's time, so it
+// needs no clock of its own.
+async function clearObserved(): Promise<Result<'clearObserved'>> {
+  if (!native?.available) return { ok: false };
+  const r = await native.later({ op: 'observe', limit: 1 }).catch(() => null);
+  const newest = Array.isArray(r?.metrics) ? num((r.metrics as Record<string, unknown>[])[0]?.time) : 0;
+  if (newest > 0) await save('observe-cleared', String(newest));
+  return { ok: true };
+}
+
+const ORDER = ['coldLaunchTime', 'warmLaunchTime', 'timeToFirstRender', 'timeToInteractive'];
+function order(name: string): number {
+  const i = ORDER.indexOf(name);
+  return i < 0 ? ORDER.length : i;
 }
 
 async function observed(limit: number): Promise<Observed> {
   if (!native?.available || limit <= 0) return noObserved;
   try {
+    const cleared = Number(await load('observe-cleared') ?? 0) || 0;
     const r = await native.later({ op: 'observe', limit });
     if (!Array.isArray(r.metrics)) return noObserved;
     const metrics = (r.metrics as Record<string, unknown>[]).map(m => ({
@@ -1014,25 +1015,32 @@ async function observed(limit: number): Promise<Observed> {
       phases: phases(m.params as Record<string, unknown> | undefined, str(m.name)),
       items: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.items']),
       changes: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.changes']),
-      span: span(str(m.category), str(m.name), m.params as Record<string, unknown> | undefined),
-    }));
-    // The same two marks from process start (the kernel's), as Observe sends them.
-    for (const m of [...metrics]) {
-      if (m.category !== 'appStartup' || (m.name !== 'timeToFirstRender' && m.name !== 'timeToInteractive')) continue;
-      const params = (r.metrics as Record<string, unknown>[]).find(x => num(x.time) === m.time && str(x.name) === m.name)?.params as Record<string, unknown> | undefined;
-      const v = params?.[m.name === 'timeToFirstRender' ? 'exact.since_process_start.ttr' : 'exact.since_process_start.tti'];
-      if (typeof v !== 'number') continue;
-      const name = m.name === 'timeToFirstRender' ? 'endToEndFirstRender' : 'endToEndInteractive';
-      metrics.splice(metrics.indexOf(m) + 1, 0, { ...m, name, value: v, phases: '', items: '', changes: '', trace: '', span: STARTUP_SPANS[name] });
+      fromStart: '',
+    }))
+      // The launch route's own render and interactive marks count from Exact's
+      // boot, a little after the launch's: the launch's TTR and TTI say it.
+      .filter(m => !(m.category === 'navigation' && (r.metrics as Record<string, unknown>[]).some(x => num(x.time) === m.time && str(x.name) === m.name && (x.params as Record<string, unknown> | undefined)?.['exact.nav.anchor'] === 'boot')))
+      .filter(m => m.time > cleared);
+    // The launch's TTR and TTI again from process start (the kernel's), shown under its TTI.
+    const params = (m: { time: number; name: string }) => (r.metrics as Record<string, unknown>[]).find(x => num(x.time) === m.time && str(x.name) === m.name)?.params as Record<string, unknown> | undefined;
+    for (const m of metrics) {
+      if (m.category !== 'appStartup' || m.name !== 'timeToInteractive') continue;
+      const ttr = metrics.find(x => x.session === m.session && x.name === 'timeToFirstRender');
+      const r1 = ttr && params(ttr)?.['exact.since_process_start.ttr'], i1 = params(m)?.['exact.since_process_start.tti'];
+      const parts = [typeof r1 === 'number' ? `TTR ${Math.round(r1 * 1000)} ms` : '', typeof i1 === 'number' ? `TTI ${Math.round(i1 * 1000)} ms` : ''].filter(Boolean);
+      if (parts.length) m.fromStart = `From process start: ${parts.join(', ')}`;
     }
     const startup = new Map<string, number[]>();
     for (const m of metrics) if (m.category === 'appStartup') startup.set(m.name, [...(startup.get(m.name) ?? []), m.value]);
     const summary = [...startup].map(([name, values]) => {
       const sorted = [...values].sort((a, b) => a - b), mid = Math.floor(sorted.length / 2);
-      return { name, span: STARTUP_SPANS[name] ?? '', count: sorted.length, median: sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2 };
+      return { name, count: sorted.length, median: sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2 };
     });
     const launch = metrics.find(m => m.category === 'appStartup')?.session ?? str(r.session);
-    return { ok: true, session: str(r.session), launch, metrics, summary };
+    // The launch's marks in the order they happen: launch, TTR, TTI.
+    const latest = metrics.filter(m => m.session === launch && m.category === 'appStartup').sort((a, b) => order(a.name) - order(b.name));
+    summary.sort((a, b) => order(a.name) - order(b.name));
+    return { ok: true, session: str(r.session), launch, latest, metrics, summary };
   } catch {
     return noObserved;
   }

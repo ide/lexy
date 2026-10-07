@@ -5,6 +5,7 @@
 use Card from "./model.contract"
 use MapsApp from "./model.contract"
 use mapsName from "./model.contract"
+use exactTime from "./model.contract"
 use SectionHeader from "./settings.contract"
 use SectionFooter from "./settings.contract"
 use LockScreen from "./sign-in.contract"
@@ -27,14 +28,17 @@ shape ObservedMetric
   items: string
   // Batches that still changed the screen after nothing was loading.
   changes: string
-  // What it measures, from → to ("didFinishLaunching → first frame").
-  span: string
+  // TTR and TTI again from process start (the kernel's), on the launch's TTI.
+  fromStart: string
 
 shape ObservedSummary
   name: string
-  span: string
   count: number
   median: number
+
+// Clear's answer: what is recorded so far is hidden from Performance.
+shape ObservedCleared
+  ok: bool
 
 shape Observed
   ok: bool
@@ -42,11 +46,16 @@ shape Observed
   // The newest launch with its startup marks (the one running may not have
   // reported them yet: TTI waits for the first settled frame).
   launch: string
+  // That launch's marks: launch, TTR, then TTI.
+  latest: list<ObservedMetric>
   metrics: list<ObservedMetric>
   summary: list<ObservedSummary>
 
-fn metricLabel(name: string): string = name == "endToEndFirstRender" ? "First frame, end to end" : (name == "endToEndInteractive" ? "Interactive, end to end" : metricLabel1(name))
-fn metricLabel1(name: string): string = name == "coldLaunchTime" ? "Cold launch" : (name == "warmLaunchTime" ? "Warm launch" : (name == "timeToFirstRender" ? "First render" : (name == "timeToInteractive" ? "Interactive" : (name == "cold_ttr" ? "Render, first visit" : (name == "warm_ttr" ? "Render" : (name == "tti" ? "Interactive" : (name == "ttr" ? "Render" : (name == "download_time" or name == "downloadTime" ? "Update download" : name))))))))
+// The pill: what was measured. TTR is the first frame; TTI the first frame
+// with nothing loading.
+fn metricPill(name: string): string = name == "coldLaunchTime" or name == "warmLaunchTime" ? "LAUNCH" : (name == "timeToFirstRender" or name == "ttr" or name == "warm_ttr" or name == "cold_ttr" ? "TTR" : (name == "timeToInteractive" or name == "tti" ? "TTI" : (name == "download_time" or name == "downloadTime" ? "UPDATE" : name)))
+// Beside the pill, in monospace: the route, or which kind of launch.
+fn metricWhere(name: string, route: string): string = name == "coldLaunchTime" ? "cold" : (name == "warmLaunchTime" ? "warm" : (route == "" ? "/" : route))
 fn milliseconds(seconds: number): string = `${floor(seconds * 1000 + 0.5)} ms`
 
 // What the binary knows about its own delivery (Exact LLP 1030 D7), answered
@@ -280,59 +289,67 @@ component EasRow
         text subtitle font-size=13 font-weight=500 color="secondary-label"
       image "symbol:sf/arrow.up.right.square" font-size=15 tint-color="secondary-label" object-fit="scale-down" width=18 height=20
 
-// A metric: its name over what it measures, its value at the end.
-component SpanRow
+// A metric: its pill and route over when it was recorded, its value at the end.
+component MetricRow
   props
-    label: string
-    span: string
+    name: string
+    route: string
+    detail: string
     value: string
     id: string
   view
-    row padding=16 justify-content="space-between" align-items="center" gap=16
-      column flex=1 min-width=0 gap=2
-        text label font-size=17
-        text span font-size=13 color="secondary-label"
+    row padding-left=16 padding-right=16 padding-top=10 padding-bottom=10 justify-content="space-between" align-items="center" gap=12
+      column flex=1 min-width=0 gap=4
+        row align-items="center" gap=8
+          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "system-green" : (metricPill(name) == "TTR" ? "system-blue" : "secondary-label")) background-color="tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=2 padding-bottom=2 flex-shrink=0
+          text metricWhere(name, route) font-family="ui-monospace" font-size=15 flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
+        text detail font-size=13 color="secondary-label"
       text value testId=id font-size=17 color="secondary-label" flex-shrink=0
 
 // Performance: this device's Observe metrics, read back from Exact's local
-// queue — this launch's startup marks (and what TTI waited on), each screen's
-// render and interactive times this launch, and the median of each startup
-// mark over the launches kept.
+// queue — the last launch, each screen this launch, and the 7-day median of
+// each launch metric. Long-press the launch's TTI to copy what held it.
 component PerformanceScreen
   props
     observed: Observed
+    utcOffset: number
   view
     scroll id="screen-scroll" testId="performance-scroll" scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
         when not observed.ok
           SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
-        when observed.ok
+        when observed.ok and length(observed.metrics) == 0
+          SectionFooter(words="Nothing recorded since you cleared. Relaunch the app or open a screen.")
+        when observed.ok and length(observed.latest) > 0
           column
             SectionHeader(title=(observed.launch == observed.session ? "THIS LAUNCH" : "LAST LAUNCH"))
             column class=Card
-              each m, i in filter(observed.metrics, (m, i) => m.session == observed.launch and m.category == "appStartup") key=`${m.name}-${m.time}`
-                // A long press copies the whole metric: name, value and every
-                // detail line, not one paragraph.
+              each m, i in observed.latest key=`${m.name}-${m.time}`
+                // A long press copies the whole metric, every detail line too.
                 column user-select="text"
                   when i > 0
                     Divider()
-                  SpanRow(label=metricLabel(m.name), span=m.span, value=milliseconds(m.value), id=`perf-launch-${m.name}`)
+                  MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
+                  when m.fromStart != ""
+                    text m.fromStart font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.phases != ""
                     text `Phases: ${m.phases}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.items != ""
-                    text `Held by (ms from process start, last to clear first): ${m.items}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    text `Held by (ms from process start): ${m.items}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.changes != ""
-                    text `Screen still changing: ${m.changes}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    text `Still changing: ${m.changes}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.trace != ""
                     text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12
+        when observed.ok and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) > 0
           column
-            SectionHeader(title="SCREENS THIS SESSION")
+            SectionHeader(title="SCREENS")
             column class=Card
               each m, i in filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
                 column
                   when i > 0
                     Divider()
-                  SpanRow(label=`${metricLabel(m.name)} · ${m.route == "" ? "/" : m.route}`, span=m.span, value=milliseconds(m.value), id=`perf-nav-${i}`)
+                  MetricRow(name=m.name, route=m.route, detail=(m.name == "cold_ttr" ? `First visit · ${exactTime(m.time * 1000, utcOffset)}` : exactTime(m.time * 1000, utcOffset)), value=milliseconds(m.value), id=`perf-nav-${i}`)
+        when observed.ok and length(observed.summary) > 0
           column
             SectionHeader(title="LAST 7 DAYS, MEDIAN")
             column class=Card
@@ -340,5 +357,5 @@ component PerformanceScreen
                 column
                   when i > 0
                     Divider()
-                  SpanRow(label=metricLabel(s.name), span=s.span, value=`${milliseconds(s.median)} · ${s.count}×`, id=`perf-median-${s.name}`)
-            SectionFooter(words=`${length(filter(observed.metrics, (m, i) => m.sent))} of the ${length(observed.metrics)} newest metrics have been sent to Observe. They stay on this device for 7 days.`)
+                  MetricRow(name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), id=`perf-median-${s.name}`)
+            SectionFooter(words=`${length(filter(observed.metrics, (m, i) => m.sent))} of ${length(observed.metrics)} sent to Observe.`)

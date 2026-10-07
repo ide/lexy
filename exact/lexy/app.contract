@@ -39,7 +39,7 @@ use UpdatesScreen from "./developer.contract"
 use DataStateScreen from "./developer.contract"
 use LoginPreviewScreen from "./developer.contract"
 use EasScreen from "./developer.contract"
-use PerformanceScreen, Observed from "./developer.contract"
+use PerformanceScreen, Observed, ObservedCleared from "./developer.contract"
 use Delivery from "./developer.contract"
 use signInError from "./model.contract"
 
@@ -271,6 +271,7 @@ component Lexy
   // each time (none asked before it first does).
   state observedRev = 0
   resource observed = observed(observedRev > 0 ? 200 : 0) with observedRev as shape Observed
+  mutation observedCleared as shape ObservedCleared refreshes observed
   state updateChecked = false
   // Data State: the override the vehicle screens are shown, Live at launch.
   state dataState = "live"
@@ -814,6 +815,11 @@ component Lexy
       // The values, not the states just set: an action reads state as it began.
       send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + now())
 
+  // Performance's Clear: hides what is recorded so far (Observe still sends it).
+  action clearObserved()
+    send felt = feel("selection")
+    send observedCleared = clearObserved()
+
   // Developer Tools
   action openDevTool(url: string)
     send felt = feel("selection")
@@ -958,6 +964,9 @@ component Lexy
                     when e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+                    when e.name == "performance"
+                      button press=clearObserved testId="clear-performance" disabled=pending(observedCleared)
+                        text "Clear" font-size=17 color="AccentColor"
                     when e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
@@ -978,7 +987,7 @@ component Lexy
                   when e.name == "eas"
                     EasScreen(open=openExternal)
                   when e.name == "performance"
-                    PerformanceScreen(observed=observed)
+                    PerformanceScreen(observed=observed, utcOffset=time.utcOffset)
                   when e.name == "rename"
                     RenameScreen(name=draftName, saved=vehicleName(car.nickName, car.modelName), saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
