@@ -635,25 +635,6 @@ component Lexy
           signStep = "credentials"
       case none
         signError = ""
-  // The Status screen's Refresh: what a pull does, and the car asked to
-  // report whatever the throttle says, the hero pulsing while it runs: at
-  // once (the person asked; no wait for a slow one) and for at least the
-  // hold, so a quick answer still reads as done.
-  action refreshNow
-    send felt = feel("selection")
-    autoRefresh = car.vin != ""
-    updatingSlow = car.vin != ""
-    if car.vin != ""
-      send held = pause(600)
-    if car.vin != "" and not pulseOn
-      pulseOn = true
-      pulseDim = true
-    if car.vin != ""
-      lastPrimeAt = time.epochAtZero + now()
-      send primed = prime(car, time.epochAtZero + now())
-    garageRev = garageRev + 1
-    climateRev = climateRev + 1
-    climateWritten = none
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)
@@ -970,9 +951,6 @@ component Lexy
                     when e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=20 height=20
-                    when e.name == "status" and shownGarage.car.vin != ""
-                      button press=refreshNow disabled=updating testId="refresh" aria-label="Refresh" width=44 height=44 display="flex" align-items="center" justify-content="center"
-                        image "symbol:sf/arrow.clockwise" font-size=17 font-weight=600 tint-color="AccentColor" object-fit="scale-down" width=22 height=22
                     when e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 tint-color="AccentColor" object-fit="scale-down" width=22 height=20
