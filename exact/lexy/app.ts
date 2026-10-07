@@ -967,8 +967,6 @@ const sources: Sources = {
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),
   observed: ([limit]) => observed(limit),
   clearObserved: () => clearObserved(),
-  mapOverride: () => mapOverride(),
-  setMapHidden: ([hidden]) => setMapHidden(hidden),
 };
 
 // --- Performance: this device's Observe metrics ---------------------------------------
@@ -1073,22 +1071,6 @@ async function observed(limit: number): Promise<Observed> {
   } catch {
     return noObserved;
   }
-}
-
-// --- Developer Tools: the Status map's override -----------------------------------------
-// A file beside the maps choice, so it outlives sign-out and relaunch; turning
-// the map back on deletes it rather than writing false.
-async function mapOverride(): Promise<Result<'mapOverride'>> {
-  return { hidden: (await load('hide-map')) === 'true' };
-}
-async function setMapHidden(hidden: boolean): Promise<Result<'mapOverride'>> {
-  if (hidden) {
-    await save('hide-map', 'true');
-  } else {
-    held.set('hide-map', null);
-    await files?.fs.rm(`${DIR}/hide-map.json`).catch(() => undefined);
-  }
-  return { hidden };
 }
 
 export const answer: Answer = (source, args, store, storage, module) => {

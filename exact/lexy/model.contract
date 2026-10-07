@@ -168,10 +168,6 @@ shape Climate
 shape Address
   line: string
 
-// Developer Tools' Status map override, kept until it is cleared.
-shape MapOverride
-  hidden: bool
-
 // The saved maps app (empty when unset, or when it was deleted) and which of
 // the three the phone has.
 shape MapsApp
