@@ -1007,7 +1007,10 @@ function steps(params: Record<string, unknown>, category: string, value: number)
   const route = params['exact.nav.route_change'], commit = params['exact.nav.commit'];
   if (category !== 'navigation' || typeof route !== 'number' || typeof commit !== 'number') return '';
   const ms = (v: number) => `${Math.round(v * 1000)} ms`;
-  return `${params['exact.nav.cause'] === 'input' ? 'Tap' : 'Start'} → route ${ms(route)} → commit ${ms(commit)} → frame ${ms(value)}`;
+  const line = `${params['exact.nav.cause'] === 'input' ? 'Tap' : 'Start'} → route ${ms(route)} → commit ${ms(commit)} → frame ${ms(value)}`;
+  // The route change's batch, by its largest parts (ms).
+  const parts = params['exact.nav.parts'];
+  return typeof parts === 'string' && parts ? `${line}. Batch: ${parts}` : line;
 }
 
 const ORDER = ['coldLaunchTime', 'warmLaunchTime', 'timeToFirstRender', 'timeToInteractive'];
