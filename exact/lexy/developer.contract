@@ -27,9 +27,12 @@ shape ObservedMetric
   items: string
   // Batches that still changed the screen after nothing was loading.
   changes: string
+  // What it measures, from → to ("didFinishLaunching → first frame").
+  span: string
 
 shape ObservedSummary
   name: string
+  span: string
   count: number
   median: number
 
@@ -42,7 +45,8 @@ shape Observed
   metrics: list<ObservedMetric>
   summary: list<ObservedSummary>
 
-fn metricLabel(name: string): string = name == "coldLaunchTime" ? "Cold launch" : (name == "warmLaunchTime" ? "Warm launch" : (name == "timeToFirstRender" ? "First render" : (name == "timeToInteractive" ? "Interactive" : (name == "cold_ttr" ? "Render, first visit" : (name == "warm_ttr" ? "Render" : (name == "tti" ? "Interactive" : (name == "ttr" ? "Render" : (name == "download_time" or name == "downloadTime" ? "Update download" : name))))))))
+fn metricLabel(name: string): string = name == "endToEndFirstRender" ? "First frame, end to end" : (name == "endToEndInteractive" ? "Interactive, end to end" : metricLabel1(name))
+fn metricLabel1(name: string): string = name == "coldLaunchTime" ? "Cold launch" : (name == "warmLaunchTime" ? "Warm launch" : (name == "timeToFirstRender" ? "First render" : (name == "timeToInteractive" ? "Interactive" : (name == "cold_ttr" ? "Render, first visit" : (name == "warm_ttr" ? "Render" : (name == "tti" ? "Interactive" : (name == "ttr" ? "Render" : (name == "download_time" or name == "downloadTime" ? "Update download" : name))))))))
 fn milliseconds(seconds: number): string = `${floor(seconds * 1000 + 0.5)} ms`
 
 // What the binary knows about its own delivery (Exact LLP 1030 D7), answered
@@ -276,6 +280,20 @@ component EasRow
         text subtitle font-size=13 font-weight=500 color="secondary-label"
       image "symbol:sf/arrow.up.right.square" font-size=15 tint-color="secondary-label" object-fit="scale-down" width=18 height=20
 
+// A metric: its name over what it measures, its value at the end.
+component SpanRow
+  props
+    label: string
+    span: string
+    value: string
+    id: string
+  view
+    row padding=16 justify-content="space-between" align-items="center" gap=16
+      column flex=1 min-width=0 gap=2
+        text label font-size=17
+        text span font-size=13 color="secondary-label"
+      text value testId=id font-size=17 color="secondary-label" flex-shrink=0
+
 // Performance: this device's Observe metrics, read back from Exact's local
 // queue — this launch's startup marks (and what TTI waited on), each screen's
 // render and interactive times this launch, and the median of each startup
@@ -293,18 +311,20 @@ component PerformanceScreen
             SectionHeader(title=(observed.launch == observed.session ? "THIS LAUNCH" : "LAST LAUNCH"))
             column class=Card
               each m, i in filter(observed.metrics, (m, i) => m.session == observed.launch and m.category == "appStartup") key=`${m.name}-${m.time}`
-                column
+                // A long press copies the whole metric: name, value and every
+                // detail line, not one paragraph.
+                column user-select="text"
                   when i > 0
                     Divider()
-                  FactRow(label=metricLabel(m.name), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
+                  SpanRow(label=metricLabel(m.name), span=m.span, value=milliseconds(m.value), id=`perf-launch-${m.name}`)
                   when m.phases != ""
-                    text `Phases: ${m.phases}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8 margin-top=-8 user-select="text"
+                    text `Phases: ${m.phases}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.items != ""
-                    text `Held by (ms from process start, last to clear first): ${m.items}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8 user-select="text"
+                    text `Held by (ms from process start, last to clear first): ${m.items}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.changes != ""
-                    text `Screen still changing: ${m.changes}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8 user-select="text"
+                    text `Screen still changing: ${m.changes}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8
                   when m.trace != ""
-                    text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12 user-select="text"
+                    text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12
           column
             SectionHeader(title="SCREENS THIS SESSION")
             column class=Card
@@ -312,11 +332,7 @@ component PerformanceScreen
                 column
                   when i > 0
                     Divider()
-                  row padding=16 justify-content="space-between" align-items="center" gap=16
-                    column flex=1 min-width=0 gap=2
-                      text metricLabel(m.name) font-size=17
-                      text (m.route == "" ? "/" : m.route) font-size=13 color="secondary-label" overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
-                    text milliseconds(m.value) testId=`perf-nav-${i}` font-size=17 color="secondary-label" flex-shrink=0
+                  SpanRow(label=`${metricLabel(m.name)} · ${m.route == "" ? "/" : m.route}`, span=m.span, value=milliseconds(m.value), id=`perf-nav-${i}`)
           column
             SectionHeader(title="LAST 7 DAYS, MEDIAN")
             column class=Card
@@ -324,5 +340,5 @@ component PerformanceScreen
                 column
                   when i > 0
                     Divider()
-                  FactRow(label=metricLabel(s.name), value=`${milliseconds(s.median)} · ${s.count}×`, id=`perf-median-${s.name}`)
+                  SpanRow(label=metricLabel(s.name), span=s.span, value=`${milliseconds(s.median)} · ${s.count}×`, id=`perf-median-${s.name}`)
             SectionFooter(words=`${length(filter(observed.metrics, (m, i) => m.sent))} of the ${length(observed.metrics)} newest metrics have been sent to Observe. They stay on this device for 7 days.`)

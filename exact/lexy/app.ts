@@ -985,6 +985,24 @@ function phases(params: Record<string, unknown> | undefined, name: string): stri
   }).join(', ');
 }
 
+// What each metric measures, from → to, in words.
+const STARTUP_SPANS: Record<string, string> = {
+  coldLaunchTime: 'process start → app ready: iOS loading the app, then its own launch work (first since a reboot or update)',
+  warmLaunchTime: 'process start → app ready: iOS loading the app, then its own launch work (already cached)',
+  timeToFirstRender: 'didFinishLaunching → first frame',
+  timeToInteractive: 'didFinishLaunching → first frame with nothing loading',
+  endToEndFirstRender: 'process start → first frame',
+  endToEndInteractive: 'process start → first frame with nothing loading',
+};
+function span(category: string, name: string, params: Record<string, unknown> | undefined): string {
+  if (category === 'appStartup') return STARTUP_SPANS[name] ?? '';
+  const from = params?.['exact.nav.anchor'] === 'boot' ? 'Exact starts building the launch screen'
+    : params?.['exact.nav.platform'] === true ? 'UIKit starts its transition'
+    : params?.['exact.nav.cause'] === 'input' ? 'your tap' : 'the route change';
+  const to = name === 'tti' ? 'nothing loading' : 'first frame';
+  return `${from} → ${to}`;
+}
+
 async function observed(limit: number): Promise<Observed> {
   if (!native?.available || limit <= 0) return noObserved;
   try {
@@ -996,12 +1014,22 @@ async function observed(limit: number): Promise<Observed> {
       phases: phases(m.params as Record<string, unknown> | undefined, str(m.name)),
       items: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.items']),
       changes: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.changes']),
+      span: span(str(m.category), str(m.name), m.params as Record<string, unknown> | undefined),
     }));
+    // The same two marks from process start (the kernel's), as Observe sends them.
+    for (const m of [...metrics]) {
+      if (m.category !== 'appStartup' || (m.name !== 'timeToFirstRender' && m.name !== 'timeToInteractive')) continue;
+      const params = (r.metrics as Record<string, unknown>[]).find(x => num(x.time) === m.time && str(x.name) === m.name)?.params as Record<string, unknown> | undefined;
+      const v = params?.[m.name === 'timeToFirstRender' ? 'exact.since_process_start.ttr' : 'exact.since_process_start.tti'];
+      if (typeof v !== 'number') continue;
+      const name = m.name === 'timeToFirstRender' ? 'endToEndFirstRender' : 'endToEndInteractive';
+      metrics.splice(metrics.indexOf(m) + 1, 0, { ...m, name, value: v, phases: '', items: '', changes: '', trace: '', span: STARTUP_SPANS[name] });
+    }
     const startup = new Map<string, number[]>();
     for (const m of metrics) if (m.category === 'appStartup') startup.set(m.name, [...(startup.get(m.name) ?? []), m.value]);
     const summary = [...startup].map(([name, values]) => {
       const sorted = [...values].sort((a, b) => a - b), mid = Math.floor(sorted.length / 2);
-      return { name, count: sorted.length, median: sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2 };
+      return { name, span: STARTUP_SPANS[name] ?? '', count: sorted.length, median: sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2 };
     });
     const launch = metrics.find(m => m.category === 'appStartup')?.session ?? str(r.session);
     return { ok: true, session: str(r.session), launch, metrics, summary };
