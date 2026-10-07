@@ -21,6 +21,12 @@ shape ObservedMetric
   route: string
   sent: bool
   trace: string
+  // The launch's phases (Observe's exact.phase.*) and each item that held
+  // TTI with its span, ms from process start (exact.tti.items).
+  phases: string
+  items: string
+  // Batches that still changed the screen after nothing was loading.
+  changes: string
 
 shape ObservedSummary
   name: string
@@ -291,8 +297,14 @@ component PerformanceScreen
                   when i > 0
                     Divider()
                   FactRow(label=metricLabel(m.name), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
+                  when m.phases != ""
+                    text `Phases: ${m.phases}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8 margin-top=-8 user-select="text"
+                  when m.items != ""
+                    text `Held by (ms from process start, last to clear first): ${m.items}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8 user-select="text"
+                  when m.changes != ""
+                    text `Screen still changing: ${m.changes}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=8 user-select="text"
                   when m.trace != ""
-                    text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12 margin-top=-8 user-select="text"
+                    text `Waited on: ${m.trace}` font-size=13 color="secondary-label" padding-left=16 padding-right=16 padding-bottom=12 user-select="text"
           column
             SectionHeader(title="SCREENS THIS SESSION")
             column class=Card

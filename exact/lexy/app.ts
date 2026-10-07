@@ -975,6 +975,15 @@ const sources: Sources = {
 // module asks it for the newest. Each startup mark's median is over those kept.
 type Observed = Result<'observed'>;
 const noObserved: Observed = { ok: false, session: '', launch: '', metrics: [], summary: [] };
+// Observe's launch phases, in the order they happen, as one line.
+const PHASES: [string, string][] = [['scene', 'scene'], ['boot_wait', 'boot wait'], ['boot', 'boot'], ['present', 'first frame'], ['activate', 'activation']];
+function phases(params: Record<string, unknown> | undefined, name: string): string {
+  if (!params || name !== 'timeToInteractive') return '';
+  return PHASES.flatMap(([key, label]) => {
+    const v = params[`exact.phase.${key}`];
+    return typeof v === 'number' ? [`${label} ${Math.round(v * 1000)} ms`] : [];
+  }).join(', ');
+}
 
 async function observed(limit: number): Promise<Observed> {
   if (!native?.available || limit <= 0) return noObserved;
@@ -984,6 +993,9 @@ async function observed(limit: number): Promise<Observed> {
     const metrics = (r.metrics as Record<string, unknown>[]).map(m => ({
       session: str(m.session), time: num(m.time), category: str(m.category), name: str(m.name), value: num(m.value),
       route: str(m.route), sent: m.sent === true, trace: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.trace']),
+      phases: phases(m.params as Record<string, unknown> | undefined, str(m.name)),
+      items: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.items']),
+      changes: str((m.params as Record<string, unknown> | undefined)?.['exact.tti.changes']),
     }));
     const startup = new Map<string, number[]>();
     for (const m of metrics) if (m.category === 'appStartup') startup.set(m.name, [...(startup.get(m.name) ?? []), m.value]);
