@@ -985,13 +985,9 @@ function phases(params: Record<string, unknown> | undefined, name: string): stri
   // The first batch to UIKit, by its largest parts (ms).
   const parts = params['exact.boot.apply_parts'];
   const withParts = typeof parts === 'string' && parts ? `${line}. First batch: ${parts}` : line;
-  // Cold or warm (Observe's heuristic), and whether the app module's file
-  // was already in memory before its read-ahead (0% a cold read).
-  const type = params['exact.launch.type'], ms = params['exact.read_ahead.module_ms'], resident = params['exact.read_ahead.module_resident'];
-  const read = typeof ms === 'number' && typeof resident === 'number' && resident >= 0
-    ? `module read-ahead ${ms} ms, ${Math.round(resident * 100)}% already in memory` : '';
-  const head = [typeof type === 'string' ? `${type} launch` : '', read].filter(Boolean).join('; ');
-  return head ? `${head}. ${withParts}` : withParts;
+  // Cold or warm, by Observe's heuristic (a reboot since the last launch).
+  const type = params['exact.launch.type'];
+  return typeof type === 'string' ? `${type} launch. ${withParts}` : withParts;
 }
 
 // Clear hides what is recorded so far from this screen only: Observe still
