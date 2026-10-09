@@ -25,19 +25,22 @@ component SectionFooter
   view
     text words font-size=13 color="-exact-secondary-label" padding-top=8 padding-left=16 padding-right=16
 
-// src/components/swift-ui/settings-row.tsx: symbol, title over subtitle, chevron.
+// src/components/swift-ui/settings-row.tsx: symbol, title over subtitle, and
+// a chevron when the row opens a screen.
 component SettingsRowFace
   props
     symbol: string
     title: string
     subtitle: string
+    opensScreen: bool
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
       image `symbol:sf/${symbol}` font-size=22 -exact-tint-color="AccentColor" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="-exact-label"
         text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
-      image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
+      when opensScreen
+        image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // The Development tab folded into Settings, at its top (settings-screen.ios.tsx
 // DEV_ITEMS). Every Exact build is an internal one, so they are always shown.
@@ -49,19 +52,19 @@ component DeveloperTools
       SectionHeader(title="Developer Tools")
       column class=Card
         button text-align="left" press=open("/settings/updates") testId="dev-updates" display="flex"
-          SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.")
+          SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/data-state") testId="dev-data-state" display="flex"
-          SettingsRowFace(symbol="cylinder.split.1x2.fill", title="Data State", subtitle="Force loading, offline, error, and empty states.")
+          SettingsRowFace(symbol="cylinder.split.1x2.fill", title="Data State", subtitle="Force loading, offline, error, and empty states.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/login") testId="dev-login" display="flex"
-          SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.")
+          SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/performance") testId="dev-performance" display="flex"
-          SettingsRowFace(symbol="gauge.with.dots.needle.67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.")
+          SettingsRowFace(symbol="gauge.with.dots.needle.67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
-          SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.")
+          SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.", opensScreen=true)
 
 component SettingsScreen
   props
@@ -88,14 +91,14 @@ component SettingsScreen
               // The same chooser as the map's, of the installed apps only
               // (settings-screen.ios.tsx's promptChoice).
               button text-align="left" popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps-chooser") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
-                SettingsRowFace(symbol="map.fill", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))))
+                SettingsRowFace(symbol="map.fill", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))), opensScreen=false)
               MapsChooser(prefix="settings-", apps=apps, choose=chooseMaps)
             SectionFooter(words="The app used to open your vehicle’s location for directions.")
           column
             SectionHeader(title="Vehicle")
             column class=Card
               button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
-                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)))
+                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)), opensScreen=true)
           column
             SectionHeader(title="Lexus Account")
             column class=Card
