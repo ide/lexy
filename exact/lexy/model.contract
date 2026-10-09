@@ -287,9 +287,10 @@ fn accent(): string = "light-dark(color(display-p3 0.91 0.11 0.14), color(displa
 fn wash(role: string): string = role == "-exact-system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "-exact-system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "-exact-system-blue" ? "light-dark(#007aff26, #0a84ff26)" : (role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" : "light-dark(#3c3c4326, #ebebf526)")))
 style Card
   background-color="-exact-secondary-grouped-background" border-radius=18
-// A section's heading on every screen (src/components/swift-ui/section.tsx).
+// A section's heading on every screen, as UIKit's grouped header
+// (`UIListContentConfiguration.groupedHeader()`) and SwiftUI's draw it.
 style SectionTitle
-  font-size=13 font-weight=600 color="-exact-secondary-label" padding-left=16
+  font-size=17 font-weight=600 color="-exact-secondary-label" padding-left=16
 style Small
   font-size=14 font-weight=500
 style SmallBold
