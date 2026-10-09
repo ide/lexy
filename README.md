@@ -85,6 +85,12 @@ pauses queries while the device is offline, and the cache is wiped on sign-out
 so no data survives an account switch. The key-value layout can grow into
 relational tables when the app needs queryable trip history or queued commands.
 
+## SwiftUI app
+
+[`swiftui/`](swiftui/) is Lexy as a SwiftUI app (iOS 26+), based on the
+Exact version in [`exact/`](exact/). It is separate from the Expo app and
+installs beside it as `app.ide.lexy.swiftui`. See its README to build and test it.
+
 ## API reference
 
 [`docs/`](docs/) documents the Lexus OneApp API surface used by this tooling —
