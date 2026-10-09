@@ -10,13 +10,14 @@ use MapsApp from "./model.contract"
 use mapsCount from "./model.contract"
 use mapsResolved from "./model.contract"
 use MapsChooser from "./map.contract"
+use SectionTitle from "./model.contract"
 
 // src/components/swift-ui/section.tsx: a header, a card, and a footer.
 component SectionHeader
   props
     title: string
   view
-    text title font-size=13 font-weight=600 color="-exact-secondary-label" padding-left=16 padding-bottom=4
+    text title class=SectionTitle padding-bottom=4
 
 component SectionFooter
   props
@@ -45,7 +46,7 @@ component DeveloperTools
     open: action
   view
     column
-      SectionHeader(title="DEVELOPER TOOLS")
+      SectionHeader(title="Developer Tools")
       column class=Card
         button text-align="left" press=open("/settings/updates") testId="dev-updates" display="flex"
           SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.")
@@ -78,11 +79,11 @@ component SettingsScreen
     signingOut: bool
   view
     scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding-bottom=64
-        column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=24
+      column box-sizing="border-box"
+        column box-sizing="border-box" padding=16 gap=24
           DeveloperTools(open=openDevTool)
           column
-            SectionHeader(title="MAPS")
+            SectionHeader(title="Maps")
             column class=Card
               // The same chooser as the map's, of the installed apps only
               // (settings-screen.ios.tsx's promptChoice).
@@ -91,12 +92,12 @@ component SettingsScreen
               MapsChooser(prefix="settings-", apps=apps, choose=chooseMaps)
             SectionFooter(words="The app used to open your vehicle’s location for directions.")
           column
-            SectionHeader(title="VEHICLE")
+            SectionHeader(title="Vehicle")
             column class=Card
               button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
                 SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)))
           column
-            SectionHeader(title="LEXUS ACCOUNT")
+            SectionHeader(title="Lexus Account")
             column class=Card
               button press=signOut disabled=signingOut testId="sign-out" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red" object-fit="scale-down" width=26 height=24
@@ -105,14 +106,14 @@ component SettingsScreen
               SectionFooter(words="Signed in to the demo Lexus.")
           when demo
             column
-              SectionHeader(title="DEMO")
+              SectionHeader(title="Demo")
               column class=Card
                 row padding-left=16 padding-right=16 min-height=52 justify-content="space-between" align-items="center" gap=12
                   text "Simulate Server Errors" font-size=17 flex-shrink=1
                   input type="checkbox" switch checked=demoFailing change=setDemoFailing aria-label="Simulate Server Errors" testId="demo-failures" accent-color="auto"
               SectionFooter(words="Commands, climate changes and renames fail as a server error does, so you can see how the app recovers.")
           column
-            SectionHeader(title="ABOUT")
+            SectionHeader(title="About")
             column class=Card
               row padding=16 justify-content="space-between" align-items="center"
                 text "Version" font-size=17

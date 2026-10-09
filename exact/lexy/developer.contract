@@ -125,9 +125,9 @@ component UpdatesScreen
     apply: action
   view
     scroll id="screen-scroll" testId="updates-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
+      column box-sizing="border-box" padding=16 gap=24
         column
-          SectionHeader(title="RUNNING")
+          SectionHeader(title="Running")
           column class=Card
             FactRow(label="Version", value=version, id="updates-version")
             Divider()
@@ -138,7 +138,7 @@ component UpdatesScreen
             FactRow(label="Embedded sequence", value=`${delivery.embeddedSeq}`, id="updates-embedded-seq")
           SectionFooter(words=`Built with Exact ${exactVersion()}.`)
         column
-          SectionHeader(title="STREAM")
+          SectionHeader(title="Stream")
           column class=Card
             FactRow(label="Stream", value=delivery.stream, id="updates-stream")
             Divider()
@@ -151,7 +151,7 @@ component UpdatesScreen
             text "This build is being retired" font-size=15 font-weight=600 color="-exact-system-orange"
             text delivery.sunset font-size=13 color="-exact-secondary-label"
         column
-          SectionHeader(title="ACTIONS")
+          SectionHeader(title="Actions")
           column class=Card
             button text-align="left" press=check testId="updates-check" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
               image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=24 height=22
@@ -173,9 +173,9 @@ component DataStateScreen
     clearMaps: action
   view
     scroll id="screen-scroll" testId="data-state-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
+      column box-sizing="border-box" padding=16 gap=24
         column
-          SectionHeader(title="DATA STATE")
+          SectionHeader(title="Data State")
           column class=Card
             ChoiceRow(title=dataStateTitle("live"), detail=dataStateDetail("live"), chosen=(current == "live"), press=choose("live"), id="data-state-live")
             Divider()
@@ -192,7 +192,7 @@ component DataStateScreen
             ChoiceRow(title=dataStateTitle("no-vehicle"), detail=dataStateDetail("no-vehicle"), chosen=(current == "no-vehicle"), press=choose("no-vehicle"), id="data-state-no-vehicle")
           SectionFooter(words="The override applies to the Status and Specs tabs, and resets to Live when the app relaunches.")
         column
-          SectionHeader(title="PERSISTED STATE")
+          SectionHeader(title="Persisted State")
           column class=Card
             button text-align="left" press=clearMaps disabled=(provider == "") testId="clear-maps" -exact-apple-button-style="plain" padding=16 display="flex"
               column gap=2 align-items="flex-start"
@@ -262,8 +262,8 @@ component EasScreen
     open: action
   view
     scroll id="screen-scroll" testId="eas-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 padding-bottom=64
-        SectionHeader(title="DASHBOARD")
+      column box-sizing="border-box" padding=16
+        SectionHeader(title="Dashboard")
         column class=Card
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
             EasRow(symbol="house.fill", title="Project Home", subtitle="The project overview and its recent activity.")
@@ -318,14 +318,14 @@ component PerformanceScreen
     utcOffset: number
   view
     scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 padding-bottom=64 gap=24
+      column box-sizing="border-box" padding=16 gap=24
         when not observed.ok
           SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
         when observed.ok and length(observed.latest) == 0 and length(observed.summary) == 0 and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) == 0
           SectionFooter(words="Nothing recorded yet. Open a screen or relaunch the app.")
         when observed.ok and length(observed.latest) > 0
           column
-            SectionHeader(title=(observed.launch == observed.session ? "THIS LAUNCH" : "LAST LAUNCH"))
+            SectionHeader(title=(observed.launch == observed.session ? "This Launch" : "Last Launch"))
             column class=Card
               each m, i in observed.latest key=`${m.name}-${m.time}`
                 // A long press copies the whole metric, every detail line too.
@@ -345,7 +345,7 @@ component PerformanceScreen
                     text `Waited on: ${m.trace}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=12
         when observed.ok and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) > 0
           column
-            SectionHeader(title="SCREENS")
+            SectionHeader(title="Screens")
             column class=Card
               each m, i in filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
                 column user-select="text"
@@ -356,7 +356,7 @@ component PerformanceScreen
                     text m.steps font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=10
         when observed.ok and length(observed.summary) > 0
           column
-            SectionHeader(title="MEDIAN")
+            SectionHeader(title="Median")
             column class=Card
               each s, i in observed.summary key=s.name
                 column

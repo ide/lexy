@@ -4,7 +4,7 @@ use Garage from "./model.contract"
 use Spec from "./model.contract"
 use Services from "./model.contract"
 use Card from "./model.contract"
-use CardTitle from "./model.contract"
+use SectionTitle from "./model.contract"
 use Small from "./model.contract"
 use SmallBold from "./model.contract"
 use fuelName from "./model.contract"
@@ -80,10 +80,9 @@ component SpecsScreen
           column flex-grow=1 margin-top=16
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
         when car.vin != ""
-          // Its last card keeps its own room below it, as Status' footer does.
-          column box-sizing="border-box" padding=16 gap=16 margin-bottom=16
+          column box-sizing="border-box" padding=16 gap=16
             column gap=8
-              text "VEHICLE" class=CardTitle
+              text "Vehicle" class=SectionTitle
               column class=Card padding-left=16 padding-right=16
                 InfoRow(label="VIN", value=car.vin, last=false)
                 InfoRow(label="Model Code", value=car.modelCode, last=false)
@@ -99,7 +98,7 @@ component SpecsScreen
                 InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true)
             // src/data/vehicle-mapping.ts lists the same four for every car.
             column gap=8
-              text "REMOTE CAPABILITIES" class=CardTitle
+              text "Remote Capabilities" class=SectionTitle
               row class=Card flex-wrap="wrap" padding=16 gap=16
                 Capability(symbol="lock.fill", label="Lock & unlock")
                 Capability(symbol="power", label="Engine start")
@@ -107,7 +106,7 @@ component SpecsScreen
                 Capability(symbol="location.fill", label="Location")
             when services.ok and length(services.items) > 0
               column gap=8
-                text "CONNECTED SERVICES" class=CardTitle
+                text "Connected Services" class=SectionTitle
                 column class=Card padding-left=16 padding-right=16
                   each s, i in services.items key=`${s.bucket}-${s.name}`
                     row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`
