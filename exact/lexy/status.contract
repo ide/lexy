@@ -456,11 +456,11 @@ component StatusScreen
                     when climate.front or climate.rear
                       row gap=8
                         when climate.front
-                          button press=toggleDefrost("front") disabled=(climateSaving or not climateWanted) testId="defrost-front" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
+                          button press=toggleDefrost("front") disabled=(climateSaving or not climateWanted) testId="defrost-front" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") -exact-apple-button-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
                             image "symbol:sf/windshield.front.and.heat.waves" -exact-tint-color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                             text "Front Defrost" color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                         when climate.rear
-                          button press=toggleDefrost("rear") disabled=(climateSaving or not climateWanted) testId="defrost-rear" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
+                          button press=toggleDefrost("rear") disabled=(climateSaving or not climateWanted) testId="defrost-rear" opacity=((climateSaving or not climateWanted) ? 0.6 : 1) transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") -exact-apple-button-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
                             image "symbol:sf/windshield.rear.and.heat.waves" -exact-tint-color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
                             text "Rear Defrost" color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
