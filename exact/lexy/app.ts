@@ -164,7 +164,8 @@ class HttpError extends Error {
 async function readJson(response: Reply): Promise<Json> {
   const body = rec(await response.json().catch(() => null));
   if (!response.ok) {
-    const text = str(body.message) || str(body.error_description) || str(body.error) || `Lexus answered ${response.status}`;
+    // Lexus's own words when it gives any; otherwise the screen says what failed (failureText)
+    const text = str(body.message) || str(body.error_description) || str(body.error);
     throw new HttpError(response.status, text);
   }
   return body;

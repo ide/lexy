@@ -9,7 +9,7 @@ fn heroTitle(step: string, method: string): string = step == "choice" ? "Verify 
 // The server's prompt is shown only when it reads as prose: the real tree's
 // choice step carries a message key ("OTP_VIA_PHONE_OR_ALERNATE_OPTION").
 fn readable(p: string): bool = p != "" and includes(p, " ")
-fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "We sent a verification code to your email address." : (channel(method) == "sms" ? "We texted a verification code to your phone." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
+fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "Lexus will send you a verification code by email." : (channel(method) == "sms" ? "Lexus will send you a verification code by text message." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
 fn choiceSymbol(method: string): string = channel(method) == "email" ? "envelope" : (channel(method) == "sms" ? "message" : "shield.lefthalf.filled")
 
 // The Lexy mark: the app icon's tach ring, its red line, and the L, without

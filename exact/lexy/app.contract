@@ -10,7 +10,7 @@ use SpecsScreen from "./specs.contract"
 use SettingsScreen from "./settings.contract"
 use MapSheet from "./map.contract"
 use RenameScreen from "./settings.contract"
-use Time, accent from "./model.contract"
+use Time, accent, renameFailure from "./model.contract"
 use Account from "./model.contract"
 use AuthNode from "./model.contract"
 use Done from "./model.contract"
@@ -588,7 +588,7 @@ component Lexy
     if not signingIn
       send felt = feel("impact-light")
       if trim(code) == ""
-        signError = "Enter the code we sent you."
+        signError = "Enter the code Lexus sent you."
       else
         signError = ""
         send verified = authAnswer(previewScenario, nodeRaw, otpCallback(nodeTypes), trim(code))
@@ -604,7 +604,7 @@ component Lexy
             // Some trees ask twice; answer the next prompt the same way.
             nodeRaw = n.raw
             nodeTypes = n.types
-            signError = "Enter the new code we sent you."
+            signError = "Enter the new code Lexus sent you."
       case none
         signError = ""
   action afterFinish
@@ -920,7 +920,7 @@ component Lexy
           nav = back(nav)
         else
           send felt = feel("error")
-          renameError = failureText(r.status, r.error)
+          renameError = renameFailure(r.status, r.error)
       case none
         renameError = ""
 
