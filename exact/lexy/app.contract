@@ -71,7 +71,7 @@ component Lexy
   derive shell = account.signedIn or (account.status == 0 and account.error == "")
 
   // --- Clock -----------------------------------------------------------------
-  // Contract's now() counts from the runner's zero; the epoch is time's.
+  // Contract's performanceNow() counts from the runner's zero; the epoch is time's.
   state clock = 0
   task ticker mount
     every(5000, tick)
@@ -297,8 +297,8 @@ component Lexy
     // An action reads the state it started with, so this is the time
     // itself, not `clock` (still 0 here). The launch's asks need nothing
     // from here: an `…At` of 0 asks at the launch's own time (below).
-    clock = time.epochAtZero + now()
-    lastTick = time.epochAtZero + now()
+    clock = time.epochAtZero + performanceNow()
+    lastTick = time.epochAtZero + performanceNow()
     autoRefresh = account.signedIn and car.vin != ""
     updatingSlow = false
     if account.signedIn and car.vin != ""
@@ -306,7 +306,7 @@ component Lexy
     // resume-refresh.ts at launch: a kept status past fifteen minutes old
     // asks the car to report (the launch's own re-read covers the rest).
     // The first tick sends it, once the data module can.
-    primeOnLaunch = account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + now() - status.fetchedMs >= 900000
+    primeOnLaunch = account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000
 
   action afterWait
     updatingSlow = updating
@@ -333,7 +333,7 @@ component Lexy
     if lastTick > 0
       resumeDue = true
   action tick
-    clock = time.epochAtZero + now()
+    clock = time.epochAtZero + performanceNow()
     // A launch prime waits for a signed-in car; signed out, there is none.
     if primeOnLaunch and not account.signedIn and not pending(account)
       primeOnLaunch = false
@@ -355,13 +355,13 @@ component Lexy
     if account.signedIn and not pending(account)
       // A refresh that failed (offline) is tried again after 15 s, not
       // every tick.
-      if (time.epochAtZero + now() > account.expiresAt - 60000 and (account.error == "" or time.epochAtZero + now() - sessionAt > 15000)) or (garage.status == 401 and not retried)
+      if (time.epochAtZero + performanceNow() > account.expiresAt - 60000 and (account.error == "" or time.epochAtZero + performanceNow() - sessionAt > 15000)) or (garage.status == 401 and not retried)
         retried = garage.status == 401
         sessionRev = sessionRev + 1
-        sessionAt = time.epochAtZero + now()
+        sessionAt = time.epochAtZero + performanceNow()
       if garage.ok
         retried = false
-    if notice != "" and time.epochAtZero + now() - noticeAt > 6000
+    if notice != "" and time.epochAtZero + performanceNow() - noticeAt > 6000
       notice = ""
     if lockTarget != "" and not pending(status) and not pending(sent)
       if lockSettled
@@ -386,28 +386,28 @@ component Lexy
       primeOnLaunch = false
       autoRefresh = true
       updatingSlow = false
-      lastPrimeAt = time.epochAtZero + now()
+      lastPrimeAt = time.epochAtZero + performanceNow()
     // resume-refresh.ts: back from the background, data
     // under a minute old stays; older is re-read; past fifteen minutes the
     // car is asked to report first (at most every three minutes).
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and not account.signedIn
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and not account.signedIn
       resumeDue = false
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and account.signedIn and (pending(account) or time.epochAtZero + now() > account.expiresAt - 60000)
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and account.signedIn and (pending(account) or time.epochAtZero + performanceNow() > account.expiresAt - 60000)
       resumeDue = true
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
       resumeDue = false
-      if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
-        lastPrimeAt = time.epochAtZero + now()
+      if time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
+        lastPrimeAt = time.epochAtZero + performanceNow()
         autoRefresh = true
         updatingSlow = false
       else
-        if time.epochAtZero + now() - status.fetchedMs >= 60000
+        if time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
           autoRefresh = true
           updatingSlow = false
           statusRev = statusRev + 1
-          statusAt = time.epochAtZero + now()
+          statusAt = time.epochAtZero + performanceNow()
     // Back from the background: maps apps may have come or gone.
-    if lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible"
+    if lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible"
       mapsRev = mapsRev + 1
     // Seen hidden at this tick: the next tick that sees the page again is
     // a return to the foreground, however the clock moved meanwhile (a
@@ -416,15 +416,15 @@ component Lexy
     // the car to report, and the wait before the hero pulses.
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
     let primeLaunch = (primeOnLaunch) and account.signedIn and car.vin != ""
-    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
-    let primeResume = resumes and time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
-    let rereads = resumes and time.epochAtZero + now() - status.fetchedMs >= 60000
+    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
+    let primeResume = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
+    let rereads = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
     if primeLock or primeLaunch or primeResume
-      send primed = prime(car, time.epochAtZero + now())
+      send primed = prime(car, time.epochAtZero + performanceNow())
     if primeLaunch or rereads
       send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
-    lastTick = time.epochAtZero + now()
+    lastTick = time.epochAtZero + performanceNow()
 
   // Sign-in: one press walks start → email → password, then lands on the
   // delivery-method choice or the code, as the tree decides.
@@ -538,7 +538,7 @@ component Lexy
             restartStage = ""
             resending = false
           if stepOf(n.tokenId, n.types, n.asksCode) == "complete"
-            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + now())
+            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + performanceNow())
           if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
             signStep = "otp"
             nodeRaw = n.raw
@@ -603,7 +603,7 @@ component Lexy
           signError = signInError("otp", n.status, n.error)
         else
           if n.tokenId != ""
-            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + now())
+            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + performanceNow())
           else
             // Some trees ask twice; answer the next prompt the same way.
             nodeRaw = n.raw
@@ -626,10 +626,10 @@ component Lexy
           password = ""
           code = ""
           garageRev = garageRev + 1
-          garageAt = time.epochAtZero + now()
+          garageAt = time.epochAtZero + performanceNow()
           statusRev = statusRev + 1
-          statusAt = time.epochAtZero + now()
-          engineAt = time.epochAtZero + now()
+          statusAt = time.epochAtZero + performanceNow()
+          engineAt = time.epochAtZero + performanceNow()
           nav = open(nav, "/")
         if not f.ok
           signError = signInError("otp", f.status, f.error)
@@ -664,11 +664,11 @@ component Lexy
   action pullRefresh
     pulling = true
     if car.vin != ""
-      lastPrimeAt = time.epochAtZero + now()
-      send primed = prime(car, time.epochAtZero + now())
+      lastPrimeAt = time.epochAtZero + performanceNow()
+      send primed = prime(car, time.epochAtZero + performanceNow())
     else
       statusRev = statusRev + 1
-      statusAt = time.epochAtZero + now()
+      statusAt = time.epochAtZero + performanceNow()
     garageRev = garageRev + 1
     climateRev = climateRev + 1
     climateWritten = none
@@ -676,7 +676,7 @@ component Lexy
   // stamp the read before the report it asked for.
   action afterPrime
     statusRev = statusRev + 1
-    statusAt = time.epochAtZero + now()
+    statusAt = time.epochAtZero + performanceNow()
   action reloadGarage
     pulling = true
     garageRev = garageRev + 1
@@ -725,8 +725,8 @@ component Lexy
       enginePrev = engineTarget
       engineTarget = (command == "engine-start" ? "running" : "stopped")
       enginePolls = 0
-      engineAt = time.epochAtZero + now()
-    send sent = command(car, command, time.epochAtZero + now())
+      engineAt = time.epochAtZero + performanceNow()
+    send sent = command(car, command, time.epochAtZero + performanceNow())
   action afterCommand
     match sent
       case some(c)
@@ -735,14 +735,14 @@ component Lexy
         if c.ok and c.returnCode == "000000"
           // Re-read as of now: `clock` is the last tick's, up to 5 s old.
           statusRev = statusRev + 1
-          statusAt = time.epochAtZero + now()
+          statusAt = time.epochAtZero + performanceNow()
           if c.command == "door-lock" or c.command == "door-unlock"
             lockPolls = 0
           if c.command == "hazard-on" or c.command == "hazard-off"
             hazardsOn = c.command == "hazard-on"
           if c.command == "engine-start" or c.command == "engine-stop"
             enginePolls = 0
-            engineAt = time.epochAtZero + now()
+            engineAt = time.epochAtZero + performanceNow()
         else
           if c.command == "door-lock" or c.command == "door-unlock"
             lockTarget = lockPrev
@@ -783,7 +783,7 @@ component Lexy
   action setClimateOn(on: bool)
     climateWanted = on
     climateTouched = true
-    send climateSaved = setClimate(car, climate.raw, on, shownTemperature, shownFront, shownRear, time.epochAtZero + now())
+    send climateSaved = setClimate(car, climate.raw, on, shownTemperature, shownFront, shownRear, time.epochAtZero + performanceNow())
   action dragTemperature(value: number)
     tempDraft = value
     tempHeld = true
@@ -795,7 +795,7 @@ component Lexy
     else
       tempHeld = true
       tempSaving = true
-      send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + now())
+      send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + performanceNow())
   // Not while a climate change is written or read back. The buttons stay
   // as they are meanwhile (dimming them on every save of the switch or the
   // temperature flickered), and a press then does nothing.
@@ -806,7 +806,7 @@ component Lexy
       defrostRear = (which == "rear" ? not shownRear : shownRear)
       defrostHeld = true
       // The values, not the states just set: an action reads state as it began.
-      send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + now())
+      send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + performanceNow())
 
   // Performance's Clear: hides what is recorded so far (Observe still sends it).
   action clearObserved()
@@ -914,7 +914,7 @@ component Lexy
   // vehicle-name-screen.ios.tsx: only a real change, and not twice.
   action saveName
     if trim(draftName) != "" and trim(draftName) != vehicleName(car.nickName, car.modelName) and not pending(renamed)
-      send renamed = rename(car, trim(draftName), time.epochAtZero + now())
+      send renamed = rename(car, trim(draftName), time.epochAtZero + performanceNow())
   action afterRename
     match renamed
       case some(r)
