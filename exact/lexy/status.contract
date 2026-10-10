@@ -524,21 +524,23 @@ component StatusScreen
             when tires.ok and length(tires.tires) > 0
               column gap=8 testId="tires"
                 text "Tire Pressure" class=SectionTitle margin-top=4
-                row class=Card padding=16 gap=32 align-self="flex-start"
-                  column gap=16
-                    each t in filter(tires.tires, t => t.position == "flTirePressure" or t.position == "rlTirePressure") key=t.position
-                      column gap=2 testId=`tire-${t.position}`
-                        text tireLabel(t.position) class=SmallBold color="-exact-secondary-label"
-                        row align-items="baseline"
-                          text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
-                          text ` ${tires.unit}` class=Small color="-exact-secondary-label"
-                  column gap=16
-                    each t in filter(tires.tires, t => t.position == "frTirePressure" or t.position == "rrTirePressure") key=t.position
-                      column gap=2 testId=`tire-${t.position}`
-                        text tireLabel(t.position) class=SmallBold color="-exact-secondary-label"
-                        row align-items="baseline"
-                          text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
-                          text ` ${tires.unit}` class=Small color="-exact-secondary-label"
+                // Full width like the other cards; the readings keep together at its leading edge
+                column class=Card padding=16
+                  row gap=32 align-self="flex-start"
+                    column gap=16
+                      each t in filter(tires.tires, t => t.position == "flTirePressure" or t.position == "rlTirePressure") key=t.position
+                        column gap=2 testId=`tire-${t.position}`
+                          text tireLabel(t.position) class=SmallBold color="-exact-secondary-label"
+                          row align-items="baseline"
+                            text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
+                            text ` ${tires.unit}` class=Small color="-exact-secondary-label"
+                    column gap=16
+                      each t in filter(tires.tires, t => t.position == "frTirePressure" or t.position == "rrTirePressure") key=t.position
+                        column gap=2 testId=`tire-${t.position}`
+                          text tireLabel(t.position) class=SmallBold color="-exact-secondary-label"
+                          row align-items="baseline"
+                            text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
+                            text ` ${tires.unit}` class=Small color="-exact-secondary-label"
             // When it last synced (status-screen.ios.tsx footer)
             // status-screen.ios.tsx FooterTimeRow: a tap shows the exact time
             // in a popover anchored to the sentence.
