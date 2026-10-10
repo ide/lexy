@@ -85,6 +85,8 @@ component Lexy
     every(1000, pulseStep)
   task boot mount
     after(1, start)
+  task climateWrite when climateUnwritten and not pending(climateSaved)
+    after(1, writeClimate)
 
   // --- Sign-in ----------------------------------------------------------------
   state email = ""
@@ -203,10 +205,12 @@ component Lexy
   state defrostRear = false
   state defrostHeld = false
   state climateTouched = false
+  // A change not yet written. One write is out at a time, so the car hears
+  // the changes in order; the next carries everything shown by then.
+  state climateUnwritten = false
   // What the climate card shows: a change still being saved, else the car's.
-  // The card's controls hold still while a change is written and read back
-  // (unlike the remote commands, which stay live); a change is built from
-  // these all the same.
+  // The controls stay live while a change is written, as the remote
+  // commands do; a change is built from these.
   derive shownClimateOn = climateTouched ? climateWanted : climate.on
   derive shownFront = defrostHeld ? defrostFront : climate.frontEnabled
   derive shownRear = defrostHeld ? defrostRear : climate.rearEnabled
@@ -351,11 +355,11 @@ component Lexy
       autoRefresh = false
     if pulling and not (pending(primed) or pending(status) or pending(garage))
       pulling = false
-    if climateTouched and not (pending(climateSaved) or pending(climateRead))
+    if climateTouched and not (climateUnwritten or pending(climateSaved) or pending(climateRead))
       climateTouched = false
-    if defrostHeld and not (pending(climateSaved) or pending(climateRead))
+    if defrostHeld and not (climateUnwritten or pending(climateSaved) or pending(climateRead))
       defrostHeld = false
-    if tempHeld and not (pending(climateSaved) or pending(climateRead)) and (tempSaving or climate.temperature == tempDraft)
+    if tempHeld and not (climateUnwritten or pending(climateSaved) or pending(climateRead)) and (tempSaving or climate.temperature == tempDraft)
       tempHeld = false
       tempSaving = false
     // Refresh the session ahead of expiry, or once after the gateway
@@ -701,20 +705,28 @@ component Lexy
   // The car answering is felt either way; a refused change shows the car's
   // own settings again at once (the re-read brings them), and a saved one
   // holds until the re-read agrees (the tick lets go).
+  // Only the latest change's outcome is the person's: a write that a later
+  // change followed sends that change next, its own failure unsaid. The
+  // latest refused shows the car's own settings again, read anew, since an
+  // earlier write may have landed.
   action afterClimateSave
     match climateSaved
       case some(r)
-        climateError = (r.ok ? "" : "The vehicle API rejected the change.")
-        send felt = feel(r.ok ? "success" : "error")
         if r.ok
           climateWritten = some(r)
-        if not r.ok
-          defrostHeld = false
-          climateTouched = false
-          tempHeld = false
-          tempSaving = false
+        if not climateUnwritten
+          climateError = (r.ok ? "" : "The vehicle API rejected the change.")
+          send felt = feel(r.ok ? "success" : "error")
+          if not r.ok
+            climateWritten = none
+            climateRev = climateRev + 1
+            defrostHeld = false
+            climateTouched = false
+            tempHeld = false
+            tempSaving = false
       case none
         climateError = ""
+        climateUnwritten = false
         defrostHeld = false
   action dismissClimateError
     climateError = ""
@@ -796,7 +808,7 @@ component Lexy
   action setClimateOn(on: bool)
     climateWanted = on
     climateTouched = true
-    send climateSaved = setClimate(car, climate.raw, on, shownTemperature, shownFront, shownRear, time.epochAtZero + performanceNow())
+    climateUnwritten = true
   action dragTemperature(value: number)
     tempDraft = value
     tempHeld = true
@@ -808,18 +820,16 @@ component Lexy
     else
       tempHeld = true
       tempSaving = true
-      send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + performanceNow())
-  // Not while a climate change is written or read back. The buttons stay
-  // as they are meanwhile (dimming them on every save of the switch or the
-  // temperature flickered), and a press then does nothing.
+      climateUnwritten = true
+  action writeClimate
+    climateUnwritten = false
+    send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, shownFront, shownRear, time.epochAtZero + performanceNow())
   action toggleDefrost(which: string)
-    if not pending(climateSaved)
-      send felt = feel("selection")
-      defrostFront = (which == "front" ? not shownFront : shownFront)
-      defrostRear = (which == "rear" ? not shownRear : shownRear)
-      defrostHeld = true
-      // The values, not the states just set: an action reads state as it began.
-      send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + performanceNow())
+    send felt = feel("selection")
+    defrostFront = (which == "front" ? not shownFront : shownFront)
+    defrostRear = (which == "rear" ? not shownRear : shownRear)
+    defrostHeld = true
+    climateUnwritten = true
 
   // Performance's Clear: hides what is recorded so far (Observe still sends it).
   action clearObserved()
@@ -978,7 +988,7 @@ component Lexy
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=22 height=20
                   when e.name == "status"
-                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=pending(climateSaved), climateAnimates=(climateTouched or defrostHeld or tempHeld), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateAnimates=(climateTouched or defrostHeld or tempHeld), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
                   when e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
                   when e.name == "specs"
