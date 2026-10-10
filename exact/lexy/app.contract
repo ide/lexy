@@ -135,6 +135,9 @@ component Lexy
   // The page was hidden at the last tick (exactPage's visibilityState).
   state wasHidden = false
   state primeOnLaunch = false
+  // A sign-in ends as a pull does, once its car is known: the car is asked to
+  // report and the status re-read, which a plain read after sign-in can miss.
+  state primeOnSignIn = false
   // Back from the background, the refresh ladder waits for a fresh session:
   // a token refreshed while the reads are out asks every one of them again.
   state resumeDue = false
@@ -415,7 +418,11 @@ component Lexy
     let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
     let primeResume = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
     let rereads = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
-    if primeLock or primeLaunch or primeResume
+    let primeSignIn = primeOnSignIn and car.vin != "" and not pending(garage) and not pending(primed)
+    if primeSignIn
+      primeOnSignIn = false
+      lastPrimeAt = time.epochAtZero + performanceNow()
+    if primeLock or primeLaunch or primeResume or primeSignIn
       send primed = prime(car, time.epochAtZero + performanceNow())
     if primeLaunch or rereads
       send waited = pause(1500)
@@ -626,6 +633,7 @@ component Lexy
           statusRev = statusRev + 1
           statusAt = time.epochAtZero + performanceNow()
           engineAt = time.epochAtZero + performanceNow()
+          primeOnSignIn = true
           nav = open(nav, "/")
         if not f.ok
           signError = signInError("otp", f.status, f.error)
@@ -640,6 +648,7 @@ component Lexy
   action afterSignOut
     climateWritten = none
     primeOnLaunch = false
+    primeOnSignIn = false
     autoRefresh = false
     signStep = "credentials"
     email = ""

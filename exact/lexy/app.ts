@@ -251,6 +251,10 @@ function guid(idToken: string): string {
   }
 }
 
+// Lexus's DATETIME header: whole epoch milliseconds, as the OneApp's `Date.now()`
+// sends it; `at` is `epochAtZero + performanceNow()`, which has a fraction.
+const datetime = (at: number) => String(Math.floor(at));
+
 function businessHeaders(session: Session): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -736,7 +740,7 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
       REGION: car.region,
       'ASI-CODE': car.asiCode,
       'HW-TYPE': car.hwType,
-      DATETIME: String(at),
+      DATETIME: datetime(at),
       entryPoint: 'SUBSCRIPTIONS',
     });
     const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s))(r))).payload);
@@ -792,7 +796,7 @@ async function rename(store: Store, car: Car, name: string, at: number): Promise
       if (!id) throw new Error('This session has no customer GUID to rename a vehicle with.');
       return r(NICKNAME_URL, {
         method: 'PUT',
-        headers: { ...businessHeaders(s), 'X-BRAND': car.brand, DATETIME: String(at) },
+        headers: { ...businessHeaders(s), 'X-BRAND': car.brand, DATETIME: datetime(at) },
         body: JSON.stringify({ nickName: name, guid: id, vin: car.vin }),
       });
     });
