@@ -70,6 +70,7 @@ component SettingsScreen
   props
     openDevTool: action
     car: Car
+    name: string
     demo: bool
     demoFailing: bool
     setDemoFailing: action
@@ -98,7 +99,7 @@ component SettingsScreen
             SectionHeader(title="Vehicle")
             column class=Card
               button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
-                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)), opensScreen=true)
+                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : name), opensScreen=true)
           column
             SectionHeader(title="Lexus Account")
             column class=Card
