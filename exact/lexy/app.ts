@@ -15,7 +15,7 @@
 //
 // Demo mode swaps the transport for an in-memory Lexus (demo.ts), so the
 // whole app — sign-in included — runs without an account.
-import type { Answer, NativeModule, Result, Sources, Storage, Store } from './app.contract.d.ts';
+import type { Answer, NativeModule, Overlay, Result, Sources, Storage, Store } from './app.contract.d.ts';
 import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario, type Reply } from './demo';
 
 export const appId = 'app.ide.lexy.exact';
@@ -518,6 +518,8 @@ async function load(key: string): Promise<string | null> {
   } catch {
     text = null;
   }
+  // A save while the file was read is newer than what was read.
+  if (held.has(key)) return held.get(key) ?? null;
   held.set(key, text);
   return text;
 }
@@ -546,14 +548,23 @@ function fromUtf8(bytes: Uint8Array): string {
   return text;
 }
 // Awaited within the answer: a source's storage is its own only while it
-// answers, so a write left running after it is lost.
-async function save(key: string, text: string, since = generation) {
+// answers, so a write left running after it is lost. A cache's failed write
+// is let go; a `strict` one (a choice the person made) puts back what was
+// held and throws, so the mutation fails and its write stops showing.
+async function save(key: string, text: string, since = generation, strict = false) {
   if (since !== generation || held.get(key) === text) return;
+  const before = held.has(key) ? held.get(key) : undefined;
   held.set(key, text);
   const fs = files?.fs;
   if (!fs) return;
   await fs.mkdir(DIR).catch(() => undefined);
-  await fs.atomicWriteFile(`${DIR}/${key}.json`, utf8(text)).catch(() => undefined);
+  try {
+    await fs.atomicWriteFile(`${DIR}/${key}.json`, utf8(text));
+  } catch (e) {
+    if (!strict) return;
+    if (before === undefined) held.delete(key); else held.set(key, before);
+    throw e;
+  }
 }
 async function remember<T>(key: string, vin: string, answer: T, since = generation): Promise<T> {
   await save(key, JSON.stringify({ vin, answer }), since);
@@ -873,22 +884,26 @@ async function openMaps(provider: string, latitude: number, longitude: number, n
 }
 
 // Which maps apps the phone has (canOpenURL on each one's scheme, declared
-// under LSApplicationQueriesSchemes), and the saved choice if it is still
-// installed: one that was deleted is forgotten, so the chooser asks again
+// under LSApplicationQueriesSchemes), and the saved choice if it is
+// installed: while one that was deleted is gone, the chooser asks again
 // (src/hooks/use-maps-provider.ts, src/data/maps-providers.ts).
 async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
   let installed = { apple: true, google: false, waze: false };
+  let known = false;
   try {
-    if (native?.available) installed = { ...installed, ...(await native.later({ op: 'installed' })) };
+    if (native?.available) {
+      installed = { ...installed, ...(await native.later({ op: 'installed' })) };
+      known = true;
+    }
   } catch {
-    // Unknown: Apple Maps alone, which every iPhone ships.
+    // Unknown: Apple Maps alone, which every iPhone ships; only a check that
+    // answered hides a saved choice.
   }
   // The choice is a file, not the store: a store write would ask every
   // vehicle resource again. A choice an earlier build kept in the store is
   // read once, until the file says otherwise.
   let provider = (await load('maps')) ?? store.get('lexy.maps') ?? '';
-  if (provider !== '' && !installed[provider as keyof typeof installed]) provider = '';
-  await save('maps', provider);
+  if (known && provider !== '' && !installed[provider as keyof typeof installed]) provider = '';
   return { provider, apple: installed.apple === true, google: installed.google === true, waze: installed.waze === true };
 }
 
@@ -957,7 +972,7 @@ const sources: Sources = {
   address: ([latitude, longitude]) => address(latitude, longitude),
   mapsApp: (_args, store) => mapsApp(store),
   setMapsApp: async ([provider], store) => {
-    await save('maps', provider);
+    await save('maps', provider, generation, true);
     return mapsApp(store);
   },
   feel: ([kind]) => {
@@ -1075,6 +1090,22 @@ async function observed(limit: number): Promise<Observed> {
     return noObserved;
   }
 }
+
+// A maps choice shows from the moment it is made, through every screen that
+// reads `mapsApp`, until an answer asked after it was saved has it. The
+// latest choice is the one that shows; an empty one clears it.
+export const overlay: Overlay = (source, _args, answer, writes) => {
+  if (source !== 'mapsApp') return undefined;
+  const mine = writes.filter(w => w.source === 'setMapsApp'), last = mine[mine.length - 1];
+  if (!last) return undefined;
+  const [provider] = last.args as [string];
+  const shown = answer as Result<'mapsApp'>;
+  if (last.answered) {
+    if (shown.provider === provider) return undefined;
+    last.keep();
+  }
+  return { ...shown, provider } as never;
+};
 
 export const answer: Answer = (source, args, store, storage, module) => {
   native = module ?? null;
