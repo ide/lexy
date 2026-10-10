@@ -73,7 +73,7 @@ shape Garage
   status: number
   error: string
   car: Car
-  cars: list<Car>
+  carCount: number
 
 // One section of the status snapshot's vehicleStatus tree ("Driver Side" /
 // "Rear Door" / ["Closed", "Locked"]).

@@ -174,13 +174,16 @@ component Lexy
   // profile read right after a rename can still carry the old one.
   state savedName = ""
   derive carName = savedName != "" ? savedName : vehicleName(car.nickName, car.modelName)
-  resource status = status(car) with statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
-  resource tires = tires(car) with statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
-  resource engine = engine(car) with engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
-  resource spec = spec(car) with orEpoch(garageAt, time.epochAtZero) as shape Spec
+  // A car's reads are its VIN's: the whole car record (its image URL, its
+  // capabilities) as identity would push a kept answer past the runner's
+  // 8 KB budget, and a profile change would leave it unmatched.
+  resource status = status(car.vin) with car,statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
+  resource tires = tires(car.vin) with car, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
+  resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
+  resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
   // Remote-start climate: a change is written whole and read back.
   state climateRev = 0
-  resource climateRead = climate(car) with climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
+  resource climateRead = climate(car.vin) with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
   // A change is written, not read back: once the car accepts it, the card
   // shows what was written until the next read (a pull asks again); a
   // refused one leaves the card at what it showed before.
@@ -230,7 +233,7 @@ component Lexy
   state moreOpen = false
   state closuresOpen = false
   state hazardsOn = false
-  resource services = services(car) with orEpoch(garageAt, time.epochAtZero) as shape Services
+  resource services = services(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Services
 
   // --- Commands and their reconciliation ------------------------------------------
   // A command's acceptance is not its completion: after a lock or unlock the

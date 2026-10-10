@@ -5,7 +5,8 @@
 // - HTTP to the Lexus identity and REST hosts, with the request conventions
 //   every call needs (headers, bearer token, one refresh-and-retry on 401/403),
 //   and the identity host's cookies (see `jar`)
-// - the Keychain (`store`) for the session tokens
+// - the Keychain (`store`) for the session tokens, and one SQLite database for
+//   what Lexy keeps between launches (see "The store")
 // - PKCE (SHA-256) for the OAuth code exchange
 // - decoding each response into the exact shape app.contract declares, since
 //   Contract has no JSON and rejects a reply with a missing or extra field
@@ -15,7 +16,7 @@
 //
 // Demo mode swaps the transport for an in-memory Lexus (demo.ts), so the
 // whole app — sign-in included — runs without an account.
-import type { Answer, NativeModule, Overlay, Result, Sources, Storage, Store } from './app.contract.d.ts';
+import type { Answer, Database, NativeModule, Overlay, Result, SQLCommand, SQLValue, Sources, Storage, Store } from './app.contract.d.ts';
 import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario, type Reply } from './demo';
 
 export const appId = 'app.ide.lexy.exact';
@@ -25,6 +26,8 @@ export const grants = [
   'secret.keep lexy.session',
   'secret.keep lexy.demo',
   'secret.keep lexy.maps',
+  'sqlite.open app:/data/lexy.db',
+  // The files builds before the database kept, read once into it and removed
   'fs.read app:/data/lexy',
   'fs.write app:/data/lexy',
 ].join('\n');
@@ -61,7 +64,7 @@ const X_API_KEY = String.fromCharCode(
 const EXPIRY_MARGIN_MS = 60_000;
 
 type Json = Record<string, unknown>;
-type Car = Result<'garage'>['cars'][number];
+type Car = Result<'garage'>['car'];
 type Session = {
   accessToken: string;
   refreshToken: string;
@@ -93,8 +96,8 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 // The session's native module (modules/apple), set as each answer starts:
 // every answer of a session shares the one module.
 let native: NativeModule | null = null;
-// The session's files (its `fs.*` grants), set beside it.
-let files: Storage | null = null;
+// The session's storage (its database, and the files an earlier build kept), set beside it.
+let hostStorage: Storage | null = null;
 
 // The identity host's cookies. ForgeRock's load balancer pins a sign-in to
 // one server with `route` and `amlbcookie`; a step that lands elsewhere fails
@@ -232,7 +235,7 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
       const stored = readSession(store);
       if (stored && stored.refreshToken !== session.refreshToken) return stored;
       store.forget('lexy.session');
-      await forgetCached();
+      await forgetStored();
       throw new HttpError(401, 'Your Lexus session expired. Please sign in again.');
     }
     throw e;
@@ -479,20 +482,22 @@ function decodeCar(v: unknown): Car {
 // switcher) crosses as a field, blank when there is none.
 const noCar = decodeCar({});
 
-// Whose garage a cached one is: the signed-in account's guid.
+// Whose garage it is: the signed-in account's guid.
 const account = (store: Store) => guid(readSession(store)?.idToken ?? '');
 
 async function garage(store: Store, at: number): Promise<Result<'garage'>> {
   const since = generation;
-  if (!readSession(store)) return { ok: false, status: 401, error: 'Signed out', car: noCar, cars: [] };
+  const owner = account(store);
+  if (!readSession(store)) return { ok: false, status: 401, error: 'Signed out', car: noCar, carCount: 0 };
   try {
     const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s))(r));
     const cars = arr(body.payload).map(decodeCar).filter(c => c.vin);
-    return await remember('garage', account(store), { ok: true, status: 200, error: '', car: cars[0] ?? noCar, cars }, since);
+    await saveCars(owner, cars, since);
+    return { ok: true, status: 200, error: '', car: cars[0] ?? noCar, carCount: cars.length };
   } catch (e) {
     // Not ok, so the screen says it couldn't refresh, over the car it has.
-    const last = failure(e).status === 401 ? null : await recall<Result<'garage'>>('garage', account(store));
-    return { ...failure(e), car: last?.car ?? noCar, cars: last?.cars ?? [] };
+    const kept = failure(e).status === 401 ? null : await storedGarage(owner);
+    return { ...failure(e), car: kept?.car ?? noCar, carCount: kept?.carCount ?? 0 };
   }
 }
 
@@ -501,45 +506,171 @@ const trip = (st: Json, name: string) =>
   arr(arr(st.vehicleStatus).map(rec).find(c => c.category === 'Trip Details')?.sections).map(rec).find(x => x.section === name)?.values;
 const tripValue = (values: unknown) => str(rec(arr(values)[0]).value);
 
-// React Query keeps the last data through a failed refetch; so does this:
-// a failed read answers the last good one for the same car (the failure
-// beside it), so a blip shows "Couldn't refresh" over the data, not zeros.
-//
-// Those answers, and the closure history below, live in files rather than
-// the store: a store write asks every store reader again (the runner's
-// settlement), so a cache kept there refetched the whole car on each
-// refresh. A file is read once, then held in memory.
-const DIR = 'app:/data/lexy';
-const CACHED = ['closures', 'garage', 'status', 'tires', 'engine', 'spec', 'services', 'climate'];
-// Bumped as the cache is forgotten: an answer still in flight then does not
+// --- The store ----------------------------------------------------------------------
+// One SQLite database holds everything Lexy keeps between launches, keyed by
+// what it is: the account's cars, each car's last good readings, its closures
+// folded field by field, and the person's choices. A read syncs from Lexus into
+// it and answers from it, so a failed fetch answers what it holds beside the
+// failure, as React Query keeps the last data through a failed refetch, and a
+// blip shows "Couldn't refresh" over the data, not zeros. Signing out empties
+// everything but the choices.
+const DB = 'app:/data/lexy.db';
+const SCHEMA: SQLCommand[] = [
+  { sql: 'CREATE TABLE IF NOT EXISTS cars (account TEXT NOT NULL, vin TEXT NOT NULL, position INTEGER NOT NULL, car TEXT NOT NULL, PRIMARY KEY (account, vin))' },
+  { sql: 'CREATE TABLE IF NOT EXISTS readings (vin TEXT NOT NULL, kind TEXT NOT NULL, answer TEXT NOT NULL, PRIMARY KEY (vin, kind))' },
+  { sql: 'CREATE TABLE IF NOT EXISTS closures (vin TEXT NOT NULL, category TEXT NOT NULL, section TEXT NOT NULL, ord INTEGER NOT NULL, position TEXT, position_at REAL, lock TEXT, lock_at REAL, PRIMARY KEY (vin, category, section))' },
+  { sql: 'CREATE TABLE IF NOT EXISTS choices (key TEXT PRIMARY KEY, value TEXT NOT NULL)' },
+];
+// Bumped as the store is emptied: an answer still in flight then does not
 // write the signed-out account's data back.
 let generation = 0;
-const held = new Map<string, string | null>();
-async function load(key: string): Promise<string | null> {
-  if (held.has(key)) return held.get(key) ?? null;
-  let text: string | null = null;
+// The schema, and the files an earlier build kept moved into it, once per run.
+let prepared: Promise<void> | null = null;
+
+async function withDb<T>(work: (db: Database) => Promise<T>): Promise<T> {
+  const storage = hostStorage;
+  if (!storage) throw new Error('This host gives Lexy no storage.');
+  prepared ??= prepare(storage).catch(e => {
+    prepared = null;
+    throw e;
+  });
+  await prepared;
+  const db = await storage.sqlite.open(DB);
   try {
-    if (files) text = fromUtf8(new Uint8Array(await files.fs.readFile(`${DIR}/${key}.json`)));
+    return await work(db);
+  } finally {
+    await db.close();
+  }
+}
+
+async function prepare(storage: Storage) {
+  const db = await storage.sqlite.open(DB);
+  try {
+    await db.transaction(SCHEMA);
+    const version = Number((await db.query('PRAGMA user_version')).rows[0]?.[0] ?? 0);
+    if (version < 1) {
+      await db.transaction([...(await legacyRows(storage)), { sql: 'PRAGMA user_version = 1' }]);
+      await storage.fs.rm(LEGACY).catch(() => undefined);
+    }
+  } finally {
+    await db.close();
+  }
+}
+
+// What builds before the store kept as files, one JSON file per kind under
+// `app:/data/lexy`, as rows: the garage's cars, the readings, the closure fold
+// and the choices.
+const LEGACY = 'app:/data/lexy';
+async function legacyRows(storage: Storage): Promise<SQLCommand[]> {
+  // Read only the files there are: a fresh install has none.
+  const present = new Set(await storage.fs.readdir(LEGACY).catch(() => [] as string[]));
+  const read = async (key: string) => {
+    if (!present.has(`${key}.json`)) return null;
+    try {
+      return fromUtf8(new Uint8Array(await storage.fs.readFile(`${LEGACY}/${key}.json`)));
+    } catch {
+      return null;
+    }
+  };
+  const json = async (key: string) => {
+    try {
+      return rec(JSON.parse((await read(key)) ?? 'null'));
+    } catch {
+      return {};
+    }
+  };
+  const rows: SQLCommand[] = [];
+  const garage = await json('garage');
+  arr(rec(garage.answer).cars).map(rec).filter(c => str(c.vin)).forEach((car, position) =>
+    rows.push({ sql: 'INSERT OR REPLACE INTO cars VALUES (?, ?, ?, ?)', params: [str(garage.vin), str(car.vin), position, JSON.stringify(car)] }));
+  for (const kind of READINGS) {
+    const kept = await json(kind);
+    if (str(kept.vin) && kept.answer) rows.push({ sql: 'INSERT OR REPLACE INTO readings VALUES (?, ?, ?)', params: [str(kept.vin), kind, JSON.stringify(kept.answer)] });
+  }
+  const closures = await json('closures');
+  for (const [i, row] of Object.values(rec(closures.rows)).map(rec).entries()) {
+    const position = rec(row.position), lock = rec(row.lock);
+    rows.push({
+      sql: 'INSERT OR REPLACE INTO closures VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      params: [str(closures.vin), str(row.category), str(row.section), num(row.order ?? i), str(position.value) || null, position.value ? num(position.at) : null, str(lock.value) || null, lock.value ? num(lock.at) : null],
+    });
+  }
+  for (const key of ['maps', 'observe-cleared']) {
+    const value = await read(key);
+    if (value !== null) rows.push({ sql: 'INSERT OR REPLACE INTO choices VALUES (?, ?)', params: [key, value] });
+  }
+  return rows;
+}
+
+const READINGS = ['status', 'tires', 'engine', 'spec', 'services', 'climate'] as const;
+type Reading = (typeof READINGS)[number];
+
+// A write from an answer that started before the store was emptied is
+// dropped, and a failed one is let go: the answer stands without it.
+async function write(commands: SQLCommand[], since: number) {
+  if (since !== generation) return;
+  await withDb(db => db.transaction(commands)).catch(() => undefined);
+}
+
+async function saveCars(owner: string, cars: Car[], since: number) {
+  await write([
+    { sql: 'DELETE FROM cars WHERE account = ?', params: [owner] },
+    ...cars.map((car, position) => ({ sql: 'INSERT INTO cars VALUES (?, ?, ?, ?)', params: [owner, car.vin, position, JSON.stringify(car)] })),
+  ], since);
+}
+
+// The primary car (the first; Lexy has no switcher) and how many there are.
+async function storedGarage(owner: string): Promise<{ car: Car; carCount: number } | null> {
+  const rows = await withDb(db => db.query('SELECT car FROM cars WHERE account = ? ORDER BY position', [owner])).catch(() => null);
+  if (!rows?.rows.length) return null;
+  return { car: decodeStoredCar(String(rows.rows[0][0])), carCount: rows.rows.length };
+}
+
+// A stored car is a decoded one; re-decoding fills a field a later build added.
+const decodeStoredCar = (text: string): Car => {
+  try {
+    const car = rec(JSON.parse(text));
+    return { ...noCar, ...car, capabilities: arr(car.capabilities).map(str) } as Car;
   } catch {
-    text = null;
+    return noCar;
   }
-  // A save while the file was read is newer than what was read.
-  if (held.has(key)) return held.get(key) ?? null;
-  held.set(key, text);
-  return text;
+};
+
+async function saveReading<T>(vin: string, kind: Reading, answer: T, since: number): Promise<T> {
+  await write([{ sql: 'INSERT OR REPLACE INTO readings VALUES (?, ?, ?)', params: [vin, kind, JSON.stringify(answer)] }], since);
+  return answer;
 }
-// UTF-8 by hand: the data module's runtime need not have TextEncoder.
-function utf8(text: string): Uint8Array {
-  const out: number[] = [];
-  for (const ch of text) {
-    const c = ch.codePointAt(0)!;
-    if (c < 0x80) out.push(c);
-    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
-    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
-    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+
+async function storedReading<T>(vin: string, kind: Reading): Promise<T | null> {
+  try {
+    const rows = await withDb(db => db.query('SELECT answer FROM readings WHERE vin = ? AND kind = ?', [vin, kind]));
+    return rows.rows.length ? (JSON.parse(String(rows.rows[0][0])) as T) : null;
+  } catch {
+    return null;
   }
-  return new Uint8Array(out);
 }
+
+async function choice(key: string): Promise<string | null> {
+  const rows = await withDb(db => db.query('SELECT value FROM choices WHERE key = ?', [key])).catch(() => null);
+  return rows?.rows.length ? String(rows.rows[0][0]) : null;
+}
+
+// A person's choice must stick: a failed write throws, so the mutation fails
+// and its write stops showing.
+async function choose(key: string, value: string) {
+  await withDb(db => db.execute('INSERT OR REPLACE INTO choices VALUES (?, ?)', [key, value]));
+}
+
+async function forgetStored() {
+  generation++;
+  await withDb(db => db.transaction([
+    { sql: 'DELETE FROM cars' },
+    { sql: 'DELETE FROM readings' },
+    { sql: 'DELETE FROM closures' },
+  ])).catch(() => undefined);
+}
+
+// UTF-8 by hand: the data module's runtime need not have TextDecoder.
 function fromUtf8(bytes: Uint8Array): string {
   let text = '';
   for (let i = 0; i < bytes.length;) {
@@ -551,44 +682,6 @@ function fromUtf8(bytes: Uint8Array): string {
     i += n;
   }
   return text;
-}
-// Awaited within the answer: a source's storage is its own only while it
-// answers, so a write left running after it is lost. A cache's failed write
-// is let go; a `strict` one (a choice the person made) puts back what was
-// held and throws, so the mutation fails and its write stops showing.
-async function save(key: string, text: string, since = generation, strict = false) {
-  if (since !== generation || held.get(key) === text) return;
-  const before = held.has(key) ? held.get(key) : undefined;
-  held.set(key, text);
-  const fs = files?.fs;
-  if (!fs) return;
-  await fs.mkdir(DIR).catch(() => undefined);
-  try {
-    await fs.atomicWriteFile(`${DIR}/${key}.json`, utf8(text));
-  } catch (e) {
-    if (!strict) return;
-    if (before === undefined) held.delete(key); else held.set(key, before);
-    throw e;
-  }
-}
-async function remember<T>(key: string, vin: string, answer: T, since = generation): Promise<T> {
-  await save(key, JSON.stringify({ vin, answer }), since);
-  return answer;
-}
-async function recall<T>(key: string, vin: string): Promise<T | null> {
-  try {
-    const last = JSON.parse((await load(key)) ?? 'null');
-    return last && last.vin === vin ? last.answer as T : null;
-  } catch {
-    return null;
-  }
-}
-async function forgetCached() {
-  generation++;
-  for (const key of CACHED) {
-    held.set(key, null);
-    await files?.fs.rm(`${DIR}/${key}.json`).catch(() => undefined);
-  }
 }
 
 async function status(store: Store, car: Car, at: number): Promise<Result<'status'>> {
@@ -609,7 +702,7 @@ async function status(store: Store, car: Car, at: number): Promise<Result<'statu
       })),
     ), since);
     const stale = sections.filter(x => x.category !== 'Trip Details' && x.at > 0 && x.at < occurredMs).map(x => x.at);
-    return await remember('status', car.vin, {
+    return await saveReading(car.vin, 'status', {
       ok: true,
       status: 200,
       error: '',
@@ -632,7 +725,7 @@ async function status(store: Store, car: Car, at: number): Promise<Result<'statu
       closuresStaleMs: stale.length ? Math.min(...stale) : 0,
     }, since);
   } catch (e) {
-    const last = await recall<Result<'status'>>('status', car.vin);
+    const last = await storedReading<Result<'status'>>(car.vin, 'status');
     const { status: code, error } = failure(e);
     return last ? { ...last, status: code, error: error || 'Couldn’t refresh' } : { ...failure(e), ...empty };
   }
@@ -649,9 +742,15 @@ type Field = { value: string; at: number };
 type Held = { category: string; section: string; position?: Field; lock?: Field; order: number };
 type Section = { category: string; section: string; values: string[]; at: number };
 async function foldClosures(vin: string, at: number, sections: Section[], since = generation): Promise<Section[]> {
-  let kept: { vin: string; seq: number; rows: Record<string, Held> } | null = null;
-  try { kept = JSON.parse((await load('closures')) ?? 'null'); } catch { kept = null; }
-  if (!kept || kept.vin !== vin) kept = { vin, seq: 0, rows: {} };
+  const stored = await withDb(db => db.query('SELECT category, section, ord, position, position_at, lock, lock_at FROM closures WHERE vin = ? ORDER BY ord', [vin])).catch(() => ({ rows: [] as SQLValue[][] }));
+  const rows = new Map<string, Held>(stored.rows.map(([category, section, order, position, positionAt, lock, lockAt]) => [`${category}/${section}`, {
+    category: String(category),
+    section: String(section),
+    order: Number(order),
+    position: position === null ? undefined : { value: String(position), at: Number(positionAt) },
+    lock: lock === null ? undefined : { value: String(lock), at: Number(lockAt) },
+  }]));
+  let next = rows.size ? Math.max(...[...rows.values()].map(r => r.order)) + 1 : 0;
   const passed: Section[] = [];
   for (const s of sections) {
     const position = s.values.find(v => v === 'Open' || v === 'Closed');
@@ -661,13 +760,16 @@ async function foldClosures(vin: string, at: number, sections: Section[], since 
       continue;
     }
     const key = `${s.category}/${s.section}`;
-    const row = kept.rows[key] ?? { category: s.category, section: s.section, order: kept.seq++ };
+    const row = rows.get(key) ?? { category: s.category, section: s.section, order: next++ };
     if (position && (!row.position || at >= row.position.at)) row.position = { value: position, at };
     if (lock && (!row.lock || at >= row.lock.at)) row.lock = { value: lock, at };
-    kept.rows[key] = row;
+    rows.set(key, row);
   }
-  await save('closures', JSON.stringify(kept), since);
-  const folded = Object.values(kept.rows).sort((a, b) => a.order - b.order).map(r => ({
+  await write([...rows.values()].map(r => ({
+    sql: 'INSERT OR REPLACE INTO closures VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    params: [vin, r.category, r.section, r.order, r.position?.value ?? null, r.position?.at ?? null, r.lock?.value ?? null, r.lock?.at ?? null],
+  })), since);
+  const folded = [...rows.values()].sort((a, b) => a.order - b.order).map(r => ({
     category: r.category,
     section: r.section,
     values: [r.position?.value, r.lock?.value].filter((v): v is string => !!v),
@@ -677,13 +779,13 @@ async function foldClosures(vin: string, at: number, sections: Section[], since 
 }
 
 // A read that keeps its last good answer through a failed one (load-error.ts):
-// the answer is remembered for the car, and a failure recalls it, else `empty`.
-async function keepingLast<T>(key: string, vin: string, empty: T, read: () => Promise<T>): Promise<T> {
+// the answer is stored for the car, and a failure answers the stored one, else `empty`.
+async function keepingLast<T>(kind: Reading, vin: string, empty: T, read: () => Promise<T>): Promise<T> {
   const since = generation;
   try {
-    return await remember(key, vin, await read(), since);
+    return await saveReading(vin, kind, await read(), since);
   } catch {
-    return (await recall<T>(key, vin)) ?? empty;
+    return (await storedReading<T>(vin, kind)) ?? empty;
   }
 }
 
@@ -851,7 +953,7 @@ async function setClimate(store: Store, car: Car, raw: string, on: boolean, temp
     await authorized(store, at, (s, r) => r(CLIMATE_URL, { method: 'PUT', headers: vehicleHeaders(s, car), body: JSON.stringify(p) }));
     // Accepted is saved: the settings answer as written, with no read-back,
     // and are kept as the last reading (a relaunch shows them).
-    return await remember('climate', car.vin, decodeClimate(p));
+    return await saveReading(car.vin, 'climate', decodeClimate(p), generation);
   } catch {
     return noClimate;
   }
@@ -904,10 +1006,10 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
     // Unknown: Apple Maps alone, which every iPhone ships; only a check that
     // answered hides a saved choice.
   }
-  // The choice is a file, not the store: a store write would ask every
-  // vehicle resource again. A choice an earlier build kept in the store is
-  // read once, until the file says otherwise.
-  let provider = (await load('maps')) ?? store.get('lexy.maps') ?? '';
+  // The choice is the database's, not the Keychain's: a Keychain write would
+  // ask every vehicle resource again. A choice an earlier build kept in the
+  // Keychain is read until the database has one.
+  let provider = (await choice('maps')) ?? store.get('lexy.maps') ?? '';
   if (known && provider !== '' && !installed[provider as keyof typeof installed]) provider = '';
   return { provider, apple: installed.apple === true, google: installed.google === true, waze: installed.waze === true };
 }
@@ -934,7 +1036,7 @@ const sources: Sources = {
   signOut: async (_args, store) => {
     store.forget('lexy.session');
     store.forget('lexy.demo');
-    await forgetCached();
+    await forgetStored();
     return { ok: true, status: 200, error: '' };
   },
   authStart: ([preview], store) => {
@@ -948,7 +1050,7 @@ const sources: Sources = {
   // shown, rewritten in only the fields they branch on, so each forced state
   // runs the code path a real one does (src/debug/data-state.ts).
   debugGarage: ([kind, real]) => {
-    const blank = { ...real, car: noCar, cars: [] };
+    const blank = { ...real, car: noCar, carCount: 0 };
     switch (kind) {
       case 'error-cached':
         return { ...real, ok: false, status: 503, error: 'Service Unavailable' };
@@ -964,20 +1066,20 @@ const sources: Sources = {
     }
   },
   garage: ([_signedIn, _expiresAt, _rev, at], store) => garage(store, at),
-  status: ([car, _rev, at], store) => status(store, car, at),
-  tires: ([car, _rev, at], store) => tires(store, car, at),
-  engine: ([car, _rev, at], store) => engine(store, car, at),
-  spec: ([car, at], store) => spec(store, car, at),
-  services: ([car, at], store) => services(store, car, at),
+  status: ([_vin, car, _rev, at], store) => status(store, car, at),
+  tires: ([_vin, car, _rev, at], store) => tires(store, car, at),
+  engine: ([_vin, car, _rev, at], store) => engine(store, car, at),
+  spec: ([_vin, car, at], store) => spec(store, car, at),
+  services: ([_vin, car, at], store) => services(store, car, at),
   command: ([car, name, at], store) => command(store, car, name, at),
   prime: ([car, at], store) => prime(store, car, at),
   rename: ([car, name, at], store) => rename(store, car, name, at),
-  climate: ([car, _rev, at], store) => climate(store, car, at),
+  climate: ([_vin, car, _rev, at], store) => climate(store, car, at),
   setClimate: ([car, raw, on, temperature, front, rear, at], store) => setClimate(store, car, raw, on, temperature, front, rear, at),
   address: ([latitude, longitude]) => address(latitude, longitude),
   mapsApp: (_args, store) => mapsApp(store),
   setMapsApp: async ([provider], store) => {
-    await save('maps', provider, generation, true);
+    await choose('maps', provider);
     return mapsApp(store);
   },
   feel: ([kind]) => {
@@ -1018,7 +1120,7 @@ async function clearObserved(): Promise<Result<'clearObserved'>> {
   const r = await native.later({ op: 'observe', limit: 1 }).catch(() => null);
   if (!Array.isArray(r?.metrics)) return { ok: false };
   const newest = num((r.metrics as Record<string, unknown>[])[0]?.time);
-  if (newest > 0) await save('observe-cleared', String(newest));
+  if (newest > 0) await choose('observe-cleared', String(newest));
   return { ok: true };
 }
 
@@ -1044,7 +1146,7 @@ function order(name: string): number {
 async function observed(limit: number): Promise<Observed> {
   if (!native?.available || limit <= 0) return noObserved;
   try {
-    const cleared = Number(await load('observe-cleared') ?? 0) || 0;
+    const cleared = Number(await choice('observe-cleared') ?? 0) || 0;
     const r = await native.later({ op: 'observe', limit });
     if (!Array.isArray(r.metrics)) return noObserved;
     const records = (r.metrics as Record<string, unknown>[])
@@ -1114,6 +1216,6 @@ export const overlay: Overlay = (source, _args, answer, writes) => {
 
 export const answer: Answer = (source, args, store, storage, module) => {
   native = module ?? null;
-  files = storage ?? null;
+  hostStorage = storage ?? null;
   return sources[source](args, store, storage, module);
 };

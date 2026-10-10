@@ -276,7 +276,7 @@ component StatusScreen
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           when online and car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.ok and status.error != "" and status.status != 401))
             WarningBanner(id="garage-error", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))} Showing the latest data we saved.`)
-          when car.vin == "" and not loading and garage.ok and length(garage.cars) == 0
+          when car.vin == "" and not loading and garage.ok and garage.carCount == 0
             VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="no-vehicle")
           when car.vin == "" and not loading and not garage.ok and garage.status != 401
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="vehicle-error")

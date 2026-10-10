@@ -69,7 +69,7 @@ component SpecsScreen
           column box-sizing="border-box" padding=16 gap=8 testId="specs-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
             box width=80 height=17 border-radius=6 margin-left=8 background-color="-exact-tertiary-fill"
             column class=Card height=600
-        when car.vin == "" and not loading and garage.ok and length(garage.cars) == 0
+        when car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16
