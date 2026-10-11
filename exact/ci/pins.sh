@@ -1,10 +1,10 @@
 # What the CI build of the Exact app is made from. Sourced by exact/ci/ios.sh.
 # Bump EXACT2_COMMIT to build against a newer exact2 (the Lexy patch set lives
-# on ide/exact2 integration/lexy: ccheever/main plus our changes).
+# on ide/exact2 integration/lexy-2026-10-10: ccheever/main plus our changes).
 # Rust comes from exact/lexy/rust-toolchain.toml; the Hermes commit from
 # exact2's js/build.rs (HERMES_PIN).
 EXACT2_REPO=https://github.com/ide/exact2
-EXACT2_COMMIT=af4ece922e576c0e489b2dea430a5080d1563aec
+EXACT2_COMMIT=60423812d710d15c1e7bd4936bb73091d6081dcc
 BUN_VERSION=1.4.2
 # Bump to rebuild the cached Hermes inputs without changing the pin.
 HERMES_CACHE_EPOCH=1
