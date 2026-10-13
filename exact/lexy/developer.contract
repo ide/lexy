@@ -153,12 +153,12 @@ component UpdatesScreen
         column
           SectionHeader(title="Actions")
           column class=Card
-            button text-align="left" press=check testId="updates-check" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=24 height=22
+            button text-align="left" press=check testId="updates-check" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor"
               text "Check for Update" font-size=17 color="AccentColor"
             Divider()
-            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:sf/arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label") object-fit="scale-down" width=24 height=22
+            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+              image "symbol:sf/arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
               text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
           SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
 
@@ -194,7 +194,7 @@ component DataStateScreen
         column
           SectionHeader(title="Persisted State")
           column class=Card
-            button text-align="left" press=clearMaps disabled=(provider == "") testId="clear-maps" -exact-apple-button-style="plain" padding=16 display="flex"
+            button text-align="left" press=clearMaps disabled=(provider == "") testId="clear-maps" padding=16 display="flex"
               column gap=2 align-items="flex-start"
                 text "Clear Maps provider" font-size=17 color=(provider == "" ? "-exact-tertiary-label" : "-exact-system-red")
                 text (provider == "" ? "No saved provider" : `Currently ${mapsName(provider)}`) font-size=13 color="-exact-secondary-label"
@@ -252,7 +252,7 @@ component LoginPreviewScreen
           text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
           text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
           text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
-          button press=runAgain testId="run-again" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
+          button press=runAgain testId="run-again" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
             text "Run Again" font-size=17 font-weight=600 color="#ffffff"
 
 // eas-screen.ios.tsx: the project's pages on expo.dev, in Safari, where the

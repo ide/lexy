@@ -114,5 +114,5 @@ component SpecsScreen
                         text s.name class=Small color="-exact-label" user-select="text"
                         text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="-exact-secondary-label"
                       text s.status class=SmallBold color=(s.status == "Active" ? "-exact-system-green" : "-exact-secondary-label")
-                  button press=manage testId="manage-subscriptions" -exact-apple-button-style="plain" padding-top=16 padding-bottom=16 display="flex" align-items="center"
-                    text "Manage your subscriptions in the Lexus app" font-size=14 line-height="30px" color="AccentColor" text-align="center"
+                  button press=manage testId="manage-subscriptions" appearance="auto" buttonStyle="plain" padding-top=22 padding-bottom=22 display="flex" align-items="center"
+                    text "Manage your subscriptions in the Lexus app" font-size=14 color="AccentColor" text-align="center"

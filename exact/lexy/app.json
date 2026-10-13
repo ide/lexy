@@ -50,9 +50,6 @@
         "width": 420,
         "height": 860
       }
-    },
-    "web": {
-      "navigationChrome": "ios"
     }
   },
   "rust": false,

@@ -69,7 +69,7 @@ component ControlButton
     run: action
   view
     column flex=1 min-width=0
-      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label -exact-apple-button-style="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center"
+      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center"
         image `symbol:sf/${symbol}` font-size=iconSize -exact-tint-color=tint
         text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
       // A centred alert, as Lexy's (alert-host.tsx): the same place for
@@ -102,7 +102,7 @@ component VehicleState
       image `symbol:sf/${symbol}` font-size=44 -exact-tint-color="-exact-secondary-label"
       text title font-size=34 font-weight=700 text-align="center" max-width=320
       text message font-size=17 color="-exact-secondary-label" text-align="center" max-width=320
-      button press=press testId=`${id}-retry` -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
+      button press=press testId=`${id}-retry` appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
         text label font-size=17 color="#ffffff"
 
 // status-banner.tsx's amber banner: a symbol, a bold line and a lighter one.
@@ -332,8 +332,8 @@ component StatusScreen
                 when car.image != ""
                   image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
               row position="relative" width="100%" justify-content="flex-end" pointer-events="none"
-                button press=openMap pointer-events="auto" testId="last-parked" -exact-apple-button-style="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center"
-                  image "symbol:sf/map.fill" font-size=15 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=18
+                button press=openMap pointer-events="auto" testId="last-parked" appearance="auto" buttonStyle="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center"
+                  image "symbol:sf/map.fill" font-size=15 -exact-tint-color="AccentColor"
                   text "Last Parked" font-size=15 font-weight=600 color="-exact-label"
             // Fuel (fuel-bar.tsx)
             column class=Card testId="fuel" padding=16 gap=8
@@ -450,11 +450,11 @@ component StatusScreen
                     when climate.front or climate.rear
                       row gap=8
                         when climate.front
-                          button press=toggleDefrost("front") testId="defrost-front" transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(frontDefrost ? "tinted" : "gray") -exact-apple-button-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
+                          button press=toggleDefrost("front") testId="defrost-front" transition=(climateAnimates ? "opacity -exact-system" : "none") appearance="auto" buttonStyle=(frontDefrost ? "tinted" : "gray") -exact-control-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
                             image "symbol:sf/windshield.front.and.heat.waves" -exact-tint-color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                             text "Front Defrost" color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                         when climate.rear
-                          button press=toggleDefrost("rear") testId="defrost-rear" transition=(climateAnimates ? "opacity -exact-system" : "none") -exact-apple-button-style=(rearDefrost ? "tinted" : "gray") -exact-apple-button-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
+                          button press=toggleDefrost("rear") testId="defrost-rear" transition=(climateAnimates ? "opacity -exact-system" : "none") appearance="auto" buttonStyle=(rearDefrost ? "tinted" : "gray") -exact-control-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
                             image "symbol:sf/windshield.rear.and.heat.waves" -exact-tint-color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
                             text "Rear Defrost" color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
@@ -545,11 +545,11 @@ component StatusScreen
             // status-screen.ios.tsx FooterTimeRow: a tap shows the exact time
             // in a popover anchored to the sentence.
             column align-items="center" gap=2 padding=16 testId="synced"
-              button popovertarget="synced-at" testId="synced-line" -exact-apple-button-style="plain"
+              button popovertarget="synced-at" testId="synced-line" appearance="auto" buttonStyle="plain"
                 text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="-exact-secondary-label" text-align="center"
               column id="synced-at" popover="auto" position="absolute" padding=16
                 text exactTime((checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs), utcOffset) font-size=16
-              button popovertarget="checked-at" testId="checked-line" -exact-apple-button-style="plain"
+              button popovertarget="checked-at" testId="checked-line" appearance="auto" buttonStyle="plain"
                 text `Lexy checked for data ${relative(clock, checkedAt)}.` font-size=13 color="-exact-secondary-label" text-align="center"
               column id="checked-at" popover="auto" position="absolute" padding=16
                 text exactTime(checkedAt, utcOffset) font-size=16
