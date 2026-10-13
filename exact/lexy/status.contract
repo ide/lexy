@@ -552,11 +552,11 @@ component StatusScreen
             // status-screen.ios.tsx FooterTimeRow: a tap shows the exact time
             // in a popover anchored to the sentence.
             column align-items="center" gap=2 padding=16 testId="synced"
-              button popovertarget="synced-at" testId="synced-line" appearance="auto" buttonStyle="plain"
+              button popovertarget="synced-at" testId="synced-line" appearance="auto" buttonStyle="plain" padding-top=0 padding-bottom=0
                 text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="-exact-secondary-label" text-align="center"
               column id="synced-at" popover="auto" position="absolute" padding=16
                 text exactTime((checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs), utcOffset) font-size=16
-              button popovertarget="checked-at" testId="checked-line" appearance="auto" buttonStyle="plain"
+              button popovertarget="checked-at" testId="checked-line" appearance="auto" buttonStyle="plain" padding-top=0 padding-bottom=0
                 text `Lexy checked for data ${relative(clock, checkedAt)}.` font-size=13 color="-exact-secondary-label" text-align="center"
               column id="checked-at" popover="auto" position="absolute" padding=16
                 text exactTime(checkedAt, utcOffset) font-size=16
