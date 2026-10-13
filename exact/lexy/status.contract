@@ -52,6 +52,11 @@ keyframes pending
   from opacity=0.4
   to opacity=1
 
+// The climate card breathes while a change is written to the car.
+keyframes climateWriting
+  from opacity=1
+  to opacity=0.6
+
 component ControlButton
   props
     command: string
@@ -201,6 +206,8 @@ component StatusScreen
     // state; at launch and on a background read they start in it.
     climateAnimates: bool
     climateLoading: bool
+    // A change on its way to the car: the card pulses until it lands.
+    climateWriting: bool
     utcOffset: number
     online: bool
     commandError: string
@@ -428,7 +435,7 @@ component StatusScreen
             // climate-card.ios.tsx: the header always shows; the switch
             // only with settings (a placeholder while they load).
             when true
-              column class=Card testId="climate" padding=16 gap=16
+              column class=Card testId="climate" padding=16 gap=16 animation=(climateWriting ? "climateWriting 900ms ease-in-out infinite alternate" : "none")
                 column gap=4
                   row justify-content="space-between" align-items="center"
                     row gap=4 align-items="center"
