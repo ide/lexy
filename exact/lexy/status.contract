@@ -74,7 +74,7 @@ component ControlButton
     run: action
   view
     column flex=1 min-width=0
-      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 display="flex" flex-direction="column" align-items="center" justify-content="center"
+      button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 padding-left=6 padding-right=6 display="flex" flex-direction="column" align-items="center" justify-content="center"
         image `symbol:sf/${symbol}` font-size=iconSize -exact-tint-color=tint
         text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
       // A centred alert, as Lexy's (alert-host.tsx): the same place for
