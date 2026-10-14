@@ -979,7 +979,7 @@ function mapsLinks(provider: string, latitude: number, longitude: number, name: 
 }
 
 async function openMaps(provider: string, latitude: number, longitude: number, name: string): Promise<Result<'openMaps'>> {
-  if (!native?.available) return { ok: false, error: 'Maps are unavailable here.' };
+  if (!native?.available) return { ok: false, error: 'This version of Lexy can’t open a maps app. Open Lexy on your iPhone to get directions to your vehicle.' };
   for (const url of mapsLinks(provider, latitude, longitude, name)) {
     try {
       if ((await native.later({ op: 'open', url })).opened === true) return { ok: true, error: '' };
@@ -987,7 +987,7 @@ async function openMaps(provider: string, latitude: number, longitude: number, n
       // try the next link
     }
   }
-  return { ok: false, error: "The app didn't respond to the location link. It may have just been removed." };
+  return { ok: false, error: 'The app didn’t open your vehicle’s location, possibly because it was just uninstalled. Choose another maps app in Settings, or reinstall this one from the App Store.' };
 }
 
 // Which maps apps the phone has (canOpenURL on each one's scheme, declared

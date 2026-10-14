@@ -521,7 +521,7 @@ component Lexy
           if stepOf(n.tokenId, n.types, n.asksCode) == "username"
             send named = authAnswer(previewScenario, n.raw, "NameCallback", trim(email))
           else
-            signError = "Lexus sent a response the app couldn't understand, so sign-in couldn't continue. Their service may be having a hiccup. Try again in a moment, and update Lexy if it keeps happening."
+            signError = "Lexus sent a response Lexy couldn't understand, so sign-in stopped. Lexus may be having a temporary problem, or may have changed how sign-in works. Try again in a moment, and check for a Lexy update if it keeps happening."
             restartStage = ""
             resending = false
       case none
@@ -715,7 +715,7 @@ component Lexy
         if r.ok
           climateWritten = some(r)
         if not climateUnwritten
-          climateError = (r.ok ? "" : "The vehicle API rejected the change.")
+          climateError = (r.ok ? "" : "Lexus didn't accept the new climate settings, so they weren't saved, and your vehicle's current settings are shown again. Try the change again in a moment.")
           send felt = feel(r.ok ? "success" : "error")
           if not r.ok
             climateWritten = none
@@ -774,7 +774,7 @@ component Lexy
             lockTarget = lockPrev
           if c.command == "engine-start" or c.command == "engine-stop"
             engineTarget = enginePrev
-          commandError = (c.ok ? "The car didn’t accept the command." : failureText(c.status, c.error))
+          commandError = (c.ok ? "Lexus sent the command, but your vehicle didn't carry it out. It may have weak cellular reception where it's parked. Try again in a minute." : failureText(c.status, c.error))
       case none
         notice = ""
   action openMap
@@ -833,12 +833,10 @@ component Lexy
 
   // Performance's Clear: hides what is recorded so far (Observe still sends it).
   action clearObserved()
-    send felt = feel("selection")
     send observedCleared = clearObserved()
 
   // Developer Tools
   action openDevTool(url: string)
-    send felt = feel("selection")
     if url == "/settings/performance"
       observedRev = observedRev + 1
     if url == "/settings/login"
@@ -853,20 +851,15 @@ component Lexy
       lastChoice = -1
     nav = push(nav, url)
   action checkUpdate
-    send felt = feel("impact-light")
     updateChecked = true
     deliveryCheck()
   action applyUpdate
-    send felt = feel("impact-medium")
     deliveryActivate()
   action chooseDataState(kind: string)
-    send felt = feel("selection")
     dataState = kind
   action clearMaps
-    send felt = feel("impact-medium")
     send mapsChosen = setMapsApp("")
   action chooseScenario(id: string)
-    send felt = feel("selection")
     previewScenario = id
     previewDone = false
     signStep = "credentials"
@@ -895,7 +888,6 @@ component Lexy
     lastChoice = -1
     nav = back(nav)
   action openExternal(url: string)
-    send felt = feel("selection")
     openURL(url)
 
   // Navigation

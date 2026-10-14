@@ -55,6 +55,7 @@ component MapSheet
       when status.latitude == 0 and status.longitude == 0
         column flex=1 align-items="center" justify-content="center"
           text "Location unavailable" font-size=16 font-weight=500 color="-exact-secondary-label"
+          text "Lexus hasn't shared where your vehicle is parked yet. It usually appears after the vehicle has been driven and turned off." font-size=13 color="-exact-secondary-label" text-align="center" padding-left=32 padding-right=32
       else
         column gap=2 padding-left=16 padding-right=16 padding-top=4 padding-bottom=8 flex-shrink=0
           text (address != "" ? address : " ") testId="map-address" font-size=17 line-height="22px" font-weight=600
