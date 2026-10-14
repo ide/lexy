@@ -245,7 +245,7 @@ component LoginPreviewScreen
             text scenarioTitle("network-error")
       when not done
         column flex=1 min-height=0
-          LockScreen(step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+          LockScreen(developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       when done
         column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
           image "symbol:sf/checkmark.seal.fill" font-size=56 -exact-tint-color="-exact-system-green"

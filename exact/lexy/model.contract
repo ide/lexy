@@ -170,6 +170,11 @@ shape Address
 
 // The saved maps app (empty when unset, or when it was deleted) and which of
 // the three the phone has.
+// Whether this phone shows Developer Tools and Try Demo: on after a
+// `lexy://developer` link, off from Developer Tools' own switch.
+shape DeveloperMode
+  on: bool
+
 shape MapsApp
   provider: string
   apple: bool

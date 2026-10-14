@@ -71,5 +71,11 @@
         "lexy-2026": "/0mZp5AZCvEjAZoXkmPrUMD4NCfALAQlnDc+uSiZKAY="
       }
     }
-  }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "lexy",
+      "url": "/developer?u=%s"
+    }
+  ]
 }

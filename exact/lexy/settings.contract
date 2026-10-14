@@ -43,10 +43,11 @@ component SettingsRowFace
         image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // The Development tab folded into Settings, at its top (settings-screen.ios.tsx
-// DEV_ITEMS). Every Exact build is an internal one, so they are always shown.
+// DEV_ITEMS), shown in developer mode only; its last row turns that mode off.
 component DeveloperTools
   props
     open: action
+    setDeveloper: action
   view
     column
       SectionHeader(title="Developer Tools")
@@ -65,9 +66,16 @@ component DeveloperTools
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.", opensScreen=true)
+        box height=0.5 margin-left=16 background-color="-exact-separator"
+        row padding=16 gap=12 align-items="center"
+          text "Developer Mode" font-size=17 flex=1 min-width=0
+          input type="checkbox" switch checked=true change=setDeveloper aria-label="Developer Mode" testId="developer-mode" accent-color="auto"
+      SectionFooter(words="Turning this off hides Developer Tools and Try Demo on this iPhone. Open lexy://developer to turn it back on.")
 
 component SettingsScreen
   props
+    developer: bool
+    setDeveloper: action
     openDevTool: action
     car: Car
     name: string
@@ -85,7 +93,8 @@ component SettingsScreen
     scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box"
         column box-sizing="border-box" padding=16 gap=24
-          DeveloperTools(open=openDevTool)
+          when developer
+            DeveloperTools(open=openDevTool, setDeveloper=setDeveloper)
           column
             SectionHeader(title="Maps")
             column class=Card

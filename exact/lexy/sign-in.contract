@@ -101,6 +101,8 @@ component LockScreen
     resend: action
     differentMethod: action
     tryDemo: action
+    // Developer mode (lexy://developer): only then is Try Demo offered
+    developer: bool
     getLexusApp: action
     nextField: action
     // Settings → Developer Tools → Login Flow: under a navigation bar, and
@@ -168,6 +170,6 @@ component LockScreen
       // covers it, and last, so it is above the form. Shown on the first step
       // whatever the stored demo flag says: a flag left in the Keychain (it
       // outlives a reinstall) hid it on a signed-out launch.
-      when step == "credentials" and not preview
+      when developer and step == "credentials" and not preview
         button press=tryDemo disabled=busy testId="try-demo" appearance="auto" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
           text "Try Demo" font-size=17 color="AccentColor"

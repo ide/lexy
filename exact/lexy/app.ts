@@ -1078,6 +1078,12 @@ const sources: Sources = {
   setClimate: ([car, raw, on, temperature, front, rear, at], store) => setClimate(store, car, raw, on, temperature, front, rear, at),
   address: ([latitude, longitude]) => address(latitude, longitude),
   mapsApp: (_args, store) => mapsApp(store),
+  // Developer mode, per phone: a `lexy://developer` link turns it on, Developer Tools' switch off
+  developerMode: async () => ({ on: (await choice('developer')) === 'on' }),
+  setDeveloperMode: async ([on]) => {
+    await choose('developer', on ? 'on' : 'off');
+    return { on };
+  },
   setMapsApp: async ([provider], store) => {
     await choose('maps', provider);
     return mapsApp(store);

@@ -25,6 +25,7 @@ use Primed from "./model.contract"
 use Climate from "./model.contract"
 use Address from "./model.contract"
 use MapsApp from "./model.contract"
+use DeveloperMode from "./model.contract"
 use Page from "./model.contract"
 use mapsResolved from "./model.contract"
 use Opened from "./model.contract"
@@ -53,6 +54,8 @@ routes nav
     login "/settings/login"
     eas "/settings/eas"
     performance "/settings/performance"
+    // `lexy://developer` (app.json `protocol_handlers`): turns developer mode on
+    unlock "/developer"
 
 
 component Lexy
@@ -231,6 +234,11 @@ component Lexy
   state mapsTried = ""
   resource mapsApp = mapsApp() with mapsRev as shape MapsApp
   mutation mapsChosen as shape MapsApp refreshes mapsApp
+  // Developer Tools and Try Demo show only in developer mode, on this phone
+  resource developer = developerMode() as shape DeveloperMode
+  mutation developerSet as shape DeveloperMode refreshes developer
+  task unlock when top(nav).name == "unlock"
+    after(1, unlockDeveloper)
   mutation opened as shape Opened
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
@@ -656,6 +664,11 @@ component Lexy
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)
+  action unlockDeveloper
+    send developerSet = setDeveloperMode(true)
+    nav = replace(nav, path("settings"))
+  action setDeveloper(on: bool)
+    send developerSet = setDeveloperMode(on)
   action signOut
     send left = signOut()
   action afterSignOut
@@ -945,7 +958,7 @@ component Lexy
   view
     main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
       when not shell
-        LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
+        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
       else
         // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
         // own navigation controller under a tab bar controller, and a tab
@@ -983,7 +996,7 @@ component Lexy
                   when e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
                   when e.name == "settings"
-                    SettingsScreen(openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                    SettingsScreen(developer=developer.on, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
                   when e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   when e.name == "dataState"
