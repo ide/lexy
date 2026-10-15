@@ -20,13 +20,13 @@ component MapsChooser
     // container keeps its layout.
     column position="absolute"
       column id=`${prefix}maps-chooser` popover="auto" role="alertdialog" aria-label="Open location in" position="absolute"
-        when apps.apple
+        if apps.apple
           button press=choose("apple") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-apple`
             text "Apple Maps"
-        when apps.google
+        if apps.google
           button press=choose("google") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-google`
             text "Google Maps"
-        when apps.waze
+        if apps.waze
           button press=choose("waze") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-waze`
             text "Waze"
       dialog id=`${prefix}no-maps` closedby="any"
@@ -52,7 +52,7 @@ component MapSheet
     close: action
   view
     column testId="map-sheet" flex=1 min-height=0 background-color="-exact-grouped-background"
-      when status.latitude == 0 and status.longitude == 0
+      if status.latitude == 0 and status.longitude == 0
         column flex=1 align-items="center" justify-content="center"
           text "Location unavailable" font-size=16 font-weight=500 color="-exact-secondary-label"
           text "Lexus hasn't shared where your vehicle is parked yet. It usually appears after the vehicle has been driven and turned off." font-size=13 color="-exact-secondary-label" text-align="center" padding-left=32 padding-right=32
@@ -72,7 +72,7 @@ component MapSheet
           // The saved (or only) app opens directly; with several the chooser
           // asks, listing only the installed ones; with none an alert says so
           // (src/hooks/use-maps-provider.ts, maps-provider-prompt.ios.tsx).
-          when provider != ""
+          if provider != ""
             button press=open(provider) disabled=opening testId="open-maps" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
               text `Open in ${mapsName(provider)}` font-size=17 font-weight=600 color="#ffffff"
           else

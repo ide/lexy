@@ -272,9 +272,9 @@ component Lexy
   state commandError = ""
   mutation sent as shape CommandResult then afterCommand
   mutation primed as shape Primed then afterPrime
-  derive doors = filter(status.sections, s => s.category != "Other" and s.category != "Trip Details" and includes(s.section, "Door"))
-  derive unlockedDoors = length(filter(doors, d => length(filter(d.values, v => v == "Unlocked")) > 0))
-  derive lockedDoors = length(filter(doors, d => length(filter(d.values, v => v == "Locked")) > 0))
+  derive doors = status.sections.filter(s => s.category != "Other" and s.category != "Trip Details" and s.section.includes("Door"))
+  derive unlockedDoors = doors.filter(d => d.values.filter(v => v == "Unlocked").length > 0).length
+  derive lockedDoors = doors.filter(d => d.values.filter(v => v == "Locked").length > 0).length
   derive doorLock = unlockedDoors > 0 ? "unlocked" : (lockedDoors > 0 ? "locked" : "unknown")
   derive lockSettled = lockTarget == doorLock and (not lockChained or status.occurredMs > lockBaseline)
   derive lockPending = lockTarget != "" and not lockSettled
@@ -472,7 +472,7 @@ component Lexy
       restartStage = ""
       resending = false
       send felt = feel("impact-light")
-      if trim(email) == "" or password == ""
+      if email.trim() == "" or password == ""
         signError = "Enter your email and password."
       else
         signError = ""
@@ -527,7 +527,7 @@ component Lexy
           resending = false
         else
           if stepOf(n.tokenId, n.types, n.asksCode) == "username"
-            send named = authAnswer(previewScenario, n.raw, "NameCallback", trim(email))
+            send named = authAnswer(previewScenario, n.raw, "NameCallback", email.trim())
           else
             signError = "Lexus sent a response Lexy couldn't understand, so sign-in stopped. Lexus may be having a temporary problem, or may have changed how sign-in works. Try again in a moment, and check for a Lexy update if it keeps happening."
             restartStage = ""
@@ -569,7 +569,7 @@ component Lexy
             nodeTypes = n.types
             signInfo = (resending ? "Lexus sent a new code." : "")
           if stepOf(n.tokenId, n.types, n.asksCode) == "choice"
-            if length(n.choices) == 0
+            if n.choices.length == 0
               // A choice with nothing to choose is how the tree says "no such account".
               signError = signInError((restartStage != "" ? restartStage : "credentials"), 401, "")
               if restartStage == ""
@@ -580,7 +580,7 @@ component Lexy
               // Resend picks the method used last time, by its label;
               // gone from the list, the user chooses again.
               if lastChoice >= 0 and any(n.choices, lastChoiceLabel)
-                send chose = authChoose(previewScenario, n.raw, match first(filter(map(n.choices, (m, i) => m == lastChoiceLabel ? i : -1), i => i >= 0)) { case some(i) => i, case none => 0 })
+                send chose = authChoose(previewScenario, n.raw, match first(n.choices.map((m, i) => m == lastChoiceLabel ? i : -1).filter(i => i >= 0)) { case some(i) => i, case none => 0 })
               else
                 resending = false
                 restartStage = ""
@@ -594,7 +594,7 @@ component Lexy
     send felt = feel("impact-light")
     signError = ""
     lastChoice = index
-    lastChoiceLabel = join(filter(choices, (m, i) => i == index), "")
+    lastChoiceLabel = choices.filter((m, i) => i == index).join("")
     send chose = authChoose(previewScenario, nodeRaw, index)
   action afterChoice
     match chose
@@ -615,11 +615,11 @@ component Lexy
   action verify
     if not signingIn
       send felt = feel("impact-light")
-      if trim(code) == ""
+      if code.trim() == ""
         signError = "Enter the code Lexus sent you."
       else
         signError = ""
-        send verified = authAnswer(previewScenario, nodeRaw, otpCallback(nodeTypes), trim(code))
+        send verified = authAnswer(previewScenario, nodeRaw, otpCallback(nodeTypes), code.trim())
   action afterCode
     match verified
       case some(n)
@@ -938,14 +938,14 @@ component Lexy
     focus("name-input")
   // vehicle-name-screen.ios.tsx: only a real change, and not twice.
   action saveName
-    if trim(draftName) != "" and trim(draftName) != carName and not pending(renamed)
-      send renamed = rename(car, trim(draftName), time.epochAtZero + performanceNow())
+    if draftName.trim() != "" and draftName.trim() != carName and not pending(renamed)
+      send renamed = rename(car, draftName.trim(), time.epochAtZero + performanceNow())
   action afterRename
     match renamed
       case some(r)
         if r.ok
           send felt = feel("success")
-          savedName = trim(draftName)
+          savedName = draftName.trim()
           garageRev = garageRev + 1
           garageAt = clock
           nav = back(nav)
@@ -957,8 +957,8 @@ component Lexy
 
   view
     main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
-      when not shell
-        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
+      if not shell
+        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
       else
         // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
         // own navigation controller under a tab bar controller, and a tab
@@ -970,50 +970,50 @@ component Lexy
         // at level 1), the status line under it its subtitle, the Back button
         // UIKit's back button, the buttons after the heading its items.
         column flex=1 min-height=0 position="relative"
-          each t in nav.tabs key=t.name
+          for t in nav.tabs key=t.name
             column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
-              each e in t.stack key=e.id
+              for e in t.stack key=e.id
                 column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "large medium" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                   header display="flex" flex-direction="row" align-items="center" gap=8 padding-left=16 padding-right=16 padding-top=(e.name == "map" ? "8px" : "env(safe-area-inset-top)") padding-bottom=8 flex-shrink=0
-                    when e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
+                    if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/chevron.backward" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
                     column flex=1 min-width=0
                       text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Vehicle") : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName))) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="-exact-label"
-                    when e.name == "map"
+                    if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 object-fit="scale-down" width=20 height=20
-                    when e.name == "performance"
+                    if e.name == "performance"
                       button press=clearObserved testId="clear-performance" disabled=pending(observedCleared)
                         text "Clear" font-size=17
-                    when e.name == "login"
+                    if e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 object-fit="scale-down" width=22 height=20
-                  when e.name == "status"
+                  if e.name == "status"
                     StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), climateAnimates=(climateTouched or defrostHeld or tempHeld), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
-                  when e.name == "map"
+                  if e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
-                  when e.name == "specs"
+                  if e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
-                  when e.name == "settings"
+                  if e.name == "settings"
                     SettingsScreen(developer=developer.on, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
-                  when e.name == "updates"
+                  if e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
-                  when e.name == "dataState"
+                  if e.name == "dataState"
                     DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
-                  when e.name == "login"
-                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
-                  when e.name == "eas"
+                  if e.name == "login"
+                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
+                  if e.name == "eas"
                     EasScreen(open=openExternal)
-                  when e.name == "performance"
+                  if e.name == "performance"
                     PerformanceScreen(observed=observed, utcOffset=time.utcOffset)
-                  when e.name == "rename"
+                  if e.name == "rename"
                     RenameScreen(name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
         // The tab bar's items: a symbol over a label, the `-fill` symbol
         // when selected (tab-config.ts).
         row role="tablist" aria-label="Tabs" display="flex" flex-shrink=0 height=56 align-items="stretch" background-color="-exact-secondary-grouped-background"
-          each t in nav.tabs key=t.name
+          for t in nav.tabs key=t.name
             button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1 display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 color=(nav.tab == t.name ? "AccentColor" : "-exact-secondary-label")
               image (t.name == "status" ? "symbol:sf/car" : (t.name == "specs" ? "symbol:sf/list.bullet.rectangle" : "symbol:sf/gearshape")) width=26 height=22 object-fit="scale-down"
               text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) font-size=10 font-weight=500
