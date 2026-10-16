@@ -635,6 +635,7 @@ dependencies = [
  "exact-num",
  "exact-plan",
  "exact-route",
+ "serde_json",
  "sha2",
 ]
 
@@ -681,6 +682,7 @@ dependencies = [
  "exact-route",
  "exact-runner",
  "exact-textflow",
+ "serde_json",
 ]
 
 [[package]]
