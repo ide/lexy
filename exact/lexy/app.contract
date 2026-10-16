@@ -71,7 +71,15 @@ component Lexy
   // Until the session's first answer the app does not know whether anyone is
   // signed in: it shows the signed-in shell's skeleton, never a flash of the
   // sign-in screen (a signed-out answer carries its 401).
-  derive shell = account.signedIn or (account.status == 0 and account.error == "")
+  derive shell = not entering and (account.signedIn or (account.status == 0 and account.error == ""))
+  // A sign-in that has landed keeps the sign-in screen, its button busy,
+  // until what the dashboard opens on has arrived: the account, its car and
+  // the car's status (or why they did not). The car's name, picture and
+  // status then appear at once, never one after another.
+  state entering = false
+  derive entered = not pending(account) and (not account.signedIn or (not pending(garage) and not pending(status)))
+  task enter when entering and entered
+    after(1, finishEntering)
 
   // --- Clock -----------------------------------------------------------------
   // Contract's performanceNow() counts from the runner's zero; the epoch is time's.
@@ -125,7 +133,7 @@ component Lexy
   // The demo's server errors (Settings → Simulate Server Errors).
   state demoFailing = false
   mutation demoFailures as shape Done
-  derive signingIn = pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real)
+  derive signingIn = entering or pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real)
 
   // --- Vehicle data -------------------------------------------------------------
   state garageRev = 0
@@ -297,6 +305,11 @@ component Lexy
   derive shownOnline = (dataState == "offline-cached" or dataState == "offline-empty") ? false : (dataState == "live" or dataState == "loading" ? page.onLine : true)
   derive forcedLoading = dataState == "loading" or dataState == "offline-empty"
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
+  // The status answers with no car too (no VIN): that answer is not the car's.
+  derive statusAnswered = status.ok or status.status != 0 or status.error != ""
+  // The dashboard's first load, until both the car and its status are in: it
+  // shows the skeleton and a blank title, so they arrive together.
+  derive firstLoad = statusLoading and (shownGarage.car.vin == "" or not statusAnswered)
   // The Status hero (map, car, Last Parked) pulses gently while the app is
   // refreshing on its own and it has run a while. Nothing otherwise (a pull shows
   // its own spinner; a web page's load is the fetch the person asked for). Nothing before there is data, or signed out. Before
@@ -646,9 +659,7 @@ component Lexy
           code = ""
         if f.ok and previewScenario == ""
           sessionNoticeSeen = false
-          signStep = "credentials"
-          password = ""
-          code = ""
+          entering = true
           garageRev = garageRev + 1
           garageAt = time.epochAtZero + performanceNow()
           statusRev = statusRev + 1
@@ -671,7 +682,16 @@ component Lexy
     send developerSet = setDeveloperMode(on)
   action signOut
     send left = signOut()
+  // The dashboard has what it opens on: the sign-in screen goes, its fields
+  // cleared for the next sign-in.
+  action finishEntering
+    if entered
+      entering = false
+      signStep = "credentials"
+      password = ""
+      code = ""
   action afterSignOut
+    entering = false
     climateWritten = none
     primeOnLaunch = false
     primeOnSignIn = false
@@ -979,7 +999,7 @@ component Lexy
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/chevron.backward" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
                     column flex=1 min-width=0
-                      text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Vehicle") : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName))) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="-exact-label"
+                      text (e.name == "status" ? (firstLoad and shownOnline ? " " : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="-exact-label"
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 object-fit="scale-down" width=20 height=20
@@ -990,7 +1010,7 @@ component Lexy
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 object-fit="scale-down" width=22 height=20
                   if e.name == "status"
-                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), climateAnimates=(climateTouched or defrostHeld or tempHeld), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), climateAnimates=(climateTouched or defrostHeld or tempHeld), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
                   if e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
                   if e.name == "specs"

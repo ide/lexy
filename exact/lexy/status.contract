@@ -197,6 +197,8 @@ component StatusScreen
     heroDim: bool
     // Developer Tools' override: false leaves the map out entirely.
     loading: bool
+    // Until both the car and its status are in: the skeleton, not the cards.
+    firstLoad: bool
     notice: string
     clock: number
     checkedAt: number
@@ -299,9 +301,9 @@ component StatusScreen
             row testId="notice" class=Banner background-color=wash("-exact-system-blue")
               image "symbol:sf/checkmark.circle.fill" font-size=17 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=22
               text notice class=SmallBold color="-exact-system-blue" flex=1
-          // Until the first garage arrives: the cards' shapes, redacted, as
+          // Until the car and its status arrive: the cards' shapes, redacted, as
           // Lexy's skeleton (Redactable), never placeholder words.
-          if car.vin == "" and loading
+          if firstLoad
             // The big shapes where they will be: the hero's 265 (8 + 185 + 8 +
             // 48 + 16) with Last Parked, the fuel card, the controls' title
             // and row, More controls.
@@ -321,7 +323,7 @@ component StatusScreen
                   box flex=1 height=76 border-radius=18 background-color="-exact-secondary-grouped-background"
                   box flex=1 height=76 border-radius=18 background-color="-exact-secondary-grouped-background"
               column class=Card height=80
-          if car.vin != ""
+          if car.vin != "" and not firstLoad
             // Hero card (hero-card.ios.tsx): the car over its parked map.
             column class=Card testId="hero" opacity=(heroDim ? 0.6 : 1) transition="opacity 1000ms ease-in-out" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative"
               if status.ok and (status.latitude != 0 or status.longitude != 0)
