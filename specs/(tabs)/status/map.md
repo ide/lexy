@@ -77,7 +77,9 @@ Resolution (`resolveMapsProvider`, pure and unit-tested) produces one of:
   as a deliberate choice*, so installing a second app later still prompts.
 - **prompt** — several installed and no valid saved choice. Tapping presents a
   chooser titled "Open location in" listing the installed providers; the pick is
-  remembered and then opened immediately. The chooser supplies its own Cancel.
+  remembered and opened immediately. Saving the preference and opening the
+  location may run together; opening Maps does not wait for the storage write.
+  The chooser supplies its own Cancel.
 
 A saved preference for an app that is no longer installed is treated as unset
 and cleared from storage, so the setting genuinely reads unset and the user is
@@ -87,9 +89,11 @@ focus, since apps can be installed or deleted while the app is backgrounded.
 If the launch itself fails, an alert reads "Couldn't open \<app\>" — "The app
 didn't respond to the location link. It may have just been removed."
 
-The preference is stored in the same synchronous key-value store the query cache
-uses, so this screen and the Settings row can render the right label on first
-paint with no loading flash.
+The React Native app stores the preference in the same synchronous key-value
+store the query cache uses, so this screen and the Settings row can render the
+right label on first paint. The Exact build keeps the choice in app file storage
+and displays the just-picked provider while its write and re-read complete.
+If that write fails, it reports the failure when the app returns from Maps.
 
 ## Platform notes
 

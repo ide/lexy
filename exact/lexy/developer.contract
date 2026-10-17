@@ -49,9 +49,9 @@ shape Observed
   // reported them yet: TTI waits for the first settled frame).
   launch: string
   // That launch's marks: launch, TTR, then TTI.
-  latest: list<ObservedMetric>
-  metrics: list<ObservedMetric>
-  summary: list<ObservedSummary>
+  latest: ObservedMetric[]
+  metrics: ObservedMetric[]
+  summary: ObservedSummary[]
 
 // The pill: what was measured. TTR is the first frame; TTI the first frame
 // with nothing loading. A screen's TTR is cold for a new screen, warm for one
@@ -69,7 +69,7 @@ shape Delivery
   embeddedSeq: number
   staged: bool
   sunset: string
-  interpreted: list<string>
+  interpreted: string[]
   compatibilityId: string
 
 // data-state.ts DATA_STATE_OPTIONS, in display order.
@@ -111,7 +111,7 @@ component ChoiceRow
           text title font-size=17 color="-exact-label"
           text detail font-size=13 color="-exact-secondary-label"
         box width=20 height=20
-          when chosen
+          if chosen
             image "symbol:sf/checkmark" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
 
 // update-diagnostics-screen.ios.tsx, for Exact's update store: what is
@@ -144,21 +144,21 @@ component UpdatesScreen
             Divider()
             FactRow(label="Compatibility", value=(delivery.compatibilityId != "" ? delivery.compatibilityId : "—"), id="updates-compat")
             Divider()
-            FactRow(label="Interpreted", value=(length(delivery.interpreted) == 0 ? "None" : join(delivery.interpreted, ", ")), id="updates-interpreted")
+            FactRow(label="Interpreted", value=(delivery.interpreted.length == 0 ? "None" : delivery.interpreted.join(", ")), id="updates-interpreted")
           SectionFooter(words="A binary takes updates only from the stream its compatibility id names: a bundle built against other native code never reaches it.")
-        when delivery.sunset != ""
+        if delivery.sunset != ""
           column gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" testId="updates-sunset"
             text "This build is being retired" font-size=15 font-weight=600 color="-exact-system-orange"
             text delivery.sunset font-size=13 color="-exact-secondary-label"
         column
           SectionHeader(title="Actions")
           column class=Card
-            button text-align="left" press=check testId="updates-check" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=24 height=22
+            button text-align="left" press=check testId="updates-check" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+              image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor"
               text "Check for Update" font-size=17 color="AccentColor"
             Divider()
-            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:sf/arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label") object-fit="scale-down" width=24 height=22
+            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+              image "symbol:sf/arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
               text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
           SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
 
@@ -194,7 +194,7 @@ component DataStateScreen
         column
           SectionHeader(title="Persisted State")
           column class=Card
-            button text-align="left" press=clearMaps disabled=(provider == "") testId="clear-maps" -exact-apple-button-style="plain" padding=16 display="flex"
+            button text-align="left" press=clearMaps disabled=(provider == "") testId="clear-maps" padding=16 display="flex"
               column gap=2 align-items="flex-start"
                 text "Clear Maps provider" font-size=17 color=(provider == "" ? "-exact-tertiary-label" : "-exact-system-red")
                 text (provider == "" ? "No saved provider" : `Currently ${mapsName(provider)}`) font-size=13 color="-exact-secondary-label"
@@ -216,7 +216,7 @@ component LoginPreviewScreen
     busy: bool
     resending: bool
     info: string
-    choices: list<string>
+    choices: string[]
     prompt: string
     method: string
     setEmail: action
@@ -243,16 +243,16 @@ component LoginPreviewScreen
             text scenarioTitle("wrong-code")
           button press=chooseScenario("network-error") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-network-error"
             text scenarioTitle("network-error")
-      when not done
+      if not done
         column flex=1 min-height=0
           LockScreen(step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
-      when done
+      if done
         column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
           image "symbol:sf/checkmark.seal.fill" font-size=56 -exact-tint-color="-exact-system-green"
           text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
           text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
           text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
-          button press=runAgain testId="run-again" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
+          button press=runAgain testId="run-again" buttonStyle="filled" accent-color="AccentColor" height=50 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
             text "Run Again" font-size=17 font-weight=600 color="#ffffff"
 
 // eas-screen.ios.tsx: the project's pages on expo.dev, in Safari, where the
@@ -304,7 +304,7 @@ component MetricRow
     row padding-left=16 padding-right=16 padding-top=10 padding-bottom=10 justify-content="space-between" align-items="center" gap=12
       column flex=1 min-width=0 gap=4
         row align-items="center" gap=8
-          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "-exact-system-green" : (metricPill(name) == "WARM TTR" ? "-exact-system-orange" : (includes(metricPill(name), "TTR") ? "-exact-system-blue" : "-exact-secondary-label"))) background-color="-exact-tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=4 padding-bottom=4 text-box="trim-both cap alphabetic" flex-shrink=0
+          text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "-exact-system-green" : (metricPill(name) == "WARM TTR" ? "-exact-system-orange" : (metricPill(name).includes("TTR") ? "-exact-system-blue" : "-exact-secondary-label"))) background-color="-exact-tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=4 padding-bottom=4 text-box="trim-both cap alphabetic" flex-shrink=0
           text metricWhere(name, route) font-family="ui-monospace" font-size=15 flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
         text detail font-size=13 color="-exact-secondary-label"
       text value testId=id font-size=17 color="-exact-secondary-label" flex-shrink=0
@@ -319,48 +319,48 @@ component PerformanceScreen
   view
     scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 gap=24
-        when not observed.ok
+        if not observed.ok
           SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
-        when observed.ok and length(observed.latest) == 0 and length(observed.summary) == 0 and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) == 0
+        if observed.ok and observed.latest.length == 0 and observed.summary.length == 0 and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length == 0
           SectionFooter(words="Nothing recorded yet. Open a screen or relaunch the app.")
-        when observed.ok and length(observed.latest) > 0
+        if observed.ok and observed.latest.length > 0
           column
             SectionHeader(title=(observed.launch == observed.session ? "This Launch" : "Last Launch"))
             column class=Card
-              each m, i in observed.latest key=`${m.name}-${m.time}`
+              for m, i in observed.latest key=`${m.name}-${m.time}`
                 // A long press copies the whole metric, every detail line too.
                 column user-select="text"
-                  when i > 0
+                  if i > 0
                     Divider()
                   MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
-                  when m.fromStart != ""
+                  if m.fromStart != ""
                     text m.fromStart font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  when m.phases != ""
+                  if m.phases != ""
                     text `Phases: ${m.phases}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  when m.items != ""
+                  if m.items != ""
                     text `Held by (ms from process start): ${m.items}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  when m.changes != ""
+                  if m.changes != ""
                     text `Still changing: ${m.changes}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  when m.trace != ""
+                  if m.trace != ""
                     text `Waited on: ${m.trace}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=12
-        when observed.ok and length(filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation")) > 0
+        if observed.ok and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length > 0
           column
             SectionHeader(title="Screens")
             column class=Card
-              each m, i in filter(observed.metrics, (m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
+              for m, i in observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
                 column user-select="text"
-                  when i > 0
+                  if i > 0
                     Divider()
                   MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
-                  when m.steps != ""
+                  if m.steps != ""
                     text m.steps font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=10
-        when observed.ok and length(observed.summary) > 0
+        if observed.ok and observed.summary.length > 0
           column
             SectionHeader(title="Median")
             column class=Card
-              each s, i in observed.summary key=s.name
+              for s, i in observed.summary key=s.name
                 column
-                  when i > 0
+                  if i > 0
                     Divider()
                   MetricRow(name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), id=`perf-median-${s.name}`)
-            SectionFooter(words=`${length(filter(observed.metrics, (m, i) => m.sent))} of ${length(observed.metrics)} sent to Observe.`)
+            SectionFooter(words=`${observed.metrics.filter((m, i) => m.sent).length} of ${observed.metrics.length} sent to Observe.`)

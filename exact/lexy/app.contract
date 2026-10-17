@@ -64,14 +64,14 @@ component Lexy
   // Whether the user has moved on from a dead session's explanation (by
   // signing in again), as auth-context.tsx clears it on submit.
   state sessionNoticeSeen = false
-  resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account
+  resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account else empty()
   // Until the session's first answer the app does not know whether anyone is
   // signed in: it shows the signed-in shell's skeleton, never a flash of the
   // sign-in screen (a signed-out answer carries its 401).
   derive shell = account.signedIn or (account.status == 0 and account.error == "")
 
   // --- Clock -----------------------------------------------------------------
-  // Contract's now() counts from the runner's zero; the epoch is time's.
+  // Contract's performanceNow() counts from the runner's zero; the epoch is time's.
   state clock = 0
   task ticker mount
     every(5000, tick)
@@ -214,10 +214,11 @@ component Lexy
   state mapsRev = 0
   // The app just picked, shown at once while it is saved and re-read.
   state mapsPicked = ""
+  state mapsSaveError = ""
   // The app last asked to open the location, for its failure's alert.
   state mapsTried = ""
   resource mapsApp = mapsApp() with mapsRev as shape MapsApp
-  mutation mapsChosen as shape MapsApp refreshes mapsApp
+  mutation mapsChosen as shape MapsApp refreshes mapsApp then afterMapsChosen
   mutation opened as shape Opened
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
@@ -251,9 +252,9 @@ component Lexy
   state commandError = ""
   mutation sent as shape CommandResult then afterCommand
   mutation primed as shape Primed then afterPrime
-  derive doors = filter(status.sections, s => s.category != "Other" and s.category != "Trip Details" and includes(s.section, "Door"))
-  derive unlockedDoors = length(filter(doors, d => length(filter(d.values, v => v == "Unlocked")) > 0))
-  derive lockedDoors = length(filter(doors, d => length(filter(d.values, v => v == "Locked")) > 0))
+  derive doors = status.sections.filter(s => s.category != "Other" and s.category != "Trip Details" and s.section.includes("Door"))
+  derive unlockedDoors = doors.filter(d => d.values.filter(v => v == "Unlocked").length > 0).length
+  derive lockedDoors = doors.filter(d => d.values.filter(v => v == "Locked").length > 0).length
   derive doorLock = unlockedDoors > 0 ? "unlocked" : (lockedDoors > 0 ? "locked" : "unknown")
   derive lockSettled = lockTarget == doorLock and (not lockChained or status.occurredMs > lockBaseline)
   derive lockPending = lockTarget != "" and not lockSettled
@@ -296,17 +297,17 @@ component Lexy
     // An action reads the state it started with, so this is the time
     // itself, not `clock` (still 0 here). The launch's asks need nothing
     // from here: an `…At` of 0 asks at the launch's own time (below).
-    clock = time.epochAtZero + now()
-    lastTick = time.epochAtZero + now()
+    clock = time.epochAtZero + performanceNow()
+    lastTick = time.epochAtZero + performanceNow()
     autoRefresh = account.signedIn and car.vin != ""
     updatingSlow = false
     if account.signedIn and car.vin != ""
       send waited = pause(1500)
     // Ask the car to report as soon as the app starts with an old snapshot.
     // The source waits for the data module if it is still loading.
-    if account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + now() - status.fetchedMs >= 900000 and not pending(primed)
-      lastPrimeAt = time.epochAtZero + now()
-      send primed = prime(car, time.epochAtZero + now())
+    if account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and not pending(primed)
+      lastPrimeAt = time.epochAtZero + performanceNow()
+      send primed = prime(car, time.epochAtZero + performanceNow())
 
   action afterWait
     updatingSlow = updating
@@ -334,21 +335,21 @@ component Lexy
       resumeDue = true
       // A foreground return has its own event, so begin the refresh here
       // instead of waiting for the next five-second reconciliation tick.
-      if lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+      if lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
         resumeDue = false
-        if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
-          lastPrimeAt = time.epochAtZero + now()
+        if time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
+          lastPrimeAt = time.epochAtZero + performanceNow()
           autoRefresh = true
           updatingSlow = false
-          send primed = prime(car, time.epochAtZero + now())
+          send primed = prime(car, time.epochAtZero + performanceNow())
         else
-          if time.epochAtZero + now() - status.fetchedMs >= 60000
+          if time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
             autoRefresh = true
             updatingSlow = false
             statusRev = statusRev + 1
-            statusAt = time.epochAtZero + now()
+            statusAt = time.epochAtZero + performanceNow()
   action tick
-    clock = time.epochAtZero + now()
+    clock = time.epochAtZero + performanceNow()
     if autoRefresh and not (pending(status) or pending(primed) or pending(garage))
       autoRefresh = false
     if pulling and not (pending(primed) or pending(status) or pending(garage))
@@ -367,13 +368,13 @@ component Lexy
     if account.signedIn and not pending(account)
       // A refresh that failed (offline) is tried again after 15 s, not
       // every tick.
-      if (time.epochAtZero + now() > account.expiresAt - 60000 and (account.error == "" or time.epochAtZero + now() - sessionAt > 15000)) or (garage.status == 401 and not retried)
+      if (time.epochAtZero + performanceNow() > account.expiresAt - 60000 and (account.error == "" or time.epochAtZero + performanceNow() - sessionAt > 15000)) or (garage.status == 401 and not retried)
         retried = garage.status == 401
         sessionRev = sessionRev + 1
-        sessionAt = time.epochAtZero + now()
+        sessionAt = time.epochAtZero + performanceNow()
       if garage.ok
         retried = false
-    if notice != "" and time.epochAtZero + now() - noticeAt > 6000
+    if notice != "" and time.epochAtZero + performanceNow() - noticeAt > 6000
       notice = ""
     if lockTarget != "" and not pending(status) and not pending(sent)
       if lockSettled
@@ -397,24 +398,24 @@ component Lexy
     // resume-refresh.ts: back from the background, data
     // under a minute old stays; older is re-read; past fifteen minutes the
     // car is asked to report first (at most every three minutes).
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and not account.signedIn
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and not account.signedIn
       resumeDue = false
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and account.signedIn and (pending(account) or time.epochAtZero + now() > account.expiresAt - 60000)
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and account.signedIn and (pending(account) or time.epochAtZero + performanceNow() > account.expiresAt - 60000)
       resumeDue = true
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
       resumeDue = false
-      if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
-        lastPrimeAt = time.epochAtZero + now()
+      if time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
+        lastPrimeAt = time.epochAtZero + performanceNow()
         autoRefresh = true
         updatingSlow = false
       else
-        if time.epochAtZero + now() - status.fetchedMs >= 60000
+        if time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
           autoRefresh = true
           updatingSlow = false
           statusRev = statusRev + 1
-          statusAt = time.epochAtZero + now()
+          statusAt = time.epochAtZero + performanceNow()
     // Back from the background: maps apps may have come or gone.
-    if lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible"
+    if lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible"
       mapsRev = mapsRev + 1
     // Seen hidden at this tick: the next tick that sees the page again is
     // a return to the foreground, however the clock moved meanwhile (a
@@ -422,15 +423,15 @@ component Lexy
     // One send of each, from the conditions above (LLP 1016 D5): asking
     // the car to report, and the wait before the hero pulses.
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
-    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
-    let primeResume = resumes and time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
-    let rereads = resumes and time.epochAtZero + now() - status.fetchedMs >= 60000
+    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
+    let primeResume = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
+    let rereads = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
     if primeLock or primeResume
-      send primed = prime(car, time.epochAtZero + now())
+      send primed = prime(car, time.epochAtZero + performanceNow())
     if rereads
       send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
-    lastTick = time.epochAtZero + now()
+    lastTick = time.epochAtZero + performanceNow()
 
   // Sign-in: one press walks start → email → password, then lands on the
   // delivery-method choice or the code, as the tree decides.
@@ -454,7 +455,7 @@ component Lexy
       restartStage = ""
       resending = false
       send felt = feel("impact-light")
-      if trim(email) == "" or password == ""
+      if email.trim() == "" or password == ""
         signError = "Enter your email and password."
       else
         signError = ""
@@ -509,7 +510,7 @@ component Lexy
           resending = false
         else
           if stepOf(n.tokenId, n.types, n.asksCode) == "username"
-            send named = authAnswer(previewScenario, n.raw, "NameCallback", trim(email))
+            send named = authAnswer(previewScenario, n.raw, "NameCallback", email.trim())
           else
             signError = "Lexus sent a response the app couldn't understand, so sign-in couldn't continue. Their service may be having a hiccup. Try again in a moment, and update Lexy if it keeps happening."
             restartStage = ""
@@ -544,14 +545,14 @@ component Lexy
             restartStage = ""
             resending = false
           if stepOf(n.tokenId, n.types, n.asksCode) == "complete"
-            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + now())
+            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + performanceNow())
           if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
             signStep = "otp"
             nodeRaw = n.raw
             nodeTypes = n.types
             signInfo = (resending ? "Lexus sent a new code." : "")
           if stepOf(n.tokenId, n.types, n.asksCode) == "choice"
-            if length(n.choices) == 0
+            if n.choices.length == 0
               // A choice with nothing to choose is how the tree says "no such account".
               signError = signInError((restartStage != "" ? restartStage : "credentials"), 401, "")
               if restartStage == ""
@@ -562,7 +563,7 @@ component Lexy
               // Resend picks the method used last time, by its label;
               // gone from the list, the user chooses again.
               if lastChoice >= 0 and any(n.choices, lastChoiceLabel)
-                send chose = authChoose(previewScenario, n.raw, match first(filter(map(n.choices, (m, i) => m == lastChoiceLabel ? i : -1), i => i >= 0)) { case some(i) => i, case none => 0 })
+                send chose = authChoose(previewScenario, n.raw, match first(n.choices.map((m, i) => m == lastChoiceLabel ? i : -1).filter(i => i >= 0)) { case some(i) => i, case none => 0 })
               else
                 resending = false
                 restartStage = ""
@@ -576,7 +577,7 @@ component Lexy
     send felt = feel("impact-light")
     signError = ""
     lastChoice = index
-    lastChoiceLabel = join(filter(choices, (m, i) => i == index), "")
+    lastChoiceLabel = choices.filter((m, i) => i == index).join("")
     send chose = authChoose(previewScenario, nodeRaw, index)
   action afterChoice
     match chose
@@ -597,11 +598,11 @@ component Lexy
   action verify
     if not signingIn
       send felt = feel("impact-light")
-      if trim(code) == ""
+      if code.trim() == ""
         signError = "Enter the code we sent you."
       else
         signError = ""
-        send verified = authAnswer(previewScenario, nodeRaw, otpCallback(nodeTypes), trim(code))
+        send verified = authAnswer(previewScenario, nodeRaw, otpCallback(nodeTypes), code.trim())
   action afterCode
     match verified
       case some(n)
@@ -609,7 +610,7 @@ component Lexy
           signError = signInError("otp", n.status, n.error)
         else
           if n.tokenId != ""
-            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + now())
+            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + performanceNow())
           else
             // Some trees ask twice; answer the next prompt the same way.
             nodeRaw = n.raw
@@ -632,10 +633,10 @@ component Lexy
           password = ""
           code = ""
           garageRev = garageRev + 1
-          garageAt = time.epochAtZero + now()
+          garageAt = time.epochAtZero + performanceNow()
           statusRev = statusRev + 1
-          statusAt = time.epochAtZero + now()
-          engineAt = time.epochAtZero + now()
+          statusAt = time.epochAtZero + performanceNow()
+          engineAt = time.epochAtZero + performanceNow()
           nav = open(nav, "/")
         if not f.ok
           signError = signInError("otp", f.status, f.error)
@@ -650,11 +651,15 @@ component Lexy
   action afterSignOut
     climateWritten = none
     autoRefresh = false
+    previewScenario = ""
+    previewDone = false
     signStep = "credentials"
     email = ""
     password = ""
     code = ""
     signError = ""
+    signInfo = ""
+    lastChoice = -1
     lockTarget = ""
     engineTarget = ""
     garageRev = garageRev + 1
@@ -669,11 +674,11 @@ component Lexy
   action pullRefresh
     pulling = true
     if car.vin != ""
-      lastPrimeAt = time.epochAtZero + now()
-      send primed = prime(car, time.epochAtZero + now())
+      lastPrimeAt = time.epochAtZero + performanceNow()
+      send primed = prime(car, time.epochAtZero + performanceNow())
     else
       statusRev = statusRev + 1
-      statusAt = time.epochAtZero + now()
+      statusAt = time.epochAtZero + performanceNow()
     garageRev = garageRev + 1
     climateRev = climateRev + 1
     climateWritten = none
@@ -681,7 +686,7 @@ component Lexy
   // stamp the read before the report it asked for.
   action afterPrime
     statusRev = statusRev + 1
-    statusAt = time.epochAtZero + now()
+    statusAt = time.epochAtZero + performanceNow()
   action reloadGarage
     pulling = true
     garageRev = garageRev + 1
@@ -730,8 +735,8 @@ component Lexy
       enginePrev = engineTarget
       engineTarget = (command == "engine-start" ? "running" : "stopped")
       enginePolls = 0
-      engineAt = time.epochAtZero + now()
-    send sent = command(car, command, time.epochAtZero + now())
+      engineAt = time.epochAtZero + performanceNow()
+    send sent = command(car, command, time.epochAtZero + performanceNow())
   action afterCommand
     match sent
       case some(c)
@@ -740,14 +745,14 @@ component Lexy
         if c.ok and c.returnCode == "000000"
           // Re-read as of now: `clock` is the last tick's, up to 5 s old.
           statusRev = statusRev + 1
-          statusAt = time.epochAtZero + now()
+          statusAt = time.epochAtZero + performanceNow()
           if c.command == "door-lock" or c.command == "door-unlock"
             lockPolls = 0
           if c.command == "hazard-on" or c.command == "hazard-off"
             hazardsOn = c.command == "hazard-on"
           if c.command == "engine-start" or c.command == "engine-stop"
             enginePolls = 0
-            engineAt = time.epochAtZero + now()
+            engineAt = time.epochAtZero + performanceNow()
         else
           if c.command == "door-lock" or c.command == "door-unlock"
             lockTarget = lockPrev
@@ -758,6 +763,7 @@ component Lexy
         notice = ""
   action openMap
     opened = none
+    mapsSaveError = ""
     mapsRev = mapsRev + 1
     send felt = feel("selection")
     nav = push(nav, "/map")
@@ -769,12 +775,23 @@ component Lexy
     send opened = openMaps(provider, status.latitude, status.longitude, vehicleName(car.nickName, car.modelName))
   action pickAndOpen(provider: string)
     mapsTried = provider
-    send opened = openMaps(provider, status.latitude, status.longitude, vehicleName(car.nickName, car.modelName))
+    mapsPicked = provider
+    mapsSaveError = ""
     send mapsChosen = setMapsApp(provider)
+    send opened = openMaps(provider, status.latitude, status.longitude, vehicleName(car.nickName, car.modelName))
+  action afterMapsChosen
+    match mapsChosen
+      case some(choice)
+        if choice.provider != mapsPicked
+          mapsSaveError = "The Maps app choice was unavailable. Choose another app to retry."
+      case none
+        mapsSaveError = "The Maps app choice could not be saved. Choose it again to retry."
   action dismissOpenError
     opened = none
+    mapsSaveError = ""
   action chooseMaps(provider: string)
     mapsPicked = provider
+    mapsSaveError = ""
     send mapsChosen = setMapsApp(provider)
   action manageSubscriptions
     send felt = feel("impact-light")
@@ -788,7 +805,7 @@ component Lexy
   action setClimateOn(on: bool)
     climateWanted = on
     climateTouched = true
-    send climateSaved = setClimate(car, climate.raw, on, shownTemperature, shownFront, shownRear, time.epochAtZero + now())
+    send climateSaved = setClimate(car, climate.raw, on, shownTemperature, shownFront, shownRear, time.epochAtZero + performanceNow())
   action dragTemperature(value: number)
     tempDraft = value
     tempHeld = true
@@ -800,7 +817,7 @@ component Lexy
     else
       tempHeld = true
       tempSaving = true
-      send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + now())
+      send climateSaved = setClimate(car, climate.raw, shownClimateOn, value, shownFront, shownRear, time.epochAtZero + performanceNow())
   // Not while a climate change is written or read back. The buttons stay
   // as they are meanwhile (dimming them on every save of the switch or the
   // temperature flickered), and a press then does nothing.
@@ -811,7 +828,7 @@ component Lexy
       defrostRear = (which == "rear" ? not shownRear : shownRear)
       defrostHeld = true
       // The values, not the states just set: an action reads state as it began.
-      send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + now())
+      send climateSaved = setClimate(car, climate.raw, shownClimateOn, shownTemperature, (which == "front" ? not shownFront : shownFront), (which == "rear" ? not shownRear : shownRear), time.epochAtZero + performanceNow())
 
   // Performance's Clear: hides what is recorded so far (Observe still sends it).
   action clearObserved()
@@ -846,6 +863,8 @@ component Lexy
     dataState = kind
   action clearMaps
     send felt = feel("impact-medium")
+    mapsPicked = ""
+    mapsSaveError = ""
     send mapsChosen = setMapsApp("")
   action chooseScenario(id: string)
     send felt = feel("selection")
@@ -864,33 +883,6 @@ component Lexy
     signError = ""
     signInfo = ""
     lastChoice = -1
-  // The Login Flow's back: the real sign-in owns the machine again.
-  action leavePreview
-    previewScenario = ""
-    previewDone = false
-    signStep = "credentials"
-    email = ""
-    password = ""
-    code = ""
-    signError = ""
-    signInfo = ""
-    lastChoice = -1
-    nav = back(nav)
-  // UIKit's back button, its long-press menu, the swipe, a sheet pulled
-  // down, the browser's Back: the platform took the person back to the route
-  // keyed `entry`, however many screens that was (exact2 LLP 1035.001.000).
-  action returnTo(entry: string)
-    if top(nav).name == "login"
-      previewScenario = ""
-      previewDone = false
-      signStep = "credentials"
-      email = ""
-      password = ""
-      code = ""
-      signError = ""
-      signInfo = ""
-      lastChoice = -1
-    nav = backTo(nav, entry)
   action openExternal(url: string)
     send felt = feel("selection")
     openURL(url)
@@ -901,8 +893,14 @@ component Lexy
     if name == "settings"
       mapsRev = mapsRev + 1
   action back
+    if top(nav).name == "login"
+      previewScenario = ""
+      previewDone = false
     nav = back(nav)
   action followLink(url: string)
+    if top(nav).name == "login" and url != "/settings/login"
+      previewScenario = ""
+      previewDone = false
     nav = go(nav, url)
   action editName
     // vehicle-mapping.ts: no nickname reads as the model's name.
@@ -918,8 +916,8 @@ component Lexy
     focus("name-input")
   // vehicle-name-screen.ios.tsx: only a real change, and not twice.
   action saveName
-    if trim(draftName) != "" and trim(draftName) != vehicleName(car.nickName, car.modelName) and not pending(renamed)
-      send renamed = rename(car, trim(draftName), time.epochAtZero + now())
+    if draftName.trim() != "" and draftName.trim() != vehicleName(car.nickName, car.modelName) and not pending(renamed)
+      send renamed = rename(car, draftName.trim(), time.epochAtZero + performanceNow())
   action afterRename
     match renamed
       case some(r)
@@ -935,13 +933,10 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink traverse=returnTo viewport-fit="cover" width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
-      when not shell
-        LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""))
+    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
+      if not shell
+        LockScreen(step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
       else
-        // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
-        // own navigation controller under a tab bar controller, and a tab
-        // bar tap is the navigator's `tabselect` (tab-config.ts items).
         // Every tab keeps its own stack (nav.tabs) in its tabpanel: UIKit
         // holds each in its own navigation controller under a tab bar
         // controller, whose items are the tablist below (exact2 LLP 1075.003
@@ -949,50 +944,50 @@ component Lexy
         // at level 1), the status line under it its subtitle, the Back button
         // UIKit's back button, the buttons after the heading its items.
         column flex=1 min-height=0 position="relative"
-          each t in nav.tabs key=t.name
+          for t in nav.tabs key=t.name
             column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
-              each e in t.stack key=e.id
-                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "large medium" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+              for e in t.stack key=e.id
+                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                   header display="flex" flex-direction="row" align-items="center" gap=8 padding-left=16 padding-right=16 padding-top=(e.name == "map" ? "8px" : "env(safe-area-inset-top)") padding-bottom=8 flex-shrink=0
-                    when e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
+                    if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/chevron.backward" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
                     column flex=1 min-width=0
-                      text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Vehicle") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="-exact-label"
-                    when e.name == "map"
+                      text (e.name == "status" ? (shownGarage.car.vin == "" ? (statusLoading and shownOnline ? " " : "My Vehicle") : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="-exact-label"
+                    if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/xmark" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
-                    when e.name == "performance"
+                    if e.name == "performance"
                       button press=clearObserved testId="clear-performance" disabled=pending(observedCleared)
                         text "Clear" font-size=17 color="AccentColor"
-                    when e.name == "login"
+                    if e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:sf/wrench.and.screwdriver" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=22 height=20
-                  when e.name == "status"
+                  if e.name == "status"
                     StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateSaving=pending(climateSaved), climateAnimates=(climateTouched or defrostHeld or tempHeld), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
-                  when e.name == "map"
-                    MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
-                  when e.name == "specs"
+                  if e.name == "map"
+                    MapSheet(status=status, name=vehicleName(car.nickName, car.modelName), address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=(pending(opened) or pending(mapsChosen)), error=(mapsSaveError != "" ? mapsSaveError : match opened { case some(o) => o.error, case none => "" }), saveError=(mapsSaveError != ""), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
+                  if e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
-                  when e.name == "settings"
+                  if e.name == "settings"
                     SettingsScreen(openDevTool=openDevTool, car=car, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=((pending(mapsChosen) or pending(mapsApp)) and mapsPicked != "" ? mapsPicked : mapsApp.provider), apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
-                  when e.name == "updates"
+                  if e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
-                  when e.name == "dataState"
+                  if e.name == "dataState"
                     DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
-                  when e.name == "login"
-                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? join(filter(choices, (m, i) => i == lastChoice), "") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
-                  when e.name == "eas"
+                  if e.name == "login"
+                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
+                  if e.name == "eas"
                     EasScreen(open=openExternal)
-                  when e.name == "performance"
+                  if e.name == "performance"
                     PerformanceScreen(observed=observed, utcOffset=time.utcOffset)
-                  when e.name == "rename"
+                  if e.name == "rename"
                     RenameScreen(name=draftName, saved=vehicleName(car.nickName, car.modelName), saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
         // The tab bar's items: a symbol over a label, the `-fill` symbol
         // when selected (tab-config.ts).
         row role="tablist" aria-label="Tabs" display="flex" flex-shrink=0 height=56 align-items="stretch" background-color="-exact-secondary-grouped-background"
-          each t in nav.tabs key=t.name
+          for t in nav.tabs key=t.name
             button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1 display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 color=(nav.tab == t.name ? "AccentColor" : "-exact-secondary-label")
               image (t.name == "status" ? "symbol:sf/car" : (t.name == "specs" ? "symbol:sf/list.bullet.rectangle" : "symbol:sf/gearshape")) width=26 height=22 object-fit="scale-down"
               text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) font-size=10 font-weight=500

@@ -38,11 +38,11 @@ shape AuthNode
   error: string
   raw: string
   tokenId: string
-  types: list<string>
-  prompts: list<string>
+  types: string[]
+  prompts: string[]
   // The prompts name a code (lexus-auth.ts's test, matched in the source).
   asksCode: bool
-  choices: list<string>
+  choices: string[]
 
 shape Done
   ok: bool
@@ -66,21 +66,21 @@ shape Car
   fuelType: string
   grade: string
   modelCode: string
-  capabilities: list<string>
+  capabilities: string[]
 
 shape Garage
   ok: bool
   status: number
   error: string
   car: Car
-  cars: list<Car>
+  cars: Car[]
 
 // One section of the status snapshot's vehicleStatus tree ("Driver Side" /
 // "Rear Door" / ["Closed", "Locked"]).
 shape Section
   category: string
   section: string
-  values: list<string>
+  values: string[]
   // When its oldest shown reading was observed (a sparse snapshot leaves
   // windows and openings at an earlier one).
   at: number
@@ -102,7 +102,7 @@ shape Status
   longitude: number
   tripA: number
   tripB: number
-  sections: list<Section>
+  sections: Section[]
   // The oldest doors-and-windows reading older than this snapshot, or 0.
   closuresStaleMs: number
 
@@ -115,7 +115,7 @@ shape Tires
   ok: bool
   status: string
   unit: string
-  tires: list<Tire>
+  tires: Tire[]
 
 shape Engine
   ok: bool
@@ -129,7 +129,7 @@ shape SpecItem
 
 shape Spec
   ok: bool
-  items: list<SpecItem>
+  items: SpecItem[]
 
 shape Service
   bucket: string
@@ -139,7 +139,7 @@ shape Service
 
 shape Services
   ok: bool
-  items: list<Service>
+  items: Service[]
 
 shape CommandResult
   ok: bool
@@ -188,16 +188,16 @@ shape Primed
 
 // --- Sign-in (src/auth/lexus-auth.ts classifyAuthenticationNode) ---------------
 
-fn any(values: list<string>, value: string): bool = length(filter(values, v => v == value)) > 0
+fn any(values: string[], value: string): bool = values.filter(v => v == value).length > 0
 
 // Whether the prompts name a code is decided in the source, with Lexy's own
 // case-insensitive test (/\botp\b|one[ -]?time password|verification code/i):
 // Contract has no regex or case folding, and a hand-listed set of casings
 // missed ForgeRock's "One Time Password", so choosing email or SMS read the
 // code step as a password step and failed.
-fn stepOf(tokenId: string, types: list<string>, asksCode: bool): string = tokenId != "" ? "complete" : (any(types, "NameCallback") ? "username" : (asksCode ? "otp" : (any(types, "PasswordCallback") ? "password" : (any(types, "TextInputCallback") ? "otp" : "choice"))))
+fn stepOf(tokenId: string, types: string[], asksCode: bool): string = tokenId != "" ? "complete" : (any(types, "NameCallback") ? "username" : (asksCode ? "otp" : (any(types, "PasswordCallback") ? "password" : (any(types, "TextInputCallback") ? "otp" : "choice"))))
 
-fn otpCallback(types: list<string>): string = any(types, "TextInputCallback") ? "TextInputCallback" : "PasswordCallback"
+fn otpCallback(types: string[]): string = any(types, "TextInputCallback") ? "TextInputCallback" : "PasswordCallback"
 
 // src/auth/sign-in-error.ts: what happened, why, and what to do next, by
 // the step that failed (credentials, choice, otp, resend).
@@ -208,7 +208,7 @@ fn signInError(stage: string, status: number, error: string): string = status ==
 // load-error.ts classifyFailure / describeFailure: what kind of failure a
 // read was, then a short summary (the "Couldn't refresh" banner) or the
 // cause and what to do (the full-screen error).
-fn failureKind(status: number, error: string): string = status == 401 and includes(error, "expired") ? "session" : (status == 401 or status == 403 ? "permission" : (status >= 500 ? "server" : (status >= 400 ? "client" : (status == 0 and (includes(error, "etwork") or includes(error, "offline") or includes(error, "onnection") or includes(error, "nternet") or includes(error, "timed out") or includes(error, "Couldn’t reach")) ? "network" : "unknown"))))
+fn failureKind(status: number, error: string): string = status == 401 and error.includes("expired") ? "session" : (status == 401 or status == 403 ? "permission" : (status >= 500 ? "server" : (status >= 400 ? "client" : (status == 0 and (error.includes("etwork") or error.includes("offline") or error.includes("onnection") or error.includes("nternet") or error.includes("timed out") or error.includes("Couldn’t reach")) ? "network" : "unknown"))))
 fn failureSummary(status: number, error: string): string = failureKind(status, error) == "permission" ? "Lexus denied access (a permission problem)." : (failureKind(status, error) == "server" ? "The Lexus service had a server error." : (failureKind(status, error) == "client" ? "Lexus rejected the request (a client error)." : (failureKind(status, error) == "network" ? "The network connection failed." : (failureKind(status, error) == "session" ? "Your Lexus session expired." : "Something unexpected went wrong."))))
 fn failureAdvice(status: number, error: string): string = failureKind(status, error) == "permission" ? "Lexus denied access to your vehicle's data. Try signing out and back in." : (failureKind(status, error) == "server" ? "The Lexus service ran into a server error. It usually recovers on its own — try again in a bit." : (failureKind(status, error) == "client" ? "The Lexus service rejected the app's request. Try again, and update the app if it keeps happening." : (failureKind(status, error) == "network" ? "The network connection failed. Check your connection and try again." : (failureKind(status, error) == "session" ? "Your Lexus session expired. Please sign in again." : "Something unexpected went wrong. Please try again."))))
 fn failureText(status: number, error: string): string = status == 0 ? "Couldn’t reach Lexus. Check your connection and try again." : (status >= 500 ? "Lexus is having trouble right now. Try again in a moment." : (error != "" ? error : `Something went wrong (${status}).`))
@@ -217,7 +217,7 @@ fn failureText(status: number, error: string): string = status == 0 ? "Couldn’
 
 fn vehicleName(nick: string, model: string): string = nick != "" ? nick : (model != "" ? model : "My Vehicle")
 
-fn can(capabilities: list<string>, flag: string): bool = any(capabilities, flag)
+fn can(capabilities: string[], flag: string): bool = any(capabilities, flag)
 
 // src/data/vehicle-mapping.ts FUEL_TYPES and HEAD_UNITS.
 fn fuelName(code: string): string = code == "G" ? "Gasoline" : (code == "H" ? "Hybrid" : (code == "E" ? "Electric" : ((code == "P" or code == "L") ? "Plug-in Hybrid" : (code == "F" ? "Fuel Cell" : (code == "" ? "Gasoline" : code)))))
@@ -225,12 +225,12 @@ fn headUnit(generation: string): string = generation == "21MM" ? "Lexus Multimed
 
 // --- Closures (src/data/closures.ts, closure-display.ts) -------------------------
 
-fn isCorner(s: Section): bool = s.category != "Other" and s.category != "Trip Details" and (includes(s.section, "Door") or includes(s.section, "Window"))
-fn cornerOf(s: Section): string = `${includes(s.section, "Rear") ? "rear" : "front"}-${includes(s.category, "Passenger") ? "passenger" : "driver"}`
-fn partOf(s: Section): string = includes(s.section, "Door") ? "door" : "window"
-fn closureName(s: Section): string = isCorner(s) ? `${includes(s.section, "Rear") ? "Rear" : "Front"} ${includes(s.category, "Passenger") ? "passenger" : "driver"} ${partOf(s)}` : s.section
+fn isCorner(s: Section): bool = s.category != "Other" and s.category != "Trip Details" and (s.section.includes("Door") or s.section.includes("Window"))
+fn cornerOf(s: Section): string = `${s.section.includes("Rear") ? "rear" : "front"}-${s.category.includes("Passenger") ? "passenger" : "driver"}`
+fn partOf(s: Section): string = s.section.includes("Door") ? "door" : "window"
+fn closureName(s: Section): string = isCorner(s) ? `${s.section.includes("Rear") ? "Rear" : "Front"} ${s.category.includes("Passenger") ? "passenger" : "driver"} ${partOf(s)}` : s.section
 // An opening's name inside a sentence ("Windows and trunk closed").
-fn lowerName(name: string): string = includes(name, "Moon") ? "moonroof" : (includes(name, "Trunk") ? "trunk" : (includes(name, "Hood") ? "hood" : (includes(name, "Hatch") ? "hatch" : name)))
+fn lowerName(name: string): string = name.includes("Moon") ? "moonroof" : (name.includes("Trunk") ? "trunk" : (name.includes("Hood") ? "hood" : (name.includes("Hatch") ? "hatch" : name)))
 fn isOpen(s: Section): bool = any(s.values, "Open")
 fn isUnlocked(s: Section): bool = any(s.values, "Unlocked")
 // A section says something when it reports a position, a lock, or both; a
@@ -250,7 +250,7 @@ fn clockTime(ms: number, offset: number): string = `${floor(((ms + offset * 6000
 fn exactTime(ms: number, offset: number): string = ms <= 0 ? "Unknown time" : `${formatDate(ms, offset, "medium")} at ${clockTime(ms, offset)}`
 // toLocaleString with at most one decimal (odometer-card.tsx): "1,272.1", "980".
 fn tenths(n: number): string = floor(n * 10 + 0.5) % 10 == 0 ? grouped(floor(n * 10 + 0.5) / 10) : `${grouped(floor(floor(n * 10 + 0.5) / 10))}.${floor(n * 10 + 0.5) % 10}`
-fn distanceUnit(wire: string): string = (includes(wire, "K") or includes(wire, "k")) ? "km" : "mi"
+fn distanceUnit(wire: string): string = (wire.includes("K") or wire.includes("k")) ? "km" : "mi"
 fn ago(now: number, then: number, utcOffset: number): string = then <= 0 ? "never" : (now - then < 60000 ? "just now" : (now - then < 3600000 ? `${floor((now - then) / 60000)} min ago` : (now - then < 86400000 ? `${floor((now - then) / 3600000)} hr ago` : formatDate(then, utcOffset, "medium"))))
 fn tireLabel(position: string): string = position == "flTirePressure" ? "Front left" : (position == "frTirePressure" ? "Front right" : (position == "rlTirePressure" ? "Rear left" : "Rear right"))
 

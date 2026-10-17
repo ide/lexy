@@ -1,5 +1,6 @@
 // bun exact/lexy/session.check.ts
 // Drives app.ts's session source against a fake rotating-token server.
+import { strict as assert } from 'node:assert';
 const L = import.meta.dir;
 let current = 'r1', calls = 0, delay = 30;
 const jwt = (o: object) => 'h.' + Buffer.from(JSON.stringify(o)).toString('base64url') + '.s';
@@ -40,3 +41,16 @@ current = 'zz'; calls = 0;
 mem.set('lexy.session', expired('r3'));
 const d = await answer('session', [3, now], store, null, null);
 console.log('3 revoked:', d.signedIn ? 'STILL SIGNED IN' : 'signed out', mem.has('lexy.session') ? 'KEPT' : 'forgotten');
+
+// 4. An empty build-time store must not bake a signed-out first frame.
+const bakeStorage = { fs: { readFile: async (): Promise<never> => {
+  throw Object.assign(new Error('storage is unavailable during bake'), { code: 'bake' });
+} } } as any;
+await assert.rejects(answer('session', [4, now], store, bakeStorage, null), { code: 'bake' });
+const liveStorage = { fs: { readFile: async (): Promise<never> => {
+  throw Object.assign(new Error('missing probe'), { code: 'ENOENT' });
+} } } as any;
+const empty = await answer('session', [5, now], store, liveStorage, null);
+assert.equal(empty.signedIn, false);
+assert.equal(empty.status, 401);
+console.log('4 bake deferred; live empty session signed out');

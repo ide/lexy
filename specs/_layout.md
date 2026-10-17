@@ -11,11 +11,12 @@ that shows the signed-in tab section or the sign-in screen, never both.
 ## Data
 
 - `useAuth().session` from the auth provider — the only value the boundary
-  reads. The session is loaded **synchronously** from secure storage during the
-  first render, and the persisted query cache is hydrated at module scope before
-  React renders, so the first tree the app builds already knows who is signed in
-  and already contains the cached vehicle. There is no loading state, no hold,
-  and no second render to correct the first.
+  reads in the React Native app. The session is loaded **synchronously** from
+  secure storage during the first render, and the persisted query cache is
+  hydrated at module scope before React renders, so the first tree already
+  knows who is signed in and contains the cached vehicle. The Exact build
+  resolves its session at runtime; its baked first frame shows a neutral
+  vehicle shell until that answer arrives.
 
 ## Structure
 
@@ -48,8 +49,9 @@ button, blue tint on header controls, and the grouped background behind content.
 
 ## States
 
-Signed in and signed out are the only two, and both are known on the first
-frame. A stored session whose token turns out to be dead is discovered behind
+Signed in and signed out are the two resolved states. Neither build shows
+sign-in before it knows the session is absent. A stored session whose token
+turns out to be dead is discovered behind
 the screen: the session manager refreshes in the background, and if the refresh
 token is rejected it clears the session and the cached vehicle data, which drops
 the user back to sign-in with an explanatory message already set.

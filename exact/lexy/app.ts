@@ -307,10 +307,23 @@ async function authorized(
   return readJson(response);
 }
 
-async function session(store: Store, at: number): Promise<Result<'session'>> {
+async function session(store: Store, at: number, storage: Storage | null): Promise<Result<'session'>> {
   const demo = store.get('lexy.demo') === '1';
   let current = readSession(store);
-  if (!current) return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
+  if (!current) {
+    // An empty build-time store is not proof that the phone is signed out.
+    // Make the bake defer this answer so Contract shows its loading placeholder
+    // until the live Keychain can answer. The probe is only needed without a
+    // saved session; a missing file at run time still means signed out.
+    if (storage) {
+      try {
+        await storage.fs.readFile('app:/data/lexy/session-probe');
+      } catch (e) {
+        if (rec(e).code === 'bake') throw e;
+      }
+    }
+    return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
+  }
   try {
     if (rejected || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
       current = await refreshed(store, current, at);
@@ -901,26 +914,50 @@ async function openMaps(provider: string, latitude: number, longitude: number, n
 // under LSApplicationQueriesSchemes), and the saved choice if it is still
 // installed: one that was deleted is forgotten, so the chooser asks again
 // (src/hooks/use-maps-provider.ts, src/data/maps-providers.ts).
-async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
-  let installed = { apple: true, google: false, waze: false };
+const MAPS_PREFERENCE = `${DIR}/maps.json`;
+
+async function readMapsPreference(store: Store, storage: Storage | null): Promise<string> {
   try {
-    if (native?.available) installed = { ...installed, ...(await native.later({ op: 'installed' })) };
+    if (storage) return fromUtf8(new Uint8Array(await storage.fs.readFile(MAPS_PREFERENCE)));
   } catch {
-    // Unknown: Apple Maps alone, which every iPhone ships.
+    // A missing file belongs to older installs; their Keychain choice still applies
   }
-  // The choice is a file, not the store: a store write would ask every
-  // vehicle resource again. A choice an earlier build kept in the store is
-  // read once, until the file says otherwise.
-  let provider = (await load('maps')) ?? store.get('lexy.maps') ?? '';
-  if (provider !== '' && !installed[provider as keyof typeof installed]) provider = '';
-  await save('maps', provider);
+  return store.get('lexy.maps') ?? '';
+}
+
+async function writeMapsPreference(storage: Storage | null, provider: string): Promise<void> {
+  if (!storage) throw new Error('Maps preference storage is unavailable. Try again after the app finishes opening.');
+  try {
+    await storage.fs.mkdir(DIR);
+  } catch (e) {
+    if (rec(e).code !== 'EEXIST') throw e;
+  }
+  await storage.fs.atomicWriteFile(MAPS_PREFERENCE, utf8(provider));
+}
+
+async function mapsApp(store: Store, storage: Storage | null, module: NativeModule | null): Promise<Result<'mapsApp'>> {
+  let installed = { apple: true, google: false, waze: false };
+  let checked = false;
+  try {
+    if (module?.available) {
+      installed = { ...installed, ...(await module.later({ op: 'installed' })) };
+      checked = true;
+    }
+  } catch {
+    // An unavailable probe cannot prove that a saved app was removed
+  }
+  let provider = await readMapsPreference(store, storage);
+  if (checked && provider !== '' && !installed[provider as keyof typeof installed]) {
+    await writeMapsPreference(storage, '');
+    provider = '';
+  }
   return { provider, apple: installed.apple === true, google: installed.google === true, waze: installed.waze === true };
 }
 
 // --- Sources ---------------------------------------------------------------------
 
 const sources: Sources = {
-  session: ([_rev, at], store) => session(store, at),
+  session: ([_rev, at], store, storage) => session(store, at, storage),
   // A wait the host keeps (`wait`): how long an app-started refresh runs
   // before the Status title says "Updating…", and how long it says so.
   pause: async ([ms]) => {
@@ -980,10 +1017,10 @@ const sources: Sources = {
   climate: ([car, _rev, at], store) => climate(store, car, at),
   setClimate: ([car, raw, on, temperature, front, rear, at], store) => setClimate(store, car, raw, on, temperature, front, rear, at),
   address: ([latitude, longitude]) => address(latitude, longitude),
-  mapsApp: (_args, store) => mapsApp(store),
-  setMapsApp: async ([provider], store) => {
-    await save('maps', provider);
-    return mapsApp(store);
+  mapsApp: (_args, store, storage, module) => mapsApp(store, storage, module ?? null),
+  setMapsApp: async ([provider], store, storage, module) => {
+    await writeMapsPreference(storage, provider);
+    return mapsApp(store, storage, module ?? null);
   },
   feel: ([kind]) => {
     haptic(kind as 'selection');

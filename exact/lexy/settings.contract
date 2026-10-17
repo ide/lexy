@@ -39,7 +39,7 @@ component SettingsRowFace
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="-exact-label"
         text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
-      when opensScreen
+      if opensScreen
         image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // The Development tab folded into Settings, at its top (settings-screen.ios.tsx
@@ -102,12 +102,12 @@ component SettingsScreen
           column
             SectionHeader(title="Lexus Account")
             column class=Card
-              button press=signOut disabled=signingOut testId="sign-out" -exact-apple-button-style="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
-                image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red" object-fit="scale-down" width=26 height=24
+              button press=signOut disabled=signingOut testId="sign-out" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+                image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
                 text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
-            when demo
+            if demo
               SectionFooter(words="Signed in to the demo Lexus.")
-          when demo
+          if demo
             column
               SectionHeader(title="Demo")
               column class=Card
@@ -137,7 +137,7 @@ component RenameScreen
     clear: action
     save: action
     back: action
-  derive changed = trim(name) != "" and trim(name) != saved
+  derive changed = name.trim() != "" and name.trim() != saved
   view
     scroll id="screen-scroll" testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="-exact-grouped-background"
       column padding-top=16 padding-left=16 padding-right=16 gap=16
@@ -145,13 +145,13 @@ component RenameScreen
         column gap=8
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
             input appearance="none" id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="-exact-label"
-            when name != ""
-              button press=clear testId="clear-name" -exact-apple-button-style="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
-                image "symbol:sf/xmark.circle.fill" font-size=17 -exact-tint-color="-exact-tertiary-label" object-fit="scale-down" width=22 height=22
+            if name != ""
+              button press=clear testId="clear-name" buttonStyle="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
+                image "symbol:sf/xmark.circle.fill" font-size=17 -exact-tint-color="-exact-tertiary-label"
           text "Your car’s name, saved to the Lexus app." font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16
-        when error != ""
+        if error != ""
           row gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center" testId="rename-error"
             image "symbol:sf/exclamationmark.triangle.fill" font-size=18 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
-        button press=save disabled=(not changed or saving) testId="save-name" -exact-apple-button-style="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
+        button press=save disabled=(not changed or saving) testId="save-name" buttonStyle="filled" accent-color="AccentColor" height=50 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

@@ -13,7 +13,9 @@ over it as a sheet.
   overrides the title with the vehicle's nickname once it renders.
 - `map` — the vehicle-location map, presented as a **draggable bottom sheet**
   over the dashboard rather than pushed. Detents at half height and full height,
-  opening at full height; no grabber; rounded top corners. It uses the native
+  with rounded top corners. The React Native build opens at full height without
+  a grabber; the Exact build starts at half height and shows UIKit's grabber for
+  resizing. It uses the native
   stack header (inline title "Last Parked", plus a close control) rather than a
   hand-rolled one, so the title sizing and position match the system sheet
   chrome.
@@ -33,10 +35,12 @@ opaque grouped-background header instead.
 The sheet's close control dismisses it (goes back). It is a bare "close" glyph
 in the label color — the standard "close a presented screen" bar button, with no
 circle or background behind it — and it carries an accessible "Close" label.
+The presenting Status screen and its tab bar keep their position throughout
+the sheet's presentation and dismissal.
 
 ## Platform notes
 
 | Concern | iOS | Android |
 | --- | --- | --- |
-| Map presentation | Form sheet with 0.5 / 1.0 detents, opens at full height | — |
+| Map presentation | Form sheet with 0.5 / 1.0 detents; React Native opens full height, Exact opens half height | — |
 | Header | Large title, transparent, no shadow | — |
