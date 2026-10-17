@@ -6,12 +6,14 @@ import { strict as assert } from 'node:assert';
 const pending: Array<(value: Response) => void> = [];
 const discoveryPending: Array<(value: Response) => void> = [];
 let holdDiscovery = false;
+let discoveryName = '';
 const requests: Array<{ url: string; init: RequestInit & { exactIndependentHttp?: { maxResponseBytes: number } } }> = [];
 globalThis.fetch = ((url: string, init: RequestInit): Promise<Response> => {
   requests.push({ url, init });
   if (url.includes('tires/pressure')) return new Promise<Response>((resolve): void => { pending.push(resolve); });
   if (holdDiscovery && url.includes('vehicle/guid')) return new Promise<Response>((resolve): void => { discoveryPending.push(resolve); });
-  const payload = url.includes('route/status') ? { status: { occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } } : {};
+  const payload = url.includes('route/status') ? { status: { occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } }
+    : url.includes('vehicle/guid') ? [{ vin: 'VIN1', nickName: discoveryName }] : {};
   return Promise.resolve(new Response(JSON.stringify({ payload }), { status: 200 }));
 }) as typeof fetch;
 
@@ -23,6 +25,8 @@ const store = {
   forget: (key: string): void => { memory.delete(key); },
 } as any;
 const disk = new Map<string, Uint8Array>();
+let pauseGarageWrite: Promise<void> | null = null;
+let garageWriteEntered: (() => void) | null = null;
 const storage = { fs: {
   mkdir: async (): Promise<void> => {},
   readFile: async (path: string): Promise<ArrayBuffer> => {
@@ -30,7 +34,15 @@ const storage = { fs: {
     if (!bytes) throw new Error('ENOENT');
     return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   },
-  atomicWriteFile: async (path: string, bytes: Uint8Array): Promise<void> => { disk.set(path, new Uint8Array(bytes)); },
+  atomicWriteFile: async (path: string, bytes: Uint8Array): Promise<void> => {
+    if (path.endsWith('/garage.json') && pauseGarageWrite) {
+      const pause = pauseGarageWrite;
+      pauseGarageWrite = null;
+      garageWriteEntered?.();
+      await pause;
+    }
+    disk.set(path, new Uint8Array(bytes));
+  },
   rm: async (path: string): Promise<void> => { disk.delete(path); },
 } } as any;
 const at = 1_790_900_000_000;
@@ -72,4 +84,41 @@ discoveryPending[0](new Response(JSON.stringify({ payload: [{ vin: 'VIN1', nickN
 assert.equal((await oldGarage).car.nickName, 'Old');
 const cachedGarage = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/garage.json')));
 assert.equal(cachedGarage.answer.car.nickName, 'Current');
+
+// The second read must wait for the first file write, then leave the newer
+// result on disk even though the first write finishes after it began.
+holdDiscovery = false;
+let releaseWrite: (() => void) | undefined;
+pauseGarageWrite = new Promise<void>(resolve => { releaseWrite = resolve; });
+const writeEntered = new Promise<void>(resolve => { garageWriteEntered = resolve; });
+discoveryName = 'Before';
+const beforeWrite = answer('garage', [true, at + 3_600_000, 3, at + 2], store, storage, null);
+await writeEntered;
+discoveryName = 'After';
+let afterWriteSettled = false;
+const afterWrite = answer('garage', [true, at + 3_600_000, 4, at + 3], store, storage, null).then((): void => {
+  afterWriteSettled = true;
+});
+await new Promise<void>(resolve => { setTimeout(resolve, 0); });
+assert.equal(afterWriteSettled, false);
+releaseWrite?.();
+await Promise.all([beforeWrite, afterWrite]);
+const afterQueuedWrites = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/garage.json')));
+assert.equal(afterQueuedWrites.answer.car.nickName, 'After');
+
+// Sign-out waits for an in-flight write, then removes the file.
+pauseGarageWrite = new Promise<void>(resolve => { releaseWrite = resolve; });
+const signOutWriteEntered = new Promise<void>(resolve => { garageWriteEntered = resolve; });
+discoveryName = 'Signing out';
+const readDuringSignOut = answer('garage', [true, at + 3_600_000, 5, at + 4], store, storage, null);
+await signOutWriteEntered;
+let signOutSettled = false;
+const signOut = answer('signOut', [], store, storage, null).then((): void => {
+  signOutSettled = true;
+});
+await new Promise<void>(resolve => { setTimeout(resolve, 0); });
+assert.equal(signOutSettled, false);
+releaseWrite?.();
+await Promise.all([readDuringSignOut, signOut]);
+assert.equal(disk.has('app:/data/lexy/garage.json'), false);
 console.log('PASS');
