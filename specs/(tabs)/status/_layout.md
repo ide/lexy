@@ -12,10 +12,9 @@ over it as a sheet.
 - `index` — the dashboard. Title "Status" as a stack default; the screen itself
   overrides the title with the vehicle's nickname once it renders.
 - `map` — the vehicle-location map, presented as a **draggable bottom sheet**
-  over the dashboard rather than pushed. Detents at half height and full height,
-  with rounded top corners. The React Native build opens at full height without
-  a grabber; the Exact build starts at half height and shows UIKit's grabber for
-  resizing. It uses the native
+  over the dashboard rather than pushed. The React Native build offers half and
+  full-height detents and opens full height; the Exact build uses a full-height
+  detent. Both have rounded top corners and no grabber. It uses the native
   stack header (inline title "Last Parked", plus a close control) rather than a
   hand-rolled one, so the title sizing and position match the system sheet
   chrome.
@@ -42,5 +41,5 @@ the sheet's presentation and dismissal.
 
 | Concern | iOS | Android |
 | --- | --- | --- |
-| Map presentation | Form sheet with 0.5 / 1.0 detents; React Native opens full height, Exact opens half height | — |
+| Map presentation | Form sheet opening full height; React Native also allows a half-height detent | — |
 | Header | Large title, transparent, no shadow | — |

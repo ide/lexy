@@ -410,6 +410,9 @@ telling.
   box by construction. Neither is product behavior.
 - The map fades in on its first camera settle (with a timed fallback) rather
   than snapping its tiles in at full strength.
+- In the Exact build, an automatic refresh can gently dim the hero only after
+  an existing status snapshot is available. The first status load never dims
+  the car and map as location and fuel arrive.
 
 | Concern | iOS | Android |
 | --- | --- | --- |
