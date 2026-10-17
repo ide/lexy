@@ -162,8 +162,8 @@ component Lexy
   state pulling = false
   // What each answer is comes first; how it is asked (a revision, the time,
   // the token's expiry) follows `with`, so the last answer a launch kept
-  // paints the first frame. A refreshed token re-asks the garage, and nothing
-  // refreshes in parallel.
+  // paints the first frame. A refreshed token re-asks the garage; car-scoped
+  // reads use the car from that answer.
   resource garage = garage(account.signedIn) with account.expiresAt, garageRev, orEpoch(garageAt, time.epochAtZero) as shape Garage
   derive car = garage.car
   resource status = status(car) with statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status

@@ -326,7 +326,11 @@ async function session(store: Store, at: number): Promise<Result<'session'>> {
   }
 }
 
-const get = (url: string, headers: Record<string, string>) => (request: Request) => request(url, { method: 'GET', headers });
+// Only reads that can overlap other vehicle work use the independent lane.
+// Contract starts each post-wake status GET after the wake-up answer, and
+// status stays ordered so its replies arrive in request order for closure folding.
+const get = (url: string, headers: Record<string, string>, independent = false): ((request: Request) => Promise<Reply>) => (request: Request): Promise<Reply> =>
+  request(url, { method: 'GET', headers, ...(independent ? { exactIndependentHttp: { maxResponseBytes: 4 * 1024 * 1024 } } : {}) });
 
 function failure(e: unknown) {
   return { ok: false, status: e instanceof HttpError ? e.status : 0, error: message(e) };
@@ -480,10 +484,12 @@ const account = (store: Store) => guid(readSession(store)?.idToken ?? '');
 async function garage(store: Store, at: number): Promise<Result<'garage'>> {
   const since = generation;
   if (!readSession(store)) return { ok: false, status: 401, error: 'Signed out', car: noCar, cars: [] };
+  const sequence = ++readSequence;
+  latestRead.set('garage', sequence);
   try {
-    const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s))(r));
+    const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s), true)(r));
     const cars = arr(body.payload).map(decodeCar).filter(c => c.vin);
-    return await remember('garage', account(store), { ok: true, status: 200, error: '', car: cars[0] ?? noCar, cars }, since);
+    return await remember('garage', account(store), { ok: true, status: 200, error: '', car: cars[0] ?? noCar, cars }, since, sequence);
   } catch (e) {
     // Not ok, so the screen says it couldn't refresh, over the car it has.
     const last = failure(e).status === 401 ? null : await recall<Result<'garage'>>('garage', account(store));
@@ -510,6 +516,9 @@ const CACHED = ['closures', 'garage', 'status', 'tires', 'engine', 'spec', 'serv
 // write the signed-out account's data back.
 let generation = 0;
 const held = new Map<string, string | null>();
+const latestRead = new Map<string, number>();
+const writes = new Map<string, Promise<void>>();
+let readSequence = 0;
 async function load(key: string): Promise<string | null> {
   if (held.has(key)) return held.get(key) ?? null;
   let text: string | null = null;
@@ -518,6 +527,8 @@ async function load(key: string): Promise<string | null> {
   } catch {
     text = null;
   }
+  // A read that began before a save must not restore the old disk value.
+  if (held.has(key)) return held.get(key) ?? null;
   held.set(key, text);
   return text;
 }
@@ -547,16 +558,24 @@ function fromUtf8(bytes: Uint8Array): string {
 }
 // Awaited within the answer: a source's storage is its own only while it
 // answers, so a write left running after it is lost.
-async function save(key: string, text: string, since = generation) {
-  if (since !== generation || held.get(key) === text) return;
-  held.set(key, text);
-  const fs = files?.fs;
-  if (!fs) return;
-  await fs.mkdir(DIR).catch(() => undefined);
-  await fs.atomicWriteFile(`${DIR}/${key}.json`, utf8(text)).catch(() => undefined);
+async function save(key: string, text: string, since = generation, read?: number): Promise<void> {
+  // Serialize each file's writes and check freshness when its turn arrives:
+  // independent HTTP responses and atomic file writes may finish out of order.
+  const previous = writes.get(key) ?? Promise.resolve();
+  const current = previous.then(async () => {
+    if (since !== generation || (read !== undefined && latestRead.get(key) !== read) || held.get(key) === text) return;
+    held.set(key, text);
+    const fs = files?.fs;
+    if (!fs) return;
+    await fs.mkdir(DIR).catch(() => undefined);
+    await fs.atomicWriteFile(`${DIR}/${key}.json`, utf8(text)).catch(() => undefined);
+  });
+  writes.set(key, current);
+  await current;
+  if (writes.get(key) === current) writes.delete(key);
 }
-async function remember<T>(key: string, vin: string, answer: T, since = generation): Promise<T> {
-  await save(key, JSON.stringify({ vin, answer }), since);
+async function remember<T>(key: string, vin: string, answer: T, since = generation, read?: number): Promise<T> {
+  await save(key, JSON.stringify({ vin, answer }), since, read);
   return answer;
 }
 async function recall<T>(key: string, vin: string): Promise<T | null> {
@@ -570,6 +589,7 @@ async function recall<T>(key: string, vin: string): Promise<T | null> {
 async function forgetCached() {
   generation++;
   for (const key of CACHED) {
+    await writes.get(key);
     held.set(key, null);
     await files?.fs.rm(`${DIR}/${key}.json`).catch(() => undefined);
   }
@@ -664,23 +684,25 @@ async function foldClosures(vin: string, at: number, sections: Section[], since 
 // the answer is remembered for the car, and a failure recalls it, else `empty`.
 async function keepingLast<T>(key: string, vin: string, empty: T, read: () => Promise<T>): Promise<T> {
   const since = generation;
+  const sequence = ++readSequence;
+  latestRead.set(key, sequence);
   try {
-    return await remember(key, vin, await read(), since);
+    return await remember(key, vin, await read(), since, sequence);
   } catch {
     return (await recall<T>(key, vin)) ?? empty;
   }
 }
 
 // A vehicle-scoped GET's payload.
-async function payload(store: Store, car: Car, at: number, url: string): Promise<Json> {
-  return rec((await authorized(store, at, (s, r) => get(url, vehicleHeaders(s, car))(r))).payload);
+async function payload(store: Store, car: Car, at: number, url: string, independent = false): Promise<Json> {
+  return rec((await authorized(store, at, (s, r) => get(url, vehicleHeaders(s, car), independent)(r))).payload);
 }
 
 async function tires(store: Store, car: Car, at: number): Promise<Result<'tires'>> {
   const empty: Result<'tires'> = { ok: false, status: '', unit: '', tires: [] };
   if (!car.vin) return empty;
   return keepingLast('tires', car.vin, empty, async () => {
-    const p = await payload(store, car, at, TIRES_URL);
+    const p = await payload(store, car, at, TIRES_URL, true);
     const tire = (position: string) => ({ position, value: num(rec(p[position]).value), low: rec(p[position]).displayLowTirePressureWarning === true });
     return {
       ok: !!p.tirePressureStatus,
@@ -704,7 +726,7 @@ async function spec(store: Store, car: Car, at: number): Promise<Result<'spec'>>
   const empty: Result<'spec'> = { ok: false, items: [] };
   if (!car.vin) return empty;
   return keepingLast('spec', car.vin, empty, async () => {
-    const p = await payload(store, car, at, SPEC_URL);
+    const p = await payload(store, car, at, SPEC_URL, true);
     const items = ['vehicleSpecifications', 'additionalDetails'].flatMap(key =>
       arr(rec(p[key]).dataItems).map(rec).map(i => ({ name: str(i.dataName), value: str(i.dataValue) })),
     );
@@ -727,7 +749,7 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
       DATETIME: String(at),
       entryPoint: 'SUBSCRIPTIONS',
     });
-    const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s))(r))).payload);
+    const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s), true)(r))).payload);
     const items = (['paid', 'trial', 'complimentary'] as const).flatMap(bucket =>
       arr(p[`${bucket}Subscriptions`]).map(rec).map(sub => ({
         bucket,
@@ -784,6 +806,8 @@ async function rename(store: Store, car: Car, name: string, at: number): Promise
         body: JSON.stringify({ nickName: name, guid: id, vin: car.vin }),
       });
     });
+    // A discovery read started before this write must not restore the old name.
+    latestRead.set('garage', ++readSequence);
     return { ok: true, status: 200, error: '' };
   } catch (e) {
     return failure(e);
@@ -833,6 +857,7 @@ async function setClimate(store: Store, car: Car, raw: string, on: boolean, temp
       acParameters: arr(o.acParameters).map(rec).map(x => x.name === 'frontDefrost' ? { ...x, enabled: front } : x.name === 'rearDefrost' ? { ...x, enabled: rear } : x),
     });
     await authorized(store, at, (s, r) => r(CLIMATE_URL, { method: 'PUT', headers: vehicleHeaders(s, car), body: JSON.stringify(p) }));
+    latestRead.set('climate', ++readSequence);
     // Accepted is saved: the settings answer as written, with no read-back,
     // and are kept as the last reading (a relaunch shows them).
     return await remember('climate', car.vin, decodeClimate(p));
