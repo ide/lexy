@@ -13,8 +13,9 @@ over it as a sheet.
   overrides the title with the vehicle's nickname once it renders.
 - `map` — the vehicle-location map, presented as a **draggable bottom sheet**
   over the dashboard rather than pushed. The React Native build offers half and
-  full-height detents and opens full height; the Exact build uses a full-height
-  detent. Both have rounded top corners and no grabber. It uses the native
+  full-height detents and opens full height; the Exact build also offers both
+  and opens full height. Both use system rounded corners and show the system
+  grabber so the available resizing is clear. It uses the native
   stack header (inline title "Last Parked", plus a close control) rather than a
   hand-rolled one, so the title sizing and position match the system sheet
   chrome.
@@ -41,5 +42,5 @@ the sheet's presentation and dismissal.
 
 | Concern | iOS | Android |
 | --- | --- | --- |
-| Map presentation | Form sheet opening full height; React Native also allows a half-height detent | — |
+| Map presentation | Form sheet opening full height, with a half-height detent available | — |
 | Header | Large title, transparent, no shadow | — |
