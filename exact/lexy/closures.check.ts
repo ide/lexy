@@ -3,14 +3,15 @@
 // lock-only doors a drive leaves), and checks the fold keeps the windows;
 // then a failed read, which keeps the last good reading.
 const L = import.meta.dir;
-const full = { occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [
+const telemetry = { fugage: { value: 62 }, rage: { value: 214 }, odo: { value: 12482 } };
+const full = { telemetry, occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [
   { category: 'Driver Side', sections: [
     { section: 'Door', values: [{ value: 'Closed' }, { value: 'Locked' }] },
     { section: 'Window', values: [{ value: 'Closed' }] },
   ] },
   { category: 'Other', sections: [{ section: 'Trunk', values: [{ value: 'Closed' }, { value: 'Locked' }] }] },
 ] };
-const sparse = { occurrenceDate: '2026-10-01T12:00:00Z', vehicleStatus: [
+const sparse = { telemetry, occurrenceDate: '2026-10-01T12:00:00Z', vehicleStatus: [
   { category: 'Driver Side', sections: [{ section: 'Door', values: [{ value: 'Unlocked' }] }] },
 ] };
 let next: object = full;
@@ -41,12 +42,12 @@ globalThis.fetch = (async () => { throw new TypeError('offline'); }) as any;
 const c = await answer('status', [car, 2, now], store, storage, null);
 console.log('3 failed:', show(c), 'ok', c.ok, 'status', c.status, 'error', JSON.stringify(c.error));
 // 4. An older snapshot does not win over what is held.
-globalThis.fetch = (async () => new Response(JSON.stringify({ payload: { status: { occurrenceDate: '2026-10-01T09:00:00Z', vehicleStatus: [{ category: 'Driver Side', sections: [{ section: 'Window', values: [{ value: 'Open' }] }] }] } } }), { status: 200, headers: { 'content-type': 'application/json' } })) as any;
+globalThis.fetch = (async () => new Response(JSON.stringify({ payload: { status: { telemetry, occurrenceDate: '2026-10-01T09:00:00Z', vehicleStatus: [{ category: 'Driver Side', sections: [{ section: 'Window', values: [{ value: 'Open' }] }] }] } } }), { status: 200, headers: { 'content-type': 'application/json' } })) as any;
 const d = await answer('status', [car, 3, now], store, storage, null);
 console.log('4 older:', show(d));
 // 5. What was written is UTF-8 JSON on disk, and a different car starts fresh.
 const onDisk = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/closures.json')!));
-next = { occurrenceDate: '2026-10-02T09:00:00Z', vehicleStatus: [{ category: 'Other', sections: [{ section: 'Hood’s', values: [{ value: 'Closed' }] }] }] };
+next = { telemetry, occurrenceDate: '2026-10-02T09:00:00Z', vehicleStatus: [{ category: 'Other', sections: [{ section: 'Hood’s', values: [{ value: 'Closed' }] }] }] };
 globalThis.fetch = (async () => new Response(JSON.stringify({ payload: { status: next } }), { status: 200, headers: { 'content-type': 'application/json' } })) as any;
 const e = await answer('status', [{ ...car, vin: 'VIN2' }, 4, now], store, storage, null);
 const reread = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/closures.json')!));

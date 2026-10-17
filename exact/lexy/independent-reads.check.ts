@@ -12,7 +12,7 @@ globalThis.fetch = ((url: string, init: RequestInit): Promise<Response> => {
   requests.push({ url, init });
   if (url.includes('tires/pressure')) return new Promise<Response>((resolve): void => { pending.push(resolve); });
   if (holdDiscovery && url.includes('vehicle/guid')) return new Promise<Response>((resolve): void => { discoveryPending.push(resolve); });
-  const payload = url.includes('route/status') ? { status: { occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } }
+  const payload = url.includes('route/status') ? { status: { telemetry: { fugage: { value: 62 }, rage: { value: 214 }, odo: { value: 12482 } }, occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } }
     : url.includes('vehicle/guid') ? [{ vin: 'VIN1', nickName: discoveryName }] : {};
   return Promise.resolve(new Response(JSON.stringify({ payload }), { status: 200 }));
 }) as typeof fetch;

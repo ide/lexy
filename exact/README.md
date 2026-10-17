@@ -128,12 +128,18 @@ EXACT_APP_DIR=$PWD bun ../../../exact2/scripts/agent.mjs ios \
 ### Checking the session code
 
 `bun exact/lexy/session.check.ts` drives `app.ts`'s session source against a
-fake Lexus token server that rotates refresh tokens. It checks three things:
+fake Lexus token server that rotates refresh tokens. It checks that concurrent
+refreshes share one request, stale refresh results cannot overwrite a newer
+sign-in or undo sign-out, revoked credentials sign out, vehicle reads wait for
+an in-flight refresh, and a read rejected by Lexus retries once with the rotated
+token. It also checks:
 
-- two simultaneous refreshes send one request
-- a refresh rejected because another had already rotated the token keeps
-  the session
-- a revoked token signs out
+- an empty Keychain defers during the bake and resolves as signed out at runtime
+
+`bun exact/lexy/data-flow.check.ts` checks that malformed HTTP 200 replies cannot
+erase a saved vehicle or replace valid telemetry with zeros. A valid empty
+vehicle list remains distinct from a failure, and a first status failure remains
+an explicit error that the screen can offer to retry.
 
 `bun exact/lexy/closures.check.ts` drives the status source over a full
 snapshot, then a sparse one (lock-only doors, as after a drive), then a
@@ -141,6 +147,52 @@ failed read, over an in-memory `app:/data`. It checks that windows and
 openings survive the sparse snapshot, dated "as of" the older one; that a
 failed read keeps the last good reading; that an older snapshot doesn't win;
 and that the history is UTF-8 JSON on disk and starts over for another car.
+
+### Resource dependencies and disappearing content
+
+The general problem is coordinating dependent asynchronous work while retaining
+useful content. A value may be suitable for display while its refresh is pending,
+yet unsuitable as the prerequisite for a new request. A failed request is also
+different from an authoritative empty result. Treating either distinction as
+implicit can send requests with stale credentials or erase data already shown.
+
+On Lexy's pinned native Exact runtime, a pending resource keeps its last committed
+answer. A dependency such as `garage(account.signedIn) with account.expiresAt`
+reacts to account changes; it does not wait for an account refresh to settle.
+The original code assumed that it did. A delayed-refresh source probe reproduced
+vehicle GETs using the old bearer token while authentication was refreshing.
+The garage's 401 path then dropped its cached VIN, and the screen suppressed
+the corresponding error state. A first status failure could separately leave
+fuel unresolved without a visible retry.
+
+The follow-up review reproduced two more destructive transitions. A malformed
+HTTP 200 vehicle response became a successful empty garage, and the previous
+status-error patch removed all vehicle cards when a first status request failed.
+An in-flight token refresh could also restore the session after sign-out.
+These are demonstrated code paths; no device trace captured the user's reported
+single-frame disappearance, so its exact cause remains unconfirmed.
+
+A temporary headless regression using the pinned compiler and runner exercised
+the actual dashboard through initial pending status, first failure, retry, and
+success. The hero kept the same kernel node key through every transition.
+The failed request showed its local retry and stopped the fuel loading pulse;
+success removed the error and displayed the fuel reading. This verifies the
+committed Contract tree, not UIKit compositing on the phone.
+
+The app now sequences authenticated requests through one shared refresh, retries
+one rejected access token, and prevents stale refresh results from changing a
+newer session. Only validated vehicle/status responses replace cached data.
+Failures retain usable profile and status data; missing status has a local error
+and retry while the vehicle profile stays visible. A valid empty vehicle list
+and an invalidated session can still legitimately change the screen.
+
+The open Contract/Exact design question is how to make prerequisite readiness
+and retained display values clear enough that authors cannot easily mistake one
+for the other. Any future API or language change should cover pending, failed,
+superseded, and genuinely empty results without requiring an HTTP scheduler to
+infer application dependencies. The application already has enough control to
+sequence this work explicitly; tests should establish what extra mechanism,
+documentation, or diagnostic would prevent the mistaken assumption.
 
 ### On a phone (ad hoc)
 
@@ -215,7 +267,7 @@ The script runs on a developer Mac too. Set `EXACT_IDENTITY` and
 | Lexy (Expo) | Here |
 |---|---|
 | Sign-in (`src/auth/lexus-auth.ts`, `auth-context.tsx`) | The ForgeRock node is classified in Contract (`stepOf`). app.ts fills the callback Contract names. PKCE uses WebCrypto. Tokens live in the Keychain via `store`. |
-| Session refresh (`session-manager.ts`) | A Contract `session` resource refreshes near expiry, or once after a 401. Every read takes its expiry as an argument, so reads wait on it and nothing refreshes in parallel. A rejected refresh signs out. |
+| Session refresh (`session-manager.ts`) | The `session` resource and every authorized read share one refresh promise. Reads wait for an in-flight refresh, proactively refresh near expiry, and retry once after a rejected access token. A rejected refresh signs out. |
 | Vehicle mapping (`vehicle-mapping.ts`, `closures.ts`, `closure-display.ts`, `closure-summary.ts`, `fuel.ts`) | `fn`s and derives in `model.contract` / `status.contract`. app.ts only flattens the wire. |
 | Remote commands + lock reconcile (`remote-command*.ts`, `lock-reconcile.ts`) | `run` → `send` → `then afterCommand`. A 5 s tick re-reads status until the doors agree, primes once at the 5th poll, and gives up at 10. |
 | Engine polling (`engine-status.ts`) | The same tick: 4 re-reads, 20 s apart. |
@@ -303,12 +355,12 @@ boundary.**
 - No `Date.now()`, `Math.random()`, or `setTimeout`.
   - Time is passed in from Contract: every data source takes an `at`.
   - Correlation IDs use `crypto.randomUUID()`.
-- An answer may not await a promise another answer started, so Lexy's shared
-  in-flight token refresh can't be ported directly. Lexus rotates refresh
-  tokens, so two answers refreshing at once spend the same one twice, and
-  the loser's `invalid_grant` signs the user out. That happened. The fix is
-  ordering in Contract: one `session` resource refreshes, and every read
-  waits on it.
+- The pinned native host supports promises shared across answers: its module
+  keeps work alive while another answer awaits it. Lexy shares one token
+  refresh at the authenticated-request boundary. Contract resource dependencies
+  retain committed values while pending and do not themselves provide a
+  request-order barrier. This native-host behavior must be checked before
+  moving shared-promise code to a different execution placement.
 - **Exact's `fetch` keeps no cookie jar**, by design: cookies are ambient
   authority its per-origin grants can't see. Lexus's ForgeRock sign-in pins
   a login to one server with `route` and `amlbcookie` cookies; without them a

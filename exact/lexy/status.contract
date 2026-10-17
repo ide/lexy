@@ -274,11 +274,11 @@ component StatusScreen
           if not online
             WarningBanner(id="offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
-          if online and car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.ok and status.error != "" and status.status != 401))
+          if online and car.vin != "" and not loading and ((not garage.ok) or (status.ok and status.error != ""))
             WarningBanner(id="garage-error", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))} Showing the latest data we saved.`)
           if car.vin == "" and not loading and garage.ok and garage.cars.length == 0
             VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="no-vehicle")
-          if car.vin == "" and not loading and not garage.ok and garage.status != 401
+          if car.vin == "" and not loading and not garage.ok
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="vehicle-error")
           // vehicle-controls.ios.tsx: a failed command is an alert.
           dialog id="climate-failed" closedby="any" open=(climateError != "")
@@ -338,6 +338,12 @@ component StatusScreen
                 button press=openMap pointer-events="auto" testId="last-parked" buttonStyle="glass" width=148 height=48 display="flex" flex-direction="row" align-items="center" justify-content="center"
                   image "symbol:sf/map.fill" font-size=15 -exact-tint-color="AccentColor"
                   text "Last Parked" font-size=15 font-weight=600 color="-exact-label"
+            // A failed status read leaves the independent vehicle profile in place
+            if not loading and not status.ok
+              column gap=8 testId="status-error"
+                WarningBanner(id="status-error-message", symbol="exclamationmark.triangle.fill", framed=true, title="Vehicle data unavailable", message=failureAdvice(status.status, status.error))
+                button press=reload testId="status-error-retry" buttonStyle="plain" align-self="flex-start"
+                  text "Try again"
             // Fuel (fuel-bar.tsx)
             column class=Card testId="fuel" padding=16 gap=8
               row justify-content="space-between" align-items="center"
@@ -349,7 +355,10 @@ component StatusScreen
                     text (fuel >= 100 ? "Full" : `${fuel}%`) testId="fuel-value" class=SmallBold color=fuelText(fuel) font-variant-numeric="tabular-nums"
                     text ` · ${grouped(status.range)} ${unit}` testId="range" class=SmallBold color="-exact-label" font-variant-numeric="tabular-nums"
                 if not fuelKnown
-                  box testId="fuel-pending" width=110 height=16 border-radius=6 background-color="-exact-tertiary-fill" animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
+                  if loading
+                    box testId="fuel-pending" width=110 height=16 border-radius=6 background-color="-exact-tertiary-fill" animation="pending 800ms ease-in-out infinite alternate" animation-timeline=Activity
+                  else
+                    text "Unavailable" class=SmallBold color="-exact-secondary-label"
               row gap=4
                 box flex=1 height=8 border-radius=4 background-color="-exact-tertiary-fill" overflow="hidden"
                   box height="100%" border-radius=4 width=`${min(100, max(0, fuel * 4))}%` background-color=fuelTint(fuel)
@@ -513,18 +522,18 @@ component StatusScreen
                     image "symbol:sf/gauge.with.dots.needle.67percent" font-size=17 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=17 height=17
                     text "Total" class=SmallBold color="-exact-secondary-label"
                   row gap=3 align-items="flex-end"
-                    text grouped(status.odometer) testId="odometer-value" font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
+                    text (status.ok ? grouped(status.odometer) : "—") testId="odometer-value" font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
                     text odoUnit class=Small color="-exact-secondary-label"
                 row flex=2 gap=8 padding-top=8 padding-bottom=8 padding-left=16 padding-right=16 border-radius=12 background-color="-exact-quaternary-fill"
                   column flex=1 gap=4
                     text "Trip A" class=SmallBold color="-exact-secondary-label"
                     row gap=3 align-items="flex-end"
-                      text tenths(status.tripA) font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
+                      text (status.ok ? tenths(status.tripA) : "—") font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
                       text odoUnit class=Small color="-exact-secondary-label"
                   column flex=1 gap=4
                     text "Trip B" class=SmallBold color="-exact-secondary-label"
                     row gap=3 align-items="flex-end"
-                      text tenths(status.tripB) font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
+                      text (status.ok ? tenths(status.tripB) : "—") font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"
                       text odoUnit class=Small color="-exact-secondary-label"
             // Tire pressure (tire-pressure-card.tsx)
             if tires.ok and tires.tires.length > 0

@@ -251,6 +251,13 @@ has no vehicle enrolled — a distinct empty state that points at the official
 Lexus app for adding a car. The stack title falls back to "My Vehicle" in this
 case.
 
+**Failed status load with a cached vehicle profile.** The vehicle name and hero
+remain visible. A local "Vehicle data unavailable" message offers **Try again**.
+Fuel says "Unavailable" and missing odometer readings show a dash; they do not
+claim zero or keep promising an arrival after the request has failed. Independent
+readings and controls remain available. A failed refresh keeps the last valid
+status snapshot, including its fuel and location.
+
 **Stale closure readings.** A sparse snapshot can leave windows and openings
 older than the snapshot itself (e.g. windows after a drive). One note for the
 whole closures area — not one per card, since they all go stale together — reads

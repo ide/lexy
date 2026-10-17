@@ -205,36 +205,74 @@ function tokens(body: Json, previousRefresh: string | undefined, at: number): Se
 let refreshing: Promise<Session> | null = null;
 
 function refreshed(store: Store, session: Session, at: number): Promise<Session> {
-  refreshing ??= refreshOnce(store, session, at).finally(() => {
+  if (refreshing) {
+    return refreshing;
+  }
+  const stored = readSession(store);
+  if (!stored) {
+    return Promise.reject(new HttpError(401, 'Signed out'));
+  }
+  if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
+    return Promise.resolve(stored);
+  }
+  refreshing = refreshOnce(store, session, at).finally(() => {
     refreshing = null;
   });
   return refreshing;
 }
 
+async function currentSession(store: Store, at: number): Promise<Session> {
+  const current = readSession(store);
+  if (!current) {
+    throw new HttpError(401, 'Signed out');
+  }
+  if (refreshing || rejectedAccessToken === current.accessToken || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
+    const latest = await refreshed(store, current, at);
+    if (rejectedAccessToken === current.accessToken) {
+      rejectedAccessToken = '';
+    }
+    return latest;
+  }
+  return current;
+}
+
 async function refreshOnce(store: Store, session: Session, at: number): Promise<Session> {
-  const response = await transport(store, at)(TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      grant_type: 'refresh_token',
-      refresh_token: session.refreshToken,
-      response_type: 'token',
-      scope: SCOPE,
-    }).toString(),
-  });
   let next: Session;
   try {
+    const response = await transport(store, at)(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: 'refresh_token',
+        refresh_token: session.refreshToken,
+        response_type: 'token',
+        scope: SCOPE,
+      }).toString(),
+    });
     next = tokens(await readJson(response), session.refreshToken, at);
   } catch (e) {
+    const stored = readSession(store);
+    if (!stored) {
+      throw new HttpError(401, 'Signed out');
+    }
+    if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
+      return stored;
+    }
     if (e instanceof HttpError && e.status >= 400 && e.status < 500) {
-      const stored = readSession(store);
-      if (stored && stored.refreshToken !== session.refreshToken) return stored;
       store.forget('lexy.session');
       await forgetCached();
       throw new HttpError(401, 'Your Lexus session expired. Please sign in again.');
     }
     throw e;
+  }
+  // Adopt the reply only while the session that requested it is still current
+  const stored = readSession(store);
+  if (!stored) {
+    throw new HttpError(401, 'Signed out');
+  }
+  if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
+    return stored;
   }
   store.set('lexy.session', JSON.stringify(next));
   return next;
@@ -281,28 +319,31 @@ function vehicleHeaders(session: Session, car: Car): Record<string, string> {
   };
 }
 
-// The gateway rejected a token before its stated expiry: the next `session`
-// answer refreshes even though the token is not due.
-let rejected = false;
+// The gateway rejected this token before its stated expiry: the next session
+// read refreshes it even though it is not due. A new token clears the marker.
+let rejectedAccessToken = '';
 
 /**
- * One authorized Lexus call with the Keychain's session. It never refreshes:
- * Lexus rotates refresh tokens, so two answers refreshing at once would spend
- * the same one twice and the loser would sign the user out. Refreshing is the
- * `session` source's alone, and Contract orders every read after it; a 401/403
- * here marks the token rejected and Contract asks for the session again.
+ * Use the current token, joining or starting the one shared refresh when needed.
  */
 async function authorized(
   store: Store,
   at: number,
   call: (session: Session, request: Request) => Promise<Reply>,
 ): Promise<Json> {
-  const session = readSession(store);
-  if (!session) throw new HttpError(401, 'Signed out');
-  const response = await call(session, transport(store, at));
+  let current = await currentSession(store, at);
+  let response = await call(current, transport(store, at));
   if (response.status === 401 || response.status === 403) {
-    rejected = true;
-    throw new HttpError(401, 'Lexus rejected the session');
+    rejectedAccessToken = current.accessToken;
+    current = await refreshed(store, current, at);
+    if (rejectedAccessToken !== '' && rejectedAccessToken !== current.accessToken) {
+      rejectedAccessToken = '';
+    }
+    response = await call(current, transport(store, at));
+    if (response.status === 401 || response.status === 403) {
+      rejectedAccessToken = current.accessToken;
+      throw new HttpError(401, 'Lexus rejected the refreshed session');
+    }
   }
   return readJson(response);
 }
@@ -325,10 +366,7 @@ async function session(store: Store, at: number, storage: Storage | null): Promi
     return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
   }
   try {
-    if (rejected || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
-      current = await refreshed(store, current, at);
-      rejected = false;
-    }
+    current = await currentSession(store, at);
     return { signedIn: true, demo, expiresAt: current.expiresAt, status: 200, error: '' };
   } catch (e) {
     // A rejected refresh token has already been forgotten; anything else
@@ -501,11 +539,14 @@ async function garage(store: Store, at: number): Promise<Result<'garage'>> {
   latestRead.set('garage', sequence);
   try {
     const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s), true)(r));
+    if (!Array.isArray(body.payload) || body.payload.some(v => str(rec(v).vin) === '')) {
+      throw new Error('Lexus returned an incomplete vehicle list. Try again.');
+    }
     const cars = arr(body.payload).map(decodeCar).filter(c => c.vin);
     return await remember('garage', account(store), { ok: true, status: 200, error: '', car: cars[0] ?? noCar, cars }, since, sequence);
   } catch (e) {
     // Not ok, so the screen says it couldn't refresh, over the car it has.
-    const last = failure(e).status === 401 ? null : await recall<Result<'garage'>>('garage', account(store));
+    const last = await recall<Result<'garage'>>('garage', account(store));
     return { ...failure(e), car: last?.car ?? noCar, cars: last?.cars ?? [] };
   }
 }
@@ -617,6 +658,10 @@ async function status(store: Store, car: Car, at: number): Promise<Result<'statu
     const st = rec(rec(body.payload).status);
     const telemetry = rec(st.telemetry);
     const occurredMs = epochMs(st.occurrenceDate);
+    if (occurredMs <= 0 || !Array.isArray(st.vehicleStatus) ||
+        ![telemetry.fugage, telemetry.rage, telemetry.odo].every(v => hasReading(rec(v).value))) {
+      throw new Error('Lexus returned an incomplete status snapshot. Try again.');
+    }
     const sections = await foldClosures(car.vin, occurredMs, arr(st.vehicleStatus).map(rec).flatMap(category =>
       arr(category.sections).map(rec).map(section => ({
         category: str(category.category),
@@ -653,6 +698,10 @@ async function status(store: Store, car: Car, at: number): Promise<Result<'statu
     const { status: code, error } = failure(e);
     return last ? { ...last, status: code, error: error || 'Couldn’t refresh' } : { ...failure(e), ...empty };
   }
+}
+
+function hasReading(value: unknown): boolean {
+  return (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) && Number.isFinite(Number(value));
 }
 
 // closure-state.ts, per section: the feed alternates full snapshots with
