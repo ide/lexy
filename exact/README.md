@@ -267,7 +267,7 @@ The script runs on a developer Mac too. Set `EXACT_IDENTITY` and
 | Lexy (Expo) | Here |
 |---|---|
 | Sign-in (`src/auth/lexus-auth.ts`, `auth-context.tsx`) | The ForgeRock node is classified in Contract (`stepOf`). app.ts fills the callback Contract names. PKCE uses WebCrypto. Tokens live in the Keychain via `store`. |
-| Session refresh (`session-manager.ts`) | The `session` resource and every authorized read share one refresh promise. Reads wait for an in-flight refresh, proactively refresh near expiry, and retry once after a rejected access token. A rejected refresh signs out. |
+| Session refresh (`session-manager.ts`) | A Contract `session` resource refreshes near expiry, or once after a 401. Every read takes its expiry as an argument, so reads wait on it and nothing refreshes in parallel. A rejected refresh signs out. |
 | Vehicle mapping (`vehicle-mapping.ts`, `closures.ts`, `closure-display.ts`, `closure-summary.ts`, `fuel.ts`) | `fn`s and derives in `model.contract` / `status.contract`. app.ts only flattens the wire. |
 | Remote commands + lock reconcile (`remote-command*.ts`, `lock-reconcile.ts`) | `run` → `send` → `then afterCommand`. A 5 s tick re-reads status until the doors agree, primes once at the 5th poll, and gives up at 10. |
 | Engine polling (`engine-status.ts`) | The same tick: 4 re-reads, 20 s apart. |

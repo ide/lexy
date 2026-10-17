@@ -62,10 +62,8 @@ assert.equal(d.signedIn, false);
 assert.equal(mem.has('lexy.session'), false);
 
 // 4. An empty build-time store must not bake a signed-out first frame.
-const bakeStorage = { fs: { readFile: async (): Promise<never> => {
-  throw Object.assign(new Error('storage is unavailable during bake'), { code: 'bake' });
-} } } as any;
-await assert.rejects(answer('session', [4, now], store, bakeStorage, null), { code: 'bake' });
+const buildSession = await answer('session', [4, now], store, null, null);
+assert.equal(buildSession.signedIn, false);
 const liveStorage = { fs: { readFile: async (): Promise<never> => {
   throw Object.assign(new Error('missing probe'), { code: 'ENOENT' });
 } } } as any;

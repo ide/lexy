@@ -16,7 +16,7 @@ actor DemoLexus: LexusTransport {
     private var locked = true
     private var trunkOpen = false
     private var engineSince: Double = 0
-    private var nickName = "IS 350"
+    private var nickName = "Demo Vehicle"
     private var pending: [(command: String, at: Double)] = []
     /// The snapshot's occurrence date. Reads never move it; acting on a command or a refresh-status
     /// request does.

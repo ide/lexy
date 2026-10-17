@@ -153,11 +153,11 @@ component UpdatesScreen
         column
           SectionHeader(title="Actions")
           column class=Card
-            button text-align="left" press=check testId="updates-check" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+            button text-align="left" press=check testId="updates-check" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
               image "symbol:sf/arrow.triangle.2.circlepath" font-size=17 -exact-tint-color="AccentColor"
               text "Check for Update" font-size=17 color="AccentColor"
             Divider()
-            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
               image "symbol:sf/arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
               text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
           SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
@@ -245,14 +245,14 @@ component LoginPreviewScreen
             text scenarioTitle("network-error")
       if not done
         column flex=1 min-height=0
-          LockScreen(step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+          LockScreen(developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       if done
         column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
           image "symbol:sf/checkmark.seal.fill" font-size=56 -exact-tint-color="-exact-system-green"
           text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
           text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
           text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
-          button press=runAgain testId="run-again" buttonStyle="filled" accent-color="AccentColor" height=50 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
+          button press=runAgain testId="run-again" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
             text "Run Again" font-size=17 font-weight=600 color="#ffffff"
 
 // eas-screen.ios.tsx: the project's pages on expo.dev, in Safari, where the

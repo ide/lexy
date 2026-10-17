@@ -40,7 +40,7 @@ final class LexyUITests: XCTestCase {
         waitFor(element("try-demo"))
         XCTAssertTrue(app.staticTexts["Welcome to Lexy"].exists)
         element("try-demo").tap()
-        waitFor(app.navigationBars["IS 350"], timeout: 15)
+        waitFor(app.navigationBars["Demo Vehicle"], timeout: 15)
     }
 
     func testTheDemoEndToEnd() {

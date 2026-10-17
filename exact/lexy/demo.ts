@@ -44,7 +44,7 @@ type Car = {
   reportedAt: number;
 };
 
-const car: Car = { locked: true, trunkOpen: false, engineSince: 0, nickName: 'IS 350', pending: [], reportedAt: 0 };
+const car: Car = { locked: true, trunkOpen: false, engineSince: 0, nickName: 'Demo Vehicle', pending: [], reportedAt: 0 };
 
 function settle(at: number) {
   const due = car.pending.filter(p => p.at + ACT_AFTER_MS <= at);
@@ -119,7 +119,7 @@ const tokens = { access_token: 'demo-access', refresh_token: 'demo-refresh', id_
 
 // --- The car -------------------------------------------------------------------
 
-const VIN = 'DEMO0000000000000';
+const VIN = 'DEMO0000000000000'; // a placeholder, 17 characters as a VIN is
 const discovery = () => ({
   payload: [{
     vin: VIN, brand: 'L', generation: '21MM', region: 'US', asiCode: 'JG', hwType: '211',

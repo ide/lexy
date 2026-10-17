@@ -43,10 +43,11 @@ component SettingsRowFace
         image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // The Development tab folded into Settings, at its top (settings-screen.ios.tsx
-// DEV_ITEMS). Every Exact build is an internal one, so they are always shown.
+// DEV_ITEMS), shown in developer mode only; its last row turns that mode off.
 component DeveloperTools
   props
     open: action
+    setDeveloper: action
   view
     column
       SectionHeader(title="Developer Tools")
@@ -65,11 +66,19 @@ component DeveloperTools
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.", opensScreen=true)
+        box height=0.5 margin-left=16 background-color="-exact-separator"
+        row padding=16 gap=12 align-items="center"
+          text "Developer Mode" font-size=17 flex=1 min-width=0
+          input type="checkbox" switch checked=true change=setDeveloper aria-label="Developer Mode" testId="developer-mode" accent-color="auto"
+      SectionFooter(words="Turning this off hides Developer Tools and Try Demo on this iPhone. Open lexy://developer to turn it back on.")
 
 component SettingsScreen
   props
+    developer: bool
+    setDeveloper: action
     openDevTool: action
     car: Car
+    name: string
     demo: bool
     demoFailing: bool
     setDemoFailing: action
@@ -84,7 +93,8 @@ component SettingsScreen
     scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box"
         column box-sizing="border-box" padding=16 gap=24
-          DeveloperTools(open=openDevTool)
+          if developer
+            DeveloperTools(open=openDevTool, setDeveloper=setDeveloper)
           column
             SectionHeader(title="Maps")
             column class=Card
@@ -98,11 +108,11 @@ component SettingsScreen
             SectionHeader(title="Vehicle")
             column class=Card
               button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
-                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : vehicleName(car.nickName, car.modelName)), opensScreen=true)
+                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : name), opensScreen=true)
           column
             SectionHeader(title="Lexus Account")
             column class=Card
-              button press=signOut disabled=signingOut testId="sign-out" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button press=signOut disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
                 text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
             if demo
@@ -146,12 +156,12 @@ component RenameScreen
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"
             input appearance="none" id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="-exact-label"
             if name != ""
-              button press=clear testId="clear-name" buttonStyle="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
+              button press=clear testId="clear-name" appearance="auto" buttonStyle="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
                 image "symbol:sf/xmark.circle.fill" font-size=17 -exact-tint-color="-exact-tertiary-label"
           text "Your car’s name, saved to the Lexus app." font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16
         if error != ""
           row gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center" testId="rename-error"
             image "symbol:sf/exclamationmark.triangle.fill" font-size=18 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
-        button press=save disabled=(not changed or saving) testId="save-name" buttonStyle="filled" accent-color="AccentColor" height=50 display="flex" align-items="center" justify-content="center"
+        button press=save disabled=(not changed or saving) testId="save-name" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

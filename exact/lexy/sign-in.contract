@@ -9,7 +9,7 @@ fn heroTitle(step: string, method: string): string = step == "choice" ? "Verify 
 // The server's prompt is shown only when it reads as prose: the real tree's
 // choice step carries a message key ("OTP_VIA_PHONE_OR_ALERNATE_OPTION").
 fn readable(p: string): bool = p != "" and p.includes(" ")
-fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "We sent a verification code to your email address." : (channel(method) == "sms" ? "We texted a verification code to your phone." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
+fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "Lexus will send you a verification code by email." : (channel(method) == "sms" ? "Lexus will send you a verification code by text message." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
 fn choiceSymbol(method: string): string = channel(method) == "email" ? "envelope" : (channel(method) == "sms" ? "message" : "shield.lefthalf.filled")
 
 // The Lexy mark: the app icon's tach ring, its red line, and the L, without
@@ -52,8 +52,8 @@ component PrimaryButton
     press: action
     id: string
   view
-    button press=press disabled=disabled testId=id buttonStyle="filled" accent-color="AccentColor" height=50 display="flex" flex-direction="row" align-items="center" justify-content="center"
-      text label font-size=17 font-weight=600 color="#ffffff"
+    button press=press disabled=disabled testId=id appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
+      text label font-size=17 font-weight=600
 
 // SecondaryButton: a grey bordered capsule, for the step's other ways on.
 component SecondaryButton
@@ -63,7 +63,7 @@ component SecondaryButton
     press: action
     id: string
   view
-    button press=press disabled=disabled testId=id buttonStyle="gray" height=50 display="flex" flex-direction="row" align-items="center" justify-content="center"
+    button press=press disabled=disabled testId=id appearance="auto" buttonStyle="gray" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600 color="AccentColor"
 
 // InfoNotice and ErrorNotice: a symbol and the message on a card (a code was
@@ -101,6 +101,8 @@ component LockScreen
     resend: action
     differentMethod: action
     tryDemo: action
+    // Developer mode (lexy://developer): only then is Try Demo offered
+    developer: bool
     getLexusApp: action
     nextField: action
     // Settings → Developer Tools → Login Flow: under a navigation bar, and
@@ -139,7 +141,7 @@ component LockScreen
           // One row of equal-width choices (ChoiceButton: bordered, large).
           row gap=8 animation="stepIn 350ms ease-out"
             for m, i in choices key=m
-              button press=choose(i) disabled=busy testId=`method-${i}` buttonStyle="tinted" accent-color="AccentColor" flex=1 min-width=0 height=50 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button press=choose(i) disabled=busy testId=`method-${i}` appearance="auto" buttonStyle="tinted" accent-color="AccentColor" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image `symbol:sf/${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
                 text m font-size=17 font-weight=600 color="AccentColor" line-clamp=1
         if step == "otp"
@@ -160,7 +162,7 @@ component LockScreen
             text "New to Lexus?" font-size=13 font-weight=600 color="-exact-label"
             text "Create an account and add your vehicle in the Lexus app, then come back here to sign in." font-size=13 color="-exact-secondary-label"
             // Only the link is a control (sign-in-elements.ios.tsx).
-            button press=getLexusApp testId="get-lexus-app" buttonStyle="plain"
+            button press=getLexusApp testId="get-lexus-app" appearance="auto" buttonStyle="plain"
               text "Get the Lexus App" font-size=13 font-weight=600 color="AccentColor"
         text "Your password and verification code go directly to Lexus. Lexy never stores them or collects your information." font-size=13 font-weight=500 color="-exact-secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
       // Not in Lexy: an in-memory Lexus, for trying the app without an
@@ -168,6 +170,6 @@ component LockScreen
       // covers it, and last, so it is above the form. Shown on the first step
       // whatever the stored demo flag says: a flag left in the Keychain (it
       // outlives a reinstall) hid it on a signed-out launch.
-      if step == "credentials" and not preview
-        button press=tryDemo disabled=busy testId="try-demo" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
+      if developer and step == "credentials" and not preview
+        button press=tryDemo disabled=busy testId="try-demo" appearance="auto" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
           text "Try Demo" font-size=17 color="AccentColor"
