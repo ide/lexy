@@ -134,7 +134,6 @@ component Lexy
   state lastTick = 0
   // The page was hidden at the last tick (exactPage's visibilityState).
   state wasHidden = false
-  state primeOnLaunch = false
   // Back from the background, the refresh ladder waits for a fresh session:
   // a token refreshed while the reads are out asks every one of them again.
   state resumeDue = false
@@ -303,10 +302,11 @@ component Lexy
     updatingSlow = false
     if account.signedIn and car.vin != ""
       send waited = pause(1500)
-    // resume-refresh.ts at launch: a kept status past fifteen minutes old
-    // asks the car to report (the launch's own re-read covers the rest).
-    // The first tick sends it, once the data module can.
-    primeOnLaunch = account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + now() - status.fetchedMs >= 900000
+    // Ask the car to report as soon as the app starts with an old snapshot.
+    // The source waits for the data module if it is still loading.
+    if account.signedIn and car.vin != "" and status.fetchedMs > 0 and time.epochAtZero + now() - status.fetchedMs >= 900000 and not pending(primed)
+      lastPrimeAt = time.epochAtZero + now()
+      send primed = prime(car, time.epochAtZero + now())
 
   action afterWait
     updatingSlow = updating
@@ -332,12 +332,24 @@ component Lexy
   action onVisible
     if lastTick > 0
       resumeDue = true
+      // A foreground return has its own event, so begin the refresh here
+      // instead of waiting for the next five-second reconciliation tick.
+      if lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
+        resumeDue = false
+        if time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
+          lastPrimeAt = time.epochAtZero + now()
+          autoRefresh = true
+          updatingSlow = false
+          send primed = prime(car, time.epochAtZero + now())
+        else
+          if time.epochAtZero + now() - status.fetchedMs >= 60000
+            autoRefresh = true
+            updatingSlow = false
+            statusRev = statusRev + 1
+            statusAt = time.epochAtZero + now()
   action tick
     clock = time.epochAtZero + now()
-    // A launch prime waits for a signed-in car; signed out, there is none.
-    if primeOnLaunch and not account.signedIn and not pending(account)
-      primeOnLaunch = false
-    if autoRefresh and not (pending(status) or pending(primed) or pending(garage) or (primeOnLaunch and account.signedIn))
+    if autoRefresh and not (pending(status) or pending(primed) or pending(garage))
       autoRefresh = false
     if pulling and not (pending(primed) or pending(status) or pending(garage))
       pulling = false
@@ -382,11 +394,6 @@ component Lexy
         enginePolls = enginePolls + 1
         engineRev = engineRev + 1
         engineAt = clock
-    if (primeOnLaunch) and account.signedIn and car.vin != ""
-      primeOnLaunch = false
-      autoRefresh = true
-      updatingSlow = false
-      lastPrimeAt = time.epochAtZero + now()
     // resume-refresh.ts: back from the background, data
     // under a minute old stays; older is re-read; past fifteen minutes the
     // car is asked to report first (at most every three minutes).
@@ -415,13 +422,12 @@ component Lexy
     // One send of each, from the conditions above (LLP 1016 D5): asking
     // the car to report, and the wait before the hero pulses.
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
-    let primeLaunch = (primeOnLaunch) and account.signedIn and car.vin != ""
     let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + now() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + now() <= account.expiresAt - 60000
     let primeResume = resumes and time.epochAtZero + now() - status.fetchedMs >= 900000 and time.epochAtZero + now() - lastPrimeAt > 180000
     let rereads = resumes and time.epochAtZero + now() - status.fetchedMs >= 60000
-    if primeLock or primeLaunch or primeResume
+    if primeLock or primeResume
       send primed = prime(car, time.epochAtZero + now())
-    if primeLaunch or rereads
+    if rereads
       send waited = pause(1500)
     wasHidden = page.visibilityState == "hidden"
     lastTick = time.epochAtZero + now()
@@ -643,7 +649,6 @@ component Lexy
     send left = signOut()
   action afterSignOut
     climateWritten = none
-    primeOnLaunch = false
     autoRefresh = false
     signStep = "credentials"
     email = ""
