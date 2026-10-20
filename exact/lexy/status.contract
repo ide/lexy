@@ -79,8 +79,7 @@ component ControlButton
         text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
       // A centred alert, as Lexy's (alert-host.tsx): the same place for
       // every control.
-      dialog id=`confirm-${command}` closedby="any"
-        text title
+      dialog id=`confirm-${command}` role="alertdialog" aria-label=title
         text message
         button destructive=destructive press=run(command) commandfor=`confirm-${command}` command="close" testId=`confirm-${command}`
           text action
@@ -332,7 +331,7 @@ component StatusScreen
               // them in tree order (CSS paints positioned boxes after flow).
               row position="relative" width="100%" height=185 overflow="hidden" align-items="center" justify-content="center" pointer-events="none"
                 if car.image != ""
-                  image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
+                  image car.image aria-label=car.description width="min(110%, 440px)" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
               row position="relative" width="100%" justify-content="flex-end" pointer-events="none"
                 button press=openMap pointer-events="auto" testId="last-parked" appearance="auto" buttonStyle="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center"
                   image "symbol:icon.map.fill" font-size=15 -exact-tint-color="AccentColor"
