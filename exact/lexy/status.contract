@@ -210,9 +210,7 @@ component StatusScreen
     utcOffset: number
     online: bool
     commandError: string
-    dismissError: action
     climateError: string
-    dismissClimateError: action
     engineKnown: bool
     climateWanted: bool
     // Each defrost as shown: the tapped value while it saves.
@@ -284,15 +282,13 @@ component StatusScreen
           if car.vin == "" and not loading and not garage.ok
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="vehicle-error")
           // vehicle-controls.ios.tsx: a failed command is an alert.
-          dialog id="climate-failed" closedby="any" open=(climateError != "")
-            text "Couldn't save climate settings"
-            text climateError
-            button press=dismissClimateError commandfor="climate-failed" command="close" testId="climate-failed-ok"
+          dialog id="climate-failed" role="alertdialog" aria-label="Couldn't save climate settings"
+            text climateError testId="climate-failed-message"
+            button commandfor="climate-failed" command="close" testId="climate-failed-ok"
               text "OK"
-          dialog id="command-failed" closedby="any" open=(commandError != "")
-            text "Command didn't go through"
-            text commandError
-            button press=dismissError commandfor="command-failed" command="close" testId="command-failed-ok"
+          dialog id="command-failed" role="alertdialog" aria-label="Command didn't go through"
+            text commandError testId="command-failed-message"
+            button commandfor="command-failed" command="close" testId="command-failed-ok"
               text "OK"
           if notice != ""
             row testId="notice" class=Banner background-color=wash("-exact-system-blue")
