@@ -35,12 +35,12 @@ component SettingsRowFace
     opensScreen: bool
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:sf/${symbol}` font-size=22 -exact-tint-color="AccentColor" object-fit="scale-down" width=28 height=26
+      image `symbol:icon.${symbol}` font-size=22 -exact-tint-color="AccentColor" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="-exact-label"
         text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
       if opensScreen
-        image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
+        image "symbol:icon.chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // The Development tab folded into Settings, at its top (settings-screen.ios.tsx
 // DEV_ITEMS), shown in developer mode only; its last row turns that mode off.
@@ -53,16 +53,16 @@ component DeveloperTools
       SectionHeader(title="Developer Tools")
       column class=Card
         button text-align="left" press=open("/settings/updates") testId="dev-updates" display="flex"
-          SettingsRowFace(symbol="square.stack.3d.up.fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.", opensScreen=true)
+          SettingsRowFace(symbol="square_stack_3d_up_fill", title="Updates", subtitle="This build’s update stream, and checking for a new one.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/data-state") testId="dev-data-state" display="flex"
-          SettingsRowFace(symbol="cylinder.split.1x2.fill", title="Data State", subtitle="Force loading, offline, error, and empty states.", opensScreen=true)
+          SettingsRowFace(symbol="cylinder_split_1x2_fill", title="Data State", subtitle="Force loading, offline, error, and empty states.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/login") testId="dev-login" display="flex"
           SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/performance") testId="dev-performance" display="flex"
-          SettingsRowFace(symbol="gauge.with.dots.needle.67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.", opensScreen=true)
+          SettingsRowFace(symbol="gauge_with_dots_needle_67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
           SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.", opensScreen=true)
@@ -113,7 +113,7 @@ component SettingsScreen
             SectionHeader(title="Lexus Account")
             column class=Card
               button press=signOut disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
-                image "symbol:sf/rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
+                image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
                 text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
             if demo
               SectionFooter(words="Signed in to the demo Lexus.")
@@ -157,11 +157,11 @@ component RenameScreen
             input appearance="none" id="name-input" value=name input=setName submit=save enterkeyhint="done" autofocus=true autocapitalize="words" autocorrect="off" placeholder="My Vehicle" testId="name-input" flex=1 min-width=0 height=44 font-size=17 color="-exact-label"
             if name != ""
               button press=clear testId="clear-name" appearance="auto" buttonStyle="plain" aria-label="Clear" width=32 height=32 display="flex" align-items="center" justify-content="center"
-                image "symbol:sf/xmark.circle.fill" font-size=17 -exact-tint-color="-exact-tertiary-label"
+                image "symbol:icon.xmark.circle.fill" font-size=17 -exact-tint-color="-exact-tertiary-label"
           text "Your car’s name, saved to the Lexus app." font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16
         if error != ""
           row gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center" testId="rename-error"
-            image "symbol:sf/exclamationmark.triangle.fill" font-size=18 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=24 height=22
+            image "symbol:icon.exclamationmark.triangle.fill" font-size=18 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
         button press=save disabled=(not changed or saving) testId="save-name" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

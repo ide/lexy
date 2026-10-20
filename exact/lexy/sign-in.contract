@@ -76,7 +76,7 @@ component Notice
     message: string
   view
     row testId=id gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center"
-      image `symbol:sf/${symbol}` font-size=18 -exact-tint-color=tint
+      image `symbol:icon.${symbol}` font-size=18 -exact-tint-color=tint
       text message font-size=13 font-weight=500 color="-exact-label" flex=1 min-width=0
 
 component LockScreen
@@ -123,7 +123,7 @@ component LockScreen
           if step == "credentials"
             LexyMark(size=76)
           if step != "credentials"
-            image `symbol:sf/${heroSymbol(step, method)}` font-size=44 -exact-tint-color="-exact-system-blue" margin-bottom=4
+            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 -exact-tint-color="-exact-system-blue" margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" font-size=28 font-weight=700 text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
         // The first step is there on the first frame, as a native form is;
@@ -142,7 +142,7 @@ component LockScreen
           row gap=8 animation="stepIn 350ms ease-out"
             for m, i in choices key=m
               button press=choose(i) disabled=busy testId=`method-${i}` appearance="auto" buttonStyle="tinted" accent-color="AccentColor" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
-                image `symbol:sf/${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
+                image `symbol:icon.${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
                 text m font-size=17 font-weight=600 color="AccentColor" line-clamp=1
         if step == "otp"
           column gap=16 animation="stepIn 350ms ease-out"
