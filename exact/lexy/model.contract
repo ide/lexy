@@ -294,8 +294,10 @@ fn accent(): string = "light-dark(color(display-p3 0.91 0.11 0.14), color(displa
 // A role's wash: its colour at 15%. The accent's is written out, as Contract
 // has no `color-mix()` yet.
 fn wash(role: string): string = role == "-exact-system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "-exact-system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "-exact-system-blue" ? "light-dark(#007aff26, #0a84ff26)" : (role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" : "light-dark(#3c3c4326, #ebebf526)")))
+// A card clips what it holds to its corners, as UIKit's inset grouped
+// section does: a row's hover wash or a wide image stays inside it.
 style Card
-  background-color="-exact-secondary-grouped-background" border-radius=18
+  background-color="-exact-secondary-grouped-background" border-radius=18 overflow="clip"
 // A section's heading on every screen, as UIKit's grouped header
 // (`UIListContentConfiguration.groupedHeader()`) and SwiftUI's draw it.
 style SectionTitle
