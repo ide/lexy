@@ -1033,10 +1033,11 @@ component Lexy
                   if e.name == "rename"
                     RenameScreen(name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
-        // The tab bar's items: a symbol over a label, the `-fill` symbol
-        // when selected (tab-config.ts).
-        row role="tablist" aria-label="Tabs" display="flex" flex-shrink=0 height=56 align-items="stretch" background-color="-exact-secondary-grouped-background"
+        // The tab bar's items, a symbol over a label (tab-config.ts), drawn
+        // as the platform draws its tab bar: UIKit's on iOS, Exact's on the
+        // web (its sizes, and an unselected item's grey).
+        row role="tablist" aria-label="Tabs"
           for t in nav.tabs key=t.name
-            button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1 display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 color=(nav.tab == t.name ? "AccentColor" : "-exact-secondary-label")
-              image (t.name == "status" ? "symbol:icon.car" : (t.name == "specs" ? "symbol:icon.list.bullet.rectangle" : "symbol:icon.gearshape")) width=26 height=22 object-fit="scale-down"
-              text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) font-size=10 font-weight=500
+            button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1
+              image (t.name == "status" ? "symbol:icon.car" : (t.name == "specs" ? "symbol:icon.list.bullet.rectangle" : "symbol:icon.gearshape"))
+              text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings"))
