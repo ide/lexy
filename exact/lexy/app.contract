@@ -678,7 +678,9 @@ component Lexy
     send demoFailures = setDemoFailures(on)
   action unlockDeveloper
     send developerSet = setDeveloperMode(true)
-    nav = replace(nav, path("settings"))
+    // Back to Settings beneath the link's route, its tab's only screen: a
+    // replace would leave a second Settings on top, with a Back to the first.
+    nav = go(nav, "/settings")
   action setDeveloper(on: bool)
     send developerSet = setDeveloperMode(on)
   action signOut
