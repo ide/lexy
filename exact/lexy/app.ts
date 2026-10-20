@@ -124,16 +124,15 @@ async function identityFetch(url: string, init: RequestInit): Promise<Reply> {
   return response;
 }
 
-// The demo's latency. Hermes gives a TypeScript source no timer, so on Apple
-// it is the native module's; the web's module has none, but the page does.
+// The demo's latency, from the native module's `wait`: a data source has no
+// timer on any host (Hermes gives it none, and the web refuses it the page's).
+// Where the module has no `wait`, as on the web, the demo answers at once.
 const wait = async (ms: number) => {
   try {
-    if (native?.available) return void (await native.later({ op: 'wait', ms }));
+    if (native?.available) await native.later({ op: 'wait', ms });
   } catch {
-    // This module has no `wait`: the page's timer, below.
+    // This module has no `wait`.
   }
-  const timer = (globalThis as { setTimeout?: (f: () => void, ms: number) => unknown }).setTimeout;
-  if (typeof timer === 'function') await new Promise<void>(done => { timer(done, ms); });
 };
 
 function transport(store: Store, at: number): Request {
@@ -568,20 +567,29 @@ let generation = 0;
 // The schema, and the files an earlier build kept moved into it, once per run.
 let prepared: Promise<void> | null = null;
 
+// One connection at a time: the web host runs storage operations in one queue
+// and opens a database file exclusively, so a second open waiting for this
+// one's lock would hold up this one's close behind it.
+let dbTurn: Promise<unknown> = Promise.resolve();
+
 async function withDb<T>(work: (db: Database) => Promise<T>): Promise<T> {
   const storage = hostStorage;
   if (!storage) throw new Error('This host gives Lexy no storage.');
-  prepared ??= prepare(storage).catch(e => {
-    prepared = null;
-    throw e;
+  const turn = dbTurn.then(async () => {
+    prepared ??= prepare(storage).catch(e => {
+      prepared = null;
+      throw e;
+    });
+    await prepared;
+    const db = await storage.sqlite.open(DB);
+    try {
+      return await work(db);
+    } finally {
+      await db.close();
+    }
   });
-  await prepared;
-  const db = await storage.sqlite.open(DB);
-  try {
-    return await work(db);
-  } finally {
-    await db.close();
-  }
+  dbTurn = turn.catch(() => {});
+  return turn;
 }
 
 async function prepare(storage: Storage) {

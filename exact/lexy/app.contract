@@ -247,7 +247,8 @@ component Lexy
   mutation developerSet as shape DeveloperMode refreshes developer
   task unlock when top(nav).name == "unlock"
     after(1, unlockDeveloper)
-  mutation opened as shape Opened
+  mutation opened as shape Opened then afterOpen
+  derive openError = match opened { case some(o) => o.error, case none => "" }
   // A haptic (src/utils/haptics.ts) where Lexy plays one.
   mutation felt as shape Opened
   state moreOpen = false
@@ -677,7 +678,9 @@ component Lexy
     send demoFailures = setDemoFailures(on)
   action unlockDeveloper
     send developerSet = setDeveloperMode(true)
-    nav = replace(nav, path("settings"))
+    // Back to Settings beneath the link's route, its tab's only screen: a
+    // replace would leave a second Settings on top, with a Back to the first.
+    nav = go(nav, "/settings")
   action setDeveloper(on: bool)
     send developerSet = setDeveloperMode(on)
   action signOut
@@ -733,8 +736,6 @@ component Lexy
     garageRev = garageRev + 1
     garageAt = clock
 
-  action dismissCommandError
-    commandError = ""
   // The car answering is felt either way; a refused change shows the car's
   // own settings again at once (the re-read brings them), and a saved one
   // holds until the re-read agrees (the tick lets go).
@@ -751,6 +752,7 @@ component Lexy
           climateError = (r.ok ? "" : "Lexus didn't accept the new climate settings, so they weren't saved, and your vehicle's current settings are shown again. Try the change again in a moment.")
           send felt = feel(r.ok ? "success" : "error")
           if not r.ok
+            showModal("climate-failed")
             climateWritten = none
             climateRev = climateRev + 1
             defrostHeld = false
@@ -761,8 +763,6 @@ component Lexy
         climateError = ""
         climateUnwritten = false
         defrostHeld = false
-  action dismissClimateError
-    climateError = ""
   // vehicle-controls.ios.tsx: a medium impact on sending, then success or
   // error when the car answers.
   // The pending word shows the moment the command is sent (Locking…,
@@ -808,6 +808,7 @@ component Lexy
           if c.command == "engine-start" or c.command == "engine-stop"
             engineTarget = enginePrev
           commandError = (c.ok ? "Lexus sent the command, but your vehicle didn't carry it out. It may have weak cellular reception where it's parked. Try again in a minute." : failureText(c.status, c.error))
+          showModal("command-failed")
       case none
         notice = ""
   action openMap
@@ -821,12 +822,14 @@ component Lexy
   action openIn(provider: string)
     mapsTried = provider
     send opened = openMaps(provider, status.latitude, status.longitude, carName)
+  // use-maps-provider.ts: a link the app didn't answer is an alert.
+  action afterOpen
+    if openError != ""
+      showModal("open-failed")
   action pickAndOpen(provider: string)
     mapsTried = provider
     send opened = openMaps(provider, status.latitude, status.longitude, carName)
     send mapsChosen = setMapsApp(provider)
-  action dismissOpenError
-    opened = none
   action chooseMaps(provider: string)
     send mapsChosen = setMapsApp(provider)
   action manageSubscriptions
@@ -997,22 +1000,22 @@ component Lexy
                   header display="flex" flex-direction="row" align-items="center" gap=8 padding-left=16 padding-right=16 padding-top=(e.name == "map" ? "8px" : "env(safe-area-inset-top)") padding-bottom=8 flex-shrink=0
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44 display="flex" align-items="center" justify-content="center"
-                        image "symbol:sf/chevron.backward" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+                        image "symbol:icon.chevron.backward" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
                     column flex=1 min-width=0
                       text (e.name == "status" ? (firstLoad and shownOnline ? " " : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? 17 : 34) font-weight=700 color="-exact-label"
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
-                        image "symbol:sf/xmark" font-size=17 font-weight=600 object-fit="scale-down" width=20 height=20
+                        image "symbol:icon.xmark" font-size=17 font-weight=600 object-fit="scale-down" width=20 height=20
                     if e.name == "performance"
                       button press=clearObserved testId="clear-performance" disabled=pending(observedCleared)
                         text "Clear" font-size=17
                     if e.name == "login"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
-                        image "symbol:sf/wrench.and.screwdriver" font-size=17 object-fit="scale-down" width=22 height=20
+                        image "symbol:icon.wrench.and.screwdriver" font-size=17 object-fit="scale-down" width=22 height=20
                   if e.name == "status"
-                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, dismissError=dismissCommandError, climateError=climateError, dismissClimateError=dismissClimateError, engineKnown=engine.ok)
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok)
                   if e.name == "map"
-                    MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=(match opened { case some(o) => o.error, case none => "" }), open=openIn, pick=pickAndOpen, tried=mapsTried, dismissError=dismissOpenError, close=back)
+                    MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=openError, open=openIn, pick=pickAndOpen, tried=mapsTried, close=back)
                   if e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
                   if e.name == "settings"
@@ -1030,10 +1033,11 @@ component Lexy
                   if e.name == "rename"
                     RenameScreen(name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
-        // The tab bar's items: a symbol over a label, the `-fill` symbol
-        // when selected (tab-config.ts).
-        row role="tablist" aria-label="Tabs" display="flex" flex-shrink=0 height=56 align-items="stretch" background-color="-exact-secondary-grouped-background"
+        // The tab bar's items, a symbol over a label (tab-config.ts), drawn
+        // as the platform draws its tab bar: UIKit's on iOS, Exact's on the
+        // web (its sizes, and an unselected item's grey).
+        row role="tablist" aria-label="Tabs"
           for t in nav.tabs key=t.name
-            button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1 display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 color=(nav.tab == t.name ? "AccentColor" : "-exact-secondary-label")
-              image (t.name == "status" ? "symbol:sf/car" : (t.name == "specs" ? "symbol:sf/list.bullet.rectangle" : "symbol:sf/gearshape")) width=26 height=22 object-fit="scale-down"
-              text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings")) font-size=10 font-weight=500
+            button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1
+              image (t.name == "status" ? "symbol:icon.car" : (t.name == "specs" ? "symbol:icon.list.bullet.rectangle" : "symbol:icon.gearshape"))
+              text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings"))

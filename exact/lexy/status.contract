@@ -75,12 +75,11 @@ component ControlButton
   view
     column flex=1 min-width=0
       button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 padding-left=6 padding-right=6 display="flex" flex-direction="column" align-items="center" justify-content="center"
-        image `symbol:sf/${symbol}` font-size=iconSize -exact-tint-color=tint
+        image `symbol:icon.${symbol}` font-size=iconSize -exact-tint-color=tint
         text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
       // A centred alert, as Lexy's (alert-host.tsx): the same place for
       // every control.
-      dialog id=`confirm-${command}` closedby="any"
-        text title
+      dialog id=`confirm-${command}` role="alertdialog" aria-label=title
         text message
         button destructive=destructive press=run(command) commandfor=`confirm-${command}` command="close" testId=`confirm-${command}`
           text action
@@ -104,7 +103,7 @@ component VehicleState
     // The text keeps one measure wherever the state sits (Status pads its
     // column, Specs does not), so it wraps the same on both.
     column flex-grow=1 justify-content="center" align-items="center" gap=16 padding-top=32 padding-bottom=32 testId=id
-      image `symbol:sf/${symbol}` font-size=44 -exact-tint-color="-exact-secondary-label"
+      image `symbol:icon.${symbol}` font-size=44 -exact-tint-color="-exact-secondary-label"
       text title font-size=34 font-weight=700 text-align="center" max-width=320
       text message font-size=17 color="-exact-secondary-label" text-align="center" max-width=320
       button press=press testId=`${id}-retry` appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
@@ -122,9 +121,9 @@ component WarningBanner
   view
     row testId=id class=Banner background-color=wash("-exact-system-orange")
       if framed
-        image `symbol:sf/${symbol}` font-size=17 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=22 height=22
+        image `symbol:icon.${symbol}` font-size=17 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=22 height=22
       else
-        image `symbol:sf/${symbol}` font-size=17 -exact-tint-color="-exact-system-orange"
+        image `symbol:icon.${symbol}` font-size=17 -exact-tint-color="-exact-system-orange"
       column gap=2 flex=1
         text title class=SmallBold color="-exact-system-orange"
         text message class=Small color="-exact-system-orange" opacity=0.85
@@ -138,7 +137,7 @@ component StatusLine
     words: string
   view
     row gap=4 align-items="center"
-      image `symbol:sf/${symbol}` font-size=pointsize -exact-tint-color=tint object-fit="scale-down" width=22 height=20
+      image `symbol:icon.${symbol}` font-size=pointsize -exact-tint-color=tint object-fit="scale-down" width=22 height=20
       text words font-size=15 color="-exact-label"
 
 // A corner of the car: its door and window (closures-summary.ios.tsx).
@@ -210,9 +209,7 @@ component StatusScreen
     utcOffset: number
     online: bool
     commandError: string
-    dismissError: action
     climateError: string
-    dismissClimateError: action
     engineKnown: bool
     climateWanted: bool
     // Each defrost as shown: the tapped value while it saves.
@@ -280,23 +277,21 @@ component StatusScreen
           if online and car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.error != "" and status.status != 401))
             WarningBanner(id="garage-error", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))}${(status.ok ? " Showing the latest data we saved." : "")} Pull down to try again.`)
           if car.vin == "" and not loading and garage.ok and garage.carCount == 0
-            VehicleState(symbol="car.2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="no-vehicle")
+            VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="no-vehicle")
           if car.vin == "" and not loading and not garage.ok
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="vehicle-error")
           // vehicle-controls.ios.tsx: a failed command is an alert.
-          dialog id="climate-failed" closedby="any" open=(climateError != "")
-            text "Couldn't save climate settings"
-            text climateError
-            button press=dismissClimateError commandfor="climate-failed" command="close" testId="climate-failed-ok"
+          dialog id="climate-failed" role="alertdialog" aria-label="Couldn't save climate settings"
+            text climateError testId="climate-failed-message"
+            button commandfor="climate-failed" command="close" testId="climate-failed-ok"
               text "OK"
-          dialog id="command-failed" closedby="any" open=(commandError != "")
-            text "Command didn't go through"
-            text commandError
-            button press=dismissError commandfor="command-failed" command="close" testId="command-failed-ok"
+          dialog id="command-failed" role="alertdialog" aria-label="Command didn't go through"
+            text commandError testId="command-failed-message"
+            button commandfor="command-failed" command="close" testId="command-failed-ok"
               text "OK"
           if notice != ""
             row testId="notice" class=Banner background-color=wash("-exact-system-blue")
-              image "symbol:sf/checkmark.circle.fill" font-size=17 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=22
+              image "symbol:icon.checkmark.circle.fill" font-size=17 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=22
               text notice class=SmallBold color="-exact-system-blue" flex=1
           // Until the car and its status arrive: the cards' shapes, redacted, as
           // Lexy's skeleton (Redactable), never placeholder words.
@@ -336,16 +331,16 @@ component StatusScreen
               // them in tree order (CSS paints positioned boxes after flow).
               row position="relative" width="100%" height=185 overflow="hidden" align-items="center" justify-content="center" pointer-events="none"
                 if car.image != ""
-                  image car.image aria-label=car.description width="110%" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
+                  image car.image aria-label=car.description width="min(110%, 440px)" aspect-ratio="700 / 631" flex-shrink=0 object-fit="contain"
               row position="relative" width="100%" justify-content="flex-end" pointer-events="none"
                 button press=openMap pointer-events="auto" testId="last-parked" appearance="auto" buttonStyle="glass" width=148 height=48 border-radius=24 display="flex" flex-direction="row" align-items="center" justify-content="center"
-                  image "symbol:sf/map.fill" font-size=15 -exact-tint-color="AccentColor"
+                  image "symbol:icon.map.fill" font-size=15 -exact-tint-color="AccentColor"
                   text "Last Parked" font-size=15 font-weight=600 color="-exact-label"
             // Fuel (fuel-bar.tsx)
             column class=Card testId="fuel" padding=16 gap=8
               row justify-content="space-between" align-items="center"
                 row gap=4 align-items="center"
-                  image `symbol:sf/${(electric ? "bolt.fill" : "fuelpump.fill")}` font-size=17 -exact-tint-color=(fuelKnown ? fuelTint(fuel) : "-exact-tertiary-label") object-fit="scale-down" width=17 height=17
+                  image `symbol:icon.${(electric ? "bolt.fill" : "fuelpump.fill")}` font-size=17 -exact-tint-color=(fuelKnown ? fuelTint(fuel) : "-exact-tertiary-label") object-fit="scale-down" width=17 height=17
                   text (electric ? "Charge" : "Fuel") class=SmallBold color="-exact-secondary-label"
                 if fuelKnown
                   row
@@ -374,12 +369,12 @@ component StatusScreen
                   // has reported, nothing (a guess would read as a state).
                   if lockPending or doorLock != "unknown"
                     row gap=4 align-items="center" testId="lock-state"
-                      image `symbol:sf/${((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "lock.fill" : "lock.open.fill")}` font-size=13 -exact-tint-color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") object-fit="scale-down" width=13 height=13
+                      image `symbol:icon.${((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "lock.fill" : "lock.open.fill")}` font-size=13 -exact-tint-color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") object-fit="scale-down" width=13 height=13
                       text (lockPending ? (lockTarget == "locked" ? "Locking" : "Unlocking") : (doorLock == "locked" ? "Locked" : "Unlocked")) class=SmallBold color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
                   // No reading yet, no indicator (vehicle-controls.ios.tsx).
                   if canEngine and (engineKnown or enginePending)
                     row gap=4 align-items="center" testId="engine-state"
-                      image "symbol:sf/power" font-size=13 -exact-tint-color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") object-fit="scale-down" width=13 height=13
+                      image "symbol:icon.power" font-size=13 -exact-tint-color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") object-fit="scale-down" width=13 height=13
                       // One label, its width the longest the engine can say:
                       // hidden copies of every word share its cell and size it
                       // at any text size, so Locked beside it never moves. The
@@ -402,11 +397,11 @@ component StatusScreen
                     // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                     row flex=1 min-width=0 align-items="center" gap=12
                       box width=36 height=36 border-radius=18 background-color=wash("-exact-system-blue") display="flex" align-items="center" justify-content="center"
-                        image "symbol:sf/slider.horizontal.3" font-size=16 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=20
+                        image "symbol:icon.slider_horizontal_3" font-size=16 -exact-tint-color="-exact-system-blue" object-fit="scale-down" width=22 height=20
                       column flex=1 min-width=0 gap=2
                         text "More controls" font-size=17 font-weight=600 color="-exact-label"
                         text extrasText font-size=13 color="-exact-secondary-label"
-                    image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=16 height=20 rotate=(moreOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
+                    image "symbol:icon.chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=16 height=20 rotate=(moreOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
                   // expandable-card.tsx: the detail's height eases from 0 to its own
                   // over 300 ms (EXPAND_TIMING), clipped, with the chevron.
                   column box-sizing="border-box" overflow="hidden" height=(moreOpen ? "auto" : "0px") interpolate-size="allow-keywords" transition="height 300ms ease-in-out" inert=(not moreOpen) testId="more-detail"
@@ -441,7 +436,7 @@ component StatusScreen
                 column gap=4
                   row justify-content="space-between" align-items="center"
                     row gap=4 align-items="center"
-                      image "symbol:sf/thermometer.medium" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=17 height=17
+                      image "symbol:icon.thermometer.medium" font-size=17 -exact-tint-color="AccentColor" object-fit="scale-down" width=17 height=17
                       text "Remote Start Climate" class=SmallBold color="-exact-secondary-label"
                     // The real switch from the first frame, as the buttons
                     // are: disabled and off until the settings arrive (and
@@ -460,11 +455,11 @@ component StatusScreen
                       row gap=8
                         if climate.front
                           button press=toggleDefrost("front") testId="defrost-front" appearance="auto" buttonStyle=(frontDefrost ? "tinted" : "gray") -exact-control-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
-                            image "symbol:sf/windshield.front.and.heat.waves" -exact-tint-color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
+                            image "symbol:icon.windshield.front.and.heat.waves" -exact-tint-color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                             text "Front Defrost" color=(frontDefrost ? "AccentColor" : "-exact-secondary-label")
                         if climate.rear
                           button press=toggleDefrost("rear") testId="defrost-rear" appearance="auto" buttonStyle=(rearDefrost ? "tinted" : "gray") -exact-control-size="small" flex=1 padding-top=8 padding-bottom=8 border-radius=12 display="flex" flex-direction="row" align-items="center" justify-content="center"
-                            image "symbol:sf/windshield.rear.and.heat.waves" -exact-tint-color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
+                            image "symbol:icon.windshield.rear.and.heat.waves" -exact-tint-color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
                             text "Rear Defrost" color=(rearDefrost ? "AccentColor" : "-exact-secondary-label")
             // Doors & windows (closures-summary.ios.tsx)
             if rows.length > 0
@@ -475,11 +470,11 @@ component StatusScreen
                     // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                     row flex=1 min-width=0 align-items="center" gap=12
                       box width=36 height=36 border-radius=18 background-color=wash(verdictTint) display="flex" align-items="center" justify-content="center"
-                        image `symbol:sf/${verdictSymbol}` font-size=18 -exact-tint-color=verdictTint object-fit="scale-down" width=24 height=22
+                        image `symbol:icon.${verdictSymbol}` font-size=18 -exact-tint-color=verdictTint object-fit="scale-down" width=24 height=22
                       column flex=1 min-width=0 gap=2
                         text headline testId="closures-headline" font-size=17 font-weight=600 color="-exact-label" line-clamp=1
                         text subline font-size=13 color="-exact-secondary-label" line-clamp=1
-                    image "symbol:sf/chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=16 height=20 rotate=(closuresOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
+                    image "symbol:icon.chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=16 height=20 rotate=(closuresOpen ? 90 : 0) transition="rotate 300ms ease-in-out"
                   column box-sizing="border-box" overflow="hidden" height=(closuresOpen ? "auto" : "0px") interpolate-size="allow-keywords" transition="height 300ms ease-in-out" inert=(not closuresOpen) testId="closures-detail"
                     column gap=16 padding-top=2 padding-left=16 padding-right=16 padding-bottom=16
                       if corners.filter(s => cornerOf(s).includes("front-")).length > 0
@@ -505,7 +500,7 @@ component StatusScreen
                 // latest snapshot (windows after a drive), so say how old.
                 if status.closuresStaleMs > 0
                   row testId="closures-stale" justify-content="center" align-items="center" gap=4
-                    image "symbol:sf/clock.arrow.circlepath" font-size=12 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=12
+                    image "symbol:icon.clock.arrow.circlepath" font-size=12 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=12
                     text `Some readings as of ${relative(clock, status.closuresStaleMs)}` font-size=13 line-height="18px" color="-exact-secondary-label"
             // Odometer (odometer-card.tsx)
             column gap=8 testId="odometer"
@@ -513,7 +508,7 @@ component StatusScreen
               row class=Card padding=16 align-items="center" gap=8
                 column flex=1 gap=4
                   row gap=4 align-items="center"
-                    image "symbol:sf/gauge.with.dots.needle.67percent" font-size=17 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=17 height=17
+                    image "symbol:icon.gauge_with_dots_needle_67percent" font-size=17 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=17 height=17
                     text "Total" class=SmallBold color="-exact-secondary-label"
                   row gap=3 align-items="flex-end"
                     text (status.ok ? grouped(status.odometer) : "—") testId="odometer-value" font-size=17 line-height="22px" font-weight=600 font-variant-numeric="tabular-nums"

@@ -29,8 +29,7 @@ component MapsChooser
         if apps.waze
           button press=choose("waze") popovertarget=`${prefix}maps-chooser` popovertargetaction="hide" testId=`${prefix}maps-waze`
             text "Waze"
-      dialog id=`${prefix}no-maps` closedby="any"
-        text "No maps app installed"
+      dialog id=`${prefix}no-maps` role="alertdialog" aria-label="No maps app installed"
         text "Install Apple Maps, Google Maps, or Waze from the App Store to open your vehicle's location for directions."
         button commandfor=`${prefix}no-maps` command="close" testId=`${prefix}no-maps-ok`
           text "OK"
@@ -48,7 +47,6 @@ component MapSheet
     open: action
     pick: action
     tried: string
-    dismissError: action
     close: action
   view
     column testId="map-sheet" flex=1 min-height=0 background-color="-exact-grouped-background"
@@ -64,10 +62,9 @@ component MapSheet
           lexy-map testId="map" width="100%" height="100%" latitude=status.latitude longitude=status.longitude zoom=16 pin="true" places="true" interactive="true" marker-title=name
         column padding-left=16 padding-right=16 padding-top=16 padding-bottom="env(safe-area-inset-bottom)" gap=8 flex-shrink=0
           // use-maps-provider.ts: a link the app didn't answer is an alert.
-          dialog id="open-failed" closedby="any" open=(error != "")
-            text `Couldn't open ${mapsName(tried)}`
-            text error
-            button press=dismissError commandfor="open-failed" command="close" testId="open-failed-ok"
+          dialog id="open-failed" role="alertdialog" aria-label=`Couldn't open ${mapsName(tried)}`
+            text error testId="open-failed-message"
+            button commandfor="open-failed" command="close" testId="open-failed-ok"
               text "OK"
           // The saved (or only) app opens directly; with several the chooser
           // asks, listing only the installed ones; with none an alert says so
