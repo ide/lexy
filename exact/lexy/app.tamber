@@ -4,8 +4,10 @@ tamber lexy
 // (@material-symbols/svg-400 0.48.0, Apache-2.0: assets/icons/LICENSE) for the
 // hosts that have no SF Symbols, the web and Linux; the chevrons are the
 // larger iOS ones at weight 600 (`arrow_back_ios_new`, `arrow_forward_ios`),
-// as SF's semibold chevrons. A name with a part that starts with a digit is
-// written with underscores.
+// as SF's semibold chevrons. The horn is `brand_awareness`, its view box cut
+// to its art: SF's horn runs wider than its height, where Material's keeps to
+// its square. A name with a part that starts with a digit is written with
+// underscores.
 icons
   icon.arrow.down.circle.fill = icon(sf "arrow.down.circle.fill", svg "icons/arrow-down-circle-fill.svg")
   icon.arrow_triangle_2_circlepath = icon(sf "arrow.triangle.2.circlepath", svg "icons/arrow-triangle-2-circlepath.svg")
