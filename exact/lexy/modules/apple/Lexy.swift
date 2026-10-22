@@ -7,6 +7,7 @@
 // - `native.later({op: "geocode"})`: the parked street line
 //   (src/hooks/use-parking-address.ts, src/data/parking-address.ts).
 // - `native.later({op: "installed"})`: which maps apps the phone has.
+// - `native.later({op: "device"})`: what to call this device ("this iPad").
 // - `native.later({op: "observe"})`: this device's Observe metrics, from
 //   Exact's Observe service (`service("observe", …)`).
 // - `native.later({op: "wait"})`: the demo server's latency (demo.ts), at
@@ -60,6 +61,20 @@ final class LexyModule: ExactModule {
             DispatchQueue.main.async { UIApplication.shared.open(url) { opened in reply.send(["opened": opened]) } }
             #else
             reply.send(["opened": NSWorkspace.shared.open(url)])
+            #endif
+            return
+        }
+        // The device's own name, for the words that name it: UIDevice's model
+        // ("iPhone", "iPad", which an iPhone app keeps on an iPad), and "Mac"
+        // on the Mac, an iOS build there included.
+        if request["op"] as? String == "device" {
+            #if os(iOS)
+            DispatchQueue.main.async {
+                let info = ProcessInfo.processInfo
+                reply.send(["model": info.isiOSAppOnMac || info.isMacCatalystApp ? "Mac" : UIDevice.current.model])
+            }
+            #else
+            reply.send(["model": "Mac"])
             #endif
             return
         }

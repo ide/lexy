@@ -16,6 +16,11 @@ shape Page
   // fetch the person asked for, so it announces nothing.
   navigationType: string
 
+// exactViewport's display mode: `standalone` for a web app opened from the
+// home screen or installed, `browser` in a tab.
+shape Viewport
+  displayMode: string
+
 shape Time
   epochAtZero: number
   utcOffset: number
@@ -168,13 +173,21 @@ shape Climate
 shape Address
   line: string
 
-// The saved maps app (empty when unset, or when it was deleted) and which of
-// the three the phone has.
-// Whether this phone shows Developer Tools and Try Demo: on after a
-// `lexy://developer` link, off from Developer Tools' own switch.
+// Whether this device (on the web, this browser) shows Developer Tools and
+// Try Demo: on after a `lexy://developer` link, off from Developer Tools' own
+// switch.
 shape DeveloperMode
   on: bool
+  // The page's origin on the web, whose `/developer` is that link there; ""
+  // in the native app.
+  origin: string
+  // What the app calls the device it runs on ("iPhone", "iPad", "Mac"), from
+  // Lexy's module; "iPhone" from an older build's module, which has no
+  // `device`; "" on the web, and where there is no module.
+  device: string
 
+// The saved maps app (empty when unset, or when it was deleted) and which of
+// the three the device has (on the web, all three, as their sites).
 shape MapsApp
   provider: string
   apple: bool
@@ -281,6 +294,9 @@ fn mapsCount(m: MapsApp): number = (m.apple ? 1 : 0) + (m.google ? 1 : 0) + (m.w
 // installed (not saved, so installing another asks again); empty to ask.
 fn mapsResolved(m: MapsApp): string = m.provider != "" ? m.provider : (mapsCount(m) == 1 ? (m.apple ? "apple" : (m.google ? "google" : "waze")) : "")
 fn mapsName(provider: string): string = provider == "google" ? "Google Maps" : (provider == "waze" ? "Waze" : (provider == "apple" ? "Apple Maps" : "Maps"))
+// On the web, where no app opens, each maps app's own site with directions
+// to the car.
+fn webDirections(provider: string, latitude: number, longitude: number): string = provider == "google" ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}` : (provider == "waze" ? `https://www.waze.com/ul?ll=${latitude},${longitude}&navigate=yes` : `https://maps.apple.com/directions?destination=${latitude},${longitude}`)
 
 fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "headlights" ? "Headlights" : (name == "hazards" ? "Hazards" : (name == "horn" ? "Horn" : (name == "buzzer" ? "Buzzer" : (name == "moonroof" ? "Moonroof" : (name == "windows" ? "Windows" : name))))))
 

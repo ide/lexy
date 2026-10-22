@@ -48,6 +48,10 @@ component DeveloperTools
   props
     open: action
     setDeveloper: action
+    // The page's origin on the web, "" in the native app (DeveloperMode's),
+    // and where the mode is kept: "on this iPhone", "in this browser".
+    origin: string
+    place: string
   view
     column
       SectionHeader(title="Developer Tools")
@@ -70,11 +74,20 @@ component DeveloperTools
         row padding=16 gap=12 align-items="center"
           text "Developer Mode" font-size=17 flex=1 min-width=0
           input type="checkbox" switch checked=true change=setDeveloper aria-label="Developer Mode" testId="developer-mode" accent-color="auto"
-      SectionFooter(words="Turning this off hides Developer Tools and Try Demo on this iPhone. Open lexy://developer to turn it back on.")
+      if origin == ""
+        SectionFooter(words=`Turning this off hides Developer Tools and Try Demo ${place}. Open lexy://developer to turn it back on.`)
+      else
+        // SectionFooter's, with the page's own `/developer` as a link.
+        text font-size=13 color="-exact-secondary-label" padding-top=8 padding-left=16 padding-right=16
+          text `Turning this off hides Developer Tools and Try Demo ${place}. Open `
+          text `${origin}/developer` href="/developer" testId="developer-link"
+          text " to turn it back on."
 
 component SettingsScreen
   props
     developer: bool
+    developerOrigin: string
+    developerPlace: string
     setDeveloper: action
     openDevTool: action
     car: Car
@@ -94,7 +107,7 @@ component SettingsScreen
       column box-sizing="border-box"
         column box-sizing="border-box" padding=16 gap=24
           if developer
-            DeveloperTools(open=openDevTool, setDeveloper=setDeveloper)
+            DeveloperTools(open=openDevTool, setDeveloper=setDeveloper, origin=developerOrigin, place=developerPlace)
           column
             SectionHeader(title="Maps")
             column class=Card

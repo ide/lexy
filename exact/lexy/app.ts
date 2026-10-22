@@ -1036,7 +1036,8 @@ function mapsLinks(provider: string, latitude: number, longitude: number, name: 
 }
 
 async function openMaps(provider: string, latitude: number, longitude: number, name: string): Promise<Result<'openMaps'>> {
-  if (!native?.available) return { ok: false, error: 'This version of Lexy can’t open a maps app. Open Lexy on your iPhone to get directions to your vehicle.' };
+  // A host with no module: the web opens a maps site from Contract instead.
+  if (!native?.available) return { ok: false, error: 'This version of Lexy can’t open a maps app.' };
   for (const url of mapsLinks(provider, latitude, longitude, name)) {
     try {
       if ((await native.later({ op: 'open', url })).opened === true) return { ok: true, error: '' };
@@ -1047,21 +1048,31 @@ async function openMaps(provider: string, latitude: number, longitude: number, n
   return { ok: false, error: 'The app didn’t open your vehicle’s location, possibly because it was just uninstalled. Choose another maps app in Settings, or reinstall this one from the App Store.' };
 }
 
-// Which maps apps the phone has (canOpenURL on each one's scheme, declared
-// under LSApplicationQueriesSchemes), and the saved choice if it is
-// installed: while one that was deleted is gone, the chooser asks again
-// (src/hooks/use-maps-provider.ts, src/data/maps-providers.ts).
+// The page's origin where Lexy is a web page, "" natively. Exact gives a data
+// module no `self` or `location` on the web either, as Hermes has none, so it
+// is the global `origin`.
+const pageOrigin = (): string => globalThis.origin ?? '';
+
+// Which maps apps the device has (canOpenURL on each one's scheme, declared
+// under LSApplicationQueriesSchemes; on the web all three, as their sites),
+// and the saved choice if it is installed: while one that was deleted is
+// gone, the chooser asks again (src/hooks/use-maps-provider.ts,
+// src/data/maps-providers.ts).
 async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
   let installed = { apple: true, google: false, waze: false };
   let known = false;
   try {
-    if (native?.available) {
+    if (pageOrigin() !== '') {
+      // A browser opens each one's directions (Contract's `webDirections`).
+      installed = { apple: true, google: true, waze: true };
+      known = true;
+    } else if (native?.available) {
       installed = { ...installed, ...(await native.later({ op: 'installed' })) };
       known = true;
     }
   } catch {
-    // Unknown: Apple Maps alone, which every iPhone ships; only a check that
-    // answered hides a saved choice.
+    // Unknown: Apple Maps alone, which every Apple device ships; only a
+    // check that answered hides a saved choice.
   }
   // The choice is the database's, not the Keychain's: a Keychain write would
   // ask every vehicle resource again. A choice an earlier build kept in the
@@ -1069,6 +1080,24 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
   let provider = (await choice('maps')) ?? store.get('lexy.maps') ?? '';
   if (known && provider !== '' && !installed[provider as keyof typeof installed]) provider = '';
   return { provider, apple: installed.apple === true, google: installed.google === true, waze: installed.waze === true };
+}
+
+// Developer mode, and where Lexy runs: the page's origin on the web (its
+// `/developer` is the link there), else the device's name from Lexy's module
+// ("iPhone", "iPad", "Mac"; "" where there is no module).
+async function developerMode(on: boolean): Promise<Result<'developerMode'>> {
+  const origin = pageOrigin();
+  let device = '';
+  if (origin === '' && native?.available) {
+    try {
+      device = str((await native.later({ op: 'device' })).model);
+    } catch {
+      // An older build's module has no `device`. Each such build said "this
+      // iPhone", so an update of this file reaching one still does.
+      device = 'iPhone';
+    }
+  }
+  return { on, origin, device };
 }
 
 // --- Sources ---------------------------------------------------------------------
@@ -1135,11 +1164,13 @@ const sources: Sources = {
   setClimate: ([car, raw, on, temperature, front, rear, at], store) => setClimate(store, car, raw, on, temperature, front, rear, at),
   address: ([latitude, longitude]) => address(latitude, longitude),
   mapsApp: (_args, store) => mapsApp(store),
-  // Developer mode, per phone: a `lexy://developer` link turns it on, Developer Tools' switch off
-  developerMode: async () => ({ on: (await choice('developer')) === 'on' }),
+  // Developer mode, per device (per browser on the web): a `lexy://developer`
+  // link turns it on (on the web, the page's `/developer`), Developer Tools'
+  // switch off
+  developerMode: async () => developerMode((await choice('developer')) === 'on'),
   setDeveloperMode: async ([on]) => {
     await choose('developer', on ? 'on' : 'off');
-    return { on };
+    return developerMode(on);
   },
   setMapsApp: async ([provider], store) => {
     await choose('maps', provider);

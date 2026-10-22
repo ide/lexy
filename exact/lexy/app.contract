@@ -27,7 +27,9 @@ use Address from "./model.contract"
 use MapsApp from "./model.contract"
 use DeveloperMode from "./model.contract"
 use Page from "./model.contract"
+use Viewport from "./model.contract"
 use mapsResolved from "./model.contract"
+use webDirections from "./model.contract"
 use Opened from "./model.contract"
 use stepOf from "./model.contract"
 use failureText from "./model.contract"
@@ -54,7 +56,8 @@ routes nav
     login "/settings/login"
     eas "/settings/eas"
     performance "/settings/performance"
-    // `lexy://developer` (app.json `protocol_handlers`): turns developer mode on
+    // `lexy://developer` (app.json `protocol_handlers`), and on the web the
+    // page's own `/developer`: turns developer mode on
     unlock "/developer"
 
 
@@ -242,8 +245,14 @@ component Lexy
   state mapsTried = ""
   resource mapsApp = mapsApp() with mapsRev as shape MapsApp
   mutation mapsChosen as shape MapsApp refreshes mapsApp
-  // Developer Tools and Try Demo show only in developer mode, on this phone
+  // Developer Tools and Try Demo show only in developer mode, on this device
+  // (in this browser, on the web)
   resource developer = developerMode() as shape DeveloperMode
+  resource viewport = exactViewport() as shape Viewport
+  // Where the mode is kept, as its footer says: in this browser on the web, or
+  // in this app once it is opened from the home screen, whose storage is its
+  // own; natively, on this device by the module's name.
+  derive developerPlace = developer.origin != "" ? (viewport.displayMode == "standalone" ? "in this app" : "in this browser") : `on this ${developer.device != "" ? developer.device : "device"}`
   mutation developerSet as shape DeveloperMode refreshes developer
   task unlock when top(nav).name == "unlock"
     after(1, unlockDeveloper)
@@ -818,17 +827,19 @@ component Lexy
     nav = push(nav, "/map")
   // The saved or only app opens as it is; a pick from the chooser is
   // remembered (use-maps-provider.ts: never the lone app, so a second app
-  // installed later asks).
+  // installed later asks). On the web, where no app opens, its site does.
   action openIn(provider: string)
     mapsTried = provider
-    send opened = openMaps(provider, status.latitude, status.longitude, carName)
+    if developer.origin != ""
+      openURL(webDirections(provider, status.latitude, status.longitude))
+    else
+      send opened = openMaps(provider, status.latitude, status.longitude, carName)
   // use-maps-provider.ts: a link the app didn't answer is an alert.
   action afterOpen
     if openError != ""
       showModal("open-failed")
   action pickAndOpen(provider: string)
-    mapsTried = provider
-    send opened = openMaps(provider, status.latitude, status.longitude, carName)
+    openIn(provider)
     send mapsChosen = setMapsApp(provider)
   action chooseMaps(provider: string)
     send mapsChosen = setMapsApp(provider)
@@ -1018,7 +1029,7 @@ component Lexy
                   if e.name == "specs"
                     SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
                   if e.name == "settings"
-                    SettingsScreen(developer=developer.on, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                    SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
                   if e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   if e.name == "dataState"
