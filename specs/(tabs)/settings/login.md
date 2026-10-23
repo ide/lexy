@@ -60,6 +60,8 @@ The scenarios:
 
 ## Platform notes
 
+- Exact uses its shared sign-in state machine and a native navigation header. Switching scenarios, running again, or leaving resets the form and discards completions from the old attempt. The preview never saves tokens or alters the real session.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Getting back to Settings | Edge-swipe back only — the route hides the header so the preview matches the real sign-in screen exactly | The system back button covers this, so the headerless treatment carries over |

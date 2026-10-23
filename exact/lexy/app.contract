@@ -9,6 +9,7 @@ use RenameScreen from "./settings.contract"
 use Time, accent, renameFailure, routeTitle from "./model.contract"
 use Account from "./model.contract"
 use AuthNode from "./model.contract"
+use AuthDone from "./model.contract"
 use Done from "./model.contract"
 use Garage from "./model.contract"
 use Status from "./model.contract"
@@ -71,9 +72,9 @@ component Lexy
   resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account
   // Show the dashboard skeleton until the session resolves to avoid a sign-in flash
   derive shell = not entering and (account.signedIn or (account.status == 0 and account.error == ""))
-  // Keep sign-in busy until account, garage, and status have settled
+  // Hand off to the dashboard once the saved session is ready
   state entering = false
-  derive entered = not pending(account) and (not account.signedIn or (not pending(garage) and not pending(status)))
+  derive entered = not pending(account)
   task enter when entering and entered
     after(1, finishEntering)
 
@@ -97,6 +98,7 @@ component Lexy
   state email = ""
   state password = ""
   state code = ""
+  state authAttempt = 0
   state signStep = "credentials"
   state signError = ""
   // A fresh code is on its way (resend), then that it was sent.
@@ -117,7 +119,7 @@ component Lexy
   mutation passed as shape AuthNode then afterPassword
   mutation chose as shape AuthNode then afterChoice
   mutation verified as shape AuthNode then afterCode
-  mutation finished as shape Done refreshes account then afterFinish
+  mutation finished as shape AuthDone refreshes account then afterFinish
   mutation demo as shape Done refreshes account then afterDemo
   // Clear the persisted demo flag before sending real credentials
   mutation real as shape Done refreshes account then afterReal
@@ -459,7 +461,7 @@ component Lexy
     signError = ""
     signInfo = ""
   action signIn
-    if not signingIn
+    if not signingIn and signStep == "credentials"
       sessionNoticeSeen = true
       restartStage = ""
       resending = false
@@ -468,187 +470,224 @@ component Lexy
         signError = "Enter your email and password."
       else
         signError = ""
+        blur()
+        authAttempt = authAttempt + 1
         lastChoice = -1
+        lastChoiceLabel = ""
+        signInfo = ""
         if account.demo and previewScenario == ""
           send real = useDemo(false)
         else
-          send started = authStart(previewScenario)
+          send started = authStart(authAttempt + 1, previewScenario)
   action afterReal
-    send started = authStart(previewScenario)
+    send started = authStart(authAttempt, previewScenario)
   action resend
-    send felt = feel("impact-light")
-    signError = ""
-    code = ""
-    resending = true
-    restartStage = "resend"
-    send started = authStart(previewScenario)
+    restartSignIn("resend")
   action differentMethod
-    send felt = feel("impact-light")
-    signError = ""
-    code = ""
-    lastChoice = -1
-    restartStage = "choice"
-    send started = authStart(previewScenario)
+    restartSignIn("choice")
+  action restartSignIn(stage: string)
+    if not signingIn and signStep == "otp"
+      if email.trim() == "" or (password == "" and not (account.demo and previewScenario == ""))
+        startOver()
+        signError = "Enter your email and password again to request a new code."
+      else
+        blur()
+        authAttempt = authAttempt + 1
+        send felt = feel("impact-light")
+        signError = ""
+        signInfo = ""
+        code = ""
+        resending = stage == "resend"
+        restartStage = stage
+        if stage == "choice"
+          lastChoice = -1
+        send started = authStart(authAttempt + 1, previewScenario)
+  action returnToSignIn
+    if not signingIn
+      startOver()
   action startOver
+    blur()
+    authAttempt = authAttempt + 1
+    nodeRaw = ""
+    nodeTypes = []
+    choices = []
+    restartStage = ""
+    resending = false
+    signInfo = ""
     signStep = "credentials"
     signError = ""
     code = ""
     lastChoice = -1
+    lastChoiceLabel = ""
   // sign-in-elements.ios.tsx NewToLexusCallout: the Lexus app's App Store page.
   action getLexusApp
     send felt = feel("impact-light")
     openURL("https://apps.apple.com/us/app/lexus/id1468484450")
   action tryDemo
-    sessionNoticeSeen = true
-    signError = ""
-    send demo = useDemo(true)
+    if not signingIn and signStep == "credentials" and previewScenario == ""
+      blur()
+      authAttempt = authAttempt + 1
+      sessionNoticeSeen = true
+      signError = ""
+      send demo = useDemo(true)
   // The demo's password goes straight to the tree, never into the field,
   // so iOS doesn't offer to save a made-up one.
   action afterDemo
     email = "driver@example.com"
     password = ""
-    send started = authStart(previewScenario)
+    send started = authStart(authAttempt, previewScenario)
+  action signInFailed(stage: string, status: number)
+    if status > 0 and status < 400
+      startOver()
+    signError = signInError(stage, status)
+    signInfo = ""
+    restartStage = ""
+    resending = false
   action afterStart
     match started
       case some(n)
-        if not n.ok
-          signError = signInError((restartStage != "" ? restartStage : "credentials"), n.status, n.error)
-          if restartStage == ""
-            signStep = "credentials"
-          restartStage = ""
-          resending = false
-        else
-          if stepOf(n.tokenId, n.types, n.asksCode) == "username"
-            send named = authAnswer(previewScenario, n.raw, "NameCallback", email.trim())
+        if n.attempt == authAttempt
+          if not n.ok
+            signInFailed((restartStage != "" ? restartStage : "credentials"), n.status)
           else
-            signError = "Lexus sent a response Lexy couldn't understand, so sign-in stopped. Lexus may be having a temporary problem, or may have changed how sign-in works. Try again in a moment, and check for a Lexy update if it keeps happening."
-            restartStage = ""
-            resending = false
+            if stepOf(n.tokenId, n.types, n.asksCode) == "username"
+              send named = authAnswer(authAttempt, previewScenario, n.raw, "NameCallback", email.trim())
+            else
+              signInFailed("credentials", 200)
       case none
         signError = ""
   action afterName
     match named
       case some(n)
-        if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "password"
-          send passed = authAnswer(previewScenario, n.raw, "PasswordCallback", (password == "" and account.demo ? "demo" : password))
-        else
-          // A tree that answers but won't ask for the password refused the email.
-          signError = signInError((restartStage != "" ? restartStage : "credentials"), (n.ok ? 401 : n.status), n.error)
-          restartStage = ""
-          resending = false
+        if n.attempt == authAttempt
+          if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "password"
+            send passed = authAnswer(authAttempt, previewScenario, n.raw, "PasswordCallback", (password == "" and account.demo and previewScenario == "" ? "demo" : password))
+          else
+            // A tree that answers but won't ask for the password refused the email.
+            signInFailed((restartStage != "" ? restartStage : "credentials"), (n.ok ? 401 : n.status))
       case none
         signError = ""
   action afterPassword
     match passed
       case some(n)
-        if not n.ok
-          signError = signInError((restartStage != "" ? restartStage : "credentials"), n.status, n.error)
-          if restartStage == ""
-            signStep = "credentials"
-          restartStage = ""
-          resending = false
-        else
-          signError = ""
-          // A restart that ends here (no choice to re-pick) is over.
-          if stepOf(n.tokenId, n.types, n.asksCode) != "choice"
-            restartStage = ""
-            resending = false
-          if stepOf(n.tokenId, n.types, n.asksCode) == "complete"
-            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + performanceNow())
-          if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
-            signStep = "otp"
-            nodeRaw = n.raw
-            nodeTypes = n.types
-            signInfo = (resending ? "Lexus sent a new code." : "")
-          if stepOf(n.tokenId, n.types, n.asksCode) == "choice"
-            if n.choices.length == 0
-              // A choice with nothing to choose is how the tree says "no such account".
-              signError = signInError((restartStage != "" ? restartStage : "credentials"), 401, "")
-              if restartStage == ""
-                signStep = "credentials"
+        if n.attempt == authAttempt
+          if not n.ok
+            signInFailed((restartStage != "" ? restartStage : "credentials"), n.status)
+          else
+            signError = ""
+            // A restart that ends here (no choice to re-pick) is over.
+            if stepOf(n.tokenId, n.types, n.asksCode) != "choice"
               restartStage = ""
               resending = false
-            else
-              // Resend picks the method used last time, by its label;
-              // gone from the list, the user chooses again.
-              if lastChoice >= 0 and any(n.choices, lastChoiceLabel)
-                send chose = authChoose(previewScenario, n.raw, match first(n.choices.map((m, i) => m == lastChoiceLabel ? i : -1).filter(i => i >= 0)) { case some(i) => i, case none => 0 })
-              else
-                resending = false
+            if stepOf(n.tokenId, n.types, n.asksCode) == "complete"
+              send finished = authFinish(authAttempt, previewScenario, n.tokenId, time.epochAtZero + performanceNow())
+            if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+              signStep = "otp"
+              nodeRaw = n.raw
+              nodeTypes = n.types
+              signInfo = (resending ? "Lexus sent a new code." : "")
+            if stepOf(n.tokenId, n.types, n.asksCode) == "choice"
+              if n.choices.length == 0
+                // A choice with nothing to choose is how the tree says "no such account".
+                signError = signInError((restartStage != "" ? restartStage : "credentials"), 401)
+                if restartStage == ""
+                  signStep = "credentials"
                 restartStage = ""
-                signStep = "choice"
-                nodeRaw = n.raw
-                choices = n.choices
-                choicePrompt = match first(n.prompts) { case some(t) => t, case none => "" }
+                resending = false
+              else
+                // Resend picks the method used last time, by its label;
+                // gone from the list, the user chooses again.
+                if lastChoice >= 0 and any(n.choices, lastChoiceLabel)
+                  send chose = authChoose(authAttempt, previewScenario, n.raw, match first(n.choices.map((m, i) => m == lastChoiceLabel ? i : -1).filter(i => i >= 0)) { case some(i) => i, case none => 0 })
+                else
+                  resending = false
+                  restartStage = ""
+                  signStep = "choice"
+                  nodeRaw = n.raw
+                  choices = n.choices
+                  choicePrompt = match first(n.prompts) { case some(t) => t, case none => "" }
+            if stepOf(n.tokenId, n.types, n.asksCode) == "username" or stepOf(n.tokenId, n.types, n.asksCode) == "password"
+              startOver()
+              signError = signInError("credentials", 200)
       case none
         signError = ""
   action choose(index: number)
-    send felt = feel("impact-light")
-    signError = ""
-    lastChoice = index
-    lastChoiceLabel = choices.filter((m, i) => i == index).join("")
-    send chose = authChoose(previewScenario, nodeRaw, index)
+    if not signingIn and signStep == "choice" and index >= 0 and index < choices.length
+      send felt = feel("impact-light")
+      signError = ""
+      lastChoice = index
+      lastChoiceLabel = choices.filter((m, i) => i == index).join("")
+      send chose = authChoose(authAttempt, previewScenario, nodeRaw, index)
   action afterChoice
     match chose
       case some(n)
-        if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "otp"
-          signStep = "otp"
-          nodeRaw = n.raw
-          nodeTypes = n.types
-          signError = ""
-          signInfo = (resending ? "Lexus sent a new code." : "")
-          resending = false
-        else
-          signError = signInError(resending ? "resend" : "choice", n.status, n.error)
-          resending = false
-        restartStage = ""
+        if n.attempt == authAttempt
+          if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+            signStep = "otp"
+            nodeRaw = n.raw
+            nodeTypes = n.types
+            signError = ""
+            signInfo = (resending ? "Lexus sent a new code." : "")
+            resending = false
+          else
+            signInFailed(resending ? "resend" : "choice", n.status)
+          restartStage = ""
       case none
         signError = ""
   action verify
-    if not signingIn
+    if not signingIn and signStep == "otp"
       send felt = feel("impact-light")
       if code.trim() == ""
         signError = "Enter the code Lexus sent you."
       else
+        blur()
         signError = ""
-        send verified = authAnswer(previewScenario, nodeRaw, otpCallback(nodeTypes), code.trim())
+        send verified = authAnswer(authAttempt, previewScenario, nodeRaw, otpCallback(nodeTypes), code.trim())
   action afterCode
     match verified
       case some(n)
-        if not n.ok
-          signError = signInError("otp", n.status, n.error)
-        else
-          if n.tokenId != ""
-            send finished = authFinish(previewScenario, n.tokenId, time.epochAtZero + performanceNow())
+        if n.attempt == authAttempt
+          if not n.ok
+            signInFailed("otp", n.status)
           else
-            // Some trees ask twice; answer the next prompt the same way.
-            nodeRaw = n.raw
-            nodeTypes = n.types
-            signError = "Enter the new code Lexus sent you."
+            if n.tokenId != ""
+              send finished = authFinish(authAttempt, previewScenario, n.tokenId, time.epochAtZero + performanceNow())
+            else
+              if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+                nodeRaw = n.raw
+                nodeTypes = n.types
+                code = ""
+                signInfo = "Enter the new code Lexus sent you."
+                focus("code")
+              else
+                startOver()
+                signError = signInError("otp", 200)
       case none
         signError = ""
   action afterFinish
     match finished
       case some(f)
-        // A Login Flow preview ends on its own panel; the app stays as it was.
-        if f.ok and previewScenario != ""
-          previewDone = true
-          signStep = "credentials"
-          password = ""
-          code = ""
-        if f.ok and previewScenario == ""
-          sessionNoticeSeen = false
-          entering = true
-          garageRev = garageRev + 1
-          garageAt = time.epochAtZero + performanceNow()
-          statusRev = statusRev + 1
-          statusAt = time.epochAtZero + performanceNow()
-          engineAt = time.epochAtZero + performanceNow()
-          primeOnSignIn = true
-          nav = open(nav, "/")
-        if not f.ok
-          signError = signInError("otp", f.status, f.error)
-          signStep = "credentials"
+        if f.attempt == authAttempt
+          // A Login Flow preview ends on its own panel; the app stays as it was.
+          if f.ok and previewScenario != ""
+            blur()
+            previewDone = true
+            signStep = "credentials"
+            password = ""
+            code = ""
+          if f.ok and previewScenario == ""
+            sessionNoticeSeen = false
+            entering = true
+            garageRev = garageRev + 1
+            garageAt = time.epochAtZero + performanceNow()
+            statusRev = statusRev + 1
+            statusAt = time.epochAtZero + performanceNow()
+            engineAt = time.epochAtZero + performanceNow()
+            primeOnSignIn = true
+            nav = open(nav, "/")
+          if not f.ok
+            signError = signInError("session", f.status)
+            signStep = "credentials"
       case none
         signError = ""
   action setDemoFailing(on: bool)
@@ -663,8 +702,7 @@ component Lexy
     send developerSet = setDeveloperMode(on)
   action signOut
     send left = signOut()
-  // The dashboard has what it opens on: the sign-in screen goes, its fields
-  // cleared for the next sign-in.
+  // Clear credentials after the session hands off to the dashboard
   action finishEntering
     if entered
       entering = false
@@ -672,16 +710,14 @@ component Lexy
       password = ""
       code = ""
   action afterSignOut
+    startOver()
     entering = false
     climateWritten = none
     primeOnLaunch = false
     primeOnSignIn = false
     autoRefresh = false
-    signStep = "credentials"
     email = ""
     password = ""
-    code = ""
-    signError = ""
     lockTarget = ""
     engineTarget = ""
     garageRev = garageRev + 1
@@ -875,33 +911,19 @@ component Lexy
     dataState = kind
   action clearMaps
     send mapsChosen = setMapsApp("")
-  action chooseScenario(id: string)
-    previewScenario = id
+  action resetPreview
+    startOver()
     previewDone = false
-    signStep = "credentials"
-    code = ""
-    signError = ""
-    signInfo = ""
-    lastChoice = -1
-  action runPreviewAgain
-    previewDone = false
-    signStep = "credentials"
-    password = ""
-    code = ""
-    signError = ""
-    signInfo = ""
-    lastChoice = -1
-  // The Login Flow's back: the real sign-in owns the machine again.
-  action leavePreview
-    previewScenario = ""
-    previewDone = false
-    signStep = "credentials"
     email = ""
     password = ""
-    code = ""
-    signError = ""
-    signInfo = ""
-    lastChoice = -1
+  action chooseScenario(id: string)
+    resetPreview()
+    previewScenario = id
+  action runPreviewAgain
+    resetPreview()
+  action leavePreview
+    resetPreview()
+    previewScenario = ""
     nav = back(nav)
   action openExternal(url: string)
     openURL(url)
@@ -915,15 +937,8 @@ component Lexy
   // leaving the Login Flow preview resets it, as its own back does.
   action back
     if top(nav).name == "login"
+      resetPreview()
       previewScenario = ""
-      previewDone = false
-      signStep = "credentials"
-      email = ""
-      password = ""
-      code = ""
-      signError = ""
-      signInfo = ""
-      lastChoice = -1
     nav = back(nav)
   action followLink(url: string)
     nav = go(nav, url)
@@ -961,7 +976,7 @@ component Lexy
   view
     main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
       if not shell
-        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
       else
         // Each tab keeps its own stack; route headers supply UIKit's title and bar
         // items
@@ -989,7 +1004,7 @@ component Lexy
                   if e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=openError, open=openIn, pick=pickAndOpen, tried=mapsTried, close=back)
                   if e.name == "specs"
-                    SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold)
+                    SpecsScreen(garage=shownGarage, spec=spec, services=services, specLoading=pending(spec), servicesLoading=pending(services), utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold)
                   if e.name == "settings"
                     SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left), fold=fold)
                   if e.name == "updates"
@@ -997,7 +1012,7 @@ component Lexy
                   if e.name == "dataState"
                     DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
                   if e.name == "login"
-                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
+                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, getLexusApp=getLexusApp, nextField=focusPassword)
                   if e.name == "eas"
                     EasScreen(open=openExternal)
                   if e.name == "performance"

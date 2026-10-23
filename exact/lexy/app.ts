@@ -114,7 +114,7 @@ function keepCookies(header: string | null) {
 async function identityFetch(url: string, init: RequestInit): Promise<Reply> {
   const headers = { ...(init.headers as Record<string, string>) };
   if (jar.size) headers.Cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
-  const response = await fetch(url, { ...init, headers });
+  const response = await fetch(url, { ...init, headers, exactTimeout: 15000 });
   keepCookies(response.headers.get('set-cookie'));
   return response;
 }
@@ -182,7 +182,7 @@ function readSession(store: Store): Session | null {
 function tokens(body: Json, previousRefresh: string | undefined, at: number): Session {
   const refreshToken = str(body.refresh_token) || previousRefresh;
   if (!str(body.access_token) || !str(body.id_token) || typeof body.expires_in !== 'number' || !refreshToken) {
-    throw new Error('Lexus returned an incomplete token response');
+    throw new HttpError(200, 'Lexus returned an incomplete token response');
   }
   return {
     accessToken: str(body.access_token),
@@ -383,11 +383,22 @@ function failure(e: unknown) {
 
 // A node crosses to Contract decoded for reading and verbatim (`raw`) for
 // answering: Contract classifies it and says which callback to fill.
-function decodeNode(node: Json): Result<'authStart'> {
+function decodeNode(attempt: number, node: Json): Result<'authStart'> {
   const callbacks = arr(node.callbacks).map(rec);
+  const supported = ['NameCallback', 'PasswordCallback', 'TextInputCallback', 'ChoiceCallback'];
+  const answerable = callbacks.some((c): boolean => supported.includes(str(c.type)) && str(rec(arr(c.input)[0]).name) !== '');
+  const messageOnly = callbacks.length > 0 && callbacks.every((c): boolean => c.type === 'TextOutputCallback');
+  if (!str(node.tokenId) && !answerable && !messageOnly) {
+    throw new HttpError(200, 'Lexus returned no supported sign-in step');
+  }
   const outputs = callbacks.flatMap(c => arr(c.output).map(rec));
   const prompts = outputs.filter(o => o.name === 'prompt' || o.name === 'message').map(o => str(o.value));
+  const choices = arr(outputs.find((o): boolean => o.name === 'choices')?.value);
+  if (!choices.every((choice): boolean => typeof choice === 'string' && choice.trim() !== '')) {
+    throw new HttpError(200, 'Lexus returned an unreadable verification method');
+  }
   return {
+    attempt,
     ok: true,
     status: 200,
     error: str(node.message),
@@ -398,7 +409,7 @@ function decodeNode(node: Json): Result<'authStart'> {
     // classifyAuthenticationNode's test (lexus-auth.ts), case-insensitive: a
     // ForgeRock OTP node's prompt is "One Time Password".
     asksCode: /(?:\botp\b|one[ -]?time password|verification code)/i.test(prompts.join(' ')),
-    choices: arr(outputs.find(o => o.name === 'choices')?.value).map(str),
+    choices: choices.map(str),
   };
 }
 
@@ -409,31 +420,48 @@ const AUTH_HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function postNode(store: Store, preview: string, body: string): Promise<Result<'authStart'>> {
+async function postNode(store: Store, attempt: number, preview: string, raw = '{}', type = '', value: string | number = ''): Promise<Result<'authStart'>> {
   try {
+    const body = type ? answered(raw, type, value) : raw;
     const response = await signInTransport(store, preview, 0)(AUTHENTICATE_URL, { method: 'POST', headers: AUTH_HEADERS, body });
-    return decodeNode(await readJson(response));
+    return decodeNode(attempt, await readJson(response));
   } catch (e) {
-    return { ...failure(e), raw: '', tokenId: '', types: [], prompts: [], asksCode: false, choices: [] };
+    return { ...failure(e), attempt, raw: '', tokenId: '', types: [], prompts: [], asksCode: false, choices: [] };
   }
 }
 
 // Fill the first input of the first callback of `type` with `value`.
 function answered(raw: string, type: string, value: string | number): string {
-  const node = rec(JSON.parse(raw));
+  let node: Json;
+  try {
+    node = rec(JSON.parse(raw));
+  } catch {
+    throw new HttpError(200, 'The sign-in step is no longer readable');
+  }
   let done = false;
   node.callbacks = arr(node.callbacks).map(rec).map(c => {
-    if (done || c.type !== type || !arr(c.input).length) return c;
+    if (done || c.type !== type || str(rec(arr(c.input)[0]).name) === '') {
+      return c;
+    }
+    if (type === 'ChoiceCallback') {
+      const choices = arr(arr(c.output).map(rec).find(o => o.name === 'choices')?.value);
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value >= choices.length) {
+        throw new HttpError(200, 'The verification method is no longer available');
+      }
+    }
     done = true;
     return { ...c, input: arr(c.input).map((input, i) => (i === 0 ? { ...rec(input), value } : input)) };
   });
+  if (!done) {
+    throw new HttpError(200, 'Lexus did not ask for this sign-in answer');
+  }
   return JSON.stringify(node);
 }
 
-const b64url = (bytes: Uint8Array) =>
+const b64url = (bytes: Uint8Array): string =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-async function finishSignIn(store: Store, preview: string, tokenId: string, at: number): Promise<Result<'authFinish'>> {
+async function finishSignIn(store: Store, attempt: number, preview: string, tokenId: string, at: number): Promise<Result<'authFinish'>> {
   try {
     const request = signInTransport(store, preview, at);
     const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -461,9 +489,16 @@ async function finishSignIn(store: Store, preview: string, tokenId: string, at: 
       await readJson(authorize);
       throw new HttpError(authorize.status, `Lexus authorization failed (${authorize.status})`);
     }
-    const location = new URL(authorize.headers.get('Location') ?? '');
+    let location: URL;
+    try {
+      location = new URL(authorize.headers.get('Location') ?? '');
+    } catch {
+      throw new HttpError(200, 'Lexus did not return a valid authorization redirect');
+    }
     const code = location.searchParams.get('code');
-    if (!code) throw new Error(location.searchParams.get('error_description') ?? 'Lexus did not return an authorization code');
+    if (!code) {
+      throw new HttpError(200, location.searchParams.get('error_description') ?? 'Lexus did not return an authorization code');
+    }
     const token = await request(TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -479,9 +514,9 @@ async function finishSignIn(store: Store, preview: string, tokenId: string, at: 
     // A preview proves the exchange and keeps nothing: the session in the
     // Keychain is the user's.
     if (!preview) store.set('lexy.session', JSON.stringify(session));
-    return { ok: true, status: 200, error: '' };
+    return { attempt, ok: true, status: 200, error: '' };
   } catch (e) {
-    return failure(e);
+    return { attempt, ...failure(e) };
   }
 }
 
@@ -1148,13 +1183,13 @@ const sources: Sources = {
     await forgetStored();
     return { ok: true, status: 200, error: '' };
   },
-  authStart: ([preview], store) => {
+  authStart: ([attempt, preview], store): Promise<Result<'authStart'>> => {
     jar.clear();
-    return postNode(store, preview, '{}');
+    return postNode(store, attempt, preview);
   },
-  authAnswer: ([preview, raw, type, value], store) => postNode(store, preview, answered(raw, type, value)),
-  authChoose: ([preview, raw, index], store) => postNode(store, preview, answered(raw, 'ChoiceCallback', index)),
-  authFinish: ([preview, tokenId, at], store) => finishSignIn(store, preview, tokenId, at),
+  authAnswer: ([attempt, preview, raw, type, value], store): Promise<Result<'authStart'>> => postNode(store, attempt, preview, raw, type, value),
+  authChoose: ([attempt, preview, raw, index], store): Promise<Result<'authChoose'>> => postNode(store, attempt, preview, raw, 'ChoiceCallback', index),
+  authFinish: ([attempt, preview, tokenId, at], store): Promise<Result<'authFinish'>> => finishSignIn(store, attempt, preview, tokenId, at),
   // Settings → Developer Tools → Data State: the garage the screens are
   // shown, rewritten in only the fields they branch on, so each forced state
   // runs the code path a real one does (src/debug/data-state.ts).

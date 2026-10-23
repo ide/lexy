@@ -43,6 +43,7 @@ shape Account
 // One step of Lexus's ForgeRock sign-in tree. `raw` is the node verbatim, for
 // answering; the rest is it decoded, for deciding what the step is.
 shape AuthNode
+  attempt: number
   ok: bool
   status: number
   error: string
@@ -53,6 +54,12 @@ shape AuthNode
   // The prompts name a code (lexus-auth.ts's test, matched in the source).
   asksCode: bool
   choices: string[]
+
+shape AuthDone
+  attempt: number
+  ok: bool
+  status: number
+  error: string
 
 shape Done
   ok: bool
@@ -230,12 +237,19 @@ fn retryAction(stage: string): string = (
   "tap Sign In again"
 )
 fn rejectedText(stage: string): string = (
-  stage == "otp" ? "Lexus didn't accept that verification code. It may be mistyped, expired, or already used, since codes work once and only for a few minutes. Tap Resend Code and enter the fresh code right away." :
-  stage == "choice" ? "Lexus couldn't send a code by that method. The contact info on your account may be out of date. Try another method, or update your details in the Lexus app." :
-  stage == "resend" ? "Lexus refused to send another code, usually because too many were requested in a row. Wait a few minutes and request a code again." :
-  "Lexus didn't accept that email and password. One of them is likely mistyped (passwords are case-sensitive), or the account is locked after too many attempts. Check both fields and try again, or reset your password in the Lexus app."
+  stage == "otp" ? "Lexus didn't accept that code. It may have expired or already been used. Tap Resend Code and enter the new code." :
+  stage == "choice" ? "Lexus couldn't send a code by that method. Try another method, or update your contact details in the Lexus app." :
+  stage == "resend" ? "Lexus refused another code. Too many may have been requested. Wait a few minutes, then tap Resend Code." :
+  stage == "session" ? "Lexus couldn't finish signing you in. Tap Sign In to try again." :
+  "Lexus didn't accept that email and password. Check both fields; passwords are case-sensitive. If it still fails, reset your password or check for an account lock in the Lexus app."
 )
-fn signInError(stage: string, status: number, error: string): string = status == 0 ? `Couldn't reach Lexus. Your device looks offline, or the connection dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.` : (status == 429 ? `Lexus is limiting sign-in attempts after too many recent tries. This clears on its own. Wait a few minutes, then ${retryAction(stage)}.` : (status >= 500 ? `The Lexus sign-in service hit an error on its end, not something you entered. It usually recovers quickly, so wait a moment, then ${retryAction(stage)}.` : (status >= 400 ? rejectedText(stage) : `Sign-in stopped unexpectedly, and Lexy couldn't tell why. Try again; if it keeps happening, restart Lexy.${error != "" ? ` (Details: ${error})` : ""}`)))
+fn signInError(stage: string, status: number): string = (
+  status == 0 ? `Couldn't reach Lexus. Check Wi-Fi or cellular, then ${retryAction(stage)}.` :
+  status == 429 ? `Lexus is limiting sign-in attempts. Wait a few minutes, then ${retryAction(stage)}.` :
+  status >= 500 ? `The Lexus sign-in service is having trouble. Wait a moment, then ${retryAction(stage)}.` :
+  status >= 400 ? rejectedText(stage) :
+  "Lexus sent an unexpected sign-in response. Try Sign In again. If this keeps happening, check for a Lexy update."
+)
 
 // load-error.ts classifyFailure / describeFailure: what kind of failure a
 // read was, then a short summary (the "Couldn't refresh" banner) or the

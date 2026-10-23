@@ -75,6 +75,7 @@ Run these from the repository root. The checks use a fake network and in-memory
 storage; persistence checks execute real SQLite statements:
 
 ```sh
+bun exact/lexy/auth.check.ts
 bun exact/lexy/session.check.ts
 bun exact/lexy/data-flow.check.ts
 bun exact/lexy/closures.check.ts
@@ -82,7 +83,7 @@ bun exact/lexy/maps-preference.check.ts
 bun exact/lexy/independent-reads.check.ts
 ```
 
-They cover token refresh and sign-out, malformed responses, sparse closure
+They cover sign-in and preview isolation, token refresh and sign-out, malformed responses, sparse closure
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 

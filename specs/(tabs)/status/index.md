@@ -380,6 +380,8 @@ telling.
 
 ## Platform notes
 
+- Exact places loading cards in the same grid as the dashboard, including separate book-fold segments. The hero keeps its loaded height; unknown controls use neutral shapes. Loading pulses only while online. Refreshes retain the last available readings.
+
 - The Exact app uses two columns on wide displays. On a book fold, the vehicle readings occupy the leading segment and the remote controls and climate settings occupy the trailing segment, clear of the hinge. More Controls stays expanded in this layout. Narrow displays retain the single scrolling column and collapsible controls.
 
 - **The hero has no map backdrop on Android.** The card there is the vehicle's

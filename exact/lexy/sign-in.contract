@@ -89,6 +89,7 @@ component LockScreen
     verify: action
     resend: action
     differentMethod: action
+    startOver: action
     tryDemo: action
     // Developer mode (lexy://developer): only then is Try Demo offered
     developer: bool
@@ -124,25 +125,27 @@ component LockScreen
             // The group is the fields' look, so each is a bare box
             // (appearance="none": no default field border).
             column border-radius=16 background-color="-exact-secondary-grouped-background" overflow="hidden"
-              input appearance="none" value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
+              input appearance="none" value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" id="email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
               box height=0.5 margin-left=16 background-color="-exact-separator"
               input appearance="none" value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
             PrimaryButton(label=(busy ? "Signing In…" : "Sign In"), disabled=(email.trim() == "" or password == ""), press=signIn, id="sign-in-button")
         if step == "choice"
-          // One row of equal-width choices (ChoiceButton: bordered, large).
-          row gap=8 animation="stepIn 350ms ease-out"
+          // Keep the full delivery address readable, including on a narrow segment
+          column gap=8 animation="stepIn 350ms ease-out"
             for m, i in choices key=m
-              button press=choose(i) disabled=busy testId=`method-${i}` appearance="auto" buttonStyle="tinted" accent-color="AccentColor" flex=1 min-width=0 height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button press=choose(i) disabled=busy testId=`method-${i}` appearance="auto" buttonStyle="tinted" accent-color="AccentColor" min-width=0 min-height=50 padding=16 border-radius=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align="left" gap=12
                 image `symbol:icon.${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
-                text m font-size=17 font-weight=600 color="AccentColor" line-clamp=1
+                text m font-size=17 font-weight=600 color="AccentColor" white-space="normal"
         if step == "otp"
           column gap=16 animation="stepIn 350ms ease-out"
-            input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="-exact-secondary-grouped-background" font-size=17 color="-exact-label"
+            input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" id="code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="-exact-secondary-grouped-background" font-size=17 color="-exact-label"
             PrimaryButton(label=(busy and not resending ? "Verifying…" : "Verify"), disabled=(code.trim() == ""), press=verify, id="verify-button")
             column gap=8
-              SecondaryButton(label="Resend Code", disabled=busy, press=resend, id="resend")
+              SecondaryButton(label=(resending ? "Sending Code…" : "Resend Code"), disabled=busy, press=resend, id="resend")
               if choices.length > 1
                 SecondaryButton(label="Use a Different Method", disabled=busy, press=differentMethod, id="different-method")
+        if step != "credentials"
+          SecondaryButton(label="Back to Sign In", disabled=busy, press=startOver, id="start-over")
         if error != ""
           Notice(id="sign-in-error", symbol="exclamationmark.triangle.fill", tint="-exact-system-orange", message=error)
         if error == "" and info != ""
@@ -155,7 +158,7 @@ component LockScreen
             // Only the link is a control (sign-in-elements.ios.tsx).
             button press=getLexusApp testId="get-lexus-app" appearance="auto" buttonStyle="plain"
               text "Get the Lexus App" font-size=13 font-weight=600 color="AccentColor"
-        text "Your password and verification code go directly to Lexus. Lexy never stores them or collects your information." font-size=13 font-weight=500 color="-exact-secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
+        text "Your password and verification code go directly to Lexus. Lexy never saves them." font-size=13 font-weight=500 color="-exact-secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
       // Not in Lexy: an in-memory Lexus, for trying the app without an
       // account. One tap signs in. In the corner, where the keyboard never
       // covers it, and last, so it is above the form. Shown on the first step

@@ -26,11 +26,14 @@ component InfoRow
     label: string
     value: string
     last: bool
+    waiting: bool
   view
     row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=(last ? 0 : 0.5) border-bottom-style="solid" border-color="-exact-separator" testId=`row-${label}`
       text label class=Small color="-exact-secondary-label"
-      // Selectable, as the Expo row's value is: a long press offers Copy.
-      text (value != "" ? value : "—") class=Small color="-exact-label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums" user-select=(value != "" ? "text" : "auto")
+      if waiting
+        box width=100 height=17 border-radius=6 background-color="-exact-tertiary-fill"
+      else
+        text (value != "" ? value : "—") class=Small color="-exact-label" text-align="right" flex-shrink=1 font-variant-numeric="tabular-nums" user-select=(value != "" ? "text" : "auto")
 
 component Capability
   props
@@ -51,6 +54,8 @@ component SpecsScreen
     refreshing: bool
     loading: bool
     online: bool
+    specLoading: bool
+    servicesLoading: bool
     manage: action
     // Wide: the vehicle on the left, capabilities and services on the right.
     wide: bool
@@ -66,11 +71,6 @@ component SpecsScreen
         if online and car.vin != "" and not garage.ok and not loading and garage.status != 401
           column margin-left=16 margin-right=16 margin-top=16
             WarningBanner(id="specs-garage-error", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.`)
-        if car.vin == "" and loading
-          // details-screen.tsx's skeleton: the vehicle card's place.
-          column box-sizing="border-box" padding=16 gap=8 testId="specs-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
-            box width=80 height=17 border-radius=6 margin-left=8 background-color="-exact-tertiary-fill"
-            column class=Card height=600
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
@@ -81,24 +81,24 @@ component SpecsScreen
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
-        if car.vin != ""
+        if car.vin != "" or loading
           // Its last card keeps its own room below it, as Status' footer does.
-          column box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 margin-bottom=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId="specs-body"
+          column box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 margin-bottom=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId=(car.vin == "" ? "specs-skeleton" : "specs-body")
             column gap=8 testId="specs-vehicle" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
               text "Vehicle" class=SectionTitle
-              column class=Card padding-left=16 padding-right=16
-                InfoRow(label="VIN", value=car.vin, last=false)
-                InfoRow(label="Model Code", value=car.modelCode, last=false)
-                InfoRow(label="Exterior", value=car.color, last=false)
-                InfoRow(label="Trim", value=specValue(spec, "Grade", car.grade), last=false)
-                InfoRow(label="Region", value=car.region, last=false)
-                InfoRow(label="Telematics", value=car.generation, last=false)
-                InfoRow(label="Head Unit", value=headUnit(car.generation), last=false)
-                InfoRow(label="Fuel Type", value=fuelName(car.fuelType), last=false)
-                InfoRow(label="Transmission", value=specValue(spec, "Transmission", "—"), last=false)
-                InfoRow(label="Drivetrain", value=specValue(spec, "Drive Type", "—"), last=false)
-                InfoRow(label="Built", value=specValue(spec, "Order Date", "—"), last=false)
-                InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true)
+              column class=Card padding-left=16 padding-right=16 animation=(car.vin == "" and online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
+                InfoRow(label="VIN", value=car.vin, last=false, waiting=car.vin == "")
+                InfoRow(label="Model Code", value=car.modelCode, last=false, waiting=car.vin == "")
+                InfoRow(label="Exterior", value=car.color, last=false, waiting=car.vin == "")
+                InfoRow(label="Trim", value=specValue(spec, "Grade", car.grade), last=false, waiting=(car.vin == "" or (specLoading and spec.items.length == 0 and car.grade == "")))
+                InfoRow(label="Region", value=car.region, last=false, waiting=car.vin == "")
+                InfoRow(label="Telematics", value=car.generation, last=false, waiting=car.vin == "")
+                InfoRow(label="Head Unit", value=headUnit(car.generation), last=false, waiting=car.vin == "")
+                InfoRow(label="Fuel Type", value=fuelName(car.fuelType), last=false, waiting=car.vin == "")
+                InfoRow(label="Transmission", value=specValue(spec, "Transmission", "—"), last=false, waiting=(car.vin == "" or (specLoading and spec.items.length == 0)))
+                InfoRow(label="Drivetrain", value=specValue(spec, "Drive Type", "—"), last=false, waiting=(car.vin == "" or (specLoading and spec.items.length == 0)))
+                InfoRow(label="Built", value=specValue(spec, "Order Date", "—"), last=false, waiting=(car.vin == "" or (specLoading and spec.items.length == 0)))
+                InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true, waiting=(car.vin == "" or (specLoading and spec.items.length == 0)))
             column testId="specs-right" gap=16 grid-column=(wide ? (fold == "across" ? "1" : "2") : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left) + 16px)" : "0px") margin-right=(fold == "across" ? "16px" : "0px")
               // src/data/vehicle-mapping.ts lists the same four for every car.
               column gap=8
@@ -108,7 +108,13 @@ component SpecsScreen
                   Capability(symbol="power", label="Engine start")
                   Capability(symbol="thermometer.medium", label="Climate")
                   Capability(symbol="location.fill", label="Location")
-              if services.ok and services.items.length > 0
+              if (car.vin == "" and loading) or (servicesLoading and services.items.length == 0)
+                column gap=8 testId="services-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
+                  text "Connected Services" class=SectionTitle
+                  column class=Card padding-left=16 padding-right=16
+                    for i in range(3) key=i
+                      InfoRow(label="", value="", last=(i == 2), waiting=true)
+              if car.vin != "" and services.items.length > 0
                 column gap=8
                   text "Connected Services" class=SectionTitle
                   column class=Card padding-left=16 padding-right=16
