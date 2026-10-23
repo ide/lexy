@@ -5,7 +5,7 @@
 # Rust comes from exact/lexy/rust-toolchain.toml; the Hermes commit from
 # exact2's js/build.rs (HERMES_PIN).
 EXACT2_REPO=https://github.com/ide/exact2
-EXACT2_COMMIT=00c9f26c0b164004e72b00228eb5081c6d2db9f5
+EXACT2_COMMIT=88538bcaf504fc3f8cd9a19008901e2349ce09dd
 BUN_VERSION=1.4.2
 # Bump to rebuild the cached Hermes inputs without changing the pin.
 HERMES_CACHE_EPOCH=1
