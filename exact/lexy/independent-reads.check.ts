@@ -1,124 +1,179 @@
 // bun exact/lexy/independent-reads.check.ts
-// Exercise two overlapping tire reads: a late old reply must not replace the
-// newer cached answer, and only independent reads request Exact's HTTP lane.
 import { strict as assert } from 'node:assert';
+import { setImmediate as nextTurn } from 'node:timers/promises';
+import type { SQLCommand } from './app.contract.d.ts';
+import { memoryStorage, memoryStore } from './check-support';
 
-const pending: Array<(value: Response) => void> = [];
-const discoveryPending: Array<(value: Response) => void> = [];
-let holdDiscovery = false;
-let discoveryName = '';
-const requests: Array<{ url: string; init: RequestInit & { exactIndependentHttp?: { maxResponseBytes: number } } }> = [];
-globalThis.fetch = ((url: string, init: RequestInit): Promise<Response> => {
-  requests.push({ url, init });
-  if (url.includes('tires/pressure')) return new Promise<Response>((resolve): void => { pending.push(resolve); });
-  if (holdDiscovery && url.includes('vehicle/guid')) return new Promise<Response>((resolve): void => { discoveryPending.push(resolve); });
-  const payload = url.includes('route/status') ? { status: { telemetry: { fugage: { value: 62 }, rage: { value: 214 }, odo: { value: 12482 } }, occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } }
-    : url.includes('vehicle/guid') ? [{ vin: 'VIN1', nickName: discoveryName }] : {};
-  return Promise.resolve(new Response(JSON.stringify({ payload }), { status: 200 }));
-}) as typeof fetch;
-
+type Request = { url: string; init: RequestInit; reply: (response: Response) => void };
+const pending: Request[] = [];
+let requested: (() => void) | undefined;
+globalThis.fetch = ((url: string, init: RequestInit): Promise<Response> => new Promise<Response>((resolve): void => {
+  pending.push({ url, init, reply: resolve });
+  requested?.();
+})) as typeof fetch;
 const { answer } = await import('./app');
-const memory = new Map<string, string>();
-const store = {
-  get: (key: string): string | null => memory.get(key) ?? null,
-  set: (key: string, value: string): void => { memory.set(key, value); },
-  forget: (key: string): void => { memory.delete(key); },
-} as any;
-const disk = new Map<string, Uint8Array>();
-let pauseGarageWrite: Promise<void> | null = null;
-let garageWriteEntered: (() => void) | null = null;
-const storage = { fs: {
-  mkdir: async (): Promise<void> => {},
-  readFile: async (path: string): Promise<ArrayBuffer> => {
-    const bytes = disk.get(path);
-    if (!bytes) throw new Error('ENOENT');
-    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  },
-  atomicWriteFile: async (path: string, bytes: Uint8Array): Promise<void> => {
-    if (path.endsWith('/garage.json') && pauseGarageWrite) {
-      const pause = pauseGarageWrite;
-      pauseGarageWrite = null;
-      garageWriteEntered?.();
-      await pause;
+
+async function nextRequest(): Promise<Request> {
+  if (pending.length === 0) {
+    await new Promise<void>((resolve): void => { requested = resolve; });
+  }
+  return pending.shift()!;
+}
+function respond(request: Request, payload: unknown): void {
+  request.reply(new Response(JSON.stringify({ payload }), { status: 200 }));
+}
+function tires(value: number): unknown {
+  return { tirePressureStatus: 'normal', flTirePressure: { value, unit: 'psi' } };
+}
+function cars(nickName: string, vin = 'VIN1'): unknown {
+  return [{ vin, nickName, region: 'US', asiCode: 'A', hwType: 'H' }];
+}
+function lane(request: Request, independent: boolean, path: string, method = 'GET'): void {
+  assert.equal(new URL(request.url).pathname.endsWith(path), true);
+  assert.equal(request.init.method, method);
+  assert.deepEqual(request.init.exactIndependentHttp, independent ? { maxResponseBytes: 4 * 1024 * 1024 } : undefined);
+}
+
+const timeout = setTimeout((): never => { throw new Error('Independent read check did not finish within 5 seconds'); }, 5_000);
+const store = memoryStore();
+let writeGate: { entered: ReturnType<typeof Promise.withResolvers<void>>; released: ReturnType<typeof Promise.withResolvers<void>> } | null = null;
+const { storage, database } = memoryStorage({
+  beforeWrite: async (commands: SQLCommand[]): Promise<void> => {
+    if (writeGate && commands.some(command => command.sql.startsWith('INSERT INTO cars'))) {
+      const gate = writeGate;
+      writeGate = null;
+      gate.entered.resolve();
+      await gate.released.promise;
     }
-    disk.set(path, new Uint8Array(bytes));
   },
-  rm: async (path: string): Promise<void> => { disk.delete(path); },
-} } as any;
+});
 const at = 1_790_900_000_000;
-memory.set('lexy.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', idToken: 'x', expiresAt: at + 3_600_000, tokenType: 'Bearer' }));
-const car = { vin: 'VIN1', brand: 'L', generation: '', capabilities: [] } as any;
-const tireResponse = (value: number): Response => new Response(JSON.stringify({ payload: {
-  tirePressureStatus: 'normal',
-  flTirePressure: { value, unit: 'psi' },
-} }), { status: 200 });
+function signIn(): void {
+  store.set('lexy.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', idToken: 'x', expiresAt: at + 3_600_000, tokenType: 'Bearer' }));
+}
+function savedName(): string | null {
+  const row = database.query<{ car: string }, []>('SELECT car FROM cars').get();
+  return row ? JSON.parse(row.car).nickName : null;
+}
+function savedPressure(vin = 'VIN1'): number {
+  const row = database.query<{ answer: string }, [string]>("SELECT answer FROM readings WHERE kind = 'tires' AND vin = ?").get(vin);
+  assert.ok(row);
+  return JSON.parse(row.answer).tires[0].value;
+}
+function pauseGarageWrite(): NonNullable<typeof writeGate> {
+  writeGate = { entered: Promise.withResolvers<void>(), released: Promise.withResolvers<void>() };
+  return writeGate;
+}
+signIn();
+const initial = answer('garage', [true, at + 3_600_000, 0, at], store, storage, null);
+const discovery = await nextRequest();
+lane(discovery, true, '/vehicle/guid');
+respond(discovery, cars('Initial'));
+const car = (await initial).car;
 
-const older = answer('tires', [car, 1, at], store, storage, null);
-const newer = answer('tires', [car, 2, at + 1], store, storage, null);
-await Promise.resolve();
-assert.equal(pending.length, 2);
-pending[1](tireResponse(35));
+const older = answer('tires', [car.vin, car, 1, at], store, storage, null);
+const newer = answer('tires', [car.vin, car, 2, at + 1], store, storage, null);
+const oldTires = await nextRequest();
+const newTires = await nextRequest();
+lane(oldTires, true, '/tires/pressure');
+lane(newTires, true, '/tires/pressure');
+respond(newTires, tires(35));
 assert.equal((await newer).tires[0].value, 35);
-pending[0](tireResponse(30));
+respond(oldTires, tires(30));
 assert.equal((await older).tires[0].value, 30);
-const cached = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/tires.json')));
-assert.equal(cached.answer.tires[0].value, 35);
-assert.equal(requests[0].init.exactIndependentHttp?.maxResponseBytes, 4 * 1024 * 1024);
+assert.equal(savedPressure(), 35);
 
-await answer('prime', [car, at], store, storage, null);
-await answer('status', [car, 0, at], store, storage, null);
-assert.equal(requests.at(-2)?.init.exactIndependentHttp, undefined);
-assert.equal(requests.at(-1)?.init.exactIndependentHttp, undefined);
-assert.equal(requests.at(-2)?.init.method, 'POST');
-assert.equal(requests.at(-1)?.init.method, 'GET');
-await answer('garage', [true, at + 3_600_000, 0, at], store, storage, null);
-assert.equal(requests.at(-1)?.init.exactIndependentHttp?.maxResponseBytes, 4 * 1024 * 1024);
-holdDiscovery = true;
+// Reads for different cars must not invalidate each other's saved answers
+const otherCar = { ...car, vin: 'VIN2' };
+const firstCar = answer('tires', [car.vin, car, 3, at + 2], store, storage, null);
+const secondCar = answer('tires', [otherCar.vin, otherCar, 3, at + 2], store, storage, null);
+const firstRequest = await nextRequest();
+const secondRequest = await nextRequest();
+respond(secondRequest, tires(36));
+await secondCar;
+respond(firstRequest, tires(34));
+await firstCar;
+assert.equal(savedPressure('VIN1'), 34);
+assert.equal(savedPressure('VIN2'), 36);
+
+const prime = answer('prime', [car, at], store, storage, null);
+const wake = await nextRequest();
+lane(wake, false, '/refresh-status', 'POST');
+respond(wake, {});
+await prime;
+const status = answer('status', [car.vin, car, 0, at], store, storage, null);
+const snapshot = await nextRequest();
+lane(snapshot, false, '/route/status');
+respond(snapshot, { status: { telemetry: { fugage: { value: 62 }, rage: { value: 214 }, odo: { value: 12482 } }, occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } });
+assert.equal((await status).ok, true);
+for (const source of ['spec', 'services'] as const) {
+  const reading = answer(source, [car.vin, car, at], store, storage, null);
+  const request = await nextRequest();
+  lane(request, true, source === 'spec' ? '/vehicle-spec' : '/vehicle-subscriptions');
+  respond(request, {});
+  assert.equal((await reading).ok, true);
+}
+
 const oldGarage = answer('garage', [true, at + 3_600_000, 1, at], store, storage, null);
 const newGarage = answer('garage', [true, at + 3_600_000, 2, at + 1], store, storage, null);
-await Promise.resolve();
-assert.equal(discoveryPending.length, 2);
-discoveryPending[1](new Response(JSON.stringify({ payload: [{ vin: 'VIN1', nickName: 'Current' }] }), { status: 200 }));
+const oldDiscovery = await nextRequest();
+const newDiscovery = await nextRequest();
+respond(newDiscovery, cars('Current'));
 assert.equal((await newGarage).car.nickName, 'Current');
-discoveryPending[0](new Response(JSON.stringify({ payload: [{ vin: 'VIN1', nickName: 'Old' }] }), { status: 200 }));
+respond(oldDiscovery, cars('Old'));
 assert.equal((await oldGarage).car.nickName, 'Old');
-const cachedGarage = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/garage.json')));
-assert.equal(cachedGarage.answer.car.nickName, 'Current');
+assert.equal(savedName(), 'Current');
 
-// The second read must wait for the first file write, then leave the newer
-// result on disk even though the first write finishes after it began.
-holdDiscovery = false;
-let releaseWrite: (() => void) | undefined;
-pauseGarageWrite = new Promise<void>(resolve => { releaseWrite = resolve; });
-const writeEntered = new Promise<void>(resolve => { garageWriteEntered = resolve; });
-discoveryName = 'Before';
+// Hold the first transaction until the newer response is ready to save
+const gate = pauseGarageWrite();
 const beforeWrite = answer('garage', [true, at + 3_600_000, 3, at + 2], store, storage, null);
-await writeEntered;
-discoveryName = 'After';
-let afterWriteSettled = false;
-const afterWrite = answer('garage', [true, at + 3_600_000, 4, at + 3], store, storage, null).then((): void => {
-  afterWriteSettled = true;
-});
-await new Promise<void>(resolve => { setTimeout(resolve, 0); });
-assert.equal(afterWriteSettled, false);
-releaseWrite?.();
+respond(await nextRequest(), cars('Before'));
+await gate.entered.promise;
+const afterWrite = answer('garage', [true, at + 3_600_000, 4, at + 3], store, storage, null);
+respond(await nextRequest(), cars('After'));
+// Drain response decoding so the second write reaches the held database queue
+await nextTurn();
+gate.released.resolve();
 await Promise.all([beforeWrite, afterWrite]);
-const afterQueuedWrites = JSON.parse(new TextDecoder().decode(disk.get('app:/data/lexy/garage.json')));
-assert.equal(afterQueuedWrites.answer.car.nickName, 'After');
+assert.equal(savedName(), 'After');
 
-// Sign-out waits for an in-flight write, then removes the file.
-pauseGarageWrite = new Promise<void>(resolve => { releaseWrite = resolve; });
-const signOutWriteEntered = new Promise<void>(resolve => { garageWriteEntered = resolve; });
-discoveryName = 'Signing out';
-const readDuringSignOut = answer('garage', [true, at + 3_600_000, 5, at + 4], store, storage, null);
-await signOutWriteEntered;
-let signOutSettled = false;
-const signOut = answer('signOut', [], store, storage, null).then((): void => {
-  signOutSettled = true;
-});
-await new Promise<void>(resolve => { setTimeout(resolve, 0); });
-assert.equal(signOutSettled, false);
-releaseWrite?.();
+// Recheck freshness after waiting for another resource's transaction
+const queuedGate = pauseGarageWrite();
+const heldGarage = answer('garage', [true, at + 3_600_000, 5, at + 4], store, storage, null);
+respond(await nextRequest(), cars('Held'));
+await queuedGate.entered.promise;
+const queuedTires = answer('tires', [car.vin, car, 4, at + 3], store, storage, null);
+respond(await nextRequest(), tires(33));
+await nextTurn();
+const failedTires = answer('tires', [car.vin, car, 5, at + 4], store, storage, null);
+(await nextRequest()).reply(new Response('{}', { status: 503 }));
+await nextTurn();
+queuedGate.released.resolve();
+await heldGarage;
+assert.equal((await queuedTires).tires[0].value, 33);
+assert.equal((await failedTires).tires[0].value, 34);
+assert.equal(savedPressure(), 34);
+
+const signOutGate = pauseGarageWrite();
+const readDuringSignOut = answer('garage', [true, at + 3_600_000, 6, at + 5], store, storage, null);
+respond(await nextRequest(), cars('Signing out'));
+await signOutGate.entered.promise;
+const signOut = answer('signOut', [], store, storage, null);
+await nextTurn();
+signOutGate.released.resolve();
 await Promise.all([readDuringSignOut, signOut]);
-assert.equal(disk.has('app:/data/lexy/garage.json'), false);
-console.log('PASS');
+assert.equal(savedName(), null);
+assert.equal(database.query<{ count: bigint }, []>('SELECT COUNT(*) AS count FROM readings').get()?.count, 0n);
+assert.equal(store.get('lexy.session'), null);
+
+signIn();
+const late = answer('garage', [true, at + 3_600_000, 7, at + 6], store, storage, null);
+const lateRequest = await nextRequest();
+await answer('signOut', [], store, storage, null);
+respond(lateRequest, cars('Late'));
+await late;
+assert.equal(savedName(), null);
+assert.equal(pending.length, 0);
+clearTimeout(timeout);
+database.close();
+console.log('PASS: HTTP lanes, newest saved reads, per-car isolation, queued writes, and sign-out during writes and HTTP');

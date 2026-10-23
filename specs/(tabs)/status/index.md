@@ -25,6 +25,10 @@ capabilities, subscriptions) that is considered current for a day, and a
 rather than by the query library. `dataUpdatedAt` is the *status* half's write
 time — the freshness a user cares about.
 
+In the Exact build, only the latest request for each vehicle and data kind may
+update its saved reading. An older request can still answer its caller. Reads
+for different vehicles remain independent.
+
 **Derived on this screen:**
 
 - `groupClosures(vehicle.closures)` (`src/data/closures.ts`) splits closures into

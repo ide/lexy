@@ -366,7 +366,14 @@ async function session(store: Store, at: number): Promise<Result<'session'>> {
   }
 }
 
-const get = (url: string, headers: Record<string, string>) => (request: Request) => request(url, { method: 'GET', headers });
+// Keep status ordered after wake-up and through closure folding
+function get(url: string, headers: Record<string, string>, independent = false): (request: Request) => Promise<Reply> {
+  return (request: Request): Promise<Reply> => request(url, {
+    method: 'GET',
+    headers,
+    ...(independent ? { exactIndependentHttp: { maxResponseBytes: 4 * 1024 * 1024 } } : {}),
+  });
+}
 
 function failure(e: unknown) {
   return { ok: false, status: e instanceof HttpError ? e.status : 0, error: message(e) };
@@ -518,16 +525,16 @@ const noCar = decodeCar({});
 const account = (store: Store) => guid(readSession(store)?.idToken ?? '');
 
 async function garage(store: Store, at: number): Promise<Result<'garage'>> {
-  const since = generation;
   const owner = account(store);
   if (!readSession(store)) return { ok: false, status: 401, error: 'Signed out', car: noCar, carCount: 0 };
+  const current = beginRead(`garage:${owner}`);
   try {
-    const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s))(r));
+    const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s), true)(r));
     if (!Array.isArray(body.payload) || body.payload.some(v => str(rec(v).vin) === '')) {
       throw new Error('Lexus returned an incomplete vehicle list. Try again.');
     }
     const cars = arr(body.payload).map(decodeCar).filter(c => c.vin);
-    await saveCars(owner, cars, since);
+    await saveCars(owner, cars, current);
     return { ok: true, status: 200, error: '', car: cars[0] ?? noCar, carCount: cars.length };
   } catch (e) {
     // Not ok, so the screen says it couldn't refresh, over the car it has.
@@ -559,6 +566,15 @@ const SCHEMA: SQLCommand[] = [
 // Bumped as the store is emptied: an answer still in flight then does not
 // write the signed-out account's data back.
 let generation = 0;
+type Read = { key: string; since: number };
+const latestReads = new Map<string, Read>();
+
+function beginRead(key: string): Read {
+  const current = { key, since: generation };
+  latestReads.set(key, current);
+  return current;
+}
+
 // The schema, and the files an earlier build kept moved into it, once per run.
 let prepared: Promise<void> | null = null;
 
@@ -649,18 +665,22 @@ async function legacyRows(storage: Storage): Promise<SQLCommand[]> {
 const READINGS = ['status', 'tires', 'engine', 'spec', 'services', 'climate'] as const;
 type Reading = (typeof READINGS)[number];
 
-// A write from an answer that started before the store was emptied is
-// dropped, and a failed one is let go: the answer stands without it.
-async function write(commands: SQLCommand[], since: number) {
-  if (since !== generation) return;
-  await withDb(db => db.transaction(commands)).catch(() => undefined);
+// Check freshness inside the database queue so a waiting write cannot restore
+// a signed-out account or replace the answer from a newer independent read
+async function write(commands: SQLCommand[], since: number, current?: Read): Promise<void> {
+  await withDb(async (db): Promise<void> => {
+    if (since !== generation || (current && latestReads.get(current.key) !== current)) {
+      return;
+    }
+    await db.transaction(commands);
+  }).catch(() => undefined);
 }
 
-async function saveCars(owner: string, cars: Car[], since: number) {
+async function saveCars(owner: string, cars: Car[], current: Read): Promise<void> {
   await write([
     { sql: 'DELETE FROM cars WHERE account = ?', params: [owner] },
     ...cars.map((car, position) => ({ sql: 'INSERT INTO cars VALUES (?, ?, ?, ?)', params: [owner, car.vin, position, JSON.stringify(car)] })),
-  ], since);
+  ], current.since, current);
 }
 
 // The primary car (the first; Lexy has no switcher) and how many there are.
@@ -680,8 +700,8 @@ const decodeStoredCar = (text: string): Car => {
   }
 };
 
-async function saveReading<T>(vin: string, kind: Reading, answer: T, since: number): Promise<T> {
-  await write([{ sql: 'INSERT OR REPLACE INTO readings VALUES (?, ?, ?)', params: [vin, kind, JSON.stringify(answer)] }], since);
+async function saveReading<T>(vin: string, kind: Reading, answer: T, since: number, current?: Read): Promise<T> {
+  await write([{ sql: 'INSERT OR REPLACE INTO readings VALUES (?, ?, ?)', params: [vin, kind, JSON.stringify(answer)] }], since, current);
   return answer;
 }
 
@@ -707,6 +727,7 @@ async function choose(key: string, value: string) {
 
 async function forgetStored() {
   generation++;
+  latestReads.clear();
   await withDb(db => db.transaction([
     { sql: 'DELETE FROM cars' },
     { sql: 'DELETE FROM readings' },
@@ -833,24 +854,24 @@ async function foldClosures(vin: string, at: number, sections: Section[], since 
 // A read that keeps its last good answer through a failed one (load-error.ts):
 // the answer is stored for the car, and a failure answers the stored one, else `empty`.
 async function keepingLast<T>(kind: Reading, vin: string, empty: T, read: () => Promise<T>): Promise<T> {
-  const since = generation;
+  const current = beginRead(`${kind}:${vin}`);
   try {
-    return await saveReading(vin, kind, await read(), since);
+    return await saveReading(vin, kind, await read(), current.since, current);
   } catch {
     return (await storedReading<T>(vin, kind)) ?? empty;
   }
 }
 
 // A vehicle-scoped GET's payload.
-async function payload(store: Store, car: Car, at: number, url: string): Promise<Json> {
-  return rec((await authorized(store, at, (s, r) => get(url, vehicleHeaders(s, car))(r))).payload);
+async function payload(store: Store, car: Car, at: number, url: string, independent = false): Promise<Json> {
+  return rec((await authorized(store, at, (s, r) => get(url, vehicleHeaders(s, car), independent)(r))).payload);
 }
 
 async function tires(store: Store, car: Car, at: number): Promise<Result<'tires'>> {
   const empty: Result<'tires'> = { ok: false, status: '', unit: '', tires: [] };
   if (!car.vin) return empty;
   return keepingLast('tires', car.vin, empty, async () => {
-    const p = await payload(store, car, at, TIRES_URL);
+    const p = await payload(store, car, at, TIRES_URL, true);
     const tire = (position: string) => ({ position, value: num(rec(p[position]).value), low: rec(p[position]).displayLowTirePressureWarning === true });
     return {
       ok: !!p.tirePressureStatus,
@@ -874,7 +895,7 @@ async function spec(store: Store, car: Car, at: number): Promise<Result<'spec'>>
   const empty: Result<'spec'> = { ok: false, items: [] };
   if (!car.vin) return empty;
   return keepingLast('spec', car.vin, empty, async () => {
-    const p = await payload(store, car, at, SPEC_URL);
+    const p = await payload(store, car, at, SPEC_URL, true);
     const items = ['vehicleSpecifications', 'additionalDetails'].flatMap(key =>
       arr(rec(p[key]).dataItems).map(rec).map(i => ({ name: str(i.dataName), value: str(i.dataValue) })),
     );
@@ -897,7 +918,7 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
       DATETIME: datetime(at),
       entryPoint: 'SUBSCRIPTIONS',
     });
-    const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s))(r))).payload);
+    const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s), true)(r))).payload);
     const items = (['paid', 'trial', 'complimentary'] as const).flatMap(bucket =>
       arr(p[`${bucket}Subscriptions`]).map(rec).map(sub => ({
         bucket,
@@ -1073,7 +1094,14 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
   // ask every vehicle resource again. A choice an earlier build kept in the
   // Keychain is read until the database has one.
   let provider = (await choice('maps')) ?? store.get('lexy.maps') ?? '';
-  if (known && provider !== '' && !installed[provider as keyof typeof installed]) provider = '';
+  if (known && provider !== '' && !installed[provider as keyof typeof installed]) {
+    // Clear only the removed choice; a newer selection may already be queued
+    await withDb(db => db.execute(
+      'INSERT INTO choices VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE choices.value = ?',
+      ['maps', '', provider],
+    )).catch(() => undefined);
+    provider = '';
+  }
   return { provider, apple: installed.apple === true, google: installed.google === true, waze: installed.waze === true };
 }
 

@@ -55,6 +55,9 @@ turns out to be dead is discovered behind
 the screen: the session manager refreshes in the background, and if the refresh
 token is rejected it clears the session and the cached vehicle data, which drops
 the user back to sign-in with an explanatory message already set.
+The Exact build waits for active writes before clearing vehicle data. Late
+replies cannot restore it after sign-out. Personal choices, including the maps
+app, remain saved.
 
 ## Interactions
 

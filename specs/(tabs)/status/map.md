@@ -85,13 +85,15 @@ A saved preference for an app that is no longer installed is treated as unset
 and cleared from storage, so the setting genuinely reads unset and the user is
 prompted again. Installed apps are re-probed every time a consuming screen gains
 focus, since apps can be installed or deleted while the app is backgrounded.
+The Exact build retains the preference while its native probe is unavailable or
+fails; only a successful probe can establish that the app was removed.
 
 If the launch itself fails, an alert reads "Couldn't open \<app\>" — "The app
 didn't respond to the location link. It may have just been removed."
 
 The React Native app stores the preference in the same synchronous key-value
 store the query cache uses, so this screen and the Settings row can render the
-right label on first paint. The Exact build keeps the choice in app file storage
+right label on first paint. The Exact build keeps the choice in SQLite
 and displays the just-picked provider while its write and re-read complete.
 If that write fails, it reports the failure when the app returns from Maps.
 

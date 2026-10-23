@@ -71,7 +71,8 @@ establish that the native control receives a tap.
 
 ## Checks
 
-Run these from the repository root. Each check mocks the network and storage:
+Run these from the repository root. The checks use a fake network and in-memory
+storage; persistence checks execute real SQLite statements:
 
 ```sh
 bun exact/lexy/session.check.ts
