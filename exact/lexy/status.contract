@@ -548,11 +548,8 @@ component StatusScreen
                           row align-items="baseline"
                             text `${t.value}` font-size=15 line-height="20px" font-weight=600 color=(t.low ? "-exact-system-orange" : "-exact-label") font-variant-numeric="tabular-nums"
                             text ` ${tires.unit}` class=Small color="-exact-secondary-label"
-            // When it last synced (status-screen.ios.tsx footer), at the
-            // leading edge where that footer centres it: the sentences, with
-            // no inset of their own, start where the cards' text does.
-            // status-screen.ios.tsx FooterTimeRow: a tap shows the exact time
-            // in a popover anchored to the sentence.
+            // Both sentences start at the cards' text edge. Each button
+            // anchors a popover with its exact time.
             column align-items="flex-start" gap=2 padding=16 testId="synced"
               button popovertarget="synced-at" testId="synced-line" appearance="auto" buttonStyle="plain" padding=0
                 text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="-exact-secondary-label" text-align="start"
