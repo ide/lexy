@@ -1,8 +1,4 @@
-// Lexy, in Contract. Everything the app decides lives here: the sign-in step
-// machine, what a status snapshot means (closures, locks, fuel, tires), lock
-// and engine reconciliation after a command, refresh policy, formatting, and
-// navigation. app.ts is only the I/O beneath it — HTTP, the Keychain, PKCE —
-// and answers in the wire's own terms.
+// Sign-in, vehicle state, commands, refresh, and navigation; app.ts handles I/O
 use LockScreen from "./sign-in.contract"
 use appVersion from "./exact-version.contract"
 use StatusScreen from "./status.contract"
@@ -10,7 +6,7 @@ use SpecsScreen from "./specs.contract"
 use SettingsScreen from "./settings.contract"
 use MapSheet from "./map.contract"
 use RenameScreen from "./settings.contract"
-use Time, accent, renameFailure from "./model.contract"
+use Time, accent, renameFailure, routeTitle from "./model.contract"
 use Account from "./model.contract"
 use AuthNode from "./model.contract"
 use Done from "./model.contract"
@@ -67,18 +63,12 @@ component Lexy
   state sessionRev = 0
   state sessionAt = 0
   state retried = false
-  // Whether the user has moved on from a dead session's explanation (by
-  // signing in again), as auth-context.tsx clears it on submit.
+  // Clear the expired-session notice when sign-in starts
   state sessionNoticeSeen = false
   resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account
-  // Until the session's first answer the app does not know whether anyone is
-  // signed in: it shows the signed-in shell's skeleton, never a flash of the
-  // sign-in screen (a signed-out answer carries its 401).
+  // Show the dashboard skeleton until the session resolves to avoid a sign-in flash
   derive shell = not entering and (account.signedIn or (account.status == 0 and account.error == ""))
-  // A sign-in that has landed keeps the sign-in screen, its button busy,
-  // until what the dashboard opens on has arrived: the account, its car and
-  // the car's status (or why they did not). The car's name, picture and
-  // status then appear at once, never one after another.
+  // Keep sign-in busy until account, garage, and status have settled
   state entering = false
   derive entered = not pending(account) and (not account.signedIn or (not pending(garage) and not pending(status)))
   task enter when entering and entered
@@ -89,9 +79,7 @@ component Lexy
   state clock = 0
   task ticker mount
     every(5000, tick)
-  // A return to the foreground, from the page's own visibility change: iOS
-  // suspends the app as it leaves, often before a tick has seen it hidden,
-  // so a quick trip away left no trace for the tick to find.
+  // Observe visibility directly: iOS can suspend before the next tick
   task returned when page.visibilityState == "visible"
     after(1, onVisible)
   // The hero's breath: a timer only while it pulses (LLP 1092 D7).
@@ -114,13 +102,12 @@ component Lexy
   state nodeRaw = ""
   state nodeTypes = []
   state choices = []
-  // The choice step's server prompt, which can carry real context.
+  // Keep the server's choice prompt for methods with extra instructions
   state choicePrompt = ""
   state lastChoice = -1
   // The method's label: Resend matches by it, as the tree may reorder.
   state lastChoiceLabel = ""
-  // A walk restarted from the code screen (Resend, Use a Different Method):
-  // its failures stay on that screen, in that control's words.
+  // Keep resend and method-change errors on the code screen
   state restartStage = ""
   mutation started as shape AuthNode then afterStart
   mutation named as shape AuthNode then afterName
@@ -129,8 +116,7 @@ component Lexy
   mutation verified as shape AuthNode then afterCode
   mutation finished as shape Done refreshes account then afterFinish
   mutation demo as shape Done refreshes account then afterDemo
-  // A real sign-in leaves the demo first: a demo flag left in the Keychain
-  // (it outlives a reinstall) would send the credentials to the demo.
+  // Clear the persisted demo flag before sending real credentials
   mutation real as shape Done refreshes account then afterReal
   mutation left as shape Done refreshes account then afterSignOut
   // The demo's server errors (Settings → Simulate Server Errors).
@@ -170,39 +156,27 @@ component Lexy
   state updatingSlow = false
   mutation waited as shape Done then afterWait
   mutation held as shape Done
-  // The hero's pulse (status.contract): one continuous breath while a
-  // refresh runs. `pulseDim` flips every second and the boxes ease to it,
-  // so it starts from opaque; once on, it stops only at the opaque end of
-  // a breath after the refresh is done, so a moment between a refresh's
-  // steps neither jumps nor restarts it, and the end fades out.
+  // Finish the current pulse at full opacity after refresh, including gaps between
+  // requests
   state pulseOn = false
   state pulseDim = false
-  // A pull's spinner shows for the loads that pull started, never for the
-  // launch's or the tick's (UIKit would show it half under the bar).
+  // Show the pull spinner only for requests started by that pull
   state pulling = false
-  // What each answer is comes first; how it is asked (a revision, the time,
-  // the token's expiry) follows `with`, so the last answer a launch kept
-  // paints the first frame. A refreshed token re-asks the garage, and nothing
-  // refreshes in parallel.
+  // Keep refresh inputs in `with` so cached answers retain stable identities
   resource garage = garage(account.signedIn) with account.expiresAt, garageRev, orEpoch(garageAt, time.epochAtZero) as shape Garage
   derive car = garage.car
-  // The name Lexus accepted, shown until its profile says so too: the
-  // profile read right after a rename can still carry the old one.
+  // Keep the accepted name until a profile read catches up
   state savedName = ""
   derive carName = savedName != "" ? savedName : vehicleName(car.nickName, car.modelName)
-  // A car's reads are its VIN's: the whole car record (its image URL, its
-  // capabilities) as identity would push a kept answer past the runner's
-  // 8 KB budget, and a profile change would leave it unmatched.
+  // Key cached reads by VIN: the full car record can exceed 8 KB and changes with
+  // profile updates
   resource status = status(car.vin) with car,statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
   resource tires = tires(car.vin) with car, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
   resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
   resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
-  // Remote-start climate: a change is written whole and read back.
   state climateRev = 0
   resource climateRead = climate(car.vin) with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
-  // A change is written, not read back: once the car accepts it, the card
-  // shows what was written until the next read (a pull asks again); a
-  // refused one leaves the card at what it showed before.
+  // Keep the last accepted climate change until the next read; roll back a failed write
   mutation climateSaved as shape Climate then afterClimateSave
   // The last change the car accepted, newer than the last read until a pull.
   state climateWritten = none
@@ -210,28 +184,21 @@ component Lexy
   // climate-card.ios.tsx: a rejected change rolls back (the re-read) and
   // says so.
   state climateError = ""
-  // Where the user put the switch: UIKit's switch has already moved, so it
-  // stays there while the car is told, rather than snapping back.
+  // Keep the native switch's selection while the write is pending
   state climateWanted = false
-  // The defrost a tap asked for, shown while its save is in flight; the
-  // read after it, or a failure, shows the car's again.
+  // Hold the selected defrost state until its write settles
   state defrostFront = false
   state defrostRear = false
   state defrostHeld = false
   state climateTouched = false
-  // A change not yet written. One write is out at a time, so the car hears
-  // the changes in order; the next carries everything shown by then.
+  // Serialize climate writes and send the latest displayed values next
   state climateUnwritten = false
-  // What the climate card shows: a change still being saved, else the car's.
-  // The controls stay live while a change is written, as the remote
-  // commands do; a change is built from these.
+  // Keep climate controls editable while saving
   derive shownClimateOn = climateTouched ? climateWanted : climate.on
   derive shownFront = defrostHeld ? defrostFront : climate.frontEnabled
   derive shownRear = defrostHeld ? defrostRear : climate.rearEnabled
   derive shownTemperature = tempHeld ? tempDraft : climate.temperature
-  // The setpoint under the finger (climate-card.ios.tsx draftTemperature):
-  // shown while dragging and until the car's reading follows; the car is
-  // told once, on release, and only of a different value.
+  // Write a changed temperature once, on release; hold it until the car reports it
   state tempDraft = 0
   state tempHeld = false
   // A release was sent: once it and its read-back land, the car's reading
@@ -994,15 +961,8 @@ component Lexy
       if not shell
         LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
       else
-        // Every tab keeps its own stack (nav.tabs): UIKit holds each in its
-        // own navigation controller under a tab bar controller, and a tab
-        // bar tap is the navigator's `tabselect` (tab-config.ts items).
-        // Every tab keeps its own stack (nav.tabs) in its tabpanel: UIKit
-        // holds each in its own navigation controller under a tab bar
-        // controller, whose items are the tablist below (exact2 LLP 1075.003
-        // §3.7). Each route's header is its bar: the heading its title (large
-        // at level 1), the status line under it its subtitle, the Back button
-        // UIKit's back button, the buttons after the heading its items.
+        // Each tab keeps its own stack; route headers supply UIKit's title and bar
+        // items
         column flex=1 min-height=0 position="relative"
           for t in nav.tabs key=t.name
             column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
@@ -1012,7 +972,7 @@ component Lexy
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44
                     column flex=1 min-width=0
-                      text (e.name == "status" ? (firstLoad and shownOnline ? " " : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))) : (e.name == "specs" ? "Specs" : (e.name == "settings" ? "Settings" : (e.name == "rename" ? "Vehicle Name" : (e.name == "map" ? "Last Parked" : (e.name == "updates" ? "Updates" : (e.name == "dataState" ? "Data State" : (e.name == "login" ? "Login Flow" : (e.name == "eas" ? "EAS" : (e.name == "performance" ? "Performance" : "")))))))))) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? "17px" : "-exact-title1") font-weight=700 color="-exact-label"
+                      text (e.name == "status" ? (firstLoad and shownOnline ? " " : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))) : routeTitle(e.name)) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? "17px" : "-exact-title1") font-weight=700 color="-exact-label"
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.xmark"
@@ -1043,9 +1003,6 @@ component Lexy
                   if e.name == "rename"
                     RenameScreen(name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
-        // The tab bar's items, a symbol over a label (tab-config.ts), drawn
-        // as the platform draws its tab bar: UIKit's on iOS, Exact's on the
-        // web (its sizes, and an unselected item's grey).
         row role="tablist" aria-label="Tabs"
           for t in nav.tabs key=t.name
             button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1

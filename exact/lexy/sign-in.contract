@@ -1,23 +1,15 @@
-// Sign-in: email and password, then the delivery-method choice and the code
-// when Lexus asks for them (src/screens/sign-in-screen.ios.tsx and
-// sign-in/sign-in-elements.ios.tsx; copy from src/auth/sign-in-copy.ts).
+// Lexus sign-in: credentials, delivery method, and verification code
 
 // sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
 fn channel(method: string): string = (method.includes("mail") or method.includes("Mail") or method.includes("E-mail")) ? "email" : ((method.includes("SMS") or method.includes("sms") or method.includes("Text") or method.includes("text") or method.includes("hone") or method.includes("obile") or method.includes("all")) ? "sms" : "unknown")
 fn heroSymbol(step: string, method: string): string = step == "choice" ? "lock.shield.fill" : (step == "otp" ? (channel(method) == "email" ? "envelope.fill" : (channel(method) == "sms" ? "message.fill" : "number")) : "key.fill")
 fn heroTitle(step: string, method: string): string = step == "choice" ? "Verify It's You" : (step == "otp" ? (channel(method) == "email" ? "Check Your Email" : (channel(method) == "sms" ? "Check Your Messages" : "Enter Your Code")) : "Welcome to Lexy")
-// The server's prompt is shown only when it reads as prose: the real tree's
-// choice step carries a message key ("OTP_VIA_PHONE_OR_ALERNATE_OPTION").
+// Hide server message keys; show prompts that read as prose
 fn readable(p: string): bool = p != "" and p.includes(" ")
 fn heroSubtitle(step: string, method: string, prompt: string): string = step == "choice" ? (readable(prompt) ? prompt : "Choose how you'd like to receive your verification code.") : (step == "otp" ? (channel(method) == "email" ? "Lexus will send you a verification code by email." : (channel(method) == "sms" ? "Lexus will send you a verification code by text message." : "Enter the verification code you received.")) : "Sign in with your Lexus account to see and control your vehicle.")
 fn choiceSymbol(method: string): string = channel(method) == "email" ? "envelope" : (channel(method) == "sms" ? "message" : "shield.lefthalf.filled")
 
-// The Lexy mark: the app icon's tach ring, its red line, and the L, without
-// the icon's black tile (assets/icon-composer/Lexy.icon). Drawn here rather
-// than shipped as an image so it is on the first frame, and in roles so it
-// follows the appearance: the metal is the label colour fading down the
-// ring, as the icon's metal fades into its black, and the redline is the
-// system red.
+// Draw the mark inline for first paint, using semantic colors for light and dark modes
 component LexyMark
   props
     size: number
@@ -43,8 +35,7 @@ component LexyMark
 keyframes stepIn
   from opacity=0 translate="0px 8px"
 
-// PrimaryButton: borderedProminent, large, blue; dims only while empty,
-// keeping its fill while busy (its action ignores a second press).
+// Keep the fill while busy; actions ignore repeat presses
 component PrimaryButton
   props
     label: string
@@ -55,7 +46,6 @@ component PrimaryButton
     button press=press disabled=disabled testId=id appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600
 
-// SecondaryButton: a grey bordered capsule, for the step's other ways on.
 component SecondaryButton
   props
     label: string
@@ -66,8 +56,6 @@ component SecondaryButton
     button press=press disabled=disabled testId=id appearance="auto" buttonStyle="gray" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600 color="AccentColor"
 
-// InfoNotice and ErrorNotice: a symbol and the message on a card (a code was
-// sent; what went wrong), the message in the label colour.
 component Notice
   props
     id: string

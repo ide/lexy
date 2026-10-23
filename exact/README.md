@@ -1,379 +1,135 @@
 # Lexy on Exact
 
-An exploration of Lexy written for [Exact](https://github.com/ccheever/exact2),
-iOS only. The app is in [`lexy/`](lexy/). It is separate from the Expo app at the
-repo root, and nothing in the Expo app depends on it.
+Lexy's Exact app lives in [`lexy/`](lexy/) with native iOS and browser builds.
+It is separate from the Expo app at the repository root.
 
-**Contract does the work.** All the screens and every decision the app makes are
-written in Contract:
+Contract owns the screens, sign-in flow, vehicle state, commands, and refresh
+policy. TypeScript handles HTTP, token storage, PKCE, and response decoding.
+The Swift module provides MapKit, geocoding, maps-app links, and haptics.
 
-- the sign-in step machine (password → delivery-method choice → code, resend,
-  switch method)
-- what a status snapshot means (doors, windows, locks, fuel, tires)
-- lock reconciliation after a command
-- refresh policy, formatting, and navigation
+| File | Responsibility |
+| --- | --- |
+| `lexy/app.contract` | Resources, actions, timers, and navigation |
+| `lexy/model.contract` | Data shapes and display rules |
+| `lexy/sign-in.contract` | Sign-in screens |
+| `lexy/status.contract` | Status dashboard and remote controls |
+| `lexy/specs.contract` | Vehicle specifications and connected services |
+| `lexy/settings.contract` | Settings and vehicle name |
+| `lexy/developer.contract` | Developer tools and Observe metrics |
+| `lexy/map.contract` | Last Parked sheet |
+| `lexy/app.ts` | I/O and response decoding |
+| `lexy/demo.ts` | Local demo server and sign-in previews |
+| `lexy/modules/apple/Lexy.swift` | Native module |
 
-**TypeScript (`app.ts`) only handles I/O**, which Contract can't do:
+## Build
 
-- HTTP to the Lexus hosts, with the identity host's cookies kept by hand
-- the Keychain, and refreshing the session (one `session` source, which
-  every read waits on)
-- PKCE hashing
-- decoding each response into the exact shape Contract declares
+Use the Bun and Exact revisions in [`ci/pins.sh`](ci/pins.sh), the Rust toolchain
+in [`lexy/rust-toolchain.toml`](lexy/rust-toolchain.toml), and Xcode 27.1 release.
+Exact and Lexy must be sibling checkouts: the app's Cargo paths point to
+`../../../exact2`. Exact's build tools provision the Hermes inputs they need.
+Run `bun install --frozen-lockfile` in the Exact checkout first.
 
-**Swift (`modules/apple/Lexy.swift`)** covers what Exact doesn't expose:
-- `<lexy-map>`: MapKit centred on the car, plus geocoding and opening a maps app
-- haptics after a remote command
-
-| File | What |
-|---|---|
-| `lexy/app.contract` | Root: routes, resources, mutations, the sign-in and reconcile state machines, timers |
-| `lexy/model.contract` | Shapes app.ts answers with, and the `fn`s that were `src/data` / `src/auth` rules |
-| `lexy/sign-in.contract` | Sign-in screen |
-| `lexy/status.contract` | Status tab: hero, fuel, controls with native confirmations, doors & windows, odometer, tires |
-| `lexy/specs.contract` | Specs tab: spec sheet, remote capabilities, connected services |
-| `lexy/settings.contract` | Settings tab and the vehicle-name screen |
-| `lexy/developer.contract` | Settings → Developer Tools: Updates, Data State, Login Flow, EAS |
-| `lexy/app.ts` | The I/O layer |
-| `lexy/demo.ts` | An in-memory Lexus (identity tree + REST plane) for demo mode, and the Login Flow preview's mock tree |
-| `lexy/modules/apple/Lexy.swift` | The native module: SF Symbols, the map, geocoding, haptics |
-
-## Running it
-
-You need these on the Mac:
-
-- **Bun 1.4.2.**
-- **Rust 1.97.0** with the `aarch64-apple-ios-sim` target.
-- **Xcode** with its Metal toolchain: `xcodebuild -downloadComponent MetalToolchain`.
-- **Two checkouts beside this repo:** `~/Developer/exact2` and `~/Developer/ibex`. In ibex, run `./scripts/build-hermes.sh --vanilla` once. In exact2, run `bun install`.
-- **exact2 with these patches** (local branch `lexy-main`: exact2's `main`
-  with these on top; not upstream yet):
-  - `fetch` passes `redirect` through. Without it the OAuth authorize step's
-    302 is followed and its code is lost.
-  - Simulator builds link simulated entitlements. Without them the Keychain
-    fails on the simulator, so the session doesn't survive a relaunch.
-  - System symbols are measured in layout, as text is
-    (`exact_set_symbol_measure`), so a first layout has their real size.
-  - A button's new `UIButton.Configuration` is shown at once (the update
-    handler goes in before the configuration).
-  - Routes can show UIKit's navigation bar (`navigationTitle`, large or
-    inline titles, `navigationSubtitle`, `navigationTrailing`,
-    `navigationBackButton`).
-  - Tabs (`navigationTab`, its title, SF Symbols and control) project into a
-    native `UITabBarController`, one container per tab, each keeping its own
-    stack. A tab's root route names its container with
-    `navigationContainer`: `stack` (default, a `UINavigationController`),
-    `screen`, or a view controller the app's own Swift module registers in
-    `ExactModule.controllers` (props from `navigationContainerProps`).
-    Contract still selects tabs and owns every route; sheets present over
-    the whole tab bar controller.
-  - Sheets take several heights (`navigationDetent="medium large"`) and
-    show UIKit's grabber when resizable.
-  - `image "symbol:apple:<name>"` draws any SF Symbol in the host, so
-    symbols are on the first frame (no native module needed).
-  - Every `button` is a `UIButton` (UIKit's touch, highlight and disabled
-    look); `-exact-apple-button-style` (`glass`, `filled`, `gray`,
-    `tinted`, `plain`) draws it in a system style from its text and
-    symbol. Contract accepts `-exact-…` vendor properties.
-  - `-exact-apple-glass-container` groups descendants' Liquid Glass so it
-    merges (`UIGlassContainerEffect`).
-  - Confirmations: a modal `dialog` is UIKit's centred alert, a
-    confirmation popover an action sheet anchored to its button, and
-    `dialog open=…` presents one from state.
-  - `resource r = source(args) with values`: the call says what the answer
-    is, `with` how it is asked (revisions, the time), so a launch paints
-    the answers it kept.
-  - `host.ios.queriesSchemes` (LSApplicationQueriesSchemes),
-    `pointer-events: none` on iOS, stale-while-revalidate for cached
-    images, and controls that write UIKit properties only when they change.
-  - Navigation retires its native containers when no route is left (a
-    signed-out app showing its sign-in).
-  - The web JS target answers `exactTime` for an app whose data source
-    takes a record argument (Lexy's `status(car)`); before, the page never
-    booted.
-
-The app's Cargo paths point at `../../../exact2`, so it expects the sibling
-layout. If exact2 lives elsewhere, run `bun exact.mjs update`.
+Build a simulator app without installing or launching it:
 
 ```sh
 cd exact/lexy
-bun exact.mjs ios --run --sim "iPhone 17 Pro"
+DEVELOPER_DIR=/Applications/Xcode-27.1.app/Contents/Developer \
+  RUSTC_WRAPPER= bun exact.mjs ios --no-install
 ```
 
-**Explore the Demo** on the sign-in screen switches to the in-memory Lexus and
-walks the real sign-in flow:
+Use an iPhone Duo simulator with iOS 27.1. Other iPhones use iOS 27.0 or newer;
+the 27.1 runtime supports only Duo. `--sim` selects a simulator when running
+or driving the app.
 
-- Any email and password are accepted.
-- The password `wrong` is refused.
-- Any code except `000000` is accepted.
-
-In demo mode every call to the vehicle plane takes a second, and the car acts
-on a command about 3 seconds after accepting it and only then reports (its
-snapshot's `occurrenceDate` moves), so "Refreshing" and "Unlocking…" behave
-the way they do against the real API.
-
-A lock or unlock sent while the other is still unconfirmed (Lock, then Unlock
-before the car reports) keeps its pending label until a car report newer than
-the one held at that moment agrees: the reading the app holds predates both
-commands, so its agreement confirms nothing.
-
-To drive it headlessly, use Exact's agent driver from the exact2 checkout:
+The local `exact.mjs` supports `ios`, `mac`, `web`, `web-build`, and `update`.
+For other commands, call the pinned checkout's CLI from `exact/lexy`:
 
 ```sh
-EXACT_APP_DIR=$PWD bun ../../../exact2/scripts/agent.mjs ios \
-  "tap try-demo" "clock settle" "tap method-0" "clock settle" \
-  "type code 123456" "tap verify-button" "clock settle" tree
+RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract build app.contract --json --errors-only
+RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract types --check app.contract
 ```
 
-### Checking the session code
+## Demo and inspection
 
-`bun exact/lexy/session.check.ts` drives `app.ts`'s session source against a
-fake Lexus token server that rotates refresh tokens. It checks that concurrent
-refreshes share one request, stale refresh results cannot overwrite a newer
-sign-in or undo sign-out, revoked credentials sign out, vehicle reads wait for
-an in-flight refresh, and a read rejected by Lexus retries once with the rotated
-token. It also checks:
+"Explore the Demo" uses a local Lexus server, so no account or remote vehicle
+is needed. Vehicle reads take about a second; commands take about three seconds
+to appear in the next vehicle report. This exercises loading and reconciliation.
+The Login Flow developer tool also uses local responses.
 
-- an empty Keychain defers during the bake and resolves as signed out at runtime
+In the simulated sign-in flow, any email and password are accepted except the
+password `wrong`. Any code except `000000` is accepted.
 
-`bun exact/lexy/data-flow.check.ts` checks that malformed HTTP 200 replies cannot
-erase a saved vehicle or replace valid telemetry with zeros. A valid empty
-vehicle list remains distinct from a failure, and a first status failure remains
-an explicit error that the screen can offer to retry.
-
-`bun exact/lexy/closures.check.ts` drives the status source over a full
-snapshot, then a sparse one (lock-only doors, as after a drive), then a
-failed read, over an in-memory `app:/data`. It checks that windows and
-openings survive the sparse snapshot, dated "as of" the older one; that a
-failed read keeps the last good reading; that an older snapshot doesn't win;
-and that the history is UTF-8 JSON on disk and starts over for another car.
-
-### Resource dependencies and disappearing content
-
-The general problem is coordinating dependent asynchronous work while retaining
-useful content. A value may be suitable for display while its refresh is pending,
-yet unsuitable as the prerequisite for a new request. A failed request is also
-different from an authoritative empty result. Treating either distinction as
-implicit can send requests with stale credentials or erase data already shown.
-
-On Lexy's pinned native Exact runtime, a pending resource keeps its last committed
-answer. A dependency such as `garage(account.signedIn) with account.expiresAt`
-reacts to account changes; it does not wait for an account refresh to settle.
-The original code assumed that it did. A delayed-refresh source probe reproduced
-vehicle GETs using the old bearer token while authentication was refreshing.
-The garage's 401 path then dropped its cached VIN, and the screen suppressed
-the corresponding error state. A first status failure could separately leave
-fuel unresolved without a visible retry.
-
-The follow-up review reproduced two more destructive transitions. A malformed
-HTTP 200 vehicle response became a successful empty garage, and the previous
-status-error patch removed all vehicle cards when a first status request failed.
-An in-flight token refresh could also restore the session after sign-out.
-These are demonstrated code paths; no device trace captured the user's reported
-single-frame disappearance, so its exact cause remains unconfirmed.
-
-A temporary headless regression using the pinned compiler and runner exercised
-the actual dashboard through initial pending status, first failure, retry, and
-success. The hero kept the same kernel node key through every transition.
-The failed request showed its local retry and stopped the fuel loading pulse;
-success removed the error and displayed the fuel reading. This verifies the
-committed Contract tree, not UIKit compositing on the phone.
-
-The app now sequences authenticated requests through one shared refresh, retries
-one rejected access token, and prevents stale refresh results from changing a
-newer session. Only validated vehicle/status responses replace cached data.
-Failures retain usable profile and status data; missing status has a local error
-and retry while the vehicle profile stays visible. A valid empty vehicle list
-and an invalidated session can still legitimately change the screen.
-
-The open Contract/Exact design question is how to make prerequisite readiness
-and retained display values clear enough that authors cannot easily mistake one
-for the other. Any future API or language change should cover pending, failed,
-superseded, and genuinely empty results without requiring an HTTP scheduler to
-infer application dependencies. The application already has enough control to
-sequence this work explicitly; tests should establish what extra mechanism,
-documentation, or diagnostic would prevent the mistaken assumption.
-
-### On a phone (ad hoc)
-
-Phone builds install over the Expo app as `app.ide.lexy`, signed with the
-ad hoc certificate and profile EAS keeps for it (the team's registered
-devices).
-
-1. **Fetch the credentials.** Fetch the ad hoc distribution certificate
-   (`.p12` and its password) and the provisioning profile for
-   `app.ide.lexy`. Use `eas credentials`, or EAS's GraphQL API
-   (`iosAppCredentials` → `iosAppBuildCredentialsList`, `AD_HOC`). Import the
-   certificate into a keychain on the build Mac's search list.
-2. **Point the app at `app.ide.lexy` for the build.** Set the id in `app.json`
-   and `export const appId = 'app.ide.lexy'` in `app.ts`. The simulator keeps
-   `app.ide.lexy.exact`, so it doesn't replace the Expo app there.
-3. **Build the archive.** Set a version above the installed app's, or iOS
-   reports it as already installed:
-
-   ```sh
-   EXACT_VERSION=1.0.1 EXACT_BUILD_NUMBER=<n> \
-   EXACT_IDENTITY=<distribution certificate SHA-1> \
-   EXACT_PROFILE=<adhoc.mobileprovision> \
-   bun exact.mjs ios --device --archive Lexy.ipa
-   ```
-
-   `exact-version.contract` carries the version Settings shows and the Exact
-   commit. Regenerate it with the build number before building.
-4. **Serve it over HTTPS.** Serve the `.ipa` next to a `manifest.plist`
-   (`bundle-identifier` app.ide.lexy, `bundle-version` the version above).
-   The install link is
-   `itms-services://?action=download-manifest&url=https://<host>/manifest.plist`.
-   Slack doesn't link that scheme, so serve an https URL that redirects to it.
-
-### On EAS (CI)
-
-EAS builds the same ad hoc `.ipa` on its macOS workers. The `exact` profile in
-`eas.json` runs the custom build `.eas/build/exact.yml`, and the workflow
-`.eas/workflows/build-exact.yml` runs that profile, by hand only (no push
-starts a build):
+Drive the app with Exact's agent from `exact/lexy`:
 
 ```sh
-eas workflow:run .eas/workflows/build-exact.yml   # or: eas build -p ios --profile exact
+EXACT_APP_DIR="$PWD" RUSTC_WRAPPER= bun ../../../exact2/scripts/agent.mjs ios tree
 ```
 
-The build does the steps above on a clean Mac, with `exact/ci/ios.sh` doing
-one phase per step:
+Use `testId` values to target controls. Use platform touch delivery when verifying
+native hit testing or gestures; invoking an authored handler alone does not
+establish that the native control receives a tap.
 
-- **Toolchains.** Bun, and Rust from `exact/lexy/rust-toolchain.toml` with
-  `aarch64-apple-ios`.
-- **exact2.** A clone at `EXACT2_COMMIT` (`exact/ci/pins.sh`) beside the repo
-  root. Bump that pin to build against newer Lexy patches.
-- **Hermes.** Only what exact2 links is built: the headers, `hermesc`, and
-  lean VMs for macOS (the bake) and iOS devices. There is no full ibex
-  build. The result is cached on EAS, keyed by `HERMES_PIN` and the Xcode
-  build.
-- **Signing.** Uses `app.ide.lexy`'s ad hoc credentials from EAS.
-- **The archive.** Switches the app id to `app.ide.lexy` in the build's
-  checkout only, regenerates `exact-version.contract`, and runs
-  `bun exact.mjs ios --device --archive`.
+## Checks
 
-The version is `app.json`'s, one patch up. The build number is EAS's remote
-counter for `app.ide.lexy`, which it shares with the Expo app's builds. The
-`.ipa` is the build's artifact, and installs from the build page like any
-internal build.
+Run these from the repository root. Each check mocks the network and storage:
 
-The script runs on a developer Mac too. Set `EXACT_IDENTITY` and
-`EXACT_PROFILE` in place of the signing phase, then run
-`exact/ci/ios.sh toolchain`, `deps`, `hermes` and `archive` in order.
+```sh
+bun exact/lexy/session.check.ts
+bun exact/lexy/data-flow.check.ts
+bun exact/lexy/closures.check.ts
+bun exact/lexy/maps-preference.check.ts
+bun exact/lexy/independent-reads.check.ts
+```
 
-## What carried over
+They cover token refresh and sign-out, malformed responses, sparse closure
+snapshots, maps preferences, and concurrent reads. Screen specs live in
+[`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 
-| Lexy (Expo) | Here |
-|---|---|
-| Sign-in (`src/auth/lexus-auth.ts`, `auth-context.tsx`) | The ForgeRock node is classified in Contract (`stepOf`). app.ts fills the callback Contract names. PKCE uses WebCrypto. Tokens live in the Keychain via `store`. |
-| Session refresh (`session-manager.ts`) | A Contract `session` resource refreshes near expiry, or once after a 401. Every read takes its expiry as an argument, so reads wait on it and nothing refreshes in parallel. A rejected refresh signs out. |
-| Vehicle mapping (`vehicle-mapping.ts`, `closures.ts`, `closure-display.ts`, `closure-summary.ts`, `fuel.ts`) | `fn`s and derives in `model.contract` / `status.contract`. app.ts only flattens the wire. |
-| Remote commands + lock reconcile (`remote-command*.ts`, `lock-reconcile.ts`) | `run` → `send` → `then afterCommand`. A 5 s tick re-reads status until the doors agree, primes once at the 5th poll, and gives up at 10. |
-| Engine polling (`engine-status.ts`) | The same tick: 4 re-reads, 20 s apart. |
-| Pull to refresh with prime rate limit (`refresh-status.ts`) | `scroll refresh=… refreshing=…` (a native `UIRefreshControl`). Primes at most every 3 min. |
-| Specs / connected services | `specs.contract` |
-| Rename vehicle | `RenameScreen` + `rename` mutation |
-| Confirmation alerts | `popover role="alertdialog"`, which iOS presents as a native action sheet |
-| `NativeTabs` with SF Symbols (`tab-config.ts`) | `routes nav` with three `tab`s, each rendered with `navigationTab…` props: Exact's native `UITabBarController`, one navigation stack per tab |
-| Icons (`icon-registry.ts`) | `image "symbol:apple:…"` with the same SF Symbol names, drawn by Exact's host |
-| Haptics (`utils/haptics.ts`) | `native.call({op: "haptic"})` after a command |
-| Last Parked map | An `https://maps.apple.com/?ll=…` link |
-| Developer Tools (`settings-screen.ios.tsx` DEV_ITEMS) | `developer.contract`, at the top of Settings in every build (all Exact builds are internal). **Updates** reads `exactDelivery()` and runs `deliveryCheck`/`deliveryActivate` in place of expo-updates. **Data State** rewrites the garage the Status and Specs tabs are shown (`debugGarage` in app.ts) and their online/loading flags. **Login Flow** runs the real `LockScreen` and step machine with a scenario threaded through the auth sources, so `app.ts` answers from `demo.ts`'s preview tree and keeps nothing in the Keychain. **EAS** links to the project's dashboard pages. |
+## Runtime rules
 
-**Not ported:**
+- A pending resource retains its last answer. That answer may be displayed, but
+  a new authenticated request must wait for the shared token refresh.
+- A failed or malformed response preserves the last valid vehicle and telemetry.
+  A valid empty vehicle list is a separate result.
+- Token refreshes share one request. An old refresh cannot overwrite a newer
+  sign-in or restore a session after sign-out. A rejected access token is
+  refreshed and retried once.
+- A command is confirmed only by a newer vehicle report that agrees with it.
+  An older matching reading does not confirm a later command.
+- Sparse snapshots retain older window and opening readings with their original
+  timestamps. Another VIN starts a separate history.
+- Responses must match Contract's declared shapes. Keep decoding at the I/O
+  boundary and state decisions in Contract.
 
-- the Home Screen widget
-- the in-app map and reverse-geocoded address
-- climate settings
-- the maps-provider picker
-- the persisted closure store that merges sparse snapshots across reads
+## Device builds
 
-Most of these need native capability that Exact doesn't expose without a Swift
-module (see below).
+The simulator app uses `app.ide.lexy.exact`. Ad hoc device builds use
+`app.ide.lexy` and install over the Expo app. Set both `app.json`'s `app.id` and
+`app.ts`'s `appId` in the build's checkout, and use a newer build number than the
+installed version.
+Regenerate `exact-version.contract` so Settings shows the matching version and
+Exact revision.
 
-## Findings
+With an ad hoc distribution identity and provisioning profile available:
 
-**Contract is expressive enough for the app's logic, but not for its data
-boundary.**
+```sh
+EXACT_VERSION=1.0.1 EXACT_BUILD_NUMBER=<build-number> \
+  EXACT_IDENTITY=<certificate-sha1> EXACT_PROFILE=<profile-path> \
+  bun exact.mjs ios --device --archive Lexy.ipa
+```
 
-- **No JSON, and strict shapes.** A source's reply must match its declared shape
-  exactly: a missing field or an extra one fails the answer. There is no `any`,
-  map, or JSON parse. So TS can't hand Contract the wire and let Contract map it.
-  Each endpoint needs a decoder that renames and flattens, and the decoders
-  are most of `app.ts`.
-- **A small expression roster.**
-  - Missing: `round`, `sort`, `find`, `sum`, string `slice`/`split`/case-folding,
-    string→number, and list literals. Common patterns work around them:
-    `first(filter(…))` for find, `floor(n + 0.5)` for round, a hand-written
-    thousands separator in `grouped`.
-  - The sign-in classifier names every casing of "verification code" because
-    there is no lowercase.
-  - Trip distances stay strings because nothing parses `"272.1 miles"`.
-- **No record literals.** Contract can't write an empty `Car`, so `garage`
-  answers a `car` field (the first car, or a blank one) alongside `cars`.
-- **`fn`s are pleasant.** They are pure, typed, can call each other, and cross files
-  with `use`. Nearly all of Lexy's `src/data` rules became one-line `fn`s.
-- **Actions read their starting state.** Inside an action, a slot you just
-  assigned still reads its old value until the commit. The tick's notice
-  timeout initially compared against the previous tick's clock. It now reads
-  `time.epochAtZero + now()` directly.
-- **`then` chains model multi-step flows well.** Sign-in is five mutations,
-  each with a `then` that classifies the answer and sends the next. An action
-  can't call another action or send to its own mutation, so a step machine is
-  one mutation per step.
-- **Tasks are mount-only.** There is no conditional or one-shot timer from an
-  action, so polling is a 5 s `every` whose action checks flags. The
-  reconcile cadence is coarser than Lexy's 0/5/12/25 s schedule.
-- **Reserved words bite.** `refresh` can't be a prop name and `key` can't be a
-  shape field; the compiler says so clearly.
-- **The compiler is good.** It reports one refusal at a time with an exact
-  location and a fix-it hint. Most compile errors took one edit each.
+Serve the IPA and its installation manifest over HTTPS. Fetch signing credentials
+through EAS credentials; never put private signing material in the repository.
 
-**Native fidelity, iOS:**
+EAS's `exact` profile runs [`.eas/build/exact.yml`](../.eas/build/exact.yml) through
+[`ci/ios.sh`](ci/ios.sh). The manual workflow builds the pinned Exact revision,
+provisions Hermes, signs with the ad hoc credentials, and produces the IPA as
+its build artifact:
 
-- Native: tab bar (`UITabBarController` with per-tab stacks), navigation bars with large titles, sheets, confirmations (`UIAlertController`),
-  pull-to-refresh (`UIRefreshControl`), navigation pushes with swipe-back
-  (`UINavigationController`), and remote images.
-- Custom-drawn: the rest of the UI (cards, buttons) is drawn by Exact. It
-  looks right but isn't SwiftUI.
-- **Contract's `image "symbol:…"` takes only Exact's 60 portable roles.**
-  These are mostly chat icons: no car, unlocked padlock, fuel, tire or engine.
-  The SF Symbols here come from the native module, which Exact loads just
-  after first paint, so icons appear a frame late at launch.
-- **UIKit chrome presses authored controls.** The tab bar, bar buttons and
-  the back button press hidden controls named by HTML id (`tab-status`,
-  `back`), so the agent driver taps those ids and the patched host activates
-  them as UIKit would.
-- **Maps need Swift.** MapKit, geocoding and opening Apple Maps, Google
-  Maps or Waze are the native module's (`openURL` allows only
-  http(s)/mailto/tel). Widgets, Live Activities and background refresh are
-  not built.
+```sh
+eas workflow:run .eas/workflows/build-exact.yml
+```
 
-**I/O layer constraints** (Hermes, `app.ts`):
-
-- No `Date.now()`, `Math.random()`, or `setTimeout`.
-  - Time is passed in from Contract: every data source takes an `at`.
-  - Correlation IDs use `crypto.randomUUID()`.
-- The pinned native host supports promises shared across answers: its module
-  keeps work alive while another answer awaits it. Lexy shares one token
-  refresh at the authenticated-request boundary. Contract resource dependencies
-  retain committed values while pending and do not themselves provide a
-  request-order barrier. This native-host behavior must be checked before
-  moving shared-promise code to a different execution placement.
-- **Exact's `fetch` keeps no cookie jar**, by design: cookies are ambient
-  authority its per-origin grants can't see. Lexus's ForgeRock sign-in pins
-  a login to one server with `route` and `amlbcookie` cookies; without them a
-  correct SMS code fails with "Login failure". Responses expose `set-cookie`
-  and an explicit `Cookie` header is allowed, so `app.ts` keeps the identity
-  host's cookies itself.
-- `redirect: "manual"` reached Exact's Rust transport only after the patch
-  above. With it, the authorize step's 302 `Location` carries the code.
-- **Verified against the real Lexus API** on a simulator: the password, the
-  SMS code, the code exchange, the session in the Keychain across relaunches,
-  and every read (vehicle, status, tires, engine, spec, subscriptions). No
-  command has been sent to the real car.
-- Apps outside the repo can't import npm packages, and only mounted
-  directories are captured. Lexy's own `src/` could be mounted via
-  `typescript.sources`, but the Expo app's modules pull in React and
-  `expo-*` types, and the brief here was Contract-first anyway.
+For a local CI-style build, run `ci/ios.sh` phases `toolchain`, `deps`, `hermes`,
+and `archive` from this directory, supplying `EXACT_IDENTITY` and `EXACT_PROFILE`
+for signing. The script lists the remaining phases and their inputs.

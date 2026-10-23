@@ -1,5 +1,4 @@
-// The Specs tab (src/screens/details-screen.tsx): the vehicle, what it can do
-// remotely, and its connected services.
+// Vehicle specifications, remote capabilities, and connected services
 use Garage from "./model.contract"
 use Spec from "./model.contract"
 use Services from "./model.contract"

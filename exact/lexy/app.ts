@@ -1,21 +1,5 @@
-// Lexy's I/O layer. Contract owns every decision the app makes (the sign-in
-// step machine, what a status snapshot means, lock reconciliation, formatting,
-// navigation); this file only does what Contract cannot:
-//
-// - HTTP to the Lexus identity and REST hosts, with the request conventions
-//   every call needs (headers, bearer token, one refresh-and-retry on 401/403),
-//   and the identity host's cookies (see `jar`)
-// - the Keychain (`store`) for the session tokens, and one SQLite database for
-//   what Lexy keeps between launches (see "The store")
-// - PKCE (SHA-256) for the OAuth code exchange
-// - decoding each response into the exact shape app.contract declares, since
-//   Contract has no JSON and rejects a reply with a missing or extra field
-//
-// The decoders are deliberately mechanical: they rename and flatten the wire,
-// and leave the meaning of the values to Contract.
-//
-// Demo mode swaps the transport for an in-memory Lexus (demo.ts), so the
-// whole app — sign-in included — runs without an account.
+// HTTP, token storage, PKCE, and response decoding. Contract owns app state.
+// Demo mode uses demo.ts's local server and needs no Lexus account.
 import type { Answer, Database, NativeModule, Overlay, Result, SQLCommand, SQLValue, Sources, Storage, Store } from './app.contract.d.ts';
 import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario, type Reply } from './demo';
 
@@ -79,17 +63,28 @@ type Request = (url: string, init: RequestInit) => Promise<Reply>;
 
 const rec = (v: unknown): Json => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : {});
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const str = (v: unknown): string => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
-const num = (v: unknown): number => {
-  const n = typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN;
+
+function str(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  return typeof value === 'number' ? String(value) : '';
+}
+
+function num(value: unknown): number {
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    return 0;
+  }
+  const n = typeof value === 'number' ? value : parseFloat(value);
   return Number.isFinite(n) ? n : 0;
-};
+}
+
 // Contract has no date parsing; ISO strings cross as epoch milliseconds.
 const epochMs = (v: unknown): number => {
   const ms = typeof v === 'string' && v ? new Date(v).getTime() : NaN;
   return Number.isFinite(ms) ? ms : 0;
 };
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const message = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 // --- Transport ----------------------------------------------------------------
 

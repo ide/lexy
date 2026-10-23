@@ -1,6 +1,4 @@
-// The Settings tab (src/screens/settings-screen.ios.tsx) and the vehicle-name
-// screen it pushes (src/screens/vehicle-name-screen.ios.tsx). The developer
-// tools' own screens are developer.contract's.
+// Settings, developer tools, and the vehicle-name form
 use Car from "./model.contract"
 use Card from "./model.contract"
 use vehicleName from "./model.contract"
@@ -12,7 +10,6 @@ use mapsResolved from "./model.contract"
 use MapsChooser from "./map.contract"
 use SectionTitle from "./model.contract"
 
-// src/components/swift-ui/section.tsx: a header, a card, and a footer.
 component SectionHeader
   props
     title: string
@@ -25,8 +22,6 @@ component SectionFooter
   view
     text words font-size=13 color="-exact-secondary-label" padding-top=8 padding-left=16 padding-right=16
 
-// src/components/swift-ui/settings-row.tsx: symbol, title over subtitle, and
-// a chevron when the row opens a screen.
 component SettingsRowFace
   props
     symbol: string
@@ -42,8 +37,7 @@ component SettingsRowFace
       if opensScreen
         image "symbol:icon.chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
-// The Development tab folded into Settings, at its top (settings-screen.ios.tsx
-// DEV_ITEMS), shown in developer mode only; its last row turns that mode off.
+// Show developer tools first when developer mode is enabled
 component DeveloperTools
   props
     open: action

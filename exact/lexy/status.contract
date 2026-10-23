@@ -43,9 +43,7 @@ use Activity from "./model.contract"
 // climate-card.ios.tsx: an active defrost chip is the blue wash over the
 // chip's grey, on the card (composited, one colour).
 
-// A pending lock or engine word pulses (pulsing-text.tsx: 0.4 to 1 over
-// 800 ms, back and forth), and two pending at once pulse together: each
-// joins the phase the other is in (LLP 1055.002).
+// Share the pulse phase across pending lock and engine labels
 timeline Pending
 
 keyframes pending
@@ -77,8 +75,6 @@ component ControlButton
       button commandfor=`confirm-${command}` command="show-modal" disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 padding-left=6 padding-right=6 display="flex" flex-direction="column" align-items="center" justify-content="center"
         image `symbol:icon.${symbol}` font-size=iconSize -exact-tint-color=tint
         text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
-      // A centred alert, as Lexy's (alert-host.tsx): the same place for
-      // every control.
       dialog id=`confirm-${command}` role="alertdialog" aria-label=title
         text message
         button destructive=destructive press=run(command) commandfor=`confirm-${command}` command="close" testId=`confirm-${command}`

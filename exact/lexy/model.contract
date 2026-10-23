@@ -1,6 +1,4 @@
-// What app.ts answers (in the wire's own terms), and the pure functions that
-// turn those answers into what Lexy says. Every rule that lived in Lexy's
-// src/data and src/auth modules as TypeScript is a `fn` here.
+// Data shapes and pure display rules; app.ts decodes the API replies
 
 // Lexy's loading indicators (the skeletons' pulse, the fuel bar's)
 // keep one rhythm wherever they show (LLP 1055.002).
@@ -25,9 +23,7 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
-// The Keychain's session: whether there is one, and when its access token
-// expires. Asking for it refreshes the token when it is due — the one place
-// that does, so a rotating refresh token is never spent twice at once.
+// Refresh tokens through one session source so concurrent reads share the refresh
 shape Account
   signedIn: bool
   demo: bool
@@ -86,8 +82,7 @@ shape Section
   category: string
   section: string
   values: string[]
-  // When its oldest shown reading was observed (a sparse snapshot leaves
-  // windows and openings at an earlier one).
+  // Time of this section's oldest displayed reading
   at: number
 
 shape Status
@@ -95,7 +90,7 @@ shape Status
   status: number
   error: string
   occurredMs: number
-  // When Lexy asked (React Query's dataUpdatedAt): a kept answer's age.
+  // Request time used to age cached data
   fetchedMs: number
   fuel: number
   range: number
@@ -219,8 +214,18 @@ fn otpCallback(types: string[]): string = any(types, "TextInputCallback") ? "Tex
 
 // src/auth/sign-in-error.ts: what happened, why, and what to do next, by
 // the step that failed (credentials, choice, otp, resend).
-fn retryAction(stage: string): string = stage == "choice" ? "choose your verification method again" : (stage == "otp" ? "tap Verify again" : (stage == "resend" ? "request a code again" : "tap Sign In again"))
-fn rejectedText(stage: string): string = stage == "otp" ? "Lexus didn't accept that verification code. It may be mistyped, expired, or already used, since codes work once and only for a few minutes. Tap Resend Code and enter the fresh code right away." : (stage == "choice" ? "Lexus couldn't send a code by that method. The contact info on your account may be out of date. Try another method, or update your details in the Lexus app." : (stage == "resend" ? "Lexus refused to send another code, usually because too many were requested in a row. Wait a few minutes and request a code again." : "Lexus didn't accept that email and password. One of them is likely mistyped (passwords are case-sensitive), or the account is locked after too many attempts. Check both fields and try again, or reset your password in the Lexus app."))
+fn retryAction(stage: string): string = (
+  stage == "choice" ? "choose your verification method again" :
+  stage == "otp" ? "tap Verify again" :
+  stage == "resend" ? "request a code again" :
+  "tap Sign In again"
+)
+fn rejectedText(stage: string): string = (
+  stage == "otp" ? "Lexus didn't accept that verification code. It may be mistyped, expired, or already used, since codes work once and only for a few minutes. Tap Resend Code and enter the fresh code right away." :
+  stage == "choice" ? "Lexus couldn't send a code by that method. The contact info on your account may be out of date. Try another method, or update your details in the Lexus app." :
+  stage == "resend" ? "Lexus refused to send another code, usually because too many were requested in a row. Wait a few minutes and request a code again." :
+  "Lexus didn't accept that email and password. One of them is likely mistyped (passwords are case-sensitive), or the account is locked after too many attempts. Check both fields and try again, or reset your password in the Lexus app."
+)
 fn signInError(stage: string, status: number, error: string): string = status == 0 ? `Couldn't reach Lexus. Your device looks offline, or the connection dropped mid-request. Check Wi-Fi or cellular, then ${retryAction(stage)}.` : (status == 429 ? `Lexus is limiting sign-in attempts after too many recent tries. This clears on its own. Wait a few minutes, then ${retryAction(stage)}.` : (status >= 500 ? `The Lexus sign-in service hit an error on its end, not something you entered. It usually recovers quickly, so wait a moment, then ${retryAction(stage)}.` : (status >= 400 ? rejectedText(stage) : `Sign-in stopped unexpectedly, and Lexy couldn't tell why. Try again; if it keeps happening, restart Lexy.${error != "" ? ` (Details: ${error})` : ""}`)))
 
 // load-error.ts classifyFailure / describeFailure: what kind of failure a
@@ -228,9 +233,23 @@ fn signInError(stage: string, status: number, error: string): string = status ==
 // cause and what to do (the full-screen error).
 fn failureKind(status: number, error: string): string = status == 401 and error.includes("expired") ? "session" : (status == 401 or status == 403 ? "permission" : (status >= 500 ? "server" : (status >= 400 ? "client" : (status == 0 and (error.includes("etwork") or error.includes("offline") or error.includes("onnection") or error.includes("nternet") or error.includes("timed out") or error.includes("Couldn’t reach")) ? "network" : "unknown"))))
 fn failureSummary(status: number, error: string): string = summaryOf(failureKind(status, error))
-fn summaryOf(kind: string): string = kind == "permission" ? "Lexus didn't let Lexy read your vehicle." : (kind == "server" ? "The Lexus service had a problem on its end." : (kind == "client" ? "Lexus didn't accept Lexy's request." : (kind == "network" ? "Lexy couldn't connect to Lexus." : (kind == "session" ? "Your Lexus sign-in expired." : ("Something unexpected went wrong.")))))
+fn summaryOf(kind: string): string = (
+  kind == "permission" ? "Lexus didn't let Lexy read your vehicle." :
+  kind == "server" ? "The Lexus service had a problem on its end." :
+  kind == "client" ? "Lexus didn't accept Lexy's request." :
+  kind == "network" ? "Lexy couldn't connect to Lexus." :
+  kind == "session" ? "Your Lexus sign-in expired." :
+  "Something unexpected went wrong."
+)
 fn failureAdvice(status: number, error: string): string = adviceOf(failureKind(status, error))
-fn adviceOf(kind: string): string = kind == "permission" ? "Lexus didn't let Lexy read your vehicle's data. Your saved sign-in may no longer have access, for example if the vehicle was removed from your Lexus account. Sign out and sign back in; if the vehicle still doesn't appear, check that it's listed in the Lexus app." : (kind == "server" ? "The Lexus service had a problem on its end, not something you did. It usually recovers within a few minutes. Try again shortly." : (kind == "client" ? "Lexus didn't accept Lexy's request. Lexus may have changed how its service works. Try again, and check for a Lexy update if it keeps happening." : (kind == "network" ? "Lexy couldn't connect to Lexus. Your device may be offline or on a weak connection. Check Wi-Fi or cellular data, then try again." : (kind == "session" ? "Your Lexus sign-in expired. Lexus ends sign-ins after a while, and when your password changes. Sign in again to see your vehicle." : ("Something unexpected went wrong while loading your vehicle, and Lexy couldn't tell why. Try again; if it keeps happening, restart Lexy.")))))
+fn adviceOf(kind: string): string = (
+  kind == "permission" ? "Lexus didn't let Lexy read your vehicle's data. Your saved sign-in may no longer have access, for example if the vehicle was removed from your Lexus account. Sign out and sign back in; if the vehicle still doesn't appear, check that it's listed in the Lexus app." :
+  kind == "server" ? "The Lexus service had a problem on its end, not something you did. It usually recovers within a few minutes. Try again shortly." :
+  kind == "client" ? "Lexus didn't accept Lexy's request. Lexus may have changed how its service works. Try again, and check for a Lexy update if it keeps happening." :
+  kind == "network" ? "Lexy couldn't connect to Lexus. Your device may be offline or on a weak connection. Check Wi-Fi or cellular data, then try again." :
+  kind == "session" ? "Your Lexus sign-in expired. Lexus ends sign-ins after a while, and when your password changes. Sign in again to see your vehicle." :
+  "Something unexpected went wrong while loading your vehicle, and Lexy couldn't tell why. Try again; if it keeps happening, restart Lexy."
+)
 fn failureText(status: number, error: string): string = status == 0 ? "Lexy couldn't reach Lexus. Your device may be offline, or the connection dropped. Check Wi-Fi or cellular data, then try again." : (status >= 500 ? "The Lexus service had a problem on its end, not something you did. Try again in a few minutes." : `Lexus didn't accept the request. Its service may be busy, or your sign-in may need refreshing. Try again; if it keeps happening, sign out and sign back in. (Lexus error ${status}${error != "" ? `: ${error}` : ""})`)
 // A rename Lexus refuses (400) is the name it won't store; anything else is the usual failure
 fn renameFailure(status: number, error: string): string = status == 400 ? "Lexus didn't accept that name and didn't say why. Try a shorter name using only letters, numbers and spaces." : failureText(status, error)
@@ -239,11 +258,28 @@ fn renameFailure(status: number, error: string): string = status == 400 ? "Lexus
 
 fn vehicleName(nick: string, model: string): string = nick != "" ? nick : (model != "" ? model : "My Vehicle")
 
+fn routeTitle(route: string): string = (
+  route == "specs" ? "Specs" :
+  route == "settings" ? "Settings" :
+  route == "rename" ? "Vehicle Name" :
+  route == "map" ? "Last Parked" :
+  route == "updates" ? "Updates" :
+  route == "dataState" ? "Data State" :
+  route == "login" ? "Login Flow" :
+  route == "eas" ? "EAS" :
+  route == "performance" ? "Performance" :
+  ""
+)
+
 fn can(capabilities: string[], flag: string): bool = any(capabilities, flag)
 
 // src/data/vehicle-mapping.ts FUEL_TYPES and HEAD_UNITS.
 fn fuelName(code: string): string = code == "G" ? "Gasoline" : (code == "H" ? "Hybrid" : (code == "E" ? "Electric" : ((code == "P" or code == "L") ? "Plug-in Hybrid" : (code == "F" ? "Fuel Cell" : (code == "" ? "Gasoline" : code)))))
-fn headUnit(generation: string): string = generation == "21MM" ? "Lexus Multimedia (21MM)" : (generation == "24MM" ? "Lexus Interface (24MM)" : generation)
+fn headUnit(generation: string): string = (
+  generation == "21MM" ? "Lexus Multimedia (21MM)" :
+  generation == "24MM" ? "Lexus Interface (24MM)" :
+  generation
+)
 
 // --- Closures (src/data/closures.ts, closure-display.ts) -------------------------
 
@@ -287,18 +323,39 @@ fn fuelTint(p: number): string = p > 25 ? "-exact-system-green" : (p > 15 ? "-ex
 fn fuelText(p: number): string = p >= 100 ? "-exact-system-green" : (p > 25 ? "-exact-label" : fuelTint(p))
 
 // One extra control's name for "More controls"' subtitle, in Lexy's order.
-fn extraName(flag: string): string = flag == "trunkLockUnlockCapable" ? "trunk" : (flag == "lightsCapable" ? "headlights" : (flag == "hazardCapable" ? "hazards" : (flag == "hornCapable" ? "horn" : (flag == "buzzerCapable" ? "buzzer" : ""))))
+fn extraName(flag: string): string = (
+  flag == "trunkLockUnlockCapable" ? "trunk" :
+  flag == "lightsCapable" ? "headlights" :
+  flag == "hazardCapable" ? "hazards" :
+  flag == "hornCapable" ? "horn" :
+  flag == "buzzerCapable" ? "buzzer" :
+  ""
+)
 
 fn mapsCount(m: MapsApp): number = (m.apple ? 1 : 0) + (m.google ? 1 : 0) + (m.waze ? 1 : 0)
 // The app Open in uses without asking: the saved one, else the only one
 // installed (not saved, so installing another asks again); empty to ask.
 fn mapsResolved(m: MapsApp): string = m.provider != "" ? m.provider : (mapsCount(m) == 1 ? (m.apple ? "apple" : (m.google ? "google" : "waze")) : "")
-fn mapsName(provider: string): string = provider == "google" ? "Google Maps" : (provider == "waze" ? "Waze" : (provider == "apple" ? "Apple Maps" : "Maps"))
+fn mapsName(provider: string): string = (
+  provider == "google" ? "Google Maps" :
+  provider == "waze" ? "Waze" :
+  provider == "apple" ? "Apple Maps" :
+  "Maps"
+)
 // On the web, where no app opens, each maps app's own site with directions
 // to the car.
 fn webDirections(provider: string, latitude: number, longitude: number): string = provider == "google" ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}` : (provider == "waze" ? `https://www.waze.com/ul?ll=${latitude},${longitude}&navigate=yes` : `https://maps.apple.com/directions?destination=${latitude},${longitude}`)
 
-fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "headlights" ? "Headlights" : (name == "hazards" ? "Hazards" : (name == "horn" ? "Horn" : (name == "buzzer" ? "Buzzer" : (name == "moonroof" ? "Moonroof" : (name == "windows" ? "Windows" : name))))))
+fn capitalized(name: string): string = (
+  name == "trunk" ? "Trunk" :
+  name == "headlights" ? "Headlights" :
+  name == "hazards" ? "Hazards" :
+  name == "horn" ? "Horn" :
+  name == "buzzer" ? "Buzzer" :
+  name == "moonroof" ? "Moonroof" :
+  name == "windows" ? "Windows" :
+  name
+)
 
 // --- Palette ------------------------------------------------------------------------
 
@@ -309,7 +366,13 @@ fn capitalized(name: string): string = name == "trunk" ? "Trunk" : (name == "hea
 fn accent(): string = "light-dark(color(display-p3 0.91 0.11 0.14), color(display-p3 1 0.27 0.28))"
 // A role's wash: its colour at 15%. The accent's is written out, as Contract
 // has no `color-mix()` yet.
-fn wash(role: string): string = role == "-exact-system-green" ? "light-dark(#34c75926, #30d15826)" : (role == "-exact-system-orange" ? "light-dark(#ff950026, #ff9f0a26)" : (role == "-exact-system-blue" ? "light-dark(#007aff26, #0a84ff26)" : (role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" : "light-dark(#3c3c4326, #ebebf526)")))
+fn wash(role: string): string = (
+  role == "-exact-system-green" ? "light-dark(#34c75926, #30d15826)" :
+  role == "-exact-system-orange" ? "light-dark(#ff950026, #ff9f0a26)" :
+  role == "-exact-system-blue" ? "light-dark(#007aff26, #0a84ff26)" :
+  role == "AccentColor" ? "light-dark(color(display-p3 0.91 0.11 0.14 / 0.15), color(display-p3 1 0.27 0.28 / 0.2))" :
+  "light-dark(#3c3c4326, #ebebf526)"
+)
 // A card clips what it holds to its corners, as UIKit's inset grouped
 // section does: a row's hover wash or a wide image stays inside it.
 style Card
