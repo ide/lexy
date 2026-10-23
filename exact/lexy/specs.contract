@@ -52,6 +52,9 @@ component SpecsScreen
     loading: bool
     online: bool
     manage: action
+    // Wide: the vehicle on the left, capabilities and services on the right.
+    wide: bool
+    fold: string
   derive car = garage.car
   view
     scroll id="screen-scroll" testId="specs-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
@@ -79,8 +82,9 @@ component SpecsScreen
           column flex-grow=1 margin-top=16
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="specs-error")
         if car.vin != ""
-          column box-sizing="border-box" padding=16 gap=16
-            column gap=8
+          // Its last card keeps its own room below it, as Status' footer does.
+          column box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 margin-bottom=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId="specs-body"
+            column gap=8 testId="specs-vehicle" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
               text "Vehicle" class=SectionTitle
               column class=Card padding-left=16 padding-right=16
                 InfoRow(label="VIN", value=car.vin, last=false)
@@ -95,23 +99,24 @@ component SpecsScreen
                 InfoRow(label="Drivetrain", value=specValue(spec, "Drive Type", "—"), last=false)
                 InfoRow(label="Built", value=specValue(spec, "Order Date", "—"), last=false)
                 InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true)
-            // src/data/vehicle-mapping.ts lists the same four for every car.
-            column gap=8
-              text "Remote Capabilities" class=SectionTitle
-              row class=Card flex-wrap="wrap" padding=16 gap=16
-                Capability(symbol="lock.fill", label="Lock & unlock")
-                Capability(symbol="power", label="Engine start")
-                Capability(symbol="thermometer.medium", label="Climate")
-                Capability(symbol="location.fill", label="Location")
-            if services.ok and services.items.length > 0
+            column testId="specs-right" gap=16 grid-column=(wide ? (fold == "across" ? "1" : "2") : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left) + 16px)" : "0px") margin-right=(fold == "across" ? "16px" : "0px")
+              // src/data/vehicle-mapping.ts lists the same four for every car.
               column gap=8
-                text "Connected Services" class=SectionTitle
-                column class=Card padding-left=16 padding-right=16
-                  for s, i in services.items key=`${s.bucket}-${s.name}`
-                    row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`
-                      column flex-shrink=1
-                        text s.name class=Small color="-exact-label" user-select="text"
-                        text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="-exact-secondary-label"
-                      text s.status class=SmallBold color=(s.status == "Active" ? "-exact-system-green" : "-exact-secondary-label")
-                  button press=manage testId="manage-subscriptions" appearance="auto" buttonStyle="plain" padding-top=22 padding-bottom=22 display="flex" align-items="center"
-                    text "Manage your subscriptions in the Lexus app" font-size=14 color="AccentColor" text-align="center"
+                text "Remote Capabilities" class=SectionTitle
+                row class=Card flex-wrap="wrap" padding=16 gap=16
+                  Capability(symbol="lock.fill", label="Lock & unlock")
+                  Capability(symbol="power", label="Engine start")
+                  Capability(symbol="thermometer.medium", label="Climate")
+                  Capability(symbol="location.fill", label="Location")
+              if services.ok and services.items.length > 0
+                column gap=8
+                  text "Connected Services" class=SectionTitle
+                  column class=Card padding-left=16 padding-right=16
+                    for s, i in services.items key=`${s.bucket}-${s.name}`
+                      row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`
+                        column flex-shrink=1
+                          text s.name class=Small color="-exact-label" user-select="text"
+                          text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="-exact-secondary-label"
+                        text s.status class=SmallBold color=(s.status == "Active" ? "-exact-system-green" : "-exact-secondary-label")
+                    button press=manage testId="manage-subscriptions" appearance="auto" buttonStyle="plain" padding-top=22 padding-bottom=22 display="flex" align-items="center"
+                      text "Manage your subscriptions in the Lexus app" font-size=14 color="AccentColor" text-align="center"

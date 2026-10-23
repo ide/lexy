@@ -1,5 +1,5 @@
 // Settings, developer tools, and the vehicle-name form
-use Car from "./model.contract"
+use Car, readableWidth from "./model.contract"
 use Card from "./model.contract"
 use vehicleName from "./model.contract"
 use mapsName from "./model.contract"
@@ -96,10 +96,12 @@ component SettingsScreen
     chooseMaps: action
     signOut: action
     signingOut: bool
+    fold: string
   view
     scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box"
-        column box-sizing="border-box" padding=16 gap=24
+      column box-sizing="border-box" padding-bottom=32
+        // Place the readable column in the trailing segment on a book fold
+        column box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=16 padding-left=16 padding-right=16 gap=24 testId="settings-column"
           if developer
             DeveloperTools(open=openDevTool, setDeveloper=setDeveloper, origin=developerOrigin, place=developerPlace)
           column

@@ -72,6 +72,8 @@ internal preview builds it also carries the entry points to the developer tools.
 
 ## Platform notes
 
+- The Exact app caps the list at a readable width. On a book fold, the list occupies the trailing segment.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Maps section | The full row: probe, remembered choice, anchored SwiftUI chooser | Absent. Android's maps hand-off is a `geo:` intent resolved by the system (see the map screen's Platform notes), so there is no in-app preference to set |

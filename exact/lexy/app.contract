@@ -23,7 +23,7 @@ use Address from "./model.contract"
 use MapsApp from "./model.contract"
 use DeveloperMode from "./model.contract"
 use Page from "./model.contract"
-use Viewport from "./model.contract"
+use Viewport, foldOf from "./model.contract"
 use mapsResolved from "./model.contract"
 use webDirections from "./model.contract"
 use Opened from "./model.contract"
@@ -60,6 +60,9 @@ routes nav
 component Lexy
   resource time = exactTime() as shape Time
   resource page = exactPage() as shape Page
+  resource viewport = exactViewport() as shape Viewport
+  derive fold = foldOf(viewport)
+  derive wide = viewport.width >= 700 or fold == "across"
   state sessionRev = 0
   state sessionAt = 0
   state retried = false
@@ -215,7 +218,6 @@ component Lexy
   // Developer Tools and Try Demo show only in developer mode, on this device
   // (in this browser, on the web)
   resource developer = developerMode() as shape DeveloperMode
-  resource viewport = exactViewport() as shape Viewport
   // Where the mode is kept, as its footer says: in this browser on the web, or
   // in this app once it is opened from the home screen, whose storage is its
   // own; natively, on this device by the module's name.
@@ -957,9 +959,9 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink viewport-fit="cover" width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
+    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
       if not shell
-        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "You've been signed out because Lexus no longer accepts the app's saved session. This happens after a password change, or when Lexus expires it on their end. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
       else
         // Each tab keeps its own stack; route headers supply UIKit's title and bar
         // items
@@ -983,13 +985,13 @@ component Lexy
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.wrench.and.screwdriver"
                   if e.name == "status"
-                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok)
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, wide=wide, fold=fold, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok)
                   if e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, clock=clock, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=openError, open=openIn, pick=pickAndOpen, tried=mapsTried, close=back)
                   if e.name == "specs"
-                    SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions)
+                    SpecsScreen(garage=shownGarage, spec=spec, services=services, utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold)
                   if e.name == "settings"
-                    SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left))
+                    SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left), fold=fold)
                   if e.name == "updates"
                     UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   if e.name == "dataState"

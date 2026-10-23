@@ -380,6 +380,8 @@ telling.
 
 ## Platform notes
 
+- The Exact app uses two columns on wide displays. On a book fold, the vehicle readings occupy the leading segment and the remote controls and climate settings occupy the trailing segment, clear of the hinge. More Controls stays expanded in this layout. Narrow displays retain the single scrolling column and collapsible controls.
+
 - **The hero has no map backdrop on Android.** The card there is the vehicle's
   render and the Last Parked button on a plain surface. Android's map view wants
   a Google Maps SDK API key the project doesn't have, and `VehicleLocationMap`

@@ -75,6 +75,8 @@ pull-refresh.
 
 ## Platform notes
 
+- The Exact app uses two columns on wide displays: vehicle details first, capabilities and connected services second. A book fold places each column in its own segment, clear of the hinge.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Capability icons | The vehicle data carries SF Symbol names (`Capability.symbol`) | — needs a symbol-to-platform-icon mapping, since the names come from shared data |

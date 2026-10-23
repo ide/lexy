@@ -65,6 +65,8 @@ None of its own.
 
 ## Platform notes
 
+- The Exact app uses the host’s automatic safe-area fitting. Content stays clear of the Duo’s side navigation strip; full-screen cover fitting requires the app to supply its own insets.
+
 - **No transition animation on the root stack.** The root stack only ever
   switches between auth-boundary screens (`index` → tabs, sign-in ↔ tabs). Those
   should appear in place rather than slide in, so a logged-in launch looks like

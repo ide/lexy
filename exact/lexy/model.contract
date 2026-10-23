@@ -14,10 +14,19 @@ shape Page
   // fetch the person asked for, so it announces nothing.
   navigationType: string
 
-// exactViewport's display mode: `standalone` for a web app opened from the
-// home screen or installed, `browser` in a tab.
+// The viewport's fold (Exact's exactViewport, the web's device-posture
+// and viewport segments: LLP 1078).
 shape Viewport
   displayMode: string
+  width: number
+  horizontalViewportSegments: number
+  verticalViewportSegments: number
+
+// Keep single-column forms readable on wide displays
+fn readableWidth(): string = "672px"
+
+// Distinguish side-by-side segments ("across") from stacked segments ("down")
+fn foldOf(v: Viewport): string = v.horizontalViewportSegments == 2 ? "across" : (v.verticalViewportSegments == 2 ? "down" : "")
 
 shape Time
   epochAtZero: number

@@ -134,6 +134,8 @@ transition is animated so the relayout springs rather than snaps.
 
 ## Platform notes
 
+- The Exact app caps the form at a readable width. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold.
+
 - **Fields are explicitly blurred before a submit that can end the flow.** A
   successful sign-in unmounts this screen while a field is still first
   responder; the keyboard disappears with the view but is never formally
