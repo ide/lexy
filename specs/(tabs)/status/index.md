@@ -379,7 +379,7 @@ telling.
 
 ## Platform notes
 
-- The Exact iOS dashboard gives its navigation bar the system background so the returning title remains readable over the map and cards. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
+- The Exact iOS dashboard uses UIKit's automatic scroll edge treatment, including its blur behind the title. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
 
 - Exact places loading cards in the same grid as the dashboard, including separate book-fold segments. The hero keeps its loaded height; unknown controls use neutral shapes. Loading pulses only while online. Refreshes retain the last available readings.
 

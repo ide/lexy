@@ -33,14 +33,6 @@ final class LexyModule: ExactModule {
         ]
     }
 
-    #if os(iOS)
-    override func route(_ route: ExactRoute) {
-        guard route.data[.screen] == "status" else { return }
-        // Keep the returning title readable over the dashboard's map and cards
-        route.navigation?.controller.navigationBar.backgroundColor = .systemGroupedBackground
-    }
-    #endif
-
     /// The street line for a coordinate, as the Lexus app shows it: number
     /// and street, else the place's name; empty when there is none.
     override func later(_ request: [String: Any], reply: ExactReply) {
