@@ -100,7 +100,7 @@ component VehicleState
     // column, Specs does not), so it wraps the same on both.
     column flex-grow=1 justify-content="center" align-items="center" gap=16 padding-top=32 padding-bottom=32 testId=id
       image `symbol:icon.${symbol}` font-size=44 color="-exact-secondary-label"
-      text title font-size=34 font-weight=700 text-align="center" max-width=320
+      text title role="heading" aria-level=2 text-align="center" max-width=320
       text message font-size=17 color="-exact-secondary-label" text-align="center" max-width=320
       button press=press testId=`${id}-retry` appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
         text label font-size=17 color="#ffffff"
@@ -358,7 +358,7 @@ component StatusScreen
                   // Remote controls (vehicle-controls.ios.tsx)
                   column gap=8 testId="controls"
                     row justify-content="space-between" align-items="center" gap=16
-                      text "Remote Controls" class=SectionTitle margin-top=4
+                      text "Remote Controls" role="heading" aria-level=2 class=SectionTitle margin-top=4
                       row gap=8 margin-right=8 align-items="center"
                         // "Locked" only when every reporting door is; before any door
                         // has reported, nothing (a guess would read as a state).
@@ -432,7 +432,7 @@ component StatusScreen
                         row justify-content="space-between" align-items="center"
                           row gap=4 align-items="center"
                             image "symbol:icon.thermometer.medium" font-size=17 color="AccentColor" object-fit="scale-down" width=17 height=17
-                            text "Remote Start Climate" class=SmallBold color="-exact-secondary-label"
+                            text "Remote Start Climate" role="heading" aria-level=2 font="-exact-headline" color="-exact-secondary-label"
                           // The real switch from the first frame, as the buttons
                           // are: disabled and off until the settings arrive (and
                           // before their read has even begun), so the header
@@ -459,7 +459,7 @@ component StatusScreen
                 // Doors & windows (closures-summary.ios.tsx)
                 if rows.length > 0
                   column gap=8 testId="closures" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "3" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
-                    text "Doors & Windows" class=SectionTitle margin-top=4
+                    text "Doors & Windows" role="heading" aria-level=2 class=SectionTitle margin-top=4
                     column class=Card overflow="hidden"
                       button text-align="left" press=toggleClosures testId="toggle-closures" min-height=44 padding-top=12 padding-bottom=12 padding-left=16 padding-right=16 display="flex" flex-direction="row" align-items="center" gap=8
                         // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
@@ -499,7 +499,7 @@ component StatusScreen
                         text `Some readings as of ${relative(clock, status.closuresStaleMs)}` font-size=13 line-height="18px" color="-exact-secondary-label"
                 // Odometer (odometer-card.tsx)
                 column gap=8 testId="odometer" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "4" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
-                  text "Odometer" class=SectionTitle margin-top=4
+                  text "Odometer" role="heading" aria-level=2 class=SectionTitle margin-top=4
                   row class=Card padding=16 align-items="center" gap=8
                     column flex=1 gap=4
                       row gap=4 align-items="center"
@@ -525,7 +525,7 @@ component StatusScreen
                 // Tire pressure (tire-pressure-card.tsx)
                 if tires.ok and tires.tires.length > 0
                   column gap=8 testId="tires" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "5" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
-                    text "Tire Pressure" class=SectionTitle margin-top=4
+                    text "Tire Pressure" role="heading" aria-level=2 class=SectionTitle margin-top=4
                     // Full width like the other cards; the readings keep together at its leading edge
                     column class=Card padding=16
                       row gap=32 align-self="flex-start"

@@ -99,6 +99,8 @@ If that write fails, it reports the failure when the app returns from Maps.
 
 ## Platform notes
 
+- Exact keeps the sheet title a primary heading and uses UIKit’s compact navigation title presentation.
+
 - **The map component currently refuses to render off iOS.** `VehicleLocationMap`
   guards on the platform and renders the text "Maps are only available on iOS."
   everywhere else, because the map view it uses is Apple Maps. This is a

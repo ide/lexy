@@ -85,7 +85,7 @@ component SpecsScreen
           // Its last card keeps its own room below it, as Status' footer does.
           column box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 margin-bottom=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId=(car.vin == "" ? "specs-skeleton" : "specs-body")
             column gap=8 testId="specs-vehicle" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
-              text "Vehicle" class=SectionTitle
+              text "Vehicle" role="heading" aria-level=2 class=SectionTitle
               column class=Card padding-left=16 padding-right=16 animation=(car.vin == "" and online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
                 InfoRow(label="VIN", value=car.vin, last=false, waiting=car.vin == "")
                 InfoRow(label="Model Code", value=car.modelCode, last=false, waiting=car.vin == "")
@@ -102,7 +102,7 @@ component SpecsScreen
             column testId="specs-right" gap=16 grid-column=(wide ? (fold == "across" ? "1" : "2") : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left) + 16px)" : "0px") margin-right=(fold == "across" ? "16px" : "0px")
               // src/data/vehicle-mapping.ts lists the same four for every car.
               column gap=8
-                text "Remote Capabilities" class=SectionTitle
+                text "Remote Capabilities" role="heading" aria-level=2 class=SectionTitle
                 row class=Card flex-wrap="wrap" padding=16 gap=16
                   Capability(symbol="lock.fill", label="Lock & unlock")
                   Capability(symbol="power", label="Engine start")
@@ -110,13 +110,13 @@ component SpecsScreen
                   Capability(symbol="location.fill", label="Location")
               if (car.vin == "" and loading) or (servicesLoading and services.items.length == 0)
                 column gap=8 testId="services-skeleton" animation=(online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
-                  text "Connected Services" class=SectionTitle
+                  text "Connected Services" role="heading" aria-level=2 class=SectionTitle
                   column class=Card padding-left=16 padding-right=16
                     for i in range(3) key=i
                       InfoRow(label="", value="", last=(i == 2), waiting=true)
               if car.vin != "" and services.items.length > 0
                 column gap=8
-                  text "Connected Services" class=SectionTitle
+                  text "Connected Services" role="heading" aria-level=2 class=SectionTitle
                   column class=Card padding-left=16 padding-right=16
                     for s, i in services.items key=`${s.bucket}-${s.name}`
                       row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`

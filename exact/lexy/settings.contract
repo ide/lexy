@@ -14,7 +14,7 @@ component SectionHeader
   props
     title: string
   view
-    text title class=SectionTitle padding-bottom=4
+    text title role="heading" aria-level=2 class=SectionTitle padding-bottom=4
 
 component SectionFooter
   props

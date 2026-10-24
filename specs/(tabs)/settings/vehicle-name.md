@@ -51,6 +51,8 @@ what every screen, and the Home Screen widget, calls this car.
 
 ## Platform notes
 
+- Exact uses a compact UIKit navigation title while keeping the screen title a primary heading.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Field seeding | The form mounts only once the current name is known, because the native field captures its initial value on first render. The contract either way is "the field opens pre-filled with the current name" | Same late-mount mechanism, seeding a Compose field's observable state |

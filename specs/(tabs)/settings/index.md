@@ -72,6 +72,8 @@ internal preview builds it also carries the entry points to the developer tools.
 
 ## Platform notes
 
+- Exact exposes section titles as headings and uses the platform headline text style.
+
 - The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it.
 - The Exact app caps the list at a readable width. On a book fold, the list occupies the trailing segment.
 - In Exact, dragging from the Maps App row scrolls the list without opening the chooser. A tap opens the chooser; choosing an app saves the preference.

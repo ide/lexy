@@ -402,10 +402,8 @@ fn wash(role: string): string = (
 // section does: a row's hover wash or a wide image stays inside it.
 style Card
   background-color="-exact-secondary-grouped-background" border-radius=18 overflow="clip"
-// A section's heading on every screen, as UIKit's grouped header
-// (`UIListContentConfiguration.groupedHeader()`) and SwiftUI's draw it.
 style SectionTitle
-  font-size=17 font-weight=600 color="-exact-secondary-label" padding-left=16
+  font="-exact-headline" color="-exact-secondary-label" padding-left=16
 style Small
   font-size=14 font-weight=500
 style SmallBold

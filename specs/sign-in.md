@@ -134,6 +134,8 @@ transition is animated so the relayout springs rather than snaps.
 
 ## Platform notes
 
+- Exact uses semantic headings and platform text styles for each sign-in step. The Login Flow preview uses a compact navigation title and a subordinate content heading.
+
 - The Exact app caps the form at a readable width. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold.
 
 - Exact lays out verification methods in equal-width rows that wrap when space is limited. Delivery addresses remain multiline. Resend and method-switch actions share a wrapping row; "Back to Sign In" sits above the form. Short viewports use a smaller hero and tighter spacing so the fields and primary action stay close together. "Back to Sign In" returns from the method or code step without clearing the credentials. Every submit dismisses the keyboard; the code field autofocuses when it first appears. Resending shows "Sending Code…" until the new code arrives.

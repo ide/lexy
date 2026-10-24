@@ -29,6 +29,7 @@
       "dispatchInDebug": true
     }
   },
+  "data": ["screen"],
   "modules": [
     "lexy-map"
   ],

@@ -117,7 +117,7 @@ component LockScreen
             LexyMark(size=(compact ? 48 : 76))
           if step != "credentials"
             image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color="-exact-system-blue" margin-bottom=4
-          text heroTitle(step, method) testId="sign-in-title" font-size=28 font-weight=700 text-align="center"
+          text heroTitle(step, method) testId="sign-in-title" role="heading" aria-level=(preview ? 2 : 1) text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
         if step != "credentials"
           row justify-content="flex-start"

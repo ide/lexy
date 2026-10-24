@@ -1002,11 +1002,11 @@ component Lexy
           for t in nav.tabs key=t.name
             column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
               for e in t.stack key=e.id
-                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+                column navigationKey=`${e.id}` data-screen=e.name navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                   header
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44
-                    text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1)
+                    text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=1
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.xmark"

@@ -1,6 +1,7 @@
 // Lexy's native module (LLP 1024, 1067.000): what Exact does not expose and
 // Lexy needs from iOS.
 //
+// - `route`: UIKit title presentation for short forms and the map sheet
 // - `<lexy-map>`: MapKit centred on the car with its marker
 //   (src/features/vehicle/vehicle-location-map.tsx).
 // - `native.later({op: "open"})`: a maps app by its own URL scheme
@@ -32,6 +33,17 @@ final class LexyModule: ExactModule {
             "lexy-map": ExactNativeFactory(snapshot: true) { props, events in MapView(props: props, events: events) },
         ]
     }
+
+    #if os(iOS)
+    override func route(_ route: ExactRoute) {
+        switch route.data[.screen] {
+        case "rename", "map", "login":
+            route.controller.navigationItem.largeTitleDisplayMode = .never
+        default:
+            break
+        }
+    }
+    #endif
 
     /// The street line for a coordinate, as the Lexus app shows it: number
     /// and street, else the place's name; empty when there is none.
