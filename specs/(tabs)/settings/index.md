@@ -65,13 +65,14 @@ internal preview builds it also carries the entry points to the developer tools.
   rather than fired from a call.
 - **Name** — pushes `/settings/vehicle-name`.
 - **Sign Out** — clears the stored session and the query cache; the root layout's auth guard then
-  swaps to the sign-in screen. There is no confirmation prompt.
+  swaps to the sign-in screen.
 - **Version** — selectable for copy; it is what a bug report needs to quote.
 - **Developer Tools rows** — push `/settings/updates`, `/settings/data-state`, `/settings/login`,
   and `/settings/eas` respectively.
 
 ## Platform notes
 
+- The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it.
 - The Exact app caps the list at a readable width. On a book fold, the list occupies the trailing segment.
 
 | Concern | iOS | Android |

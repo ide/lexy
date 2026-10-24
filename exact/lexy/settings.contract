@@ -121,9 +121,15 @@ component SettingsScreen
           column
             SectionHeader(title="Lexus Account")
             column class=Card
-              button press=signOut disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              button commandfor="sign-out-confirmation" command="show-modal" disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
                 image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
                 text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
+            dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
+              text "You’ll need to sign in again to access your vehicle."
+              button destructive=true press=signOut commandfor="sign-out-confirmation" command="close" testId="confirm-sign-out"
+                text "Sign Out"
+              button commandfor="sign-out-confirmation" command="close" testId="cancel-sign-out"
+                text "Cancel"
             if demo
               SectionFooter(words="Signed in to the demo Lexus.")
           if demo
