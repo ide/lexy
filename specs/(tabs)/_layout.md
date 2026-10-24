@@ -78,6 +78,8 @@ stale data at all.
 
 ## Platform notes
 
+- Exact leaves navigation-title font, weight, color, and header spacing to UIKit. Map and login previews use inline titles; other routes use large titles.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Tab bar | Native tabs, non-transparent at scroll edge, never minimizes | — |
