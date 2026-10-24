@@ -288,9 +288,9 @@ component Lexy
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
   // The status answers with no car too (no VIN): that answer is not the car's.
   derive statusAnswered = status.ok or status.status != 0 or status.error != ""
-  // The dashboard's first load, until both the car and its status are in: it
-  // shows the skeleton and a blank title, so they arrive together.
+  // Keep the skeleton until both the vehicle and its status arrive
   derive firstLoad = statusLoading and (shownGarage.car.vin == "" or not statusAnswered)
+  derive statusTitle = shownGarage.car.vin == "" or (firstLoad and shownOnline) ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName))
   // The Status hero (map, car, Last Parked) pulses gently while the app is
   // refreshing on its own and it has run a while. Nothing otherwise (a pull shows
   // its own spinner; a web page's load is the fetch the person asked for). Nothing before there is data, or signed out. Before
@@ -984,12 +984,12 @@ component Lexy
           for t in nav.tabs key=t.name
             column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
               for e in t.stack key=e.id
-                column navigationKey=`${e.id}` navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+                column navigationKey=`${e.id}` data-screen=e.name navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                   header display="flex" flex-direction="row" align-items="center" gap=8 padding-left=16 padding-right=16 padding-top=(e.name == "map" ? "8px" : "env(safe-area-inset-top)") padding-bottom=8 flex-shrink=0
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" width=44 height=44
                     column flex=1 min-width=0
-                      text (e.name == "status" ? (firstLoad and shownOnline ? " " : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))) : routeTitle(e.name)) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? "17px" : "-exact-title1") font-weight=700 color="-exact-label"
+                      text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=(e.name == "map" or e.name == "login" ? 2 : 1) font-size=(e.name == "map" or e.name == "login" ? "17px" : "-exact-title1") font-weight=700 color="-exact-label"
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.xmark"

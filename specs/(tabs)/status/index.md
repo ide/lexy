@@ -58,9 +58,8 @@ for different vehicles remain independent.
 
 ## Structure
 
-The stack title is the vehicle's nickname (native chrome, outside the redacted
-tree — so while loading it reads the placeholder's generic "My Vehicle" rather
-than the tab's "Status" label, which reads oddly as a large screen title).
+The stack title is the vehicle's nickname. While the Exact dashboard first loads,
+it reads "My Vehicle" and reserves the same large-title space as the loaded screen.
 
 In order down the scroll:
 
@@ -379,6 +378,8 @@ telling.
   from production.
 
 ## Platform notes
+
+- The Exact iOS dashboard gives its navigation bar the system background so the returning title remains readable over the map and cards. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
 
 - Exact places loading cards in the same grid as the dashboard, including separate book-fold segments. The hero keeps its loaded height; unknown controls use neutral shapes. Loading pulses only while online. Refreshes retain the last available readings.
 
