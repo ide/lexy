@@ -59,7 +59,7 @@ for different vehicles remain independent.
 ## Structure
 
 The stack title is the vehicle's nickname. While the Exact dashboard first loads,
-it reads "My Vehicle" and reserves the same large-title space as the loaded screen.
+an invisible zero-width space reserves the same large-title space as the loaded screen.
 
 In order down the scroll:
 
@@ -381,6 +381,8 @@ telling.
 
 - The Exact iOS dashboard uses UIKit's automatic scroll edge treatment, including its blur behind the title. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
 
+- Exact sends one impact haptic when a command starts. Lock and engine success notifications wait for the vehicle reading to confirm the requested state; request acceptance alone does not notify success. Rejection or reconciliation timeout gives one error notification. Commands without a reportable outcome have no success notification.
+- After sign-in, Exact finishes the first status request before starting the vehicle wake-up or climate reads. Engine reads run independently so they cannot hold up the initial snapshot. Vehicle GET requests have a 15-second deadline and retain cached readings on failure.
 - Exact places loading cards in the same grid as the dashboard, including separate book-fold segments. The hero keeps its loaded height; unknown controls use neutral shapes. Loading pulses only while online. Refreshes retain the last available readings.
 
 - The Exact app uses two columns on wide displays. On a book fold, the vehicle readings occupy the leading segment and the remote controls and climate settings occupy the trailing segment, clear of the hinge. More Controls stays expanded in this layout. Narrow displays retain the single scrolling column and collapsible controls.

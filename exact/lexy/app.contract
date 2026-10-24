@@ -180,7 +180,7 @@ component Lexy
   resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
   resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
   state climateRev = 0
-  resource climateRead = climate(car.vin) with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
+  resource climateRead = climate(statusAnswered ? car.vin : "") with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
   // Keep the last accepted climate change until the next read; roll back a failed write
   mutation climateSaved as shape Climate then afterClimateSave
   // The last change the car accepted, newer than the last read until a pull.
@@ -244,15 +244,17 @@ component Lexy
   // 20 s apart (engine-status.ts).
   state lockTarget = ""
   state lockPolls = 0
-  // A command that reverses one the car has not yet confirmed (Lock, then
-  // Unlock before any report): the reading the app holds predates both, so
-  // agreeing with it confirms nothing. Only a report newer than the one held
-  // when the second command was accepted settles it.
+  // Reversing a pending command, or confirming an already matching reading,
+  // needs a newer vehicle report
   state lockChained = false
+  state lockPrevChained = false
   // What showed before the last command was sent, put back if it is refused.
   state lockPrev = ""
   state enginePrev = ""
   state lockBaseline = 0
+  state lockPrevBaseline = 0
+  state engineBaseline = 0
+  state enginePrevBaseline = 0
   state engineTarget = ""
   state enginePolls = 0
   state notice = ""
@@ -268,7 +270,12 @@ component Lexy
   derive lockSettled = lockTarget == doorLock and (not lockChained or status.occurredMs > lockBaseline)
   derive lockPending = lockTarget != "" and not lockSettled
   derive engineRunning = engine.status == "1"
-  derive enginePending = engineTarget != "" and engineTarget != (engineRunning ? "running" : "stopped")
+  derive engineSettled = engine.ok and engine.fetchedMs >= engineBaseline and engineTarget == (engineRunning ? "running" : "stopped")
+  derive enginePending = engineTarget != "" and not engineSettled
+  task lockConfirmed when lockTarget != "" and lockSettled and not pending(sent)
+    after(1, finishLock)
+  task engineConfirmed when engineTarget != "" and engineSettled and not pending(sent)
+    after(1, finishEngine)
 
   // --- Developer Tools ---------------------------------------------------------------
   // This binary's delivery, and whether Check was pressed here.
@@ -290,7 +297,8 @@ component Lexy
   derive statusAnswered = status.ok or status.status != 0 or status.error != ""
   // Keep the skeleton until both the vehicle and its status arrive
   derive firstLoad = statusLoading and (shownGarage.car.vin == "" or not statusAnswered)
-  derive statusTitle = shownGarage.car.vin == "" or (firstLoad and shownOnline) ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName))
+  // Reserve UIKit's large-title space with a blank title while loading
+  derive statusTitle = firstLoad ? "​" : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))
   // The Status hero (map, car, Last Parked) pulses gently while the app is
   // refreshing on its own and it has run a while. Nothing otherwise (a pull shows
   // its own spinner; a web page's load is the fetch the person asked for). Nothing before there is data, or signed out. Before
@@ -377,25 +385,23 @@ component Lexy
         retried = false
     if notice != "" and time.epochAtZero + performanceNow() - noticeAt > 6000
       notice = ""
-    if lockTarget != "" and not pending(status) and not pending(sent)
-      if lockSettled
+    let timedOut = (lockPending and not pending(status) and not pending(sent) and lockPolls >= 10) or (enginePending and clock - engineAt >= 20000 and not pending(sent) and not pending(engine) and enginePolls >= 4)
+    if lockPending and not pending(status) and not pending(sent)
+      if lockPolls >= 10
         lockTarget = ""
       else
-        // lock-reconcile.ts: quietly stood down; the pending label going
-        // is the whole message.
-        if lockPolls >= 10
-          lockTarget = ""
-        else
-          lockPolls = lockPolls + 1
-          statusRev = statusRev + 1
-          statusAt = clock
-    if engineTarget != "" and clock - engineAt >= 20000 and not pending(sent)
-      if not enginePending or enginePolls >= 4
+        lockPolls = lockPolls + 1
+        statusRev = statusRev + 1
+        statusAt = clock
+    if enginePending and clock - engineAt >= 20000 and not pending(sent) and not pending(engine)
+      if enginePolls >= 4
         engineTarget = ""
       else
         enginePolls = enginePolls + 1
         engineRev = engineRev + 1
         engineAt = clock
+    if timedOut
+      send felt = feel("error")
     if (primeOnLaunch) and account.signedIn and car.vin != ""
       primeOnLaunch = false
       autoRefresh = true
@@ -433,7 +439,7 @@ component Lexy
     let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
     let primeResume = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
     let rereads = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
-    let primeSignIn = primeOnSignIn and car.vin != "" and not pending(garage) and not pending(primed)
+    let primeSignIn = primeOnSignIn and car.vin != "" and statusAnswered and not pending(status) and not pending(garage) and not pending(primed)
     if primeSignIn
       primeOnSignIn = false
       lastPrimeAt = time.epochAtZero + performanceNow()
@@ -777,11 +783,16 @@ component Lexy
         climateError = ""
         climateUnwritten = false
         defrostHeld = false
-  // vehicle-controls.ios.tsx: a medium impact on sending, then success or
-  // error when the car answers.
-  // The pending word shows the moment the command is sent (Locking…,
-  // Starting…): the app is trying to, and says so; a refused command puts
-  // back what was showing.
+  // Clear confirmed targets before notifying so later ticks cannot repeat feedback
+  action finishLock
+    if lockTarget != "" and lockSettled and not pending(sent)
+      lockTarget = ""
+      send felt = feel("success")
+  action finishEngine
+    if engineTarget != "" and engineSettled and not pending(sent)
+      engineTarget = ""
+      send felt = feel("success")
+  // Mark the request pending; a refusal restores the preceding reconciliation
   action run(command: string)
     notice = ""
     noticeAt = clock
@@ -790,12 +801,14 @@ component Lexy
       lockPrev = lockTarget
       lockTarget = (command == "door-lock" ? "locked" : "unlocked")
       lockPolls = 0
-      // `lockPending` reads as it was before this action: a command the
-      // car had not yet confirmed is still standing.
-      lockChained = lockPending
+      lockPrevBaseline = lockBaseline
+      lockPrevChained = lockChained
+      lockChained = lockPending or doorLock == (command == "door-lock" ? "locked" : "unlocked")
       lockBaseline = status.occurredMs
     if command == "engine-start" or command == "engine-stop"
       enginePrev = engineTarget
+      enginePrevBaseline = engineBaseline
+      engineBaseline = time.epochAtZero + performanceNow()
       engineTarget = (command == "engine-start" ? "running" : "stopped")
       enginePolls = 0
       engineAt = time.epochAtZero + performanceNow()
@@ -804,7 +817,6 @@ component Lexy
     match sent
       case some(c)
         noticeAt = clock
-        send felt = feel((c.ok and c.returnCode == "000000") ? "success" : "error")
         if c.ok and c.returnCode == "000000"
           // Re-read as of now: `clock` is the last tick's, up to 5 s old.
           statusRev = statusRev + 1
@@ -815,12 +827,18 @@ component Lexy
             hazardsOn = c.command == "hazard-on"
           if c.command == "engine-start" or c.command == "engine-stop"
             enginePolls = 0
+            engineRev = engineRev + 1
+            engineBaseline = time.epochAtZero + performanceNow()
             engineAt = time.epochAtZero + performanceNow()
         else
           if c.command == "door-lock" or c.command == "door-unlock"
             lockTarget = lockPrev
+            lockBaseline = lockPrevBaseline
+            lockChained = lockPrevChained
           if c.command == "engine-start" or c.command == "engine-stop"
             engineTarget = enginePrev
+            engineBaseline = enginePrevBaseline
+          send felt = feel("error")
           commandError = (c.ok ? "Lexus sent the command, but your vehicle didn't carry it out. It may have weak cellular reception where it's parked. Try again in a minute." : failureText(c.status, c.error))
           showModal("command-failed")
       case none
@@ -976,7 +994,7 @@ component Lexy
   view
     main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
       if not shell
-        LockScreen(developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+        LockScreen(compact=(viewport.height < 600), developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
       else
         // Each tab keeps its own stack; route headers supply UIKit's title and bar
         // items
@@ -1012,7 +1030,7 @@ component Lexy
                   if e.name == "dataState"
                     DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
                   if e.name == "login"
-                    LoginPreviewScreen(scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, getLexusApp=getLexusApp, nextField=focusPassword)
+                    LoginPreviewScreen(compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, getLexusApp=getLexusApp, nextField=focusPassword)
                   if e.name == "eas"
                     EasScreen(open=openExternal)
                   if e.name == "performance"

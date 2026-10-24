@@ -1,7 +1,7 @@
 // bun exact/lexy/independent-reads.check.ts
 import { strict as assert } from 'node:assert';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import type { SQLCommand } from './app.contract.d.ts';
+import type { NativeModule, SQLCommand } from './app.contract.d.ts';
 import { memoryStorage, memoryStore } from './check-support';
 
 type Request = { url: string; init: RequestInit; reply: (response: Response) => void };
@@ -31,6 +31,9 @@ function cars(nickName: string, vin = 'VIN1'): unknown {
 function lane(request: Request, independent: boolean, path: string, method = 'GET'): void {
   assert.equal(new URL(request.url).pathname.endsWith(path), true);
   assert.equal(request.init.method, method);
+  if (method === 'GET') {
+    assert.equal(request.init.exactTimeout, 15000);
+  }
   assert.deepEqual(request.init.exactIndependentHttp, independent ? { maxResponseBytes: 4 * 1024 * 1024 } : undefined);
 }
 
@@ -106,6 +109,42 @@ const snapshot = await nextRequest();
 lane(snapshot, false, '/route/status');
 respond(snapshot, { status: { telemetry: { fugage: { value: 62 }, rage: { value: 214 }, odo: { value: 12482 } }, occurrenceDate: '2026-10-01T10:00:00Z', vehicleStatus: [] } });
 assert.equal((await status).ok, true);
+const engineCar = { ...car, capabilities: ['remoteEngineStartStop'] };
+const engine = answer('engine', [car.vin, engineCar, 0, at], store, storage, null);
+const engineRequest = await nextRequest();
+lane(engineRequest, true, '/engine-status');
+respond(engineRequest, { status: '0', date: '', timer: 0 });
+assert.equal((await engine).fetchedMs, at);
+
+// Older installations have no engine request timestamp in their saved reading
+const legacy = { ok: true, status: '0', startedMs: 0, timer: 0 };
+database.query('UPDATE readings SET answer = ? WHERE kind = ? AND vin = ?').run(JSON.stringify(legacy), 'engine', car.vin);
+const failedEngine = answer('engine', [car.vin, engineCar, 1, at + 1], store, storage, null);
+(await nextRequest()).reply(new Response('{}', { status: 503 }));
+assert.deepEqual(await failedEngine, { ...legacy, fetchedMs: 0 });
+
+assert.equal((await answer('climate', ['', car, 0, at], store, storage, null)).ok, false);
+assert.equal(pending.length, 0, 'Deferred climate sends no HTTP before the primary snapshot');
+
+const feedback: string[] = [];
+const native: NativeModule = {
+  available: true,
+  call(request): Record<string, unknown> { feedback.push(String(request.style)); return {}; },
+  async later(): Promise<Record<string, unknown>> { return {}; },
+  watch(): void {},
+};
+for (const [statusCode, returnCode] of [[200, '000000'], [200, 'denied'], [503, '']] as const) {
+  const command = answer('command', [car, 'door-lock', at], store, storage, native);
+  const request = await nextRequest();
+  lane(request, false, '/route/command', 'POST');
+  request.reply(new Response(JSON.stringify({ payload: { returnCode } }), { status: statusCode }));
+  const result = await command;
+  assert.equal(result.ok, statusCode === 200);
+  assert.deepEqual(feedback, [], 'The request handler leaves haptic timing to the screen');
+}
+await answer('feel', ['error'], store, storage, native);
+assert.deepEqual(feedback, ['error'], 'The explicit feedback action owns one native haptic');
+
 for (const source of ['spec', 'services'] as const) {
   const reading = answer(source, [car.vin, car, at], store, storage, null);
   const request = await nextRequest();

@@ -204,6 +204,7 @@ component DataStateScreen
 // against a mock tree; the session in the Keychain is never touched.
 component LoginPreviewScreen
   props
+    compact: bool
     scenario: string
     done: bool
     chooseScenario: action
@@ -246,7 +247,7 @@ component LoginPreviewScreen
             text scenarioTitle("network-error")
       if not done
         column flex=1 min-height=0
-          LockScreen(developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, fold="", banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+          LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, fold="", banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       if done
         column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
           image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"

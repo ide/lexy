@@ -17,6 +17,7 @@ shape Page
 // The viewport's fold (Exact's exactViewport, the web's device-posture
 // and viewport segments: LLP 1078).
 shape Viewport
+  height: number
   displayMode: string
   width: number
   horizontalViewportSegments: number
@@ -134,6 +135,7 @@ shape Tires
   tires: Tire[]
 
 shape Engine
+  fetchedMs: number
   ok: bool
   status: string
   startedMs: number

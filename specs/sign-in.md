@@ -136,7 +136,7 @@ transition is animated so the relayout springs rather than snaps.
 
 - The Exact app caps the form at a readable width. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold.
 
-- Exact stacks verification methods at full width so delivery addresses can wrap. "Back to Sign In" returns from the method or code step without clearing the credentials. Every submit dismisses the keyboard; the code field autofocuses when it first appears. Resending shows "Sending Code…" until the new code arrives.
+- Exact lays out verification methods in equal-width rows that wrap when space is limited. Delivery addresses remain multiline. Resend and method-switch actions share a wrapping row; "Back to Sign In" sits above the form. Short viewports use a smaller hero and tighter spacing so the fields and primary action stay close together. "Back to Sign In" returns from the method or code step without clearing the credentials. Every submit dismisses the keyboard; the code field autofocuses when it first appears. Resending shows "Sending Code…" until the new code arrives.
 - Exact bounds each identity request to 15 seconds, including the response body. Unsupported responses return to credentials with retry advice. Failed requests keep the current form and its values. Establishing a session opens the dashboard while vehicle data loads there.
 - Exact uses the shorter privacy footnote, "Your password and verification code go directly to Lexus. Lexy never saves them."
 - Exact tags each authentication attempt. Resetting or leaving the login preview invalidates older responses, so they cannot advance a later flow. Preview token exchanges never replace the saved session.

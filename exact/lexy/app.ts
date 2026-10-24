@@ -144,7 +144,8 @@ function signInTransport(store: Store, preview: string, at: number): Request {
 }
 
 // src/utils/haptics.ts's kinds.
-function haptic(style: 'success' | 'error' | 'selection' | 'impact-medium' | 'impact-light') {
+type HapticStyle = 'success' | 'error' | 'selection' | 'impact-medium' | 'impact-light';
+function haptic(style: HapticStyle): void {
   try {
     if (native?.available) native.call({ op: 'haptic', style });
   } catch {
@@ -371,6 +372,7 @@ function get(url: string, headers: Record<string, string>, independent = false):
   return (request: Request): Promise<Reply> => request(url, {
     method: 'GET',
     headers,
+    exactTimeout: 15000,
     ...(independent ? { exactIndependentHttp: { maxResponseBytes: 4 * 1024 * 1024 } } : {}),
   });
 }
@@ -918,12 +920,13 @@ async function tires(store: Store, car: Car, at: number): Promise<Result<'tires'
 }
 
 async function engine(store: Store, car: Car, at: number): Promise<Result<'engine'>> {
-  const empty: Result<'engine'> = { ok: false, status: '', startedMs: 0, timer: 0 };
+  const empty: Result<'engine'> = { ok: false, status: '', startedMs: 0, timer: 0, fetchedMs: 0 };
   if (!car.vin || !car.capabilities.includes('remoteEngineStartStop')) return empty;
-  return keepingLast('engine', car.vin, empty, async () => {
-    const p = await payload(store, car, at, ENGINE_URL);
-    return { ok: true, status: str(p.status), startedMs: epochMs(p.date), timer: num(p.timer) };
+  const saved = await keepingLast('engine', car.vin, empty, async () => {
+    const p = await payload(store, car, at, ENGINE_URL, true);
+    return { ok: true, status: str(p.status), startedMs: epochMs(p.date), timer: num(p.timer), fetchedMs: at };
   });
+  return { ...saved, fetchedMs: num(saved.fetchedMs) };
 }
 
 async function spec(store: Store, car: Car, at: number): Promise<Result<'spec'>> {
@@ -970,9 +973,6 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
 // --- Writes ----------------------------------------------------------------------
 
 async function command(store: Store, car: Car, name: string, at: number): Promise<Result<'command'>> {
-  // vehicle-controls.ios.tsx: a medium impact as the command goes, then
-  // success or error by how it went.
-  haptic('impact-medium');
   try {
     const body = await authorized(store, at, (s, r) =>
       r(COMMAND_URL, {
@@ -982,10 +982,8 @@ async function command(store: Store, car: Car, name: string, at: number): Promis
       }),
     );
     const returnCode = str(rec(body.payload).returnCode) || str(body.returnCode);
-    haptic(returnCode === '000000' ? 'success' : 'error');
     return { ok: true, status: 200, error: '', command: name, returnCode, at };
   } catch (e) {
-    haptic('error');
     return { ...failure(e), command: name, returnCode: '', at };
   }
 }
@@ -1218,7 +1216,7 @@ const sources: Sources = {
   command: ([car, name, at], store) => command(store, car, name, at),
   prime: ([car, at], store) => prime(store, car, at),
   rename: ([car, name, at], store) => rename(store, car, name, at),
-  climate: ([_vin, car, _rev, at], store) => climate(store, car, at),
+  climate: ([vin, car, _rev, at], store) => vin ? climate(store, car, at) : noClimate,
   setClimate: ([car, raw, on, temperature, front, rear, at], store) => setClimate(store, car, raw, on, temperature, front, rear, at),
   address: ([latitude, longitude]) => address(latitude, longitude),
   mapsApp: (_args, store) => mapsApp(store),
@@ -1235,7 +1233,7 @@ const sources: Sources = {
     return mapsApp(store);
   },
   feel: ([kind]) => {
-    haptic(kind as 'selection');
+    haptic(kind as HapticStyle);
     return { ok: true, error: '' };
   },
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),

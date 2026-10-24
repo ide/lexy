@@ -114,6 +114,7 @@ final class LexyModule: ExactModule {
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
         guard request["op"] as? String == "haptic" else { throw ExactNativeRefusal("Lexy answers only haptic now") }
+        context.diagnostics.log("haptic: \(request["style"] as? String ?? "impact-medium")")
         #if os(iOS)
         switch request["style"] as? String {
         case "selection": UISelectionFeedbackGenerator().selectionChanged()
