@@ -65,7 +65,7 @@ component Notice
     message: string
   view
     row testId=id gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center"
-      image `symbol:icon.${symbol}` font-size=18 -exact-tint-color=tint
+      image `symbol:icon.${symbol}` font-size=18 color=tint
       text message font-size=13 font-weight=500 color="-exact-label" flex=1 min-width=0
 
 component LockScreen
@@ -108,14 +108,14 @@ component LockScreen
       column box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=(preview ? "24px" : (fold == "down" ? "calc(env(viewport-segment-top 0 1) + 16px)" : "calc(env(safe-area-inset-top) + 64px)")) padding-left=16 padding-right=16 padding-bottom="calc(env(safe-area-inset-bottom) + 16px)" gap=24
         if banner != ""
           row testId="preview-banner" align-self="center" gap=6 padding-left=12 padding-right=12 height=30 border-radius=15 background-color="-exact-secondary-grouped-background" align-items="center"
-            image `symbol:sf/${bannerSymbol}` font-size=13 -exact-tint-color="-exact-system-blue"
+            image `symbol:sf/${bannerSymbol}` font-size=13 color="-exact-system-blue"
             text `Preview · ${banner}` font-size=13 font-weight=600 color="-exact-secondary-label"
         // Hero: the step's symbol, title and what to do.
         column align-items="center" gap=8
           if step == "credentials"
             LexyMark(size=76)
           if step != "credentials"
-            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 -exact-tint-color="-exact-system-blue" margin-bottom=4
+            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color="-exact-system-blue" margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" font-size=28 font-weight=700 text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
         // The first step is there on the first frame, as a native form is;

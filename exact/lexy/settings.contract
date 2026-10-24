@@ -30,12 +30,12 @@ component SettingsRowFace
     opensScreen: bool
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:icon.${symbol}` font-size=22 -exact-tint-color="AccentColor" object-fit="scale-down" width=28 height=26
+      image `symbol:icon.${symbol}` font-size=22 color="AccentColor" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="-exact-label"
         text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
       if opensScreen
-        image "symbol:icon.chevron.right" font-size=14 font-weight=600 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
+        image "symbol:icon.chevron.right" font-size=14 font-weight=600 color="-exact-secondary-label" object-fit="scale-down" width=12 height=20
 
 // Show developer tools first when developer mode is enabled
 component DeveloperTools
@@ -170,7 +170,7 @@ component RenameScreen
           text "Your car’s name, saved to the Lexus app." font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16
         if error != ""
           row gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center" testId="rename-error"
-            image "symbol:icon.exclamationmark.triangle.fill" font-size=18 -exact-tint-color="-exact-system-orange" object-fit="scale-down" width=24 height=22
+            image "symbol:icon.exclamationmark.triangle.fill" font-size=18 color="-exact-system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
         button press=save disabled=(not changed or saving) testId="save-name" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
           text (saving ? "Saving…" : "Save") font-size=17 font-weight=600 color="#ffffff"

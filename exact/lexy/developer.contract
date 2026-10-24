@@ -112,7 +112,7 @@ component ChoiceRow
           text detail font-size=13 color="-exact-secondary-label"
         box width=20 height=20
           if chosen
-            image "symbol:icon.checkmark" font-size=17 font-weight=600 -exact-tint-color="AccentColor" object-fit="scale-down" width=20 height=20
+            image "symbol:icon.checkmark" font-size=17 font-weight=600 color="AccentColor" object-fit="scale-down" width=20 height=20
 
 // update-diagnostics-screen.ios.tsx, for Exact's update store: what is
 // running, what it shipped with, and whether a newer bundle waits.
@@ -249,7 +249,7 @@ component LoginPreviewScreen
           LockScreen(developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, fold="", banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       if done
         column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
-          image "symbol:icon.checkmark.seal.fill" font-size=56 -exact-tint-color="-exact-system-green"
+          image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
           text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
           text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
           text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
@@ -287,11 +287,11 @@ component EasRow
     subtitle: string
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:icon.${symbol}` font-size=22 -exact-tint-color="-exact-system-cyan" object-fit="scale-down" width=28 height=26
+      image `symbol:icon.${symbol}` font-size=22 color="-exact-system-cyan" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="-exact-label"
         text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"
-      image "symbol:icon.arrow.up.right.square" font-size=15 -exact-tint-color="-exact-secondary-label" object-fit="scale-down" width=18 height=20
+      image "symbol:icon.arrow.up.right.square" font-size=15 color="-exact-secondary-label" object-fit="scale-down" width=18 height=20
 
 // A metric: its pill and route over when it was recorded, its value at the end.
 component MetricRow
