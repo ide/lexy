@@ -61,6 +61,8 @@ fn metricPill(name: string): string = name == "coldLaunchTime" or name == "warmL
 fn metricWhere(name: string, route: string): string = name == "coldLaunchTime" ? "cold" : (name == "warmLaunchTime" ? "warm" : (route == "" ? "launch" : route))
 fn milliseconds(seconds: number): string = `${floor(seconds * 1000 + 0.5)} ms`
 
+fn metricReport(m: ObservedMetric, utcOffset: number): string = [exactTime(m.time * 1000, utcOffset), milliseconds(m.value), m.fromStart, m.phases == "" ? "" : `Phases: ${m.phases}`, m.items == "" ? "" : `Held by (ms from process start): ${m.items}`, m.changes == "" ? "" : `Still changing: ${m.changes}`, m.trace == "" ? "" : `Waited on: ${m.trace}`].filter(line => line != "").join("\n")
+
 // What the binary knows about its own delivery (Exact LLP 1030 D7), answered
 // by the runner from the update store.
 shape Delivery
@@ -318,6 +320,11 @@ component PerformanceScreen
   props
     observed: Observed
     utcOffset: number
+  state selectedReport = ""
+  action aimMetric(m: ObservedMetric)
+    selectedReport = metricReport(m, utcOffset)
+  action copyMetric
+    copyText(selectedReport)
   view
     scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
       column box-sizing="border-box" padding=16 gap=24
@@ -330,8 +337,7 @@ component PerformanceScreen
             SectionHeader(title=(observed.launch == observed.session ? "This Launch" : "Last Launch"))
             column class=Card
               for m, i in observed.latest key=`${m.name}-${m.time}`
-                // A long press copies the whole metric, every detail line too.
-                column user-select="text"
+                column testId=`perf-launch-row-${m.name}` user-select=(m.name == "timeToInteractive" ? "none" : "text") contextmenu=aimMetric(m) contextPopover=(m.name == "timeToInteractive" ? "metric-menu" : "")
                   if i > 0
                     Divider()
                   MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
@@ -366,3 +372,6 @@ component PerformanceScreen
                     Divider()
                   MetricRow(name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), id=`perf-median-${s.name}`)
             SectionFooter(words=`${observed.metrics.filter((m, i) => m.sent).length} of ${observed.metrics.length} sent to Observe.`)
+      column id="metric-menu" popover="auto" role="menu"
+        button press=copyMetric popovertarget="metric-menu" popovertargetaction="hide" testId="copy-metric"
+          text "Copy"

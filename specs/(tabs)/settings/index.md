@@ -74,6 +74,7 @@ internal preview builds it also carries the entry points to the developer tools.
 
 - The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it.
 - The Exact app caps the list at a readable width. On a book fold, the list occupies the trailing segment.
+- Exact's Performance screen offers a native Copy menu when the launch TTI cell is long-pressed, without text selection. Copy includes the timestamp, value, phases, and all diagnostic lines.
 
 | Concern | iOS | Android |
 | --- | --- | --- |
