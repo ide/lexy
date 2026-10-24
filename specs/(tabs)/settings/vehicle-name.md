@@ -51,7 +51,7 @@ what every screen, and the Home Screen widget, calls this car.
 
 ## Platform notes
 
-- Exact uses a compact UIKit navigation title while keeping the screen title a primary heading.
+- Exact uses a compact UIKit title and keeps heading level 1.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

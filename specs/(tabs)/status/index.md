@@ -379,7 +379,7 @@ telling.
 
 ## Platform notes
 
-- Exact exposes card section titles as secondary headings and uses the platform headline text style.
+- Exact card section titles are level-2 headings in the platform headline style.
 
 - The Exact iOS dashboard uses UIKit's automatic scroll edge treatment, including its blur behind the title. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
 

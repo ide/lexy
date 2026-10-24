@@ -134,7 +134,7 @@ transition is animated so the relayout springs rather than snaps.
 
 ## Platform notes
 
-- Exact uses semantic headings and platform text styles for each sign-in step. The Login Flow preview uses a compact navigation title and a subordinate content heading.
+- Exact sign-in headings use platform text styles. Login Flow has a compact navigation title and a level-2 content heading.
 
 - The Exact app caps the form at a readable width. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold.
 
