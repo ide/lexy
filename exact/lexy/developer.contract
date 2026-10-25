@@ -234,13 +234,28 @@ component DataStateScreen
 
 // login-preview-screen.ios.tsx: the real sign-in screen and step machine
 // against a mock tree; the session in the Keychain is never touched.
+component LoginScenarioChooser
+  props
+    chooseScenario: action
+  view
+    column id="scenario-chooser" popover="auto" role="alertdialog" aria-label="Preview Scenario" position="absolute"
+      button press=chooseScenario("success-multi") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-multi"
+        text scenarioTitle("success-multi")
+      button press=chooseScenario("success-single") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-single"
+        text scenarioTitle("success-single")
+      button press=chooseScenario("wrong-password") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-wrong-password"
+        text scenarioTitle("wrong-password")
+      button press=chooseScenario("wrong-code") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-wrong-code"
+        text scenarioTitle("wrong-code")
+      button press=chooseScenario("network-error") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-network-error"
+        text scenarioTitle("network-error")
+
 component LoginPreviewScreen
   props
     fold: string
     compact: bool
     scenario: string
     done: bool
-    chooseScenario: action
     runAgain: action
     step: string
     email: string
@@ -261,27 +276,14 @@ component LoginPreviewScreen
     verify: action
     resend: action
     differentMethod: action
-    startOver: action
     getLexusApp: action
     nextField: action
   view
     column flex=1 min-height=0 width="100%" box-sizing="border-box" padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
-      column position="absolute"
-        column id="scenario-chooser" popover="auto" role="alertdialog" aria-label="Preview Scenario" position="absolute"
-          button press=chooseScenario("success-multi") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-multi"
-            text scenarioTitle("success-multi")
-          button press=chooseScenario("success-single") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-single"
-            text scenarioTitle("success-single")
-          button press=chooseScenario("wrong-password") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-wrong-password"
-            text scenarioTitle("wrong-password")
-          button press=chooseScenario("wrong-code") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-wrong-code"
-            text scenarioTitle("wrong-code")
-          button press=chooseScenario("network-error") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-network-error"
-            text scenarioTitle("network-error")
-      if not done
+      if not done or step != "credentials"
         column flex=1 min-height=0
-          LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
-      if done
+          LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+      if done and step == "credentials"
         scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden" class=SafeScroll
           SettingsColumn(fold=fold, id="preview-result-column")
             column testId="preview-done" align-items="center" gap=12 padding=16

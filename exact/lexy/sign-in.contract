@@ -1,6 +1,5 @@
 // Lexus sign-in: credentials, delivery method, and verification code
-use SafeScroll from "./model.contract"
-use readableWidth from "./model.contract"
+use SafeScroll, readableWidth from "./model.contract"
 
 // sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
 fn channel(method: string): string = (method.includes("mail") or method.includes("Mail") or method.includes("E-mail")) ? "email" : ((method.includes("SMS") or method.includes("sms") or method.includes("Text") or method.includes("text") or method.includes("hone") or method.includes("obile") or method.includes("all")) ? "sms" : "unknown")
@@ -33,10 +32,6 @@ component LexyMark
       path d="M 891.36 539.98 A 371.30 371.30 0 0 1 758.77 819.23 L 742.18 799.47 A 345.50 345.50 0 0 0 865.57 539.62 Z" fill="url(#mark-redline)"
       path d="M 505.19 370.66 A 14.00 14.00 0 0 1 517.45 363.99 L 592.07 365.79 A 5.00 5.00 0 0 1 596.18 373.46 L 440.06 620.08 A 12.00 12.00 0 0 0 450.20 638.50 L 742.55 638.50 A 4.00 4.00 0 0 1 745.22 645.48 L 697.02 688.72 A 5.00 5.00 0 0 1 693.69 690.00 L 394.90 690.00 A 48.00 48.00 0 0 1 354.00 616.88 Z" fill="url(#mark-glyph)"
 
-// A step's controls arrive with sign-in-screen.ios.tsx's spring (0.35 s).
-keyframes stepIn
-  from opacity=0 translate="0px 8px"
-
 // Keep the fill while busy; actions ignore repeat presses
 component PrimaryButton
   props
@@ -45,7 +40,7 @@ component PrimaryButton
     press: action
     id: string
   view
-    button press=press disabled=disabled testId=id appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 display="flex" flex-direction="row" align-items="center" justify-content="center"
+    button press=press disabled=disabled testId=id appearance="auto" buttonStyle="bordered-prominent" accent-color="AccentColor" align-self="center" padding="12px 28px" display="flex" flex-direction="row" align-items="center" justify-content="center"
       text label font-size=17 font-weight=600
 
 component SecondaryButton
@@ -90,7 +85,6 @@ component LockScreen
     verify: action
     resend: action
     differentMethod: action
-    startOver: action
     tryDemo: action
     // Developer mode (lexy://developer): only then is Try Demo offered
     developer: bool
@@ -116,14 +110,9 @@ component LockScreen
           if step == "credentials"
             LexyMark(size=76)
           if step != "credentials"
-            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color="-exact-system-blue" margin-bottom=4
+            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color="AccentColor" margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" role="heading" aria-level=(embedded ? 2 : 1) text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
-        if step == "choice"
-          row justify-content="flex-start"
-            SecondaryButton(label="Back to Sign In", disabled=busy, press=startOver, id="start-over")
-        // The first step is there on the first frame, as a native form is;
-        // the later steps arrive with stepIn.
         if step == "credentials"
           column gap=16
             // The group is the fields' look, so each is a bare box
@@ -135,14 +124,15 @@ component LockScreen
             PrimaryButton(label=(busy ? "Signing In…" : "Sign In"), disabled=(email.trim() == "" or password == ""), press=signIn, id="sign-in-button")
         if step == "choice"
           // Keep the full delivery address readable, including on a narrow segment
-          row testId="method-actions" flex-wrap="wrap" gap=12 animation="stepIn 350ms ease-out"
+          row testId="method-actions" flex-wrap="wrap" gap=12
             for m, i in choices key=m
               button press=choose(i) disabled=busy testId=`method-${i}` flex="1 1 9rem" appearance="auto" buttonStyle="tinted" accent-color="AccentColor" min-width=0 min-height=50 padding=16 border-radius=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align="left" gap=12
                 image `symbol:icon.${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
                 text m font-size=17 font-weight=600 color="AccentColor" white-space="normal"
         if step == "otp"
-          column gap=16 animation="stepIn 350ms ease-out"
-            input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" id="code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="-exact-secondary-grouped-background" font-size=17 color="-exact-label"
+          column gap=16
+            column
+              input appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" id="code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="-exact-secondary-grouped-background" font-size=17 color="-exact-label"
             PrimaryButton(label=(busy and not resending ? "Verifying…" : "Verify"), disabled=(code.trim() == ""), press=verify, id="verify-button")
             row testId="verification-actions" flex-wrap="wrap" justify-content="space-between" gap=8
               SecondaryButton(label=(resending ? "Sending Code…" : "Resend Code"), disabled=busy, press=resend, id="resend")

@@ -48,7 +48,7 @@ final class LexyModule: ExactModule {
 
     override func route(_ route: ExactRoute) {
         switch route.data[.screen] {
-        case "rename", "map", "login", "loginCode", "authCode":
+        case "rename", "map", "login", "loginChoice", "loginCode", "authChoice", "authCode":
             route.controller.navigationItem.largeTitleDisplayMode = .never
         case "performance", "updates":
             if #available(iOS 27.0, *) {

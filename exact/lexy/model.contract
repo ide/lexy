@@ -290,7 +290,7 @@ fn routeTitle(route: string): string = (
   route == "map" ? "Last Parked" :
   route == "updates" ? "Updates" :
   route == "dataState" ? "Data State" :
-  route == "login" or route == "loginCode" ? "Login Flow" :
+  route == "login" or route == "loginChoice" or route == "loginCode" ? "Login Flow" :
   route == "eas" ? "EAS" :
   route == "performance" ? "Performance" :
   ""
