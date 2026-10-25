@@ -1,7 +1,7 @@
 // Lexy's native module (LLP 1024, 1067.000): what Exact does not expose and
 // Lexy needs from iOS.
 //
-// - `route`: UIKit title presentation for short forms and the map sheet
+// - `route`: UIKit navigation bar behavior for forms, the map sheet, and diagnostics
 // - `<lexy-map>`: MapKit centred on the car with its marker
 //   (src/features/vehicle/vehicle-location-map.tsx).
 // - `native.later({op: "open"})`: a maps app by its own URL scheme
@@ -50,6 +50,10 @@ final class LexyModule: ExactModule {
         switch route.data[.screen] {
         case "rename", "map", "login", "loginCode", "authCode":
             route.controller.navigationItem.largeTitleDisplayMode = .never
+        case "performance", "updates":
+            if #available(iOS 27.0, *) {
+                route.controller.navigationItem.navigationBarMinimization.safeAreaAdjustment = .disabled
+            }
         default:
             break
         }
