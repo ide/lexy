@@ -34,6 +34,12 @@ final class LexyModule: ExactModule {
 
     #if os(iOS)
     override func element(_ element: ExactElement) {
+        if element.hatch == .loginField, let field = element.platform as? UITextField {
+            // Hide editing shortcuts; UIKit keeps password and code suggestions
+            field.inputAssistantItem.leadingBarButtonGroups = []
+            field.inputAssistantItem.trailingBarButtonGroups = []
+            return
+        }
         guard element.hatch == .developerPanes else { return }
         if #available(iOS 27.1, *) {
             guard element.data[.expanded] == "true" else {

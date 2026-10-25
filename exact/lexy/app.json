@@ -30,7 +30,7 @@
     }
   },
   "data": ["screen", "expanded"],
-  "hatches": { "developer-panes": ["ios"] },
+  "hatches": { "developer-panes": ["ios"], "login-field": ["ios"] },
   "modules": [
     "lexy-map"
   ],
