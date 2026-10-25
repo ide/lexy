@@ -94,9 +94,9 @@ assert.equal((await answer('authStart', [5, ''], store, storage, null)).status, 
 const saved = store.get('lexy.session');
 respond = (url: string): Response => url.includes('/authorize')
   ? new Response(null, { status: 302, headers: { Location: 'com.toyota.oneapp:/oauth2Callback?code=test-code' } })
-  : json({ access_token: 'incomplete' });
+  : json({ access_token: 'test-access', refresh_token: 'test-refresh', expires_in: 3600 });
 const incomplete = await answer('authFinish', [6, '', 'test-token', at], store, storage, null);
-assert(!incomplete.ok && incomplete.status === 200, 'Incomplete tokens are a protocol failure, not an offline error');
+assert(!incomplete.ok && incomplete.status === 200, 'Initial sign-in requires its own ID token even when a session is saved');
 respond = (): Response => new Response(null, { status: 302 });
 const redirect = await answer('authFinish', [6, '', 'test-token', at], store, storage, null);
 assert(!redirect.ok && redirect.status === 200, 'Missing redirects are a protocol failure');

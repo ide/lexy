@@ -3,6 +3,8 @@
 import { strict as assert } from 'node:assert';
 const L = import.meta.dir;
 let current = 'r1', calls = 0, delay = 30;
+let tokenFailure: { status: number; body: unknown } | null = null;
+let omitIdToken = false;
 const jwt = (o: object) => 'h.' + Buffer.from(JSON.stringify(o)).toString('base64url') + '.s';
 const vehicleAuthorizations: string[] = [];
 let rejectFirstVehicleRead = false;
@@ -10,6 +12,9 @@ globalThis.fetch = (async (url: string, init?: RequestInit) => {
   const u = String(url);
   if (u.includes('access_token')) {
     calls++;
+    if (tokenFailure) {
+      return new Response(typeof tokenFailure.body === 'string' ? tokenFailure.body : JSON.stringify(tokenFailure.body), { status: tokenFailure.status });
+    }
     const body = new URLSearchParams(String(init?.body ?? ''));
     await new Promise(r => setTimeout(r, delay));
     if (body.get('refresh_token') !== current) {
@@ -17,7 +22,7 @@ globalThis.fetch = (async (url: string, init?: RequestInit) => {
     }
     const next = 'r' + (Number(current.slice(1)) + 1);
     current = next;
-    return new Response(JSON.stringify({ access_token: 'a-' + next, refresh_token: next, id_token: jwt({ extension_tmsguid: 'g' }), expires_in: 3600, token_type: 'Bearer' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ access_token: 'a-' + next, refresh_token: next, ...(omitIdToken ? {} : { id_token: jwt({ extension_tmsguid: 'g' }) }), expires_in: 3600, token_type: 'Bearer' }), { status: 200, headers: { 'content-type': 'application/json' } });
   }
   if (u.includes('/vehicle/guid')) {
     vehicleAuthorizations.push((init?.headers as Record<string, string>).Authorization ?? '');
@@ -119,3 +124,40 @@ mem.set('lexy.session', newSession);
 assert.equal((await signingIn).signedIn, true);
 assert.equal(mem.get('lexy.session'), newSession);
 console.log('8 an in-flight refresh cannot overwrite a newer sign-in');
+
+// Only a confirmed refresh-token rejection can remove a saved session
+for (const reply of [
+  { status: 429, body: { error: 'slow_down' } },
+  { status: 408, body: { error: 'request_timeout' } },
+  { status: 403, body: { error: 'access_denied' } },
+  { status: 401, body: { error: 'invalid_client' } },
+  { status: 400, body: { error: 'invalid_request' } },
+  { status: 400, body: '<html>Gateway unavailable</html>' },
+  { status: 503, body: { error: 'invalid_grant' } },
+]) {
+  tokenFailure = reply;
+  const saved = expired('r14');
+  mem.set('lexy.session', saved);
+  const account = await answer('session', [9, now], store, null, null);
+  assert.equal(account.signedIn, true, `HTTP ${reply.status} is not a confirmed revocation`);
+  assert.equal(account.status, reply.status);
+  assert.equal(mem.get('lexy.session'), saved);
+}
+tokenFailure = null;
+console.log('9 retryable and unclassified refresh failures preserve the session');
+
+// A refresh can rotate its token without returning another ID token
+current = 'r20';
+omitIdToken = true;
+mem.set('lexy.session', expired(current));
+const resumed = await answer('session', [10, now], store, null, null);
+assert.equal(resumed.signedIn, true);
+assert.equal(resumed.error, '');
+const rotated = JSON.parse(mem.get('lexy.session')!);
+assert.equal(rotated.refreshToken, 'r21');
+assert.equal(rotated.idToken, 'x');
+const resumedAgain = await answer('session', [11, now + 3_600_001], store, null, null);
+assert.equal(resumedAgain.signedIn, true);
+assert.equal(resumedAgain.error, '');
+assert.equal(JSON.parse(mem.get('lexy.session')!).refreshToken, 'r22');
+console.log('10 omitted ID tokens do not lose a rotated refresh token');

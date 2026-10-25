@@ -154,7 +154,7 @@ function haptic(style: HapticStyle): void {
 }
 
 class HttpError extends Error {
-  constructor(readonly status: number, text: string) {
+  constructor(readonly status: number, text: string, readonly code = '') {
     super(text);
   }
 }
@@ -164,7 +164,7 @@ async function readJson(response: Reply): Promise<Json> {
   if (!response.ok) {
     // Lexus's own words when it gives any; otherwise the screen says what failed (failureText)
     const text = str(body.message) || str(body.error_description) || str(body.error);
-    throw new HttpError(response.status, text);
+    throw new HttpError(response.status, text, str(body.error));
   }
   return body;
 }
@@ -180,22 +180,23 @@ function readSession(store: Store): Session | null {
   }
 }
 
-function tokens(body: Json, previousRefresh: string | undefined, at: number): Session {
-  const refreshToken = str(body.refresh_token) || previousRefresh;
-  if (!str(body.access_token) || !str(body.id_token) || typeof body.expires_in !== 'number' || !refreshToken) {
+function tokens(body: Json, previous: Session | undefined, at: number): Session {
+  const refreshToken = str(body.refresh_token) || previous?.refreshToken;
+  // Keep the prior identity when a refresh omits id_token (OpenID Connect Core 12.2)
+  const idToken = str(body.id_token) || previous?.idToken;
+  if (!str(body.access_token) || !idToken || typeof body.expires_in !== 'number' || !refreshToken) {
     throw new HttpError(200, 'Lexus returned an incomplete token response');
   }
   return {
     accessToken: str(body.access_token),
     refreshToken,
-    idToken: str(body.id_token),
+    idToken,
     expiresAt: at + body.expires_in * 1000,
     tokenType: str(body.token_type) || 'Bearer',
   };
 }
 
-// A refresh the identity server rejects (4xx) ends the session: only signing
-// in again recovers, and Contract sees the 401 as "signed out".
+// A confirmed invalid_grant ends the session; other refresh failures keep it.
 // Lexus rotates refresh tokens: each refresh spends the one it sends. Two
 // refreshes racing with the same token (a launch after a long while starts
 // the session twice) would have the loser rejected and sign the user out,
@@ -234,7 +235,7 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
         scope: SCOPE,
       }).toString(),
     });
-    next = tokens(await readJson(response), session.refreshToken, at);
+    next = tokens(await readJson(response), session, at);
   } catch (e) {
     const stored = readSession(store);
     if (!stored) {
@@ -243,7 +244,7 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
     if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
       return stored;
     }
-    if (e instanceof HttpError && e.status >= 400 && e.status < 500) {
+    if (e instanceof HttpError && (e.status === 400 || e.status === 401) && e.code === 'invalid_grant') {
       store.forget('lexy.session');
       await forgetStored();
       throw new HttpError(401, 'Your Lexus session expired. Please sign in again.');
