@@ -107,7 +107,7 @@ Tools section, so only in development and preview builds.
 
 ## Platform notes
 
-- Exact uses a native double-column split view when unfolded. Running and Stream occupy the left pane; Actions occupies the right. Each pane scrolls independently. A closed phone or laptop fold keeps one scrolling column.
+- When unfolded, Exact’s Updates screen puts Running and Stream on the left and Actions on the right. Each pane scrolls independently. Closed and laptop views use one column.
 
 - Exact caps single-column content at a readable width and places it below the hinge on a laptop fold.
 

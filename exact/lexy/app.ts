@@ -1246,7 +1246,7 @@ const sources: Sources = {
 // Exact's Observe service keeps every metric it records for 7 days; the native
 // module asks it for the newest. Each startup mark's median is over those kept.
 type Observed = Result<'observed'>;
-const noObserved: Observed = { ok: false, session: '', launch: '', latest: [], metrics: [], summary: [], presentation: '' };
+const noObserved: Observed = { ok: false, session: '', launch: '', latest: [], metrics: [], summary: [] };
 // Observe's launch phases, in the order they happen, as one line.
 const PHASES: [string, string][] = [['phase.exec', 'exec'], ['phase.initializers', 'initializers'], ['phase.uikit', 'UIKit to app delegate'], ['phase.launching', 'app delegate launch'], ['phase.scene', 'scene'], ['phase.boot_wait', 'boot wait'], ['phase.boot', 'boot'], ['boot.runner', 'runner + first layout'], ['boot.apply', 'first batch to UIKit'], ['phase.present', 'first frame'], ['phase.activate', 'activation'], ['data.draw_receipt', 'until first draw'], ['data.app_module', 'app module'], ['data.wait', 'data module wait'], ['data.ready', 'data ready'], ['data.apply', 'first data batch']];
 function phases(params: Record<string, unknown> | undefined, name: string): string {
@@ -1343,8 +1343,7 @@ async function observed(limit: number): Promise<Observed> {
     // The launch's marks in the order they happen: launch, TTR, TTI.
     const latest = metrics.filter(m => m.session === launch && m.category === 'appStartup').sort((a, b) => order(a.name) - order(b.name));
     summary.sort((a, b) => order(a.name) - order(b.name));
-    const result = { ok: true, session: str(r.session), launch, latest, metrics, summary };
-    return { ...result, presentation: JSON.stringify(result) };
+    return { ok: true, session: str(r.session), launch, latest, metrics, summary };
   } catch {
     return noObserved;
   }

@@ -77,7 +77,7 @@ internal preview builds it also carries the entry points to the developer tools.
 - The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it.
 - The Exact app caps the list at a readable width. On a book fold, the list occupies the trailing segment.
 - In Exact, dragging from the Maps App row scrolls the list without opening the chooser. A tap opens the chooser; choosing an app saves the preference.
-- Exact’s Performance screen uses a native double-column split view when unfolded: launch and screen metrics on the left, medians on the right, each scrolling independently. A closed phone or laptop fold keeps one scrolling column.
+- When unfolded, Exact’s Performance screen puts launch and screen metrics on the left and medians on the right. Each pane scrolls independently. Closed and laptop views use one column.
 - Exact's Performance screen offers a native Copy menu when the launch TTI cell is long-pressed, without text selection. Copy includes the timestamp, value, phases, and all diagnostic lines.
 
 | Concern | iOS | Android |

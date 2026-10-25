@@ -29,11 +29,10 @@
       "dispatchInDebug": true
     }
   },
-  "data": ["screen"],
+  "data": ["screen", "expanded"],
+  "hatches": { "developer-panes": ["ios"] },
   "modules": [
-    "lexy-map",
-    "lexy-performance",
-    "lexy-updates"
+    "lexy-map"
   ],
   "host": {
     "ios": {

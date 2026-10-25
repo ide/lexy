@@ -1014,7 +1014,7 @@ component Lexy
         for t in nav.tabs key=t.name
           column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
             for e in t.stack key=e.id
-              column navigationKey=`${e.id}` data-screen=e.name navigationBar=(shell or e.name == "authCode" ? "auto" : "none") navigationScroll=(not shell ? "sign-in-scroll" : (e.name == "login" or e.name == "loginCode" or e.name == "map" ? "" : "screen-scroll")) navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+              column navigationKey=`${e.id}` data-screen=e.name navigationBar=(shell or e.name == "authCode" ? "auto" : "none") navigationScroll=(not shell ? "sign-in-scroll" : ((e.name == "updates" or e.name == "performance") and (fold == "across" or (wide and fold != "down")) ? "developer-first-scroll" : (e.name == "login" or e.name == "loginCode" or e.name == "map" ? "" : "screen-scroll"))) navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                 if not shell
                   if e.name == "authCode"
                     header

@@ -29,22 +29,23 @@ import AppKit
 
 final class LexyModule: ExactModule {
     override class var views: [String: ExactNativeFactory] {
-        #if os(iOS)
-        return [
-            "lexy-performance": ExactNativeFactory { props, events in try PerformanceScreen(props: props, events: events) },
-            "lexy-updates": ExactNativeFactory { props, events in UpdatesScreen(props: props, events: events) },
-            "lexy-map": ExactNativeFactory(snapshot: true) { props, events in MapView(props: props, events: events) },
-        ]
-        #else
-        return [
-            "lexy-performance": ExactNativeFactory { _, events in DeveloperScreenPlaceholder(events: events) },
-            "lexy-updates": ExactNativeFactory { _, events in DeveloperScreenPlaceholder(events: events) },
-            "lexy-map": ExactNativeFactory(snapshot: true) { props, events in MapView(props: props, events: events) },
-        ]
-        #endif
+        ["lexy-map": ExactNativeFactory(snapshot: true) { props, events in MapView(props: props, events: events) }]
     }
 
     #if os(iOS)
+    override func element(_ element: ExactElement) {
+        guard element.hatch == .developerPanes else { return }
+        if #available(iOS 27.1, *) {
+            guard element.data[.expanded] == "true" else {
+                element.arrange(using: nil)
+                return
+            }
+            let controller = UIArrangementViewController()
+            controller.updateArrangement(.split.axes(.horizontal))
+            element.arrange(using: controller)
+        }
+    }
+
     override func route(_ route: ExactRoute) {
         switch route.data[.screen] {
         case "rename", "map", "login", "loginCode", "authCode":
