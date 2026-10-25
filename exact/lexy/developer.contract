@@ -1,3 +1,4 @@
+use SafeScroll from "./model.contract"
 use readableWidth from "./model.contract"
 // Settings → Developer Tools, as the Expo app has them
 // (src/screens/settings-screen.ios.tsx DEV_ITEMS): this build's updates, the
@@ -125,7 +126,7 @@ component DeveloperPanes
     id: string
   slot
   view
-    scroll id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "env(safe-area-inset-left)") padding-right=(expanded ? "0px" : "env(safe-area-inset-right)")
       column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" max-width=(expanded ? "none" : readableWidth()) margin-left="auto" margin-right="auto" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
@@ -137,7 +138,7 @@ component DeveloperPane
   slot
   view
     column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 box-sizing="border-box" height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible")
-      column gap=24 padding-left=16 padding-right=16 padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
+      column gap=24 padding-left=(expanded and first ? "calc(env(safe-area-inset-left) + 16px)" : "16px") padding-right=(expanded and not first ? "calc(env(safe-area-inset-right) + 16px)" : "16px") padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
         children
 
 // update-diagnostics-screen.ios.tsx, for Exact's update store: what is
@@ -203,7 +204,7 @@ component DataStateScreen
     provider: string
     clearMaps: action
   view
-    scroll id="screen-scroll" testId="data-state-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="data-state-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
       SettingsColumn(fold=fold, id="data-state-column")
         column
           SectionHeader(title="Data State")
@@ -264,7 +265,7 @@ component LoginPreviewScreen
     getLexusApp: action
     nextField: action
   view
-    column flex=1 min-height=0 width="100%"
+    column flex=1 min-height=0 width="100%" box-sizing="border-box" padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
       column position="absolute"
         column id="scenario-chooser" popover="auto" role="alertdialog" aria-label="Preview Scenario" position="absolute"
           button press=chooseScenario("success-multi") popovertarget="scenario-chooser" popovertargetaction="hide" testId="scenario-success-multi"
@@ -281,7 +282,7 @@ component LoginPreviewScreen
         column flex=1 min-height=0
           LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       if done
-        scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden"
+        scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden" class=SafeScroll
           SettingsColumn(fold=fold, id="preview-result-column")
             column testId="preview-done" align-items="center" gap=12 padding=16
               image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
@@ -298,7 +299,7 @@ component EasScreen
     fold: string
     open: action
   view
-    scroll id="screen-scroll" testId="eas-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="eas-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
       SettingsColumn(fold=fold, id="eas-column")
         SectionHeader(title="Dashboard")
         column class=Card

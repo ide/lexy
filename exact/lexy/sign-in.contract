@@ -1,4 +1,5 @@
 // Lexus sign-in: credentials, delivery method, and verification code
+use SafeScroll from "./model.contract"
 use readableWidth from "./model.contract"
 
 // sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
@@ -103,9 +104,9 @@ component LockScreen
     banner: string
     bannerSymbol: string
   view
-    scroll id="sign-in-scroll" testId="sign-in" keyboardDismissMode="interactive" overflow-x="hidden" width="100%" height="100%"
+    scroll id="sign-in-scroll" testId="sign-in" keyboardDismissMode="interactive" overflow-x="hidden" width="100%" height="100%" class=SafeScroll
       // Keep the form in one segment: trailing on a book fold, lower on a laptop fold
-      column testId="sign-in-column" box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) + 16px)" : (compact ? "16px" : (embedded ? "24px" : "calc(env(safe-area-inset-top) + 64px)"))) padding-left=16 padding-right=16 padding-bottom="calc(env(safe-area-inset-bottom) + 16px)" gap=(compact ? 16 : 24)
+      column testId="sign-in-column" box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) + 16px)" : (compact ? "16px" : (embedded ? "24px" : "calc(env(safe-area-inset-top) + 64px)"))) padding-left=16 padding-right=16 padding-bottom=(embedded ? "16px" : "calc(env(safe-area-inset-bottom) + 16px)") gap=(compact ? 16 : 24)
         if banner != ""
           row testId="preview-banner" align-self="center" gap=6 padding-left=12 padding-right=12 height=30 border-radius=15 background-color="-exact-secondary-grouped-background" align-items="center"
             image `symbol:sf/${bannerSymbol}` font-size=13 color="-exact-system-blue"
@@ -166,5 +167,5 @@ component LockScreen
       // whatever the stored demo flag says: a flag left in the Keychain (it
       // outlives a reinstall) hid it on a signed-out launch.
       if developer and step == "credentials" and not embedded
-        button press=tryDemo disabled=busy testId="try-demo" appearance="auto" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right=8 height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
+        button press=tryDemo disabled=busy testId="try-demo" appearance="auto" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right="calc(env(safe-area-inset-right) + 8px)" height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
           text "Try Demo" font-size=17 color="AccentColor"

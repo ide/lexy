@@ -1008,7 +1008,7 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" display="flex" flex-direction="column" navigationKey=`${top(nav).id}` navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
+    main testId="lexy" viewport-fit="cover" display="flex" flex-direction="column" navigationKey=`${top(nav).id}` navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
       // Keep authentication inside the tab panels so native Back uses the same stacks
       column flex=1 min-height=0 position="relative"
         for t in nav.tabs key=t.name

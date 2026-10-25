@@ -1,4 +1,5 @@
 // Vehicle specifications, remote capabilities, and connected services
+use SafeScroll from "./model.contract"
 use Garage from "./model.contract"
 use Spec from "./model.contract"
 use Services from "./model.contract"
@@ -62,7 +63,7 @@ component SpecsScreen
     fold: string
   derive car = garage.car
   view
-    scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
+    scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing class=SafeScroll
       column box-sizing="border-box" min-height="100%"
         if not online
           column margin-left=16 margin-right=16 margin-top=16

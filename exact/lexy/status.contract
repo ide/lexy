@@ -1,6 +1,7 @@
 // The Status tab (src/screens/status-screen.ios.tsx and src/features/vehicle):
 // the car over its parked map, fuel, remote controls, remote-start climate,
 // doors and windows, odometer, tires, and when it last synced.
+use SafeScroll from "./model.contract"
 use Garage from "./model.contract"
 use Status from "./model.contract"
 use Tires from "./model.contract"
@@ -267,7 +268,7 @@ component StatusScreen
   derive extrasText = extras.length == 0 ? "" : (extras.length == 1 ? capitalized(extras.join("")) : `${extras.filter((n, i) => i < extras.length - 1).map((n, i) => i == 0 ? capitalized(n) : n).join(", ")}${extras.length > 2 ? "," : ""} and ${extras.filter((n, i) => i == extras.length - 1).join("")}`)
   derive canEngine = can(car.capabilities, "remoteEngineStartStop")
   view
-    scroll id="screen-scroll" testId="status-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
+    scroll id="screen-scroll" testId="status-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing class=SafeScroll
       column box-sizing="border-box" min-height="100%"
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=16 flex-grow=(car.vin == "" and not loading ? 1 : 0)
           // Banners (src/components/ui/status-banner.tsx)
