@@ -1044,7 +1044,7 @@ component Lexy
                   if e.name == "settings"
                     SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left), fold=fold)
                   if e.name == "updates"
-                    UpdatesScreen(fold=fold, delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
+                    UpdatesScreen(wide=wide, fold=fold, delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   if e.name == "dataState"
                     DataStateScreen(fold=fold, current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
                   if e.name == "login" or e.name == "loginCode"
@@ -1052,7 +1052,7 @@ component Lexy
                   if e.name == "eas"
                     EasScreen(fold=fold, open=openExternal)
                   if e.name == "performance"
-                    PerformanceScreen(fold=fold, observed=observed, utcOffset=time.utcOffset)
+                    PerformanceScreen(wide=wide, fold=fold, observed=observed, utcOffset=time.utcOffset)
                   if e.name == "rename"
                     RenameScreen(fold=fold, name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 

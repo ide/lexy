@@ -31,7 +31,9 @@
   },
   "data": ["screen"],
   "modules": [
-    "lexy-map"
+    "lexy-map",
+    "lexy-performance",
+    "lexy-updates"
   ],
   "host": {
     "ios": {

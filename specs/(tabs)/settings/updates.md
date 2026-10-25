@@ -107,7 +107,9 @@ Tools section, so only in development and preview builds.
 
 ## Platform notes
 
-- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+- Exact uses a native double-column split view when unfolded. Running and Stream occupy the left pane; Actions occupies the right. Each pane scrolls independently. A closed phone or laptop fold keeps one scrolling column.
+
+- Exact caps single-column content at a readable width and places it below the hinge on a laptop fold.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

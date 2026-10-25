@@ -74,7 +74,7 @@ transition is animated so the relayout springs rather than snaps.
    thing that failed.
 6. **Credentials screen only** — a "New to Lexus?" callout card explaining that
    an account and vehicle are created in the official Lexus app, with a "Get the
-   Lexus App" action.
+   Lexus App" action aligned with the callout text.
 7. A permanent footnote: "Your password and verification code go directly to
    Lexus. Lexy never stores them or collects your information."
 

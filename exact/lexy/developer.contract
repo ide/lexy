@@ -52,6 +52,7 @@ shape Observed
   latest: ObservedMetric[]
   metrics: ObservedMetric[]
   summary: ObservedSummary[]
+  presentation: string
 
 // The pill: what was measured. TTR is the first frame; TTI the first frame
 // with nothing loading. A screen's TTR is cold for a new screen, warm for one
@@ -120,50 +121,59 @@ component ChoiceRow
 // running, what it shipped with, and whether a newer bundle waits.
 component UpdatesScreen
   props
+    wide: bool
     fold: string
     delivery: Delivery
     version: string
     checked: bool
     check: action
     apply: action
+  action updateAction(action: string)
+    if action == "check"
+      check()
+    if action == "apply" and delivery.staged
+      apply()
   view
-    scroll id="screen-scroll" testId="updates-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      SettingsColumn(fold=fold, id="updates-column")
-        column
-          SectionHeader(title="Running")
-          column class=Card
-            FactRow(label="Version", value=version, id="updates-version")
-            Divider()
-            FactRow(label="Source", value=(delivery.seq > delivery.embeddedSeq ? "Downloaded update" : "Embedded in the build"), id="updates-source")
-            Divider()
-            FactRow(label="Sequence", value=`${delivery.seq}`, id="updates-seq")
-            Divider()
-            FactRow(label="Embedded sequence", value=`${delivery.embeddedSeq}`, id="updates-embedded-seq")
-          SectionFooter(words=`Built with Exact ${exactVersion()}.`)
-        column
-          SectionHeader(title="Stream")
-          column class=Card
-            FactRow(label="Stream", value=delivery.stream, id="updates-stream")
-            Divider()
-            FactRow(label="Compatibility", value=(delivery.compatibilityId != "" ? delivery.compatibilityId : "—"), id="updates-compat")
-            Divider()
-            FactRow(label="Interpreted", value=(delivery.interpreted.length == 0 ? "None" : delivery.interpreted.join(", ")), id="updates-interpreted")
-          SectionFooter(words="A binary takes updates only from the stream its compatibility id names: a bundle built against other native code never reaches it.")
-        if delivery.sunset != ""
-          column gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" testId="updates-sunset"
-            text "This build is being retired" font-size=15 font-weight=600 color="-exact-system-orange"
-            text delivery.sunset font-size=13 color="-exact-secondary-label"
-        column
-          SectionHeader(title="Actions")
-          column class=Card
-            button text-align="left" press=check testId="updates-check" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:icon.arrow_triangle_2_circlepath" font-size=17 -exact-tint-color="AccentColor"
-              text "Check for Update" font-size=17 color="AccentColor"
-            Divider()
-            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:icon.arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
-              text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
-          SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
+    if fold == "across" or (wide and fold != "down")
+      lexy-updates stream=delivery.stream sequence=delivery.seq embedded=delivery.embeddedSeq staged=delivery.staged sunset=delivery.sunset compatibility=(delivery.compatibilityId != "" ? delivery.compatibilityId : "—") interpreted=(delivery.interpreted.length == 0 ? "None" : delivery.interpreted.join(", ")) version=version exact=exactVersion() did-check=checked message=updateAction testId="updates-split" flex=1 min-height=0 width="100%"
+    else
+      scroll id="screen-scroll" testId="updates-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+        SettingsColumn(fold=fold, id="updates-column")
+          column
+            SectionHeader(title="Running")
+            column class=Card
+              FactRow(label="Version", value=version, id="updates-version")
+              Divider()
+              FactRow(label="Source", value=(delivery.seq > delivery.embeddedSeq ? "Downloaded update" : "Embedded in the build"), id="updates-source")
+              Divider()
+              FactRow(label="Sequence", value=`${delivery.seq}`, id="updates-seq")
+              Divider()
+              FactRow(label="Embedded sequence", value=`${delivery.embeddedSeq}`, id="updates-embedded-seq")
+            SectionFooter(words=`Built with Exact ${exactVersion()}.`)
+          column
+            SectionHeader(title="Stream")
+            column class=Card
+              FactRow(label="Stream", value=delivery.stream, id="updates-stream")
+              Divider()
+              FactRow(label="Compatibility", value=(delivery.compatibilityId != "" ? delivery.compatibilityId : "—"), id="updates-compat")
+              Divider()
+              FactRow(label="Interpreted", value=(delivery.interpreted.length == 0 ? "None" : delivery.interpreted.join(", ")), id="updates-interpreted")
+            SectionFooter(words="A binary takes updates only from the stream its compatibility id names: a bundle built against other native code never reaches it.")
+          if delivery.sunset != ""
+            column gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" testId="updates-sunset"
+              text "This build is being retired" font-size=15 font-weight=600 color="-exact-system-orange"
+              text delivery.sunset font-size=13 color="-exact-secondary-label"
+          column
+            SectionHeader(title="Actions")
+            column class=Card
+              button text-align="left" press=check testId="updates-check" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+                image "symbol:icon.arrow_triangle_2_circlepath" font-size=17 -exact-tint-color="AccentColor"
+                text "Check for Update" font-size=17 color="AccentColor"
+              Divider()
+              button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
+                image "symbol:icon.arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
+                text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
+            SectionFooter(words=(checked and not delivery.staged ? "Checked. A newer bundle downloads in the background and appears here when it is ready." : "An update downloads in the background and applies at the next launch, or now with Apply."))
 
 // data-state-screen.ios.tsx: one override at a time, Live by default and
 // after every launch (it lives in memory only).
@@ -324,6 +334,7 @@ component MetricRow
 // each launch metric. Long-press the launch's TTI to copy what held it.
 component PerformanceScreen
   props
+    wide: bool
     fold: string
     observed: Observed
     utcOffset: number
@@ -333,52 +344,55 @@ component PerformanceScreen
   action copyMetric
     copyText(selectedReport)
   view
-    scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      SettingsColumn(fold=fold, id="performance-column")
-        if not observed.ok
-          SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
-        if observed.ok and observed.latest.length == 0 and observed.summary.length == 0 and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length == 0
-          SectionFooter(words="Nothing recorded yet. Open a screen or relaunch the app.")
-        if observed.ok and observed.latest.length > 0
-          column
-            SectionHeader(title=(observed.launch == observed.session ? "This Launch" : "Last Launch"))
-            column class=Card
-              for m, i in observed.latest key=`${m.name}-${m.time}`
-                column testId=`perf-launch-row-${m.name}` user-select=(m.name == "timeToInteractive" ? "none" : "text") contextmenu=aimMetric(m) contextPopover=(m.name == "timeToInteractive" ? "metric-menu" : "")
-                  if i > 0
-                    Divider()
-                  MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
-                  if m.fromStart != ""
-                    text m.fromStart font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.phases != ""
-                    text `Phases: ${m.phases}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.items != ""
-                    text `Held by (ms from process start): ${m.items}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.changes != ""
-                    text `Still changing: ${m.changes}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.trace != ""
-                    text `Waited on: ${m.trace}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=12
-        if observed.ok and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length > 0
-          column
-            SectionHeader(title="Screens")
-            column class=Card
-              for m, i in observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
-                column user-select="text"
-                  if i > 0
-                    Divider()
-                  MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
-                  if m.steps != ""
-                    text m.steps font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=10
-        if observed.ok and observed.summary.length > 0
-          column
-            SectionHeader(title="Median")
-            column class=Card
-              for s, i in observed.summary key=s.name
-                column
-                  if i > 0
-                    Divider()
-                  MetricRow(name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), id=`perf-median-${s.name}`)
-            SectionFooter(words=`${observed.metrics.filter((m, i) => m.sent).length} of ${observed.metrics.length} sent to Observe.`)
+    if fold == "across" or (wide and fold != "down")
+      lexy-performance payload=observed.presentation utc-offset=utcOffset testId="performance-split" flex=1 min-height=0 width="100%"
+    else
+      scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+        SettingsColumn(fold=fold, id="performance-column")
+          if not observed.ok
+            SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
+          if observed.ok and observed.latest.length == 0 and observed.summary.length == 0 and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length == 0
+            SectionFooter(words="Nothing recorded yet. Open a screen or relaunch the app.")
+          if observed.ok and observed.latest.length > 0
+            column
+              SectionHeader(title=(observed.launch == observed.session ? "This Launch" : "Last Launch"))
+              column class=Card
+                for m, i in observed.latest key=`${m.name}-${m.time}`
+                  column testId=`perf-launch-row-${m.name}` user-select=(m.name == "timeToInteractive" ? "none" : "text") contextmenu=aimMetric(m) contextPopover=(m.name == "timeToInteractive" ? "metric-menu" : "")
+                    if i > 0
+                      Divider()
+                    MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
+                    if m.fromStart != ""
+                      text m.fromStart font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    if m.phases != ""
+                      text `Phases: ${m.phases}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    if m.items != ""
+                      text `Held by (ms from process start): ${m.items}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    if m.changes != ""
+                      text `Still changing: ${m.changes}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
+                    if m.trace != ""
+                      text `Waited on: ${m.trace}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=12
+          if observed.ok and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length > 0
+            column
+              SectionHeader(title="Screens")
+              column class=Card
+                for m, i in observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
+                  column user-select="text"
+                    if i > 0
+                      Divider()
+                    MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
+                    if m.steps != ""
+                      text m.steps font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=10
+          if observed.ok and observed.summary.length > 0
+            column
+              SectionHeader(title="Median")
+              column class=Card
+                for s, i in observed.summary key=s.name
+                  column
+                    if i > 0
+                      Divider()
+                    MetricRow(name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), id=`perf-median-${s.name}`)
+              SectionFooter(words=`${observed.metrics.filter((m, i) => m.sent).length} of ${observed.metrics.length} sent to Observe.`)
       column id="metric-menu" popover="auto" role="menu"
         button press=copyMetric popovertarget="metric-menu" popovertargetaction="hide" testId="copy-metric"
           text "Copy"
