@@ -15,7 +15,7 @@ component LexyMark
   props
     size: number
   view
-    svg testId="lexy-mark" aria-label="Lexy" role="img" width=size height=size viewBox="148 163 744 744"
+    svg testId="lexy-mark" aria-label="Lexy" role="img" width=size height=size flex-shrink=0 viewBox="148 163 744 744"
       defs
         linearGradient id="mark-metal" gradientUnits="userSpaceOnUse" x1=0 y1=163 x2=0 y2=906
           stop offset=0 stop-color="-exact-label" stop-opacity=0.9
@@ -113,7 +113,7 @@ component LockScreen
         // Hero: the step's symbol, title and what to do.
         column align-items="center" gap=8
           if step == "credentials"
-            LexyMark(size=(compact ? 48 : 76))
+            LexyMark(size=76)
           if step != "credentials"
             image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color="-exact-system-blue" margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" role="heading" aria-level=(embedded ? 2 : 1) text-align="center"

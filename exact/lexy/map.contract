@@ -59,7 +59,7 @@ component MapSheet
           text (address != "" ? address : " ") testId="map-address" font-size=17 line-height="22px" font-weight=600
           text `Location as of ${relative(clock, (status.fetchedMs > 0 ? min(status.occurredMs, status.fetchedMs) : status.occurredMs))}` class=Small color="-exact-secondary-label"
         column flex=1 min-height=0 margin-left=16 margin-right=16 border-radius=18 overflow="hidden" background-color="-exact-tertiary-fill"
-          lexy-map testId="map" width="100%" height="100%" latitude=status.latitude longitude=status.longitude zoom=16 pin="true" places="true" interactive="true" marker-title=name
+          lexy-map testId="map" width="100%" height="100%" latitude=status.latitude longitude=status.longitude map-zoom=16 pin="true" places="true" interactive="true" marker-title=name
         column padding-left=16 padding-right=16 padding-top=16 padding-bottom="env(safe-area-inset-bottom)" gap=8 flex-shrink=0
           // use-maps-provider.ts: a link the app didn't answer is an alert.
           dialog id="open-failed" role="alertdialog" aria-label=`Couldn't open ${mapsName(tried)}`

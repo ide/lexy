@@ -162,7 +162,7 @@ private func png(_ view: UIView) throws -> Data {
 
 // MARK: - <lexy-map>
 
-/// Props: `latitude`, `longitude`, `zoom` (a web-map zoom level, default 16),
+/// Props: `latitude`, `longitude`, `map-zoom` (a web-map zoom level, default 16),
 /// `pin` and `places` ("true" | "false"), `interactive` ("true" | "false"),
 /// `marker-title` (the marker's: the car's name).
 /// The map fades in once MapKit has drawn its first region, as Lexy's does.
@@ -224,7 +224,7 @@ private final class MapView: ExactNativeInstance {
 
     private func apply(_ props: [String: String]) {
         let centre = CLLocationCoordinate2D(latitude: Double(props["latitude"] ?? "") ?? 0, longitude: Double(props["longitude"] ?? "") ?? 0)
-        let zoom = Double(props["zoom"] ?? "") ?? 16
+        let zoom = Double(props["map-zoom"] ?? "") ?? 16
         // A web-map zoom level as a camera distance: zoom 16 is a few blocks.
         let distance = 40_000_000 / pow(2, zoom) * 1.6
         let camera = MKMapCamera(lookingAtCenter: centre, fromDistance: distance, pitch: 0, heading: 0)
