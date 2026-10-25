@@ -75,6 +75,8 @@ pull-refresh.
 
 ## Platform notes
 
+- Exact keeps 16 points of content spacing above UIKit’s bottom safe area.
+
 - Exact section titles are level-2 headings in the platform headline style.
 
 - Exact renders the vehicle rows during first load, with neutral bars in place of values. Loading uses the same row and pane layout as the loaded screen. Specification values and connected services also show placeholders while their first requests are pending; cached values stay visible during refreshes. Offline placeholders remain still.

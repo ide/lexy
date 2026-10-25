@@ -126,7 +126,7 @@ component DeveloperPanes
   slot
   view
     scroll id="screen-scroll" testId=`${id}-scroll` -exact-scroll-edge-effect="soft" overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" max-width=(expanded ? "none" : readableWidth()) margin-left="auto" margin-right="auto" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "32px") box-sizing="border-box"
+      column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" max-width=(expanded ? "none" : readableWidth()) margin-left="auto" margin-right="auto" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
 component DeveloperPane
@@ -137,7 +137,7 @@ component DeveloperPane
   slot
   view
     column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible") -exact-scroll-edge-effect="soft"
-      column gap=24 padding-left=16 padding-right=16 padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "32px" : "0px") box-sizing="border-box" width="100%"
+      column gap=24 padding-left=16 padding-right=16 padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
         children
 
 // update-diagnostics-screen.ios.tsx, for Exact's update store: what is

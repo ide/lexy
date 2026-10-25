@@ -381,7 +381,7 @@ telling.
 
 - Exact card section titles are level-2 headings in the platform headline style.
 
-- The Exact iOS dashboard uses UIKit's automatic scroll edge treatment, including its blur behind the title. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
+- The Exact iOS dashboard uses UIKit's soft scroll edge treatment, including its blur behind the title. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
 
 - Exact sends one impact haptic when a command starts. Lock and engine success notifications wait for the vehicle reading to confirm the requested state; request acceptance alone does not notify success. Rejection or reconciliation timeout gives one error notification. Commands without a reportable outcome have no success notification.
 - After sign-in, Exact finishes the first status request before starting the vehicle wake-up or climate reads. Engine reads run independently so they cannot hold up the initial snapshot. Vehicle GET requests have a 15-second deadline and retain cached readings on failure.
