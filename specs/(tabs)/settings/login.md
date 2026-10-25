@@ -60,6 +60,10 @@ The scenarios:
 
 ## Platform notes
 
+- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+
+- Exact presents OTP as a pushed screen with UIKit’s Back button. Back returns to credentials without clearing them; leaving the preview discards its form.
+
 - Exact uses its shared sign-in state machine and a native navigation header. Switching scenarios, running again, or leaving resets the form and discards completions from the old attempt. The preview never saves tokens or alters the real session.
 
 | Concern | iOS | Android |

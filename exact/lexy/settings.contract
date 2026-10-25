@@ -10,6 +10,16 @@ use mapsResolved from "./model.contract"
 use MapsChooser from "./map.contract"
 use SectionTitle from "./model.contract"
 
+// Keep each settings form in one readable fold segment
+component SettingsColumn
+  props
+    fold: string
+    id: string
+  slot
+  view
+    column testId=id box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top) + 16px)" : "16px") padding-left=16 padding-right=16 padding-bottom=32 gap=24
+      children
+
 component SectionHeader
   props
     title: string
@@ -99,61 +109,60 @@ component SettingsScreen
     fold: string
   view
     scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding-bottom=32
-        // Place the readable column in the trailing segment on a book fold
-        column box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=16 padding-left=16 padding-right=16 gap=24 testId="settings-column"
-          if developer
-            DeveloperTools(open=openDevTool, setDeveloper=setDeveloper, origin=developerOrigin, place=developerPlace)
-          column
-            SectionHeader(title="Maps")
-            column class=Card
-              // The same chooser as the map's, of the installed apps only
-              // (settings-screen.ios.tsx's promptChoice).
-              button text-align="left" popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps-chooser") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
-                SettingsRowFace(symbol="map.fill", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))), opensScreen=false)
-              MapsChooser(prefix="settings-", apps=apps, choose=chooseMaps)
-            SectionFooter(words="The app used to open your vehicle’s location for directions.")
-          column
-            SectionHeader(title="Vehicle")
-            column class=Card
-              button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
-                SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : name), opensScreen=true)
-          column
-            SectionHeader(title="Lexus Account")
-            column class=Card
-              button commandfor="sign-out-confirmation" command="show-modal" disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
-                image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
-                text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
-            dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
-              text "You’ll need to sign in again to access your vehicle."
-              button destructive=true press=signOut commandfor="sign-out-confirmation" command="close" testId="confirm-sign-out"
-                text "Sign Out"
-              button commandfor="sign-out-confirmation" command="close" testId="cancel-sign-out"
-                text "Cancel"
-            if demo
-              SectionFooter(words="Signed in to the demo Lexus.")
+      SettingsColumn(fold=fold, id="settings-column")
+        if developer
+          DeveloperTools(open=openDevTool, setDeveloper=setDeveloper, origin=developerOrigin, place=developerPlace)
+        column
+          SectionHeader(title="Maps")
+          column class=Card
+            // The same chooser as the map's, of the installed apps only
+            // (settings-screen.ios.tsx's promptChoice).
+            button text-align="left" popovertarget=(mapsCount(apps) == 0 ? "" : "settings-maps-chooser") commandfor=(mapsCount(apps) == 0 ? "settings-no-maps" : "") command="show-modal" testId="maps-app" display="flex"
+              SettingsRowFace(symbol="map.fill", title="Maps App", subtitle=(provider != "" ? mapsName(provider) : (mapsCount(apps) == 0 ? "Unavailable" : (mapsCount(apps) == 1 ? mapsName(mapsResolved(apps)) : "Not set"))), opensScreen=false)
+            MapsChooser(prefix="settings-", apps=apps, choose=chooseMaps)
+          SectionFooter(words="The app used to open your vehicle’s location for directions.")
+        column
+          SectionHeader(title="Vehicle")
+          column class=Card
+            button text-align="left" press=editName disabled=(car.vin == "") testId="edit-name" display="flex"
+              SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : name), opensScreen=true)
+        column
+          SectionHeader(title="Lexus Account")
+          column class=Card
+            button commandfor="sign-out-confirmation" command="show-modal" disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+              image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
+              text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
+          dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
+            text "You’ll need to sign in again to access your vehicle."
+            button destructive=true press=signOut commandfor="sign-out-confirmation" command="close" testId="confirm-sign-out"
+              text "Sign Out"
+            button commandfor="sign-out-confirmation" command="close" testId="cancel-sign-out"
+              text "Cancel"
           if demo
-            column
-              SectionHeader(title="Demo")
-              column class=Card
-                row padding-left=16 padding-right=16 min-height=52 justify-content="space-between" align-items="center" gap=12
-                  text "Simulate Server Errors" font-size=17 flex-shrink=1
-                  input type="checkbox" switch checked=demoFailing change=setDemoFailing aria-label="Simulate Server Errors" testId="demo-failures" accent-color="auto"
-              SectionFooter(words="Commands, climate changes and renames fail as a server error does, so you can see how the app recovers.")
+            SectionFooter(words="Signed in to the demo Lexus.")
+        if demo
           column
-            SectionHeader(title="About")
+            SectionHeader(title="Demo")
             column class=Card
-              row padding=16 justify-content="space-between" align-items="center"
-                text "Version" font-size=17
-                text version testId="version" font-size=17 color="-exact-secondary-label" user-select="text"
-              // A grouped list's divider, inset to the text.
-              box height=0.5 margin-left=16 background-color="-exact-separator"
-              row padding=16 justify-content="space-between" align-items="center" gap=16
-                text "Built with" font-size=17
-                text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="-exact-secondary-label" text-align="right" flex-shrink=1 user-select="text"
+              row padding-left=16 padding-right=16 min-height=52 justify-content="space-between" align-items="center" gap=12
+                text "Simulate Server Errors" font-size=17 flex-shrink=1
+                input type="checkbox" switch checked=demoFailing change=setDemoFailing aria-label="Simulate Server Errors" testId="demo-failures" accent-color="auto"
+            SectionFooter(words="Commands, climate changes and renames fail as a server error does, so you can see how the app recovers.")
+        column
+          SectionHeader(title="About")
+          column class=Card
+            row padding=16 justify-content="space-between" align-items="center"
+              text "Version" font-size=17
+              text version testId="version" font-size=17 color="-exact-secondary-label" user-select="text"
+            // A grouped list's divider, inset to the text.
+            box height=0.5 margin-left=16 background-color="-exact-separator"
+            row padding=16 justify-content="space-between" align-items="center" gap=16
+              text "Built with" font-size=17
+              text `Exact ${exactVersion()}` testId="built-with" font-size=17 color="-exact-secondary-label" text-align="right" flex-shrink=1 user-select="text"
 
 component RenameScreen
   props
+    fold: string
     name: string
     saved: string
     saving: bool
@@ -165,7 +174,7 @@ component RenameScreen
   derive changed = name.trim() != "" and name.trim() != saved
   view
     scroll id="screen-scroll" testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="-exact-grouped-background"
-      column padding-top=16 padding-left=16 padding-right=16 gap=16
+      SettingsColumn(fold=fold, id="rename-column")
         // section.tsx: the footer 8 under its field, 16 to what follows.
         column gap=8
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"

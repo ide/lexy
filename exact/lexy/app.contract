@@ -44,6 +44,7 @@ use signInError from "./model.contract"
 
 routes nav
   tab status "/"
+    authCode "/sign-in/code"
     map "/map"
   tab specs "/specs"
   tab settings "/settings"
@@ -51,6 +52,7 @@ routes nav
     updates "/settings/updates"
     dataState "/settings/data-state"
     login "/settings/login"
+    loginCode "/settings/login/code"
     eas "/settings/eas"
     performance "/settings/performance"
     // `lexy://developer` (app.json `protocol_handlers`), and on the web the
@@ -100,6 +102,10 @@ component Lexy
   state code = ""
   state authAttempt = 0
   state signStep = "credentials"
+  derive onCodeRoute = top(nav).name == "authCode" or top(nav).name == "loginCode"
+  derive needsCodeRoute = signStep == "otp" and (not shell or previewScenario != "")
+  task codeNavigation when not entering and needsCodeRoute != onCodeRoute
+    after(1, syncCodeRoute)
   state signError = ""
   // A fresh code is on its way (resend), then that it was sent.
   state resending = false
@@ -508,6 +514,12 @@ component Lexy
         if stage == "choice"
           lastChoice = -1
         send started = authStart(authAttempt + 1, previewScenario)
+  action syncCodeRoute
+    if needsCodeRoute and not onCodeRoute
+      nav = push(nav, previewScenario == "" ? "/sign-in/code" : "/settings/login/code")
+    else
+      if not needsCodeRoute and onCodeRoute
+        nav = back(nav)
   action returnToSignIn
     if not signingIn
       startOver()
@@ -692,8 +704,8 @@ component Lexy
             primeOnSignIn = true
             nav = open(nav, "/")
           if not f.ok
+            startOver()
             signError = signInError("session", f.status)
-            signStep = "credentials"
       case none
         signError = ""
   action setDemoFailing(on: bool)
@@ -954,10 +966,14 @@ component Lexy
   // The platform's Back (its button, the swipe, a sheet pulled down)
   // leaving the Login Flow preview resets it, as its own back does.
   action back
-    if top(nav).name == "login"
-      resetPreview()
-      previewScenario = ""
-    nav = back(nav)
+    if not onCodeRoute or not signingIn
+      if onCodeRoute
+        startOver()
+      else
+        if top(nav).name == "login"
+          resetPreview()
+          previewScenario = ""
+      nav = back(nav)
   action followLink(url: string)
     nav = go(nav, url)
   action editName
@@ -992,28 +1008,31 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" display="flex" flex-direction="column" navigationKey=(shell ? `${top(nav).id}` : "sign-in") navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
-      if not shell
-        LockScreen(compact=(viewport.height < 600), developer=developer.on, step=signStep, email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, preview=false, fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
-      else
-        // Each tab keeps its own stack; route headers supply UIKit's title and bar
-        // items
-        column flex=1 min-height=0 position="relative"
-          for t in nav.tabs key=t.name
-            column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
-              for e in t.stack key=e.id
-                column navigationKey=`${e.id}` data-screen=e.name navigationScroll=(e.name == "login" or e.name == "map" ? "" : "screen-scroll") navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+    main testId="lexy" display="flex" flex-direction="column" navigationKey=`${top(nav).id}` navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
+      // Keep authentication inside the tab panels so native Back uses the same stacks
+      column flex=1 min-height=0 position="relative"
+        for t in nav.tabs key=t.name
+          column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
+            for e in t.stack key=e.id
+              column navigationKey=`${e.id}` data-screen=e.name navigationBar=(shell or e.name == "authCode" ? "auto" : "none") navigationScroll=(not shell ? "sign-in-scroll" : (e.name == "login" or e.name == "loginCode" or e.name == "map" ? "" : "screen-scroll")) navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+                if not shell
+                  if e.name == "authCode"
+                    header
+                      button id="back" press=back aria-label="Back" testId="auth-back" disabled=signingIn width=44 height=44
+                      text "Sign In" role="heading" aria-level=1
+                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=(e.name == "authCode" ? "otp" : (signStep == "otp" ? (choices.length > 1 ? "choice" : "credentials") : signStep)), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+                else
                   header
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
-                      button id="back" press=back testId="back" aria-label="Back" width=44 height=44
-                    text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=1
+                      button id="back" press=back testId="back" aria-label="Back" disabled=(e.name == "loginCode" and signingIn) width=44 height=44
+                    text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=1 color=(e.name == "status" and firstLoad ? "transparent" : none)
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.xmark"
                     if e.name == "performance"
                       button press=clearObserved testId="clear-performance" disabled=pending(observedCleared)
                         text "Clear" font-size=17
-                    if e.name == "login"
+                    if e.name == "login" or e.name == "loginCode"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.wrench.and.screwdriver"
                   if e.name == "status"
@@ -1025,20 +1044,20 @@ component Lexy
                   if e.name == "settings"
                     SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left), fold=fold)
                   if e.name == "updates"
-                    UpdatesScreen(delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
+                    UpdatesScreen(fold=fold, delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   if e.name == "dataState"
-                    DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
-                  if e.name == "login"
-                    LoginPreviewScreen(compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=signStep, email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, getLexusApp=getLexusApp, nextField=focusPassword)
+                    DataStateScreen(fold=fold, current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
+                  if e.name == "login" or e.name == "loginCode"
+                    LoginPreviewScreen(fold=fold, compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, chooseScenario=chooseScenario, runAgain=runPreviewAgain, step=(e.name == "loginCode" ? "otp" : (signStep == "otp" ? (choices.length > 1 ? "choice" : "credentials") : signStep)), email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=returnToSignIn, getLexusApp=getLexusApp, nextField=focusPassword)
                   if e.name == "eas"
-                    EasScreen(open=openExternal)
+                    EasScreen(fold=fold, open=openExternal)
                   if e.name == "performance"
-                    PerformanceScreen(observed=observed, utcOffset=time.utcOffset)
+                    PerformanceScreen(fold=fold, observed=observed, utcOffset=time.utcOffset)
                   if e.name == "rename"
-                    RenameScreen(name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
+                    RenameScreen(fold=fold, name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 
-        row role="tablist" aria-label="Tabs"
-          for t in nav.tabs key=t.name
-            button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1
-              image (t.name == "status" ? "symbol:icon.car" : (t.name == "specs" ? "symbol:icon.list.bullet.rectangle" : "symbol:icon.gearshape"))
-              text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings"))
+      row role="tablist" aria-label="Tabs" display=(shell ? "flex" : "none")
+        for t in nav.tabs key=t.name
+          button role="tab" aria-controls=`panel-${t.name}` aria-selected=(nav.tab == t.name) press=selectTab(t.name) testId=`tab-${t.name}` flex=1
+            image (t.name == "status" ? "symbol:icon.car" : (t.name == "specs" ? "symbol:icon.list.bullet.rectangle" : "symbol:icon.gearshape"))
+            text (t.name == "status" ? "Status" : (t.name == "specs" ? "Specs" : "Settings"))

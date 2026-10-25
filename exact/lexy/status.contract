@@ -231,6 +231,9 @@ component StatusScreen
   derive openings = rows.filter(s => not isCorner(s))
   derive doorRows = corners.filter(s => partOf(s) == "door")
   derive openRows = rows.filter(s => isOpen(s))
+  derive lockState = lockPending ? lockTarget : doorLock
+  derive lockWord = lockPending ? (lockTarget == "locked" ? "Locking" : "Unlocking") : (doorLock == "locked" ? "Locked" : (doorLock == "unlocked" ? "Unlocked" : "Unknown"))
+  derive lockColor = lockState == "locked" ? "-exact-system-green" : (lockState == "unlocked" ? "-exact-system-orange" : "-exact-secondary-label")
   derive unlockedRows = rows.filter(s => isUnlocked(s) and not isOpen(s))
   derive issues = openRows.length + unlockedRows.length
   derive allLocked = doorRows.length > 0 and doorRows.filter(d => any(d.values, "Locked")).length == doorRows.length
@@ -357,18 +360,15 @@ component StatusScreen
                 column testId="controls-column" gap=16 grid-column=(wide ? (fold == "across" ? "1" : "2") : "auto") grid-row=(wide ? "1 / span 5" : "auto") margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "0px") padding-left=(fold == "across" ? "16px" : "0px") padding-right=(fold == "across" ? "16px" : "0px")
                   // Remote controls (vehicle-controls.ios.tsx)
                   column gap=8 testId="controls"
-                    row justify-content="space-between" align-items="center" gap=16
+                    row justify-content="space-between" align-items="center" flex-wrap="wrap" gap=8 testId="controls-header"
                       text "Remote Controls" role="heading" aria-level=2 class=SectionTitle margin-top=4
-                      row gap=8 margin-right=8 align-items="center"
-                        // "Locked" only when every reporting door is; before any door
-                        // has reported, nothing (a guess would read as a state).
-                        if lockPending or doorLock != "unknown"
-                          row gap=4 align-items="center" testId="lock-state"
-                            image `symbol:icon.${((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "lock.fill" : "lock.open.fill")}` font-size=13 color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") object-fit="scale-down" width=13 height=13
-                            text (lockPending ? (lockTarget == "locked" ? "Locking" : "Unlocking") : (doorLock == "locked" ? "Locked" : "Unlocked")) class=SmallBold color=((lockPending ? lockTarget == "locked" : doorLock == "locked") ? "-exact-system-green" : "-exact-system-orange") animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
+                      row gap=8 margin-left=16 margin-right=8 align-items="center" flex-wrap="wrap"
+                        row gap=4 align-items="center" flex-shrink=0 testId="lock-state"
+                          image `symbol:icon.${(lockState == "unknown" ? "lock.shield.fill" : (lockState == "locked" ? "lock.fill" : "lock.open.fill"))}` font-size=13 color=lockColor object-fit="scale-down" width=13 height=13
+                          text lockWord testId="lock-label" class=SmallBold color=lockColor animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
                         // No reading yet, no indicator (vehicle-controls.ios.tsx).
                         if canEngine and (engineKnown or enginePending)
-                          row gap=4 align-items="center" testId="engine-state"
+                          row gap=4 align-items="center" flex-shrink=0 testId="engine-state"
                             image "symbol:icon.power" font-size=13 color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") object-fit="scale-down" width=13 height=13
                             // One label, its width the longest the engine can say:
                             // hidden copies of every word share its cell and size it

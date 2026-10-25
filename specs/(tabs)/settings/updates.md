@@ -107,6 +107,8 @@ Tools section, so only in development and preview builds.
 
 ## Platform notes
 
+- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Native log contents | Whatever the platform's update runtime logs; the summarizer recognizes the current message shapes and falls back to the raw code and message for anything else | The same summarizer, unextended so far — no native entries have been observed on Android yet to disagree with it |

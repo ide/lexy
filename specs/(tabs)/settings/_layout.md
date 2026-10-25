@@ -37,6 +37,8 @@ own spec.
 
 ## Platform notes
 
+- Exact settings and diagnostic pages share a readable column: trailing on a book fold, starting below the hinge on a laptop fold. Native scrolling reveals focused fields above the keyboard.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Back affordance on pushed screens | Chevron only, no back title | — |

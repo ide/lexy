@@ -56,3 +56,7 @@ Reachable only from the Developer Tools section, so only in development and prev
   cached data, parked at a recognizable stand-in location rather than at 0,0.
 - "Clear Maps provider" forgets the saved choice immediately, with a medium impact haptic and no
   confirmation.
+
+## Platform notes
+
+- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.

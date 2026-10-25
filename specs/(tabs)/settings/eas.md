@@ -47,6 +47,8 @@ the dashboard to see anything.
 
 ## Platform notes
 
+- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Footer wording | Names Safari by name ("Opens expo.dev in Safari for …") | "Opens expo.dev in your browser for …" — Android's default browser varies, so the copy doesn't name one |

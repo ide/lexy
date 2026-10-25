@@ -59,7 +59,7 @@ for different vehicles remain independent.
 ## Structure
 
 The stack title is the vehicle's nickname. While the Exact dashboard first loads,
-an invisible zero-width space reserves the same large-title space as the loaded screen.
+a transparent zero-width title keeps the native large-title height without visible glyphs.
 
 In order down the scroll:
 
@@ -150,10 +150,10 @@ attention is warning orange, settled is reassuring green.
 ### Remote controls
 
 The section title row carries live state on its trailing edge, in the same order
-as the buttons below it:
+as the buttons below it. Exact wraps the indicators below the heading when space is limited:
 
 - **Lock state** — "Locked" only when *every* door that reports a lock says
-  locked (doors are the only closures with a lock); "Unlocked" otherwise. While
+  locked (doors are the only closures with a lock); "Unlocked" when a door reports unlocked. With no lock reading, Exact shows a neutral "Unknown" indicator. While
   a lock/unlock prediction is unconfirmed it reads "Locking" / "Unlocking" and
   the word pulses — the wait has no length to promise, only a state to report,
   so it pulses rather than trailing an ellipsis.

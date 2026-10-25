@@ -6,7 +6,7 @@ use Card from "./model.contract"
 use MapsApp from "./model.contract"
 use mapsName from "./model.contract"
 use exactTime from "./model.contract"
-use SectionHeader from "./settings.contract"
+use SectionHeader, SettingsColumn from "./settings.contract"
 use SectionFooter from "./settings.contract"
 use LockScreen from "./sign-in.contract"
 use exactVersion from "./exact-version.contract"
@@ -120,6 +120,7 @@ component ChoiceRow
 // running, what it shipped with, and whether a newer bundle waits.
 component UpdatesScreen
   props
+    fold: string
     delivery: Delivery
     version: string
     checked: bool
@@ -127,7 +128,7 @@ component UpdatesScreen
     apply: action
   view
     scroll id="screen-scroll" testId="updates-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 gap=24
+      SettingsColumn(fold=fold, id="updates-column")
         column
           SectionHeader(title="Running")
           column class=Card
@@ -168,6 +169,7 @@ component UpdatesScreen
 // after every launch (it lives in memory only).
 component DataStateScreen
   props
+    fold: string
     current: string
     choose: action
     apps: MapsApp
@@ -175,7 +177,7 @@ component DataStateScreen
     clearMaps: action
   view
     scroll id="screen-scroll" testId="data-state-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 gap=24
+      SettingsColumn(fold=fold, id="data-state-column")
         column
           SectionHeader(title="Data State")
           column class=Card
@@ -206,6 +208,7 @@ component DataStateScreen
 // against a mock tree; the session in the Keychain is never touched.
 component LoginPreviewScreen
   props
+    fold: string
     compact: bool
     scenario: string
     done: bool
@@ -249,24 +252,27 @@ component LoginPreviewScreen
             text scenarioTitle("network-error")
       if not done
         column flex=1 min-height=0
-          LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, preview=true, fold="", banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+          LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, startOver=startOver, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       if done
-        column testId="preview-done" flex=1 align-items="center" justify-content="center" gap=12 padding=32
-          image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
-          text "You’re Signed In" font-size=28 font-weight=700 text-align="center"
-          text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
-          text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
-          button press=runAgain testId="run-again" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
-            text "Run Again" font-size=17 font-weight=600 color="#ffffff"
+        scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden"
+          SettingsColumn(fold=fold, id="preview-result-column")
+            column testId="preview-done" align-items="center" gap=12 padding=16
+              image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
+              text "You’re Signed In" role="heading" aria-level=2 text-align="center"
+              text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
+              text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
+              button press=runAgain testId="run-again" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
+                text "Run Again" font-size=17 font-weight=600 color="#ffffff"
 
 // eas-screen.ios.tsx: the project's pages on expo.dev, in Safari, where the
 // dashboard's session lives.
 component EasScreen
   props
+    fold: string
     open: action
   view
     scroll id="screen-scroll" testId="eas-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16
+      SettingsColumn(fold=fold, id="eas-column")
         SectionHeader(title="Dashboard")
         column class=Card
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
@@ -318,6 +324,7 @@ component MetricRow
 // each launch metric. Long-press the launch's TTI to copy what held it.
 component PerformanceScreen
   props
+    fold: string
     observed: Observed
     utcOffset: number
   state selectedReport = ""
@@ -327,7 +334,7 @@ component PerformanceScreen
     copyText(selectedReport)
   view
     scroll id="screen-scroll" testId="performance-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
-      column box-sizing="border-box" padding=16 gap=24
+      SettingsColumn(fold=fold, id="performance-column")
         if not observed.ok
           SectionFooter(words="Observe isn’t running in this build, so there is nothing recorded on this device.")
         if observed.ok and observed.latest.length == 0 and observed.summary.length == 0 and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length == 0
