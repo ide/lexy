@@ -62,7 +62,7 @@ component SpecsScreen
     fold: string
   derive car = garage.car
   view
-    scroll id="screen-scroll" testId="specs-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
+    scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing
       column box-sizing="border-box" min-height="100%"
         if not online
           column margin-left=16 margin-right=16 margin-top=16

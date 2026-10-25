@@ -78,6 +78,8 @@ stale data at all.
 
 ## Platform notes
 
+- Exact uses UIKit’s default header treatment on every screen except Status, which uses soft scroll edges.
+
 - Exact leaves navigation-title font, weight, color, and header spacing to UIKit. Map and login previews use inline titles; other routes use large titles. UIKit supplies the bottom safe area once; page padding adds only content spacing.
 
 | Concern | iOS | Android |

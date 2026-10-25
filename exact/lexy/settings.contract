@@ -108,7 +108,7 @@ component SettingsScreen
     signingOut: bool
     fold: string
   view
-    scroll id="screen-scroll" testId="settings-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="settings-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%"
       SettingsColumn(fold=fold, id="settings-column")
         if developer
           DeveloperTools(open=openDevTool, setDeveloper=setDeveloper, origin=developerOrigin, place=developerPlace)

@@ -125,7 +125,7 @@ component DeveloperPanes
     id: string
   slot
   view
-    scroll id="screen-scroll" testId=`${id}-scroll` -exact-scroll-edge-effect="soft" overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%"
       column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" max-width=(expanded ? "none" : readableWidth()) margin-left="auto" margin-right="auto" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
@@ -136,7 +136,7 @@ component DeveloperPane
     id: string
   slot
   view
-    column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible") -exact-scroll-edge-effect="soft"
+    column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible")
       column gap=24 padding-left=16 padding-right=16 padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
         children
 
@@ -203,7 +203,7 @@ component DataStateScreen
     provider: string
     clearMaps: action
   view
-    scroll id="screen-scroll" testId="data-state-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="data-state-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%"
       SettingsColumn(fold=fold, id="data-state-column")
         column
           SectionHeader(title="Data State")
@@ -298,7 +298,7 @@ component EasScreen
     fold: string
     open: action
   view
-    scroll id="screen-scroll" testId="eas-scroll" -exact-scroll-edge-effect="soft" overflow-x="hidden" flex=1 min-height=0 width="100%"
+    scroll id="screen-scroll" testId="eas-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%"
       SettingsColumn(fold=fold, id="eas-column")
         SectionHeader(title="Dashboard")
         column class=Card
