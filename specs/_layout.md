@@ -70,6 +70,9 @@ None of its own.
 
 ## Platform notes
 
+- Exact screens use UIKit content roots with their own scroll views for
+  scrolling, edge effects, and keyboard reveal.
+
 - The Exact app uses the host’s automatic safe-area fitting. Content stays clear of the Duo’s side navigation strip; full-screen cover fitting requires the app to supply its own insets.
 
 - **No transition animation on the root stack.** The root stack only ever
