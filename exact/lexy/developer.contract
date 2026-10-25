@@ -136,7 +136,7 @@ component DeveloperPane
     id: string
   slot
   view
-    column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible")
+    column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 box-sizing="border-box" height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible")
       column gap=24 padding-left=16 padding-right=16 padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
         children
 
