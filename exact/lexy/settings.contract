@@ -11,9 +11,19 @@ use mapsResolved from "./model.contract"
 use MapsChooser from "./map.contract"
 use SectionTitle from "./model.contract"
 
-// Fill the width on a wide display, and keep each settings page in one fold
-// segment: trailing on a book fold, lower on a laptop fold
+// Fill the width on a wide display and keep it on a fold, as a UIKit
+// inset-grouped list does
 component SettingsColumn
+  props
+    id: string
+  slot
+  view
+    column testId=id box-sizing="border-box" padding=16 gap=24
+      children
+
+// Fill the width on a wide display, and keep a form clear of the hinge on a
+// fold, as the sign-in form is: trailing on a book fold, lower on a laptop fold
+component FormColumn
   props
     fold: string
     id: string
@@ -114,7 +124,7 @@ component SettingsScreen
     fold: string
   view
     scroll id="screen-scroll" testId="settings-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
-      SettingsColumn(fold=fold, id="settings-column")
+      SettingsColumn(id="settings-column")
         if developer
           DeveloperTools(open=openDevTool, setDeveloper=setDeveloper, origin=developerOrigin, place=developerPlace)
         column
@@ -134,7 +144,9 @@ component SettingsScreen
         column
           SectionHeader(title="Lexus Account")
           column class=Card
-            button commandfor="sign-out-confirmation" command="show-modal" disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" gap=8
+            // Start the label at the leading edge on a book fold, where a
+            // centred label crosses the hinge
+            button commandfor="sign-out-confirmation" command="show-modal" disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align=(fold == "across" ? "start" : "center") gap=8
               image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
               text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
           dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
@@ -179,7 +191,7 @@ component RenameScreen
   derive changed = name.trim() != "" and name.trim() != saved
   view
     scroll id="screen-scroll" testId="rename" keyboardDismissMode="interactive" overflow-x="hidden" flex=1 min-height=0 width="100%" background-color="-exact-grouped-background" class=SafeScroll
-      SettingsColumn(fold=fold, id="rename-column")
+      FormColumn(fold=fold, id="rename-column")
         // section.tsx: the footer 8 under its field, 16 to what follows.
         column gap=8
           row class=Card min-height=44 padding-left=16 padding-right=8 align-items="center"

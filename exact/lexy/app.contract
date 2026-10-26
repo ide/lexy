@@ -1072,15 +1072,15 @@ component Lexy
                   if e.name == "updates"
                     UpdatesScreen(wide=wide, fold=fold, delivery=delivery, version=appVersion(), checked=updateChecked, check=checkUpdate, apply=applyUpdate)
                   if e.name == "dataState"
-                    DataStateScreen(fold=fold, current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
+                    DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
                   if e.name == "login" or e.name == "loginChoice" or e.name == "loginCode"
                     LoginPreviewScreen(fold=fold, compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, runAgain=runPreviewAgain, step=(e.name == "loginCode" ? "otp" : (e.name == "loginChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=signError, busy=signingIn, resending=resending, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
                   if e.name == "eas"
-                    EasScreen(fold=fold, open=openExternal)
+                    EasScreen(open=openExternal)
                   if e.name == "performance"
                     PerformanceScreen(wide=wide, fold=fold, observed=observed, utcOffset=time.utcOffset)
                   if e.name == "session"
-                    SessionScreen(fold=fold, log=sessionLog, loading=pending(sessionLog), signedIn=account.signedIn, expiresAt=account.expiresAt, utcOffset=time.utcOffset)
+                    SessionScreen(log=sessionLog, loading=pending(sessionLog), signedIn=account.signedIn, expiresAt=account.expiresAt, utcOffset=time.utcOffset)
                   if e.name == "rename"
                     RenameScreen(fold=fold, name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 

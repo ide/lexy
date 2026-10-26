@@ -7,7 +7,7 @@ use Card from "./model.contract"
 use MapsApp from "./model.contract"
 use mapsName from "./model.contract"
 use exactTime from "./model.contract"
-use SectionHeader, SettingsColumn from "./settings.contract"
+use SectionHeader, SettingsColumn, FormColumn from "./settings.contract"
 use SectionFooter from "./settings.contract"
 use LockScreen from "./sign-in.contract"
 use exactVersion from "./exact-version.contract"
@@ -196,7 +196,6 @@ component UpdatesScreen
 // after every launch (it lives in memory only).
 component DataStateScreen
   props
-    fold: string
     current: string
     choose: action
     apps: MapsApp
@@ -204,7 +203,7 @@ component DataStateScreen
     clearMaps: action
   view
     scroll id="screen-scroll" testId="data-state-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
-      SettingsColumn(fold=fold, id="data-state-column")
+      SettingsColumn(id="data-state-column")
         column
           SectionHeader(title="Data State")
           column class=Card
@@ -284,7 +283,7 @@ component LoginPreviewScreen
           LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
       if done and step == "credentials"
         scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden" class=SafeScroll
-          SettingsColumn(fold=fold, id="preview-result-column")
+          FormColumn(fold=fold, id="preview-result-column")
             column testId="preview-done" align-items="center" gap=12 padding=16
               image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
               text "You’re Signed In" role="heading" aria-level=2 text-align="center"
@@ -297,11 +296,10 @@ component LoginPreviewScreen
 // dashboard's session lives.
 component EasScreen
   props
-    fold: string
     open: action
   view
     scroll id="screen-scroll" testId="eas-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
-      SettingsColumn(fold=fold, id="eas-column")
+      SettingsColumn(id="eas-column")
         SectionHeader(title="Dashboard")
         column class=Card
           button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
@@ -437,7 +435,6 @@ fn sessionLogText(log: SessionLog, utcOffset: number): string = log.events.map((
 // hands on all of it.
 component SessionScreen
   props
-    fold: string
     log: SessionLog
     loading: bool
     signedIn: bool
@@ -447,7 +444,7 @@ component SessionScreen
     copyText(sessionLogText(log, utcOffset))
   view
     scroll id="screen-scroll" testId="session-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
-      SettingsColumn(fold=fold, id="session-column")
+      SettingsColumn(id="session-column")
         column
           SectionHeader(title="Now")
           column class=Card

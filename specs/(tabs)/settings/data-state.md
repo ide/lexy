@@ -59,4 +59,4 @@ Reachable only from the Developer Tools section, so only in development and prev
 
 ## Platform notes
 
-- Exact's content fills the width on a wide display, as a UIKit inset-grouped list does. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+- Exact's content fills the width on a wide display, as a UIKit inset-grouped list does, and keeps its place on a fold.
