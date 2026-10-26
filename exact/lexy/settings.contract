@@ -70,6 +70,9 @@ component DeveloperTools
         button text-align="left" press=open("/settings/login") testId="dev-login" display="flex"
           SettingsRowFace(symbol="person.badge.key.fill", title="Login Flow", subtitle="Walk the sign-in screens without signing out.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
+        button text-align="left" press=open("/settings/session") testId="dev-session" display="flex"
+          SettingsRowFace(symbol="clock.arrow.circlepath", title="Session", subtitle="What the sign-in session did: refreshes, failures and sign-outs.", opensScreen=true)
+        box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/performance") testId="dev-performance" display="flex"
           SettingsRowFace(symbol="gauge_with_dots_needle_67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"

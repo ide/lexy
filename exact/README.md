@@ -15,7 +15,7 @@ The Swift module provides MapKit, geocoding, maps-app links, and haptics.
 | `lexy/status.contract` | Status dashboard and remote controls |
 | `lexy/specs.contract` | Vehicle specifications and connected services |
 | `lexy/settings.contract` | Settings and vehicle name |
-| `lexy/developer.contract` | Developer tools and Observe metrics |
+| `lexy/developer.contract` | Developer tools, Observe metrics and the session log |
 | `lexy/map.contract` | Last Parked sheet |
 | `lexy/app.ts` | I/O and response decoding |
 | `lexy/demo.ts` | Local demo server and sign-in previews |
@@ -79,13 +79,14 @@ storage; persistence checks execute real SQLite statements:
 ```sh
 bun exact/lexy/auth.check.ts
 bun exact/lexy/session.check.ts
+bun exact/lexy/session-log.check.ts
 bun exact/lexy/data-flow.check.ts
 bun exact/lexy/closures.check.ts
 bun exact/lexy/maps-preference.check.ts
 bun exact/lexy/independent-reads.check.ts
 ```
 
-They cover sign-in and preview isolation, token refresh and sign-out, malformed responses, sparse closure
+They cover sign-in and preview isolation, token refresh and sign-out, the session log, malformed responses, sparse closure
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 

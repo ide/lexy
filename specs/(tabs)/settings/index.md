@@ -79,6 +79,7 @@ internal preview builds it also carries the entry points to the developer tools.
 - In Exact, dragging from the Maps App row scrolls the list without opening the chooser. A tap opens the chooser; choosing an app saves the preference.
 - When unfolded, Exact’s Performance screen puts launch and screen metrics on the left and medians on the right. Each pane scrolls independently beneath the native heading and bottom bars. On iOS 27, UIKit keeps the safe area unchanged as the navigation bar minimizes, so scrolling one pane does not move the other’s content. UIKit insets each pane’s content once. Closed and laptop views use one column.
 - Exact's Performance screen offers a native Copy menu when the launch TTI cell is long-pressed, without text selection. Copy includes the timestamp, value, phases, and all diagnostic lines.
+- Exact's Developer Tools add a Session row, which pushes `/settings/session`. The screen shows whether the app is signed in, when the access token expires, the last sign-in, and the refreshes since it, then the session log, newest first. The log records sign-ins, refreshes, refresh failures, refused requests, deleted sessions, sign-outs, and launches without a saved session. It keeps the newest 200 events on the device through sign-outs, holds no token, and shows a refresh token only as the first six hex digits of its SHA-256. Copy Log copies every event with its time.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

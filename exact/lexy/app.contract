@@ -39,6 +39,7 @@ use DataStateScreen from "./developer.contract"
 use LoginPreviewScreen, LoginScenarioChooser from "./developer.contract"
 use EasScreen from "./developer.contract"
 use PerformanceScreen, Observed, ObservedCleared from "./developer.contract"
+use SessionScreen, SessionLog from "./developer.contract"
 use Delivery from "./developer.contract"
 use signInError from "./model.contract"
 
@@ -57,6 +58,7 @@ routes nav
     loginCode "/settings/login/code"
     eas "/settings/eas"
     performance "/settings/performance"
+    session "/settings/session"
     // `lexy://developer` (app.json `protocol_handlers`), and on the web the
     // page's own `/developer`: turns developer mode on
     unlock "/developer"
@@ -297,6 +299,9 @@ component Lexy
   // each time (none asked before it first does).
   state observedRev = 0
   resource observed = observed(observedRev > 0 ? 200 : 0) with observedRev as shape Observed
+  // Settings → Developer Tools → Session: read each time the screen opens
+  state sessionLogRev = 0
+  resource sessionLog = sessionLog(sessionLogRev > 0 ? 200 : 0) with sessionLogRev as shape SessionLog
   mutation observedCleared as shape ObservedCleared refreshes observed
   state updateChecked = false
   // Data State: the override the vehicle screens are shown, Live at launch.
@@ -727,7 +732,7 @@ component Lexy
   action setDeveloper(on: bool)
     send developerSet = setDeveloperMode(on)
   action signOut
-    send left = signOut()
+    send left = signOut(time.epochAtZero + performanceNow())
   // Clear credentials after the session hands off to the dashboard
   action finishEntering
     if entered
@@ -930,6 +935,8 @@ component Lexy
   action openDevTool(url: string)
     if url == "/settings/performance"
       observedRev = observedRev + 1
+    if url == "/settings/session"
+      sessionLogRev = sessionLogRev + 1
     if url == "/settings/login"
       previewScenario = "success-multi"
       previewDone = false
@@ -1072,6 +1079,8 @@ component Lexy
                     EasScreen(fold=fold, open=openExternal)
                   if e.name == "performance"
                     PerformanceScreen(wide=wide, fold=fold, observed=observed, utcOffset=time.utcOffset)
+                  if e.name == "session"
+                    SessionScreen(fold=fold, log=sessionLog, loading=pending(sessionLog), signedIn=account.signedIn, expiresAt=account.expiresAt, utcOffset=time.utcOffset)
                   if e.name == "rename"
                     RenameScreen(fold=fold, name=draftName, saved=carName, saving=pending(renamed), error=renameError, setName=setDraftName, clear=clearDraftName, save=saveName, back=back)
 

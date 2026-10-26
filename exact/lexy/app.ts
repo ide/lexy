@@ -252,6 +252,7 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
     });
     next = tokens(await readJson(response), session, at);
   } catch (e) {
+    logSession(at, 'refresh failed', tokenPrint(session.refreshToken).then(sent => `sent ${sent}; ${refreshFailure(e)}`));
     // No reply from Lexus (offline, or let go between answers): the session
     // stays for the next try
     if (!(e instanceof HttpError)) {
@@ -266,6 +267,7 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
     }
     if ((e.status === 400 || e.status === 401) && e.code === 'invalid_grant') {
       store.forget('lexy.session');
+      logSession(at, 'session deleted', 'Lexus refused the refresh token (invalid_grant)');
       await forgetStored();
       throw signedOut('Your Lexus session expired. Please sign in again.');
     }
@@ -280,7 +282,23 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
     return stored;
   }
   store.set('lexy.session', JSON.stringify(next));
+  logSession(at, 'refreshed', Promise.all([tokenPrint(session.refreshToken), tokenPrint(next.refreshToken)])
+    .then(([sent, got]) => `sent ${sent}, got ${sent === got ? 'the same token' : got}; the access token lasts ${Math.round((next.expiresAt - at) / 1000)} s`));
   return next;
+}
+
+// Why a refresh failed, as the session log says it: an HTTP status and an OAuth
+// error code, or the kind of failure that left no reply, never words Lexus or
+// the host chose, which could carry a token or an address
+function refreshFailure(e: unknown): string {
+  if (e instanceof HttpError) {
+    return e.status === 200 ? 'an incomplete token response' : `HTTP ${e.status}${/^[a-z_]{1,40}$/.test(e.code) ? ` ${e.code}` : ''}`;
+  }
+  const kind = str(rec(e).kind);
+  if (kind === 'Aborted') {
+    return 'no reply: Exact let the answer go, and the request may have reached Lexus';
+  }
+  return `no reply: ${/^[A-Za-z]{1,20}$/.test(kind) ? kind : 'the request failed'}`;
 }
 
 function guid(idToken: string): string {
@@ -355,15 +373,23 @@ async function authorized(
   at: number,
   call: (session: Session, request: Request) => Promise<Reply>,
 ): Promise<Json> {
+  // The request's path, for the session log: every URL here is a constant, and
+  // the car and the account travel in headers
+  let path = '';
+  const request: Request = (url, init) => {
+    path = new URL(url).pathname;
+    return transport(store, at)(url, init);
+  };
   let current = await readerSession(store);
-  let response = await call(current, transport(store, at));
+  let response = await call(current, request);
   if (response.status === 401 || response.status === 403) {
     const next = await readerSession(store);
     if (next.accessToken !== current.accessToken) {
       current = next;
-      response = await call(current, transport(store, at));
+      response = await call(current, request);
     }
     if (response.status === 401 || response.status === 403) {
+      logSession(at, 'request refused', `HTTP ${response.status} on ${path}`);
       rejectedAccessToken = current.accessToken;
       throw new HttpError(401, 'Lexus rejected the session');
     }
@@ -374,7 +400,12 @@ async function authorized(
 async function session(store: Store, at: number): Promise<Result<'session'>> {
   const demo = store.get('lexy.demo') === '1';
   const current = readSession(store);
-  if (!current) return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
+  if (!current) {
+    // Once per sign-out: a launch with nothing saved after none was logged means
+    // the Keychain lost the session
+    logSession(at, 'no saved session', 'the Keychain held no session', true);
+    return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
+  }
   try {
     let latest = current;
     if (refreshing || rejectedAccessToken === current.accessToken || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
@@ -389,6 +420,9 @@ async function session(store: Store, at: number): Promise<Result<'session'>> {
     // else (offline, a 5xx, a refresh let go) keeps it for the next try
     const signedIn = !(e instanceof HttpError && e.code === SIGNED_OUT);
     const { status, error } = failure(e);
+    if (!signedIn) {
+      logSession(at, 'sign-in shown', error);
+    }
     return { signedIn, demo, expiresAt: signedIn ? current.expiresAt : 0, status, error };
   }
 }
@@ -541,7 +575,10 @@ async function finishSignIn(store: Store, attempt: number, preview: string, toke
     const session = tokens(await readJson(token), undefined, at);
     // A preview proves the exchange and keeps nothing: the session in the
     // Keychain is the user's.
-    if (!preview) store.set('lexy.session', JSON.stringify(session));
+    if (!preview) {
+      store.set('lexy.session', JSON.stringify(session));
+      logSession(at, 'signed in', tokenPrint(session.refreshToken).then(token => `refresh token ${token}`));
+    }
     return { attempt, ok: true, status: 200, error: '' };
   } catch (e) {
     return { attempt, ...failure(e) };
@@ -618,13 +655,14 @@ const tripValue = (values: unknown) => str(rec(arr(values)[0]).value);
 // it and answers from it, so a failed fetch answers what it holds beside the
 // failure, as React Query keeps the last data through a failed refetch, and a
 // blip shows "Couldn't refresh" over the data, not zeros. Signing out empties
-// everything but the choices.
+// everything but the choices and the session log.
 const DB = 'app:/data/lexy.db';
 const SCHEMA: SQLCommand[] = [
   { sql: 'CREATE TABLE IF NOT EXISTS cars (account TEXT NOT NULL, vin TEXT NOT NULL, position INTEGER NOT NULL, car TEXT NOT NULL, PRIMARY KEY (account, vin))' },
   { sql: 'CREATE TABLE IF NOT EXISTS readings (vin TEXT NOT NULL, kind TEXT NOT NULL, answer TEXT NOT NULL, PRIMARY KEY (vin, kind))' },
   { sql: 'CREATE TABLE IF NOT EXISTS closures (vin TEXT NOT NULL, category TEXT NOT NULL, section TEXT NOT NULL, ord INTEGER NOT NULL, position TEXT, position_at REAL, lock TEXT, lock_at REAL, PRIMARY KEY (vin, category, section))' },
   { sql: 'CREATE TABLE IF NOT EXISTS choices (key TEXT PRIMARY KEY, value TEXT NOT NULL)' },
+  { sql: 'CREATE TABLE IF NOT EXISTS session_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at REAL NOT NULL, kind TEXT NOT NULL, detail TEXT NOT NULL)' },
 ];
 // Bumped as the store is emptied: an answer still in flight then does not
 // write the signed-out account's data back.
@@ -796,6 +834,69 @@ async function forgetStored() {
     { sql: 'DELETE FROM readings' },
     { sql: 'DELETE FROM closures' },
   ])).catch(() => undefined);
+}
+
+// --- Session log ------------------------------------------------------------------
+// What the session did, kept apart from what signing out empties, so a sign-out
+// can be explained after it (Settings → Developer Tools → Session). It holds no
+// token: a refresh token shows as the first six hex digits of its SHA-256, which
+// is enough to see one token sent twice.
+const SESSION_LOG_LIMIT = 200;
+// The kinds that say whether a session is held, as against attempts and refusals
+const STATE_KINDS = ['signed in', 'refreshed', 'signed out', 'session deleted', 'sign-in shown', 'no saved session'];
+// State kinds after which a launch without a saved session is expected
+const SIGNED_OUT_KINDS = ['signed out', 'session deleted', 'sign-in shown', 'no saved session'];
+const marks = (values: string[]) => values.map(() => '?').join(', ');
+
+// Log writes in the order they were made, though a token print takes a turn
+let sessionLogTurn: Promise<unknown> = Promise.resolve();
+
+// Log in the background: a log write never holds up or fails the answer.
+// `unlessSignedOut` skips the event when the last state logged already says no
+// session is held.
+function logSession(at: number, kind: string, detail: string | Promise<string>, unlessSignedOut = false) {
+  const words = Promise.resolve(detail);
+  sessionLogTurn = sessionLogTurn
+    .then(() => words)
+    .then(text => withDb(db => db.transaction([
+      unlessSignedOut
+        ? {
+          sql: `INSERT INTO session_log (at, kind, detail) SELECT ?, ?, ? WHERE coalesce((SELECT kind FROM session_log WHERE kind IN (${marks(STATE_KINDS)}) ORDER BY id DESC LIMIT 1), '') NOT IN (${marks(SIGNED_OUT_KINDS)})`,
+          params: [at, kind, text, ...STATE_KINDS, ...SIGNED_OUT_KINDS],
+        }
+        : { sql: 'INSERT INTO session_log (at, kind, detail) VALUES (?, ?, ?)', params: [at, kind, text] },
+      { sql: 'DELETE FROM session_log WHERE id <= (SELECT max(id) FROM session_log) - ?', params: [SESSION_LOG_LIMIT] },
+    ])))
+    .catch(() => undefined);
+}
+
+async function tokenPrint(token: string): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)));
+  return Array.from(digest.slice(0, 3), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sessionLog(limit: number): Promise<Result<'sessionLog'>> {
+  const empty = { ok: false, signedInAt: 0, refreshes: 0, lastRefreshAt: 0, events: [] };
+  if (limit <= 0) return empty;
+  try {
+    // Read after the events already logged have landed
+    await sessionLogTurn;
+    const rows = await withDb(db => db.query('SELECT id, at, kind, detail FROM session_log ORDER BY id DESC LIMIT ?', [limit]));
+    const events = rows.rows.map(([, at, kind, detail]) => ({ at: num(at), kind: str(kind), detail: str(detail) }));
+    // Newest first: what happened since the last sign-in comes before it
+    const signIn = events.findIndex(e => e.kind === 'signed in');
+    const sinceSignIn = signIn >= 0 ? events.slice(0, signIn) : events;
+    const refreshes = sinceSignIn.filter(e => e.kind === 'refreshed');
+    return {
+      ok: true,
+      signedInAt: events.find(e => e.kind === 'signed in')?.at ?? 0,
+      refreshes: refreshes.length,
+      lastRefreshAt: refreshes[0]?.at ?? 0,
+      events,
+    };
+  } catch {
+    return empty;
+  }
 }
 
 // UTF-8 by hand: the data module's runtime need not have TextDecoder.
@@ -1201,8 +1302,9 @@ const sources: Sources = {
     else store.forget('lexy.demo');
     return { ok: true, status: 200, error: '' };
   },
-  signOut: async (_args, store) => {
+  signOut: async ([at], store) => {
     store.forget('lexy.session');
+    logSession(at, 'signed out', 'from Settings');
     store.forget('lexy.demo');
     await forgetStored();
     return { ok: true, status: 200, error: '' };
@@ -1264,6 +1366,7 @@ const sources: Sources = {
   },
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),
   observed: ([limit]) => observed(limit),
+  sessionLog: ([limit]) => sessionLog(limit),
   clearObserved: () => clearObserved(),
 };
 

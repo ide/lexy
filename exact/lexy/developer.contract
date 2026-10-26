@@ -416,3 +416,67 @@ component PerformanceScreen
     column id="metric-menu" popover="auto" role="menu"
       button press=copyMetric popovertarget="metric-menu" popovertargetaction="hide" testId="copy-metric"
         text "Copy"
+
+// One session log entry from app.ts: when, what, and why
+shape SessionLogEvent
+  at: number
+  kind: string
+  detail: string
+
+// The session log, newest first, and what it says since the last sign-in
+shape SessionLog
+  ok: bool
+  signedInAt: number
+  refreshes: number
+  lastRefreshAt: number
+  events: SessionLogEvent[]
+
+fn sessionLogText(log: SessionLog, utcOffset: number): string = log.events.map((e, i) => `${exactTime(e.at, utcOffset)}  ${e.kind}: ${e.detail}`).join("\n")
+
+// Session: the sign-in session now, and the log app.ts keeps of its refreshes,
+// failures and sign-outs, so a sign-out can be explained after it. Copy Log
+// hands on all of it.
+component SessionScreen
+  props
+    fold: string
+    log: SessionLog
+    loading: bool
+    signedIn: bool
+    expiresAt: number
+    utcOffset: number
+  action copyLog
+    copyText(sessionLogText(log, utcOffset))
+  view
+    scroll id="screen-scroll" testId="session-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
+      SettingsColumn(fold=fold, id="session-column")
+        column
+          SectionHeader(title="Now")
+          column class=Card
+            FactRow(label="Signed in", value=(signedIn ? "Yes" : "No"), id="session-signed-in")
+            Divider()
+            FactRow(label="Access token expires", value=(signedIn ? exactTime(expiresAt, utcOffset) : "Not signed in"), id="session-expires")
+            Divider()
+            FactRow(label="Last sign-in", value=(log.signedInAt > 0 ? exactTime(log.signedInAt, utcOffset) : "Not logged"), id="session-signed-in-at")
+            Divider()
+            FactRow(label="Refreshes since", value=`${log.refreshes}`, id="session-refreshes")
+            Divider()
+            FactRow(label="Last refresh", value=(log.lastRefreshAt > 0 ? exactTime(log.lastRefreshAt, utcOffset) : "None"), id="session-last-refresh")
+        column
+          SectionHeader(title="Log")
+          if not loading and log.events.length == 0
+            SectionFooter(words=(log.ok ? "Nothing logged yet." : "The session log is unavailable."))
+          if log.events.length > 0
+            column gap=20
+              column class=Card
+                button press=copyLog testId="copy-session-log" text-align="left" padding=16 display="flex"
+                  text "Copy Log" font-size=17 color="AccentColor"
+              column class=Card
+                for e, i in log.events key=`${e.at}-${i}`
+                  column user-select="text" testId=`session-event-${i}`
+                    if i > 0
+                      Divider()
+                    column padding=16 gap=2
+                      text e.kind font-size=17
+                      text e.detail font-size=13 color="-exact-secondary-label"
+                      text exactTime(e.at, utcOffset) font-size=13 color="-exact-secondary-label"
+          SectionFooter(words="Lexy keeps the last 200 events on this device, through sign-outs. A refresh token shows only as the first six hex digits of its SHA-256.")
