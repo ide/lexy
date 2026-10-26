@@ -21,8 +21,7 @@ login preview).
 - Screens and their titles:
   - `index` — "Settings".
   - `updates` — "Updates".
-  - `eas` — "EAS". The full "Expo Application Services" is the settings row's job; a title that
-    long shrinks itself to fit rather than reading well.
+  - `eas` — "Expo Services", as its settings row reads.
   - `data-state` — "Data State".
   - `vehicle-name` — "Vehicle Name". The screen's own heading carries the label the field no longer
     repeats above itself, so the title names the thing in full.

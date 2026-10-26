@@ -292,7 +292,7 @@ fn routeTitle(route: string): string = (
   route == "updates" ? "Updates" :
   route == "dataState" ? "Data State" :
   route == "login" or route == "loginChoice" or route == "loginCode" ? "Login Flow" :
-  route == "eas" ? "EAS" :
+  route == "eas" ? "Expo Services" :
   route == "performance" ? "Performance" :
   route == "session" ? "Session" :
   ""

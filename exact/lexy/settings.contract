@@ -88,7 +88,7 @@ component DeveloperTools
           SettingsRowFace(symbol="gauge_with_dots_needle_67percent", title="Performance", subtitle="This device’s launch and screen times, as Observe records them.", opensScreen=true)
         box height=0.5 margin-left=60 background-color="-exact-separator"
         button text-align="left" press=open("/settings/eas") testId="dev-eas" display="flex"
-          SettingsRowFace(symbol="cloud.fill", title="Expo Application Services", subtitle="Open this project’s EAS dashboard.", opensScreen=true)
+          SettingsRowFace(symbol="cloud.fill", title="Expo Services", subtitle="Open this project’s Expo dashboard.", opensScreen=true)
         box height=0.5 margin-left=16 background-color="-exact-separator"
         row padding=16 gap=12 align-items="center"
           text "Developer Mode" font-size=17 flex=1 min-width=0

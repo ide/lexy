@@ -297,20 +297,21 @@ component EasScreen
   view
     scroll id="screen-scroll" testId="eas-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
       SettingsColumn(id="eas-column")
-        SectionHeader(title="Dashboard")
-        column class=Card
-          button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
-            EasRow(symbol="house.fill", title="Project Home", subtitle="The project overview and its recent activity.")
-          box height=0.5 margin-left=60 background-color="-exact-separator"
-          button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/observe") testId="eas-observe" display="flex"
-            EasRow(symbol="waveform.path.ecg", title="Observe", subtitle="Launch, render, and navigation metrics from real devices.")
-          box height=0.5 margin-left=60 background-color="-exact-separator"
-          button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/workflows") testId="eas-workflows" display="flex"
-            EasRow(symbol="flowchart.fill", title="Workflows", subtitle="The runs that build this Exact app.")
-          box height=0.5 margin-left=60 background-color="-exact-separator"
-          button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/builds") testId="eas-builds" display="flex"
-            EasRow(symbol="hammer.fill", title="Builds", subtitle="Native builds, their logs, and install links.")
-        SectionFooter(words="Opens expo.dev in Safari for @ide/lexy. You need to be signed in on the dashboard to see anything.")
+        column
+          SectionHeader(title="Dashboard")
+          column class=Card
+            button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy") testId="eas-home" display="flex"
+              EasRow(symbol="house.fill", title="Project Home", subtitle="The project overview and its recent activity.")
+            box height=0.5 margin-left=60 background-color="-exact-separator"
+            button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/observe") testId="eas-observe" display="flex"
+              EasRow(symbol="waveform.path.ecg", title="Observe", subtitle="Launch, render, and navigation metrics from real devices.")
+            box height=0.5 margin-left=60 background-color="-exact-separator"
+            button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/workflows") testId="eas-workflows" display="flex"
+              EasRow(symbol="flowchart.fill", title="Workflows", subtitle="The runs that build this Exact app.")
+            box height=0.5 margin-left=60 background-color="-exact-separator"
+            button text-align="left" press=open("https://expo.dev/accounts/ide/projects/lexy/builds") testId="eas-builds" display="flex"
+              EasRow(symbol="hammer.fill", title="Builds", subtitle="Native builds, their logs, and install links.")
+          SectionFooter(words="Opens expo.dev in Safari for @ide/lexy. You need to be signed in on the dashboard to see anything.")
 
 // A row that leaves the app: an external-link glyph, not a push chevron.
 component EasRow
@@ -320,7 +321,7 @@ component EasRow
     subtitle: string
   view
     row gap=16 padding=16 align-items="center" width="100%" box-sizing="border-box"
-      image `symbol:icon.${symbol}` font-size=22 color="-exact-system-cyan" object-fit="scale-down" width=28 height=26
+      image `symbol:icon.${symbol}` font-size=22 color="AccentColor" object-fit="scale-down" width=28 height=26
       column flex=1 min-width=0 gap=2
         text title font-size=17 font-weight=600 color="-exact-label"
         text subtitle font-size=13 font-weight=500 color="-exact-secondary-label"

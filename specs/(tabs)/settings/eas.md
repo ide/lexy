@@ -48,6 +48,7 @@ the dashboard to see anything.
 ## Platform notes
 
 - Exact's content fills the width on a wide display, as a UIKit inset-grouped list does, and keeps its place on a fold.
+- Exact tints the row symbols with the app's accent, as the Settings rows are.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

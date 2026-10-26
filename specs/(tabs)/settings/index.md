@@ -31,7 +31,7 @@ internal preview builds it also carries the entry points to the developer tools.
    - Updates — "Expo Updates status, controls, and activity log."
    - Data State — "Force loading, offline, error, and empty states."
    - Login Flow — "Walk the sign-in screens without signing out."
-   - Expo Application Services — "Open this project's EAS dashboard."
+   - Expo Services — "Open this project's Expo dashboard."
 2. **MAPS** (iOS only — see Platform notes) — a single "Maps App" row whose subtitle is the current choice: the saved app's name,
    the sole installed app's name when there is nothing saved, "Not set" while more than one is
    installed and none chosen, or "Unavailable" when no supported maps app is installed. The resolved
