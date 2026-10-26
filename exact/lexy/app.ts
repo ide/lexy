@@ -197,12 +197,27 @@ function tokens(body: Json, previous: Session | undefined, at: number): Session 
 }
 
 // A confirmed invalid_grant ends the session; other refresh failures keep it.
-// Lexus rotates refresh tokens: each refresh spends the one it sends. Two
-// refreshes racing with the same token (a launch after a long while starts
-// the session twice) would have the loser rejected and sign the user out,
-// so a refresh in flight is shared, and a rejection forgets the session only
-// if the stored token is still the one rejected.
+// Lexus rotates refresh tokens: each refresh spends the one it sends, and a
+// spent one is refused as invalid_grant. Two refreshes racing with the same
+// token would have the loser refused, so a refresh in flight is shared, and a
+// rejection forgets the session only if the stored token is still the one
+// rejected.
+//
+// A refresh must also get its reply. When Exact asks a resource again with
+// newer arguments, it lets the old answer go and rejects the fetches that
+// answer made, though the request may already have reached Lexus, which then
+// spent the token. Contract asks the `session` source again only once it has
+// answered, while it asks a vehicle read again whenever its car or revision
+// moves, so only `session` refreshes: a read waits for its refresh but never
+// starts one. A rejected fetch's continuation runs between answers, where the
+// store reads as empty, so a refresh that failed without a reply from Lexus
+// never reads the store to decide whether the user signed out.
 let refreshing: Promise<Session> | null = null;
+
+// Marks the failures that mean the session is gone, as against a refresh that
+// can be tried again
+const SIGNED_OUT = 'signed_out';
+const signedOut = (text = 'Signed out') => new HttpError(401, text, SIGNED_OUT);
 
 function refreshed(store: Store, session: Session, at: number): Promise<Session> {
   if (refreshing) {
@@ -210,7 +225,7 @@ function refreshed(store: Store, session: Session, at: number): Promise<Session>
   }
   const stored = readSession(store);
   if (!stored) {
-    return Promise.reject(new HttpError(401, 'Signed out'));
+    return Promise.reject(signedOut());
   }
   if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
     return Promise.resolve(stored);
@@ -237,24 +252,29 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
     });
     next = tokens(await readJson(response), session, at);
   } catch (e) {
+    // No reply from Lexus (offline, or let go between answers): the session
+    // stays for the next try
+    if (!(e instanceof HttpError)) {
+      throw e;
+    }
     const stored = readSession(store);
     if (!stored) {
-      throw new HttpError(401, 'Signed out');
+      throw signedOut();
     }
     if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
       return stored;
     }
-    if (e instanceof HttpError && (e.status === 400 || e.status === 401) && e.code === 'invalid_grant') {
+    if ((e.status === 400 || e.status === 401) && e.code === 'invalid_grant') {
       store.forget('lexy.session');
       await forgetStored();
-      throw new HttpError(401, 'Your Lexus session expired. Please sign in again.');
+      throw signedOut('Your Lexus session expired. Please sign in again.');
     }
     throw e;
   }
   // Adopt the reply only while the session that requested it is still current
   const stored = readSession(store);
   if (!stored) {
-    throw new HttpError(401, 'Signed out');
+    throw signedOut();
   }
   if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
     return stored;
@@ -309,44 +329,43 @@ function vehicleHeaders(session: Session, car: Car): Record<string, string> {
 }
 
 // The gateway rejected this token before its stated expiry: the next session
-// read refreshes it even though it is not due. A new token clears the marker.
+// answer refreshes it even though it is not due. A new token clears the marker.
 let rejectedAccessToken = '';
 
-async function currentSession(store: Store, at: number): Promise<Session> {
-  const current = readSession(store);
-  if (!current) {
-    throw new HttpError(401, 'Signed out');
+// A vehicle read's session: the refresh in flight's, else the stored one. A
+// read never starts a refresh (see `refreshing`); a token past its expiry goes
+// as it is, and the 401 it earns asks Contract for the session again.
+async function readerSession(store: Store): Promise<Session> {
+  if (refreshing) {
+    return refreshing;
   }
-  if (refreshing || rejectedAccessToken === current.accessToken || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
-    const latest = await refreshed(store, current, at);
-    if (rejectedAccessToken === current.accessToken) {
-      rejectedAccessToken = '';
-    }
-    return latest;
+  const stored = readSession(store);
+  if (!stored) {
+    throw signedOut();
   }
-  return current;
+  return stored;
 }
 
 /**
- * Use the current token, joining or starting the one shared refresh when needed.
+ * Use the current token, waiting for a refresh in flight, and retry once with
+ * a token a refresh issued while the request was out.
  */
 async function authorized(
   store: Store,
   at: number,
   call: (session: Session, request: Request) => Promise<Reply>,
 ): Promise<Json> {
-  let current = await currentSession(store, at);
+  let current = await readerSession(store);
   let response = await call(current, transport(store, at));
   if (response.status === 401 || response.status === 403) {
-    rejectedAccessToken = current.accessToken;
-    current = await refreshed(store, current, at);
-    if (rejectedAccessToken !== '' && rejectedAccessToken !== current.accessToken) {
-      rejectedAccessToken = '';
+    const next = await readerSession(store);
+    if (next.accessToken !== current.accessToken) {
+      current = next;
+      response = await call(current, transport(store, at));
     }
-    response = await call(current, transport(store, at));
     if (response.status === 401 || response.status === 403) {
       rejectedAccessToken = current.accessToken;
-      throw new HttpError(401, 'Lexus rejected the refreshed session');
+      throw new HttpError(401, 'Lexus rejected the session');
     }
   }
   return readJson(response);
@@ -354,15 +373,21 @@ async function authorized(
 
 async function session(store: Store, at: number): Promise<Result<'session'>> {
   const demo = store.get('lexy.demo') === '1';
-  let current = readSession(store);
+  const current = readSession(store);
   if (!current) return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
   try {
-    current = await currentSession(store, at);
-    return { signedIn: true, demo, expiresAt: current.expiresAt, status: 200, error: '' };
+    let latest = current;
+    if (refreshing || rejectedAccessToken === current.accessToken || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
+      latest = await refreshed(store, current, at);
+      if (rejectedAccessToken === current.accessToken) {
+        rejectedAccessToken = '';
+      }
+    }
+    return { signedIn: true, demo, expiresAt: latest.expiresAt, status: 200, error: '' };
   } catch (e) {
-    // A rejected refresh token has already been forgotten; anything else
-    // (offline, a 5xx) keeps the session for the next try.
-    const signedIn = readSession(store) !== null;
+    // Only a refused refresh token or a sign-out ends the session; anything
+    // else (offline, a 5xx, a refresh let go) keeps it for the next try
+    const signedIn = !(e instanceof HttpError && e.code === SIGNED_OUT);
     const { status, error } = failure(e);
     return { signedIn, demo, expiresAt: signedIn ? current.expiresAt : 0, status, error };
   }
@@ -1209,7 +1234,7 @@ const sources: Sources = {
     }
   },
   garage: ([_signedIn, _expiresAt, _rev, at], store) => garage(store, at),
-  status: ([_vin, car, _rev, at], store) => status(store, car, at),
+  status: ([_vin, car, _expiresAt, _rev, at], store) => status(store, car, at),
   tires: ([_vin, car, _rev, at], store) => tires(store, car, at),
   engine: ([_vin, car, _rev, at], store) => engine(store, car, at),
   spec: ([_vin, car, at], store) => spec(store, car, at),

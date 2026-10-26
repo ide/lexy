@@ -54,6 +54,8 @@ RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract types --check app.
 "Explore the Demo" uses a local Lexus server, so no account or remote vehicle
 is needed. Vehicle reads take about a second; commands take about three seconds
 to appear in the next vehicle report. This exercises loading and reconciliation.
+Token refreshes also take about a second, and the server refuses a refresh token
+it has already seen spent, as Lexus does, so a lost rotation signs the demo out.
 The Login Flow developer tool also uses local responses.
 
 In the simulated sign-in flow, any email and password are accepted except the
@@ -90,12 +92,23 @@ snapshots, maps preferences, and concurrent reads. Screen specs live in
 ## Runtime rules
 
 - A pending resource retains its last answer. That answer may be displayed, but
-  a new authenticated request must wait for the shared token refresh.
+  a new authenticated request must wait for a token refresh in flight.
 - A failed or malformed response preserves the last valid vehicle and telemetry.
   A valid empty vehicle list is a separate result.
-- Token refreshes share one request. An old refresh cannot overwrite a newer
-  sign-in or restore a session after sign-out. A rejected access token is
-  refreshed and retried once.
+- Only the `session` source refreshes the token; vehicle reads wait for its
+  refresh but never start one. When Exact asks a resource again, it lets the
+  old answer go and rejects that answer's fetches, though the request may
+  already have reached Lexus. Lexus rotates refresh tokens, so a refresh cut
+  off that way can spend the token without delivering its replacement, and
+  Contract asks a vehicle read again far more often than the session.
+- A refresh that fails without a reply from Lexus keeps the session. Its
+  rejection runs between answers, where the store reads as empty, so the
+  session source decides a sign-out from the failure itself, never from an
+  empty store read.
+- An old refresh cannot overwrite a newer sign-in or restore a session after
+  sign-out. A read whose token is rejected retries once if a refresh issued a
+  newer one meanwhile; otherwise it fails with a 401, Contract asks for the
+  session again, and status is read again with the new token.
 - A command is confirmed only by a newer vehicle report that agrees with it.
   An older matching reading does not confirm a later command.
 - Sparse snapshots retain older window and opening readings with their original

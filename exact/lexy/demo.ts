@@ -217,12 +217,39 @@ export type Wait = (ms: number) => Promise<void>;
 export const demoServer = { failing: false };
 const failure = () => reply(500, { message: 'The demo server is simulating an error.' });
 
+// Lexus rotates refresh tokens (docs/authentication.md): a refresh spends the
+// token it sends, and a spent one is refused as invalid_grant, which signs the
+// app out. The demo refuses only what this process saw spent, so a session
+// kept across launches still refreshes. A refresh takes a round trip, as the
+// app's other answers can move on while one is out.
+const spentRefreshTokens = new Set<string>();
+
+async function grant(init: RequestInit, wait: Wait): Promise<Reply> {
+  const form = new URLSearchParams(typeof init.body === 'string' ? init.body : '');
+  let next = `${crypto.randomUUID().slice(0, 8)}-1`;
+  if (form.get('grant_type') === 'refresh_token') {
+    await wait(ROUND_TRIP_MS);
+    const refreshToken = form.get('refresh_token') ?? '';
+    if (spentRefreshTokens.has(refreshToken)) {
+      return reply(400, { error: 'invalid_grant', error_description: 'The demo refresh token was already used.' });
+    }
+    spentRefreshTokens.add(refreshToken);
+    // Continue the spent token's chain, so no launch issues a token an
+    // earlier one spent
+    const [, chain, count] = /^demo-refresh-(.+)-(\d+)$/.exec(refreshToken) ?? [];
+    if (chain) {
+      next = `${chain}-${Number(count) + 1}`;
+    }
+  }
+  return reply(200, { ...tokens, access_token: `demo-access-${next}`, refresh_token: `demo-refresh-${next}` });
+}
+
 export async function demoFetch(url: string, init: RequestInit, at: number, wait: Wait): Promise<Reply> {
   const path = new URL(url).pathname;
   const body = typeof init.body === 'string' && init.body.startsWith('{') ? JSON.parse(init.body) : {};
   if (path.endsWith('/authenticate')) return authenticate(body);
   if (path.endsWith('/authorize')) return reply(302, '', 'com.toyota.oneapp:/oauth2Callback?code=demo-code');
-  if (path.endsWith('/access_token')) return reply(200, tokens);
+  if (path.endsWith('/access_token')) return grant(init, wait);
   await wait(ROUND_TRIP_MS);
   at += ROUND_TRIP_MS;
   if (path === '/oneapi/v2/vehicle/guid') return reply(200, discovery());

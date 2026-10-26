@@ -59,7 +59,11 @@ The Exact build keeps the Keychain session across updates. Only an OAuth
 `invalid_grant` response with HTTP 400 or 401 clears it automatically; rate limits,
 network failures, and other server errors keep the session for retry. Refreshes
 retain the prior ID token when the server omits it and save any rotated refresh
-token. Initial sign-in still requires all tokens.
+token. Initial sign-in still requires all tokens. Only the session source
+refreshes; vehicle reads wait for its refresh but never start one, because Exact
+cuts off the requests of a read it asks again, and a refresh cut off after Lexus
+spent the token loses its replacement, which signs the user out at the next
+refresh. A refresh cut off that way, or failing offline, keeps the session.
 
 Exact waits for active writes before clearing vehicle data. Late replies cannot
 restore it after sign-out. Personal choices, including the maps app, remain saved.

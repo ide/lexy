@@ -70,7 +70,6 @@ component Lexy
   derive wide = viewport.width >= 700 or fold == "across"
   state sessionRev = 0
   state sessionAt = 0
-  state retried = false
   // Clear the expired-session notice when sign-in starts
   state sessionNoticeSeen = false
   resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account
@@ -187,7 +186,9 @@ component Lexy
   derive carName = savedName != "" ? savedName : vehicleName(car.nickName, car.modelName)
   // Key cached reads by VIN: the full car record can exceed 8 KB and changes with
   // profile updates
-  resource status = status(car.vin) with car,statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
+  // A refreshed token reads status again: a read refused with the old one
+  // waits for no other ask
+  resource status = status(car.vin) with car, account.expiresAt, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
   resource tires = tires(car.vin) with car, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
   resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
   resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
@@ -384,17 +385,13 @@ component Lexy
     if tempHeld and not (climateUnwritten or pending(climateSaved) or pending(climateRead)) and (tempSaving or climate.temperature == tempDraft)
       tempHeld = false
       tempSaving = false
-    // Refresh the session ahead of expiry, or once after the gateway
-    // rejects a token it had not expired yet.
-    if account.signedIn and not pending(account)
-      // A refresh that failed (offline) is tried again after 15 s, not
-      // every tick.
-      if (time.epochAtZero + performanceNow() > account.expiresAt - 60000 and (account.error == "" or time.epochAtZero + performanceNow() - sessionAt > 15000)) or (garage.status == 401 and not retried)
-        retried = garage.status == 401
-        sessionRev = sessionRev + 1
-        sessionAt = time.epochAtZero + performanceNow()
-      if garage.ok
-        retried = false
+    // Ask for the session every 15 s. Only the session source refreshes
+    // (app.ts `refreshing`), and it does so only ahead of expiry or after the
+    // gateway refused a token any read or command sent, so an answer that
+    // changes nothing moves nothing; a failed refresh is tried again here.
+    if account.signedIn and not pending(account) and time.epochAtZero + performanceNow() - sessionAt > 15000
+      sessionRev = sessionRev + 1
+      sessionAt = time.epochAtZero + performanceNow()
     if notice != "" and time.epochAtZero + performanceNow() - noticeAt > 6000
       notice = ""
     let timedOut = (lockPending and not pending(status) and not pending(sent) and lockPolls >= 10) or (enginePending and clock - engineAt >= 20000 and not pending(sent) and not pending(engine) and enginePolls >= 4)
