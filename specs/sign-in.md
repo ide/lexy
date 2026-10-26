@@ -81,10 +81,11 @@ transition is animated so the relayout springs rather than snaps.
 ## States
 
 - **Busy.** Every action is a no-op while `busy`. The primary button keeps its
-  prominent fill and swaps its label to a progressive form ("Signing In…",
-  "Verifying…") rather than dimming — the handler already guards the double
-  submit, and dimming made the fill flicker from blue to grey and back. Choice
-  buttons and the two secondary OTP actions *are* disabled while busy.
+  prominent fill and its label ("Sign In", "Verify") rather than dimming or
+  changing its words — the handler already guards the double submit, dimming
+  made the fill flicker from blue to grey and back, and a longer label moved
+  the button's edges. Choice buttons and the two secondary OTP actions *are*
+  disabled while busy.
 - **Empty fields.** Only emptiness dims the primary button: Sign In needs a
   non-blank email and a non-empty password, Verify needs a non-blank code.
 - **Error.** Errors never replace the screen; the form stays filled and the
@@ -139,7 +140,7 @@ transition is animated so the relayout springs rather than snaps.
 - The Exact app's form fills the width on a wide display, as a UIKit inset-grouped list does. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold, so no field or button sits on the hinge.
 
 - Exact gives credentials, delivery-method choice and OTP their own navigation entries. Choice and OTP use native Back and inline titles; controls appear without an extra entrance animation. Back from OTP restarts the server challenge before another method can be chosen. Direct OTP flows return to credentials. Back preserves credentials and invalidates older authentication attempts. Choice and OTP Back are disabled during a request. Leaving Login Flow through another tab cancels the preview.
-- Sign In and Verify are centered, content-sized native buttons with an accent-colored prominent fill. The verification hero uses the accent too. The logo keeps its size and horizontal alignment as the keyboard changes. Short viewports use tighter spacing, and UIKit reveals focused fields. Every submit dismisses the keyboard; OTP autofocuses on its new route. OTP stays at its initial position when the code field already fits above the keyboard. Resend shows "Sending Code…" until the new code arrives.
+- Sign In and Verify are centered, content-sized native buttons in iOS 26's prominent Liquid Glass, tinted with the accent. The verification hero uses the accent too. The logo keeps its size and horizontal alignment as the keyboard changes. Short viewports use tighter spacing, and UIKit reveals focused fields. Every submit dismisses the keyboard; OTP autofocuses on its new route. OTP stays at its initial position when the code field already fits above the keyboard. Resend shows "Sending Code…" until the new code arrives.
 - Login fields hide the keyboard’s editing shortcuts through UIKit’s input assistant. Password AutoFill and one-time-code suggestions remain available; no custom input accessory is added.
 - The authenticated dashboard and its navigation header appear together after the session refresh. Status never temporarily displays the sign-in form during that handoff.
 - Exact bounds each identity request to 15 seconds, including the response body. Unsupported responses return to credentials with retry advice. Failed requests keep the current form and its values, except a failed method restart returns to credentials with retry advice. Establishing a session opens the dashboard while vehicle data loads there.

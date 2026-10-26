@@ -318,7 +318,7 @@ function previewAuthenticate(posted: Record<string, any>, scenario: PreviewScena
   }
 }
 
-// A beat of latency, so the busy labels ("Signing In…") show as they would.
+// A beat of latency, so the busy states show as they would.
 const PREVIEW_LATENCY_MS = 350;
 
 export async function previewFetch(scenario: PreviewScenario, url: string, init: RequestInit, wait: Wait): Promise<Reply> {

@@ -28,7 +28,7 @@ what every screen, and the Home Screen widget, calls this car.
   word-capitalized, autocorrect off, with a "done" submit key. A clear (✕) control appears at the
   trailing edge while the field has text. Footer: "Your car's name, saved to the Lexus app."
 - An error notice below the card when a save has failed.
-- A full-width primary "Save" button, reading "Saving…" while the write is in flight.
+- A full-width primary "Save" button in prominent Liquid Glass tinted with the accent. It keeps its label and is disabled while the write is in flight.
 
 ## States
 
