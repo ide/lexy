@@ -64,7 +64,7 @@ The scenarios:
 
 - Exact presents OTP as a pushed screen with UIKit’s Back button. Back returns to credentials without clearing them; leaving the preview discards its form.
 
-- Exact uses its shared sign-in state machine and a native navigation header. Switching scenarios, running again, or leaving resets the form and discards completions from the old attempt. The preview never saves tokens or alters the real session.
+- Exact uses its shared sign-in state machine and a native navigation header. The form scrolls beneath the header, and UIKit insets it, as on the other settings pages. Switching scenarios, running again, or leaving resets the form and discards completions from the old attempt. The preview never saves tokens or alters the real session.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

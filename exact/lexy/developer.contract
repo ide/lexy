@@ -277,20 +277,18 @@ component LoginPreviewScreen
     getLexusApp: action
     nextField: action
   view
-    column flex=1 min-height=0 width="100%" box-sizing="border-box" padding-top="env(safe-area-inset-top)" padding-bottom="env(safe-area-inset-bottom)"
-      if not done or step != "credentials"
-        column flex=1 min-height=0
-          LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
-      if done and step == "credentials"
-        scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden" class=SafeScroll
-          FormColumn(fold=fold, id="preview-result-column")
-            column testId="preview-done" align-items="center" gap=12 padding=16
-              image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
-              text "You’re Signed In" role="heading" aria-level=2 text-align="center"
-              text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
-              text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
-              button press=runAgain testId="run-again" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
-                text "Run Again" font-size=17 font-weight=600 color="#ffffff"
+    if not done or step != "credentials"
+      LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, resending=resending, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+    if done and step == "credentials"
+      scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden" class=SafeScroll
+        FormColumn(fold=fold, id="preview-result-column")
+          column testId="preview-done" align-items="center" gap=12 padding=16
+            image "symbol:icon.checkmark.seal.fill" font-size=56 color="-exact-system-green"
+            text "You’re Signed In" role="heading" aria-level=2 text-align="center"
+            text "That was the real sign-in flow against a mock Lexus. No real sign-in happened, and your session is as it was." font-size=15 color="-exact-secondary-label" text-align="center"
+            text `${scenarioTitle(scenario)}: ${scenarioDetail(scenario)}` font-size=13 color="-exact-tertiary-label" text-align="center"
+            button press=runAgain testId="run-again" appearance="auto" buttonStyle="filled" accent-color="AccentColor" height=50 border-radius=25 padding-left=32 padding-right=32 margin-top=12 display="flex" align-items="center" justify-content="center"
+              text "Run Again" font-size=17 font-weight=600 color="#ffffff"
 
 // eas-screen.ios.tsx: the project's pages on expo.dev, in Safari, where the
 // dashboard's session lives.
