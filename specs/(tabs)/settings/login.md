@@ -60,7 +60,7 @@ The scenarios:
 
 ## Platform notes
 
-- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+- Exact's content fills the width on a wide display, as a UIKit inset-grouped list does. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
 
 - Exact presents OTP as a pushed screen with UIKit’s Back button. Back returns to credentials without clearing them; leaving the preview discards its form.
 

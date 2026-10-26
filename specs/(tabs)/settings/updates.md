@@ -109,7 +109,7 @@ Tools section, so only in development and preview builds.
 
 - When unfolded, Exact’s Updates screen puts Running and Stream on the left and Actions on the right. Each pane scrolls independently beneath the native heading and bottom bars. On iOS 27, UIKit keeps the safe area unchanged as the navigation bar minimizes, so scrolling one pane does not move the other’s content. UIKit insets each pane’s content once. Closed and laptop views use one column.
 
-- Exact caps single-column content at a readable width and places it below the hinge on a laptop fold.
+- Exact's single-column content fills the width and starts below the hinge on a laptop fold.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

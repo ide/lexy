@@ -23,11 +23,12 @@ shape Viewport
   horizontalViewportSegments: number
   verticalViewportSegments: number
 
-// Keep single-column forms readable on wide displays
-fn readableWidth(): string = "672px"
-
 // Distinguish side-by-side segments ("across") from stacked segments ("down")
 fn foldOf(v: Viewport): string = v.horizontalViewportSegments == 2 ? "across" : (v.verticalViewportSegments == 2 ? "down" : "")
+
+// Offset a box that starts at the safe area's leading edge to the trailing
+// segment of a book fold
+fn trailingSegmentInset(): string = "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))"
 
 shape Time
   epochAtZero: number

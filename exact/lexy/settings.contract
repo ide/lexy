@@ -1,6 +1,6 @@
 // Settings, developer tools, and the vehicle-name form
 use SafeScroll from "./model.contract"
-use Car, readableWidth from "./model.contract"
+use Car, trailingSegmentInset from "./model.contract"
 use Card from "./model.contract"
 use vehicleName from "./model.contract"
 use mapsName from "./model.contract"
@@ -11,14 +11,15 @@ use mapsResolved from "./model.contract"
 use MapsChooser from "./map.contract"
 use SectionTitle from "./model.contract"
 
-// Keep each settings form in one readable fold segment
+// Fill the width on a wide display, and keep each settings page in one fold
+// segment: trailing on a book fold, lower on a laptop fold
 component SettingsColumn
   props
     fold: string
     id: string
   slot
   view
-    column testId=id box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top) + 16px)" : "16px") padding-left=16 padding-right=16 padding-bottom=16 gap=24
+    column testId=id box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") margin-left=(fold == "across" ? trailingSegmentInset() : "0px") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top) + 16px)" : "16px") padding-left=16 padding-right=16 padding-bottom=16 gap=24
       children
 
 component SectionHeader

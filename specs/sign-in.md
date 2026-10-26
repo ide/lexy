@@ -136,7 +136,7 @@ transition is animated so the relayout springs rather than snaps.
 
 - Exact sign-in headings use platform text styles. Login Flow has a compact navigation title and a level-2 content heading.
 
-- The Exact app caps the form at a readable width. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold.
+- The Exact app's form fills the width on a wide display, as a UIKit inset-grouped list does. The form occupies the trailing segment on a book fold and starts in the lower segment on a laptop fold, so no field or button sits on the hinge.
 
 - Exact gives credentials, delivery-method choice and OTP their own navigation entries. Choice and OTP use native Back and inline titles; controls appear without an extra entrance animation. Back from OTP restarts the server challenge before another method can be chosen. Direct OTP flows return to credentials. Back preserves credentials and invalidates older authentication attempts. Choice and OTP Back are disabled during a request. Leaving Login Flow through another tab cancels the preview.
 - Sign In and Verify are centered, content-sized native buttons with an accent-colored prominent fill. The verification hero uses the accent too. The logo keeps its size and horizontal alignment as the keyboard changes. Short viewports use tighter spacing, and UIKit reveals focused fields. Every submit dismisses the keyboard; OTP autofocuses on its new route. OTP stays at its initial position when the code field already fits above the keyboard. Resend shows "Sending Code…" until the new code arrives.

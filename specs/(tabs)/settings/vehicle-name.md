@@ -51,7 +51,7 @@ what every screen, and the Home Screen widget, calls this car.
 
 ## Platform notes
 
-- Exact caps the content at a readable width. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
+- Exact's content fills the width on a wide display, as a UIKit inset-grouped list does. It starts in the trailing segment on a book fold and below the hinge on a laptop fold.
 
 - Exact uses a compact UIKit title and keeps heading level 1.
 

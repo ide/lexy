@@ -1,5 +1,4 @@
 use SafeScroll from "./model.contract"
-use readableWidth from "./model.contract"
 // Settings → Developer Tools, as the Expo app has them
 // (src/screens/settings-screen.ios.tsx DEV_ITEMS): this build's updates, the
 // data states forced on demand, the sign-in flow walked against a mock, and
@@ -127,7 +126,7 @@ component DeveloperPanes
   slot
   view
     scroll id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "env(safe-area-inset-left)") padding-right=(expanded ? "0px" : "env(safe-area-inset-right)")
-      column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" max-width=(expanded ? "none" : readableWidth()) margin-left="auto" margin-right="auto" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
+      column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
 component DeveloperPane

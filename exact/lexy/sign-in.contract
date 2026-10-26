@@ -1,5 +1,5 @@
 // Lexus sign-in: credentials, delivery method, and verification code
-use SafeScroll, readableWidth from "./model.contract"
+use SafeScroll, trailingSegmentInset from "./model.contract"
 
 // sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
 fn channel(method: string): string = (method.includes("mail") or method.includes("Mail") or method.includes("E-mail")) ? "email" : ((method.includes("SMS") or method.includes("sms") or method.includes("Text") or method.includes("text") or method.includes("hone") or method.includes("obile") or method.includes("all")) ? "sms" : "unknown")
@@ -99,8 +99,9 @@ component LockScreen
     bannerSymbol: string
   view
     scroll id="sign-in-scroll" testId="sign-in" keyboardDismissMode="interactive" overflow-x="hidden" width="100%" height="100%" class=SafeScroll
-      // Keep the form in one segment: trailing on a book fold, lower on a laptop fold
-      column testId="sign-in-column" box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") max-width=(fold == "across" ? "none" : readableWidth()) margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))" : "auto") margin-right=(fold == "across" ? "0px" : "auto") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) + 16px)" : (compact ? "16px" : (embedded ? "24px" : "calc(env(safe-area-inset-top) + 64px)"))) padding-left=16 padding-right=16 padding-bottom=(embedded ? "16px" : "calc(env(safe-area-inset-bottom) + 16px)") gap=(compact ? 16 : 24)
+      // Fill the width on a wide display, and keep the form in one segment on a
+      // fold: trailing on a book fold, lower on a laptop fold
+      column testId="sign-in-column" box-sizing="border-box" width=(fold == "across" ? "auto" : "100%") margin-left=(fold == "across" ? trailingSegmentInset() : "0px") padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) + 16px)" : (compact ? "16px" : (embedded ? "24px" : "calc(env(safe-area-inset-top) + 64px)"))) padding-left=16 padding-right=16 padding-bottom=(embedded ? "16px" : "calc(env(safe-area-inset-bottom) + 16px)") gap=(compact ? 16 : 24)
         if banner != ""
           row testId="preview-banner" align-self="center" gap=6 padding-left=12 padding-right=12 height=30 border-radius=15 background-color="-exact-secondary-grouped-background" align-items="center"
             image `symbol:sf/${bannerSymbol}` font-size=13 color="-exact-system-blue"
