@@ -304,6 +304,8 @@ component Lexy
   resource sessionLog = sessionLog(sessionLogRev > 0 ? 200 : 0) with sessionLogRev as shape SessionLog
   mutation observedCleared as shape ObservedCleared refreshes observed
   state updateChecked = false
+  // A trace of every frame is recording (startTrace); the next press copies it
+  state recordingTrace = false
   // Data State: the override the vehicle screens are shown, Live at launch.
   state dataState = "live"
   resource forcedGarage = debugGarage(dataState, garage) as shape Garage
@@ -953,6 +955,16 @@ component Lexy
     deliveryCheck()
   action applyUpdate
     deliveryActivate()
+  // Record every frame for an agent to read: the first press starts, the
+  // next stops and puts the trace on the clipboard, cut to fit a message in
+  // a conversation that takes up to 8 KB
+  action toggleTrace
+    if recordingTrace
+      stopTrace(7500)
+      send felt = feel("success")
+    else
+      startTrace()
+    recordingTrace = not recordingTrace
   action chooseDataState(kind: string)
     dataState = kind
   action clearMaps
@@ -1061,6 +1073,13 @@ component Lexy
                     if e.name == "login" or e.name == "loginChoice" or e.name == "loginCode"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.wrench.and.screwdriver"
+                    if developer.on and e.name != "map" and recordingTrace
+                      button press=toggleTrace testId="trace" aria-label="Stop Recording and Copy Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        // Tint the stopwatch only while it records; at rest the bar draws it untinted
+                        image "symbol:icon.stopwatch.fill" color="AccentColor"
+                    if developer.on and e.name != "map" and not recordingTrace
+                      button press=toggleTrace testId="trace" aria-label="Record Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
+                        image "symbol:icon.stopwatch"
                   if e.name == "status"
                     StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, clock=clock, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, wide=wide, fold=fold, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok)
                   if e.name == "map"

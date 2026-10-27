@@ -61,6 +61,8 @@ icons
   icon.shield.lefthalf.filled = icon(sf "shield.lefthalf.filled", svg "icons/shield-lefthalf-filled.svg")
   icon.slider_horizontal_3 = icon(sf "slider.horizontal.3", svg "icons/slider-horizontal-3.svg")
   icon.square_stack_3d_up_fill = icon(sf "square.stack.3d.up.fill", svg "icons/square-stack-3d-up-fill.svg")
+  icon.stopwatch = icon(sf "stopwatch", svg "icons/stopwatch.svg")
+  icon.stopwatch.fill = icon(sf "stopwatch.fill", svg "icons/stopwatch-fill.svg")
   icon.thermometer.medium = icon(sf "thermometer.medium", svg "icons/thermometer-medium.svg")
   icon.waveform.path.ecg = icon(sf "waveform.path.ecg", svg "icons/waveform-path-ecg.svg")
   icon.wifi.slash = icon(sf "wifi.slash", svg "icons/wifi-slash.svg")
