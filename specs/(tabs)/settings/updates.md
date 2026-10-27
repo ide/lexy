@@ -110,6 +110,7 @@ Tools section, so only in development and preview builds.
 - When unfolded, Exact’s Updates screen puts Running and Stream on the left and Actions on the right. Each pane scrolls independently beneath the native heading and bottom bars. On iOS 27, UIKit keeps the safe area unchanged as the navigation bar minimizes, so scrolling one pane does not move the other’s content. UIKit insets each pane’s content once. Closed and laptop views use one column.
 
 - Exact's single-column content fills the width and starts below the hinge on a laptop fold.
+- Exact shows Check for Update and Apply Downloaded Update as the rows of one card, as Data State shows Clear Maps provider, each a native button with its symbol (`arrow.triangle.2.circlepath`, `arrow.down.circle.fill`) before its label. Their labels do not change; Apply stays disabled, in the tertiary label colour, until an update has downloaded.
 
 | Concern | iOS | Android |
 | --- | --- | --- |

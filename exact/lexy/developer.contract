@@ -182,14 +182,16 @@ component UpdatesScreen
       DeveloperPane(expanded=expanded, first=false, id="updates-actions")
         column
           SectionHeader(title="Actions")
+          // Rows of a card, as Data State's Clear Maps provider is, each a native
+          // button with its symbol; Apply waits for a download
           column class=Card
-            button text-align="left" press=check testId="updates-check" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:icon.arrow_triangle_2_circlepath" font-size=17 -exact-tint-color="AccentColor"
+            button text-align="left" press=check testId="updates-check" padding=16 display="flex"
+              image "symbol:icon.arrow_triangle_2_circlepath"
               text "Check for Update" font-size=17 color="AccentColor"
             Divider()
-            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" gap=12
-              image "symbol:icon.arrow.down.circle.fill" font-size=17 -exact-tint-color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
-              text (delivery.staged ? "Apply Downloaded Update" : "No Update Downloaded") font-size=17 color=(delivery.staged ? "-exact-system-green" : "-exact-tertiary-label")
+            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" padding=16 display="flex"
+              image "symbol:icon.arrow.down.circle.fill"
+              text "Apply Downloaded Update" font-size=17 color=(delivery.staged ? "AccentColor" : "-exact-tertiary-label")
           SectionFooter(words=(checked and not delivery.staged ? "Checked for updates. Downloads appear here when ready." : "Updates download in the background and apply at the next launch. You can also apply a downloaded update now."))
 
 // data-state-screen.ios.tsx: one override at a time, Live by default and
