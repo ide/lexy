@@ -341,10 +341,6 @@ fn tireLabel(position: string): string = position == "flTirePressure" ? "Front l
 
 // --- Lexy's wording (src/data/time.ts, fuel.ts, remote-capabilities.ts) ----------
 
-fn plural(n: number, unit: string): string = n == 1 ? `1 ${unit}` : `${n} ${unit}s`
-// "just now", "40 seconds ago", "5 minutes ago", "2 hours 5 minutes ago", "3 days 4 hours ago"
-fn relative(now: number, then: number): string = then <= 0 ? "unknown" : (now - then < 5000 ? "just now" : (now - then < 60000 ? `${plural(floor((now - then) / 1000), "second")} ago` : (now - then < 3600000 ? `${plural(floor((now - then) / 60000), "minute")} ago` : (now - then < 86400000 ? (floor((now - then) / 60000) % 60 == 0 ? `${plural(floor((now - then) / 3600000), "hour")} ago` : `${plural(floor((now - then) / 3600000), "hour")} ${plural(floor((now - then) / 60000) % 60, "minute")} ago`) : (floor((now - then) / 3600000) % 24 == 0 ? `${plural(floor((now - then) / 86400000), "day")} ago` : `${plural(floor((now - then) / 86400000), "day")} ${plural(floor((now - then) / 3600000) % 24, "hour")} ago`)))))
-
 // fuel.ts levels: full at 100, high above 25, medium above 15, low above 5.
 fn fuelTint(p: number): string = p > 25 ? "-exact-system-green" : (p > 15 ? "-exact-system-yellow" : (p > 5 ? "-exact-system-orange" : "-exact-system-red"))
 fn fuelText(p: number): string = p >= 100 ? "-exact-system-green" : (p > 25 ? "-exact-label" : fuelTint(p))

@@ -100,6 +100,7 @@ If that write fails, it reports the failure when the app returns from Maps.
 ## Platform notes
 
 - Exact uses a compact UIKit sheet title and keeps heading level 1.
+- Exact's freshness line uses the platform's live relative time, as the Status footer does on Exact.
 
 - **The map component currently refuses to render off iOS.** `VehicleLocationMap`
   guards on the platform and renders the text "Maps are only available on iOS."

@@ -27,7 +27,6 @@ use grouped from "./model.contract"
 use tenths from "./model.contract"
 use exactTime from "./model.contract"
 use distanceUnit from "./model.contract"
-use relative from "./model.contract"
 use tireLabel from "./model.contract"
 use failureSummary from "./model.contract"
 use failureAdvice from "./model.contract"
@@ -196,7 +195,6 @@ component StatusScreen
     // Until both the car and its status are in: the skeleton, not the cards.
     firstLoad: bool
     notice: string
-    clock: number
     checkedAt: number
     moreOpen: bool
     wide: bool
@@ -226,6 +224,8 @@ component StatusScreen
     dragTemperature: action
     toggleDefrost: action
   derive car = garage.car
+  // The car's own stamp, clamped to the read that brought it.
+  derive syncedMs = checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs
   derive engineWord = enginePending ? (engineTarget == "running" ? "Starting" : "Stopping") : (engineRunning ? "Started" : "Stopped")
   derive rows = status.sections.filter(s => s.category != "Trip Details" and reports(s))
   derive corners = rows.filter(s => isCorner(s))
@@ -497,7 +497,9 @@ component StatusScreen
                     if status.closuresStaleMs > 0
                       row testId="closures-stale" justify-content="center" align-items="center" gap=4
                         image "symbol:icon.clock.arrow.circlepath" font-size=12 color="-exact-secondary-label" object-fit="scale-down" width=12 height=12
-                        text `Some readings as of ${relative(clock, status.closuresStaleMs)}` font-size=13 line-height="18px" color="-exact-secondary-label"
+                        text font-size=13 line-height="18px" color="-exact-secondary-label"
+                          text "Some readings as of "
+                          time datetime=status.closuresStaleMs format="relative"
                 // Odometer (odometer-card.tsx)
                 column gap=8 testId="odometer" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "4" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
                   text "Odometer" role="heading" aria-level=2 class=SectionTitle margin-top=4
@@ -548,11 +550,27 @@ component StatusScreen
             // Both sentences start at the cards' text edge. Each button
             // anchors a popover with its exact time.
             column align-items="flex-start" gap=2 padding=16 testId="synced"
-              button popovertarget="synced-at" testId="synced-line" appearance="auto" buttonStyle="plain" padding=0
-                text (status.ok ? `Vehicle last synced with Lexus ${relative(clock, (checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs))}.` : "Vehicle last synced with Lexus unknown.") font-size=13 color="-exact-secondary-label" text-align="start"
+              // The live times follow the clock without the app's tick, at
+              // minute boundaries, in the platform's relative wording. A
+              // native button's title cannot hold one, so these buttons are
+              // our own boxes with the platform's press dim.
+              button popovertarget="synced-at" testId="synced-line" padding=0
+                if status.ok and syncedMs > 0
+                  text font-size=13 color="-exact-secondary-label" text-align="start"
+                    text "Vehicle last synced with Lexus "
+                    time datetime=syncedMs format="relative"
+                    text "."
+                else
+                  text "Vehicle last synced with Lexus unknown." font-size=13 color="-exact-secondary-label" text-align="start"
               column id="synced-at" popover="auto" position="absolute" padding=16
-                text exactTime((checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs), utcOffset) font-size=16
-              button popovertarget="checked-at" testId="checked-line" appearance="auto" buttonStyle="plain" padding=0
-                text `Lexy checked for data ${relative(clock, checkedAt)}.` font-size=13 color="-exact-secondary-label" text-align="start"
+                text exactTime(syncedMs, utcOffset) font-size=16
+              button popovertarget="checked-at" testId="checked-line" padding=0
+                if checkedAt > 0
+                  text font-size=13 color="-exact-secondary-label" text-align="start"
+                    text "Lexy checked for data "
+                    time datetime=checkedAt format="relative"
+                    text "."
+                else
+                  text "Lexy checked for data unknown." font-size=13 color="-exact-secondary-label" text-align="start"
               column id="checked-at" popover="auto" position="absolute" padding=16
                 text exactTime(checkedAt, utcOffset) font-size=16
