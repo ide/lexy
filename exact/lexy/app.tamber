@@ -31,6 +31,7 @@ icons
   icon.clock.arrow.circlepath = icon(sf "clock.arrow.circlepath", svg "icons/clock-arrow-circlepath.svg")
   icon.cloud.fill = icon(sf "cloud.fill", svg "icons/cloud-fill.svg")
   icon.cylinder_split_1x2_fill = icon(sf "cylinder.split.1x2.fill", svg "icons/cylinder-split-1x2-fill.svg")
+  icon.doc.on.clipboard = icon(sf "doc.on.clipboard", svg "icons/doc-on-clipboard.svg")
   icon.engine.combustion.fill = icon(sf "engine.combustion.fill", svg "icons/engine-combustion-fill.svg")
   icon.envelope = icon(sf "envelope", svg "icons/envelope.svg")
   icon.envelope.fill = icon(sf "envelope.fill", svg "icons/envelope-fill.svg")

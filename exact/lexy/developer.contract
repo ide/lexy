@@ -465,6 +465,7 @@ component SessionScreen
             column gap=20
               column class=Card
                 button press=copyLog testId="copy-session-log" text-align="left" padding=16 display="flex"
+                  image "symbol:icon.doc.on.clipboard"
                   text "Copy Log" font-size=17 color="AccentColor"
               column class=Card
                 for e, i in log.events key=`${e.at}-${i}`
