@@ -304,7 +304,6 @@ component Lexy
   resource sessionLog = sessionLog(sessionLogRev > 0 ? 200 : 0) with sessionLogRev as shape SessionLog
   mutation observedCleared as shape ObservedCleared refreshes observed
   state updateChecked = false
-  // A trace of every frame is recording (startTrace); the next press copies it
   state recordingTrace = false
   // Data State: the override the vehicle screens are shown, Live at launch.
   state dataState = "live"
@@ -960,10 +959,10 @@ component Lexy
   // a conversation that takes up to 8 KB
   action toggleTrace
     if recordingTrace
-      stopTrace(7500)
+      stopTrace_EXPERIMENTAL(7500)
       send felt = feel("success")
     else
-      startTrace()
+      startTrace_EXPERIMENTAL()
     recordingTrace = not recordingTrace
   action chooseDataState(kind: string)
     dataState = kind
