@@ -96,10 +96,10 @@ component DeveloperTools
       if origin == ""
         SectionFooter(words=`Turning this off hides Developer Tools and Try Demo ${place}. Open lexy://developer to turn it back on.`)
       else
-        // SectionFooter's, with the page's own `/developer` as a link.
+        // SectionFooter's, with the page's own developer link.
         text font-size=13 color="-exact-secondary-label" padding-top=8 padding-left=16 padding-right=16
           text `Turning this off hides Developer Tools and Try Demo ${place}. Open `
-          text `${origin}/developer` href="/developer" testId="developer-link"
+          text `${origin}/settings?developer=on` href="/settings?developer=on" testId="developer-link"
           text " to turn it back on."
 
 component SettingsScreen

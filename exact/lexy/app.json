@@ -77,7 +77,7 @@
   "protocol_handlers": [
     {
       "protocol": "lexy",
-      "url": "/developer?u=%s"
+      "url": "/settings?developer=%s"
     }
   ]
 }

@@ -192,8 +192,8 @@ shape Address
 // switch.
 shape DeveloperMode
   on: bool
-  // The page's origin on the web, whose `/developer` is that link there; ""
-  // in the native app.
+  // The page's origin on the web, whose `/settings?developer=on` is that
+  // link there; "" in the native app.
   origin: string
   // What the app calls the device it runs on ("iPhone", "iPad", "Mac"), from
   // Lexy's module; "iPhone" from an older build's module, which has no

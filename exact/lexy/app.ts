@@ -1266,8 +1266,8 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
 }
 
 // Developer mode, and where Lexy runs: the page's origin on the web (its
-// `/developer` is the link there), else the device's name from Lexy's module
-// ("iPhone", "iPad", "Mac"; "" where there is no module).
+// `/settings?developer=on` is the link there), else the device's name from
+// Lexy's module ("iPhone", "iPad", "Mac"; "" where there is no module).
 async function developerMode(on: boolean): Promise<Result<'developerMode'>> {
   const origin = pageOrigin();
   let device = '';
@@ -1349,8 +1349,8 @@ const sources: Sources = {
   address: ([latitude, longitude]) => address(latitude, longitude),
   mapsApp: (_args, store) => mapsApp(store),
   // Developer mode, per device (per browser on the web): a `lexy://developer`
-  // link turns it on (on the web, the page's `/developer`), Developer Tools'
-  // switch off
+  // link turns it on (on the web, the page's `/settings?developer=on`), and
+  // Developer Tools' switch turns it off
   developerMode: async () => developerMode((await choice('developer')) === 'on'),
   setDeveloperMode: async ([on]) => {
     await choose('developer', on ? 'on' : 'off');

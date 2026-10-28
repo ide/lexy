@@ -49,6 +49,8 @@ routes nav
     authCode "/sign-in/code"
     map "/map"
   tab specs "/specs"
+  // `?developer=` turns developer mode on: `lexy://developer` arrives with it
+  // (app.json `protocol_handlers`), and the web page's own link carries it
   tab settings "/settings"
     rename "/settings/name"
     updates "/settings/updates"
@@ -59,9 +61,6 @@ routes nav
     eas "/settings/eas"
     performance "/settings/performance"
     session "/settings/session"
-    // `lexy://developer` (app.json `protocol_handlers`), and on the web the
-    // page's own `/developer`: turns developer mode on
-    unlock "/developer"
 
 
 component Lexy
@@ -240,7 +239,9 @@ component Lexy
   // own; natively, on this device by the module's name.
   derive developerPlace = developer.origin != "" ? (viewport.displayMode == "standalone" ? "in this app" : "in this browser") : `on this ${developer.device != "" ? developer.device : "device"}`
   mutation developerSet as shape DeveloperMode refreshes developer
-  task unlock when top(nav).name == "unlock"
+  // A developer link lands on Settings itself, so a launch from one has no
+  // screen to leave; `followLink` handles links received after launch
+  task unlock when top(nav).name == "settings" and searchParam(top(nav), "developer") != ""
     after(1, unlockDeveloper)
   mutation opened as shape Opened then afterOpen
   derive openError = match opened { case some(o) => o.error, case none => "" }
@@ -535,7 +536,9 @@ component Lexy
         if wantedAuthStep == "choice" and onCodeRoute
           nav = hasChoiceRoute ? back(nav) : replace(nav, url)
         else
-          nav = push(nav, url)
+          // The sign-in's first screen opens on Status, its routes' tab, even
+          // where a developer link launched Lexy onto Settings
+          nav = previewScenario == "" and not onAuthRoute ? open(nav, url) : push(nav, url)
   action startOver
     blur()
     authAttempt = authAttempt + 1
@@ -727,9 +730,19 @@ component Lexy
     send demoFailures = setDemoFailures(on)
   action unlockDeveloper
     send developerSet = setDeveloperMode(true)
-    // Back to Settings beneath the link's route, its tab's only screen: a
-    // replace would leave a second Settings on top, with a Back to the first.
-    nav = go(nav, "/settings")
+    // Leave Login Flow's preview as a tab switch does, or the sign-in would
+    // push its screens back over Settings
+    if previewScenario != ""
+      resetPreview()
+      previewScenario = ""
+    // Drop the link's query in place on the visit it launched: a new visit
+    // would leave the query's URL in a browser's history, where Back would
+    // turn developer mode on again. Otherwise open Settings at its root,
+    // unless signed out, where the sign-in stays where it is
+    if top(nav).name == "settings" and depth(nav) == 1
+      nav = replace(nav, "/settings")
+    else if shell
+      nav = open(nav, "/settings")
   action setDeveloper(on: bool)
     send developerSet = setDeveloperMode(on)
   action signOut
@@ -1012,7 +1025,13 @@ component Lexy
           previewScenario = ""
         nav = back(nav)
   action followLink(url: string)
-    nav = go(nav, url)
+    let to = go(nav, url)
+    // Turn developer mode on for a developer link instead of going to its
+    // location, which would push a second Settings
+    if top(to).name == "settings" and searchParam(top(to), "developer") != ""
+      unlockDeveloper()
+    else
+      nav = to
   action editName
     // vehicle-mapping.ts: no nickname reads as the model's name.
     draftName = carName
