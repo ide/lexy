@@ -190,7 +190,6 @@ component StatusScreen
     // the card eases to it as one group, down and back up, never jumping,
     // so the car never shows the map through it.
     heroDim: bool
-    // Developer Tools' override: false leaves the map out entirely.
     loading: bool
     // Until both the car and its status are in: the skeleton, not the cards.
     firstLoad: bool
