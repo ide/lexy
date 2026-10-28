@@ -317,9 +317,11 @@ component StatusScreen
                 // Hero card (hero-card.ios.tsx): the car over its parked map.
                 column class=Card testId="hero" opacity=(heroDim ? 0.6 : 1) transition="opacity 1000ms ease-in-out" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
                   if status.ok and (status.latitude != 0 or status.longitude != 0)
-                    // The map fades itself in, so the dimming is its box's.
-                    column position="absolute" top=0 right=0 bottom=0 left=0 opacity=0.48
+                    column position="absolute" top=0 right=0 bottom=0 left=0
                       lexy-map width="100%" height="100%" latitude=status.latitude longitude=status.longitude map-zoom=16 pin="false" places="false" interactive="false"
+                    // The card's own colour at 52% over the map dims it to the 48% an opacity on its box gave, without
+                    // the offscreen pass group opacity costs in every frame the card scrolls
+                    box position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-secondary-grouped-background" opacity=0.52 pointer-events="none"
                   // The veil, the car and the button row let a touch through to
                   // the map below them, whose Legal link MapKit requires to work.
                   box position="absolute" top=0 right=0 bottom=0 left=0 background-color="light-dark(#ffffff38, #1c1c1e38)" pointer-events="none"
