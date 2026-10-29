@@ -91,6 +91,8 @@ component VehicleState
     message: string
     label: string
     press: action
+    // A retry it started is out: the state stays, its button disabled
+    busy: bool
     id: string
   view
     // In the scroller's flow, at its natural height with some padding: it
@@ -102,8 +104,8 @@ component VehicleState
       image `symbol:icon.${symbol}` font-size=44 color="-exact-secondary-label"
       text title role="heading" aria-level=2 text-align="center" max-width=320
       text message font-size=17 color="-exact-secondary-label" text-align="center" max-width=320
-      button press=press testId=`${id}-retry` appearance="auto" buttonStyle="prominent-glass" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
-        text label font-size=17 color="#ffffff"
+      button press=press disabled=busy testId=`${id}-retry` appearance="auto" buttonStyle="prominent-glass" accent-color="AccentColor" height=50 border-radius=25 padding-left=16 padding-right=16 display="flex" align-items="center" justify-content="center"
+        text label font-size=17
 
 // status-banner.tsx's amber banner: a symbol, a bold line and a lighter one.
 component WarningBanner
@@ -191,6 +193,7 @@ component StatusScreen
     // so the car never shows the map through it.
     heroDim: bool
     loading: bool
+    retrying: bool
     // Until both the car and its status are in: the skeleton, not the cards.
     firstLoad: bool
     notice: string
@@ -278,9 +281,9 @@ component StatusScreen
           if online and car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.error != "" and status.status != 401))
             WarningBanner(id="garage-error", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))}${(status.ok ? " Showing the latest data we saved." : "")} Pull down to try again.`)
           if car.vin == "" and not loading and garage.ok and garage.carCount == 0
-            VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, id="no-vehicle")
+            VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, busy=retrying, id="no-vehicle")
           if car.vin == "" and not loading and not garage.ok
-            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, id="vehicle-error")
+            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, busy=retrying, id="vehicle-error")
           // vehicle-controls.ios.tsx: a failed command is an alert.
           dialog id="climate-failed" role="alertdialog" aria-label="Couldn't save climate settings"
             text climateError testId="climate-failed-message"

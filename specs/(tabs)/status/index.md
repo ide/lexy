@@ -436,6 +436,8 @@ telling.
   an existing status snapshot is available. The first status load never dims
   the car and map as location and fuel arrive.
 
+- While a retry the person started is out (Try again, Check again or a pull), Exact keeps the full-screen no-vehicle or failed-load state on screen with its button disabled until the answer lands, rather than swapping in the loading skeleton for the length of the request.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Confirmation UI | Centered alert with system Cancel | Centered Material dialog with an explicit Cancel |

@@ -83,6 +83,8 @@ pull-refresh.
 
 - The Exact app uses two columns on wide displays: vehicle details first, capabilities and connected services second. A book fold places each column in its own segment, clear of the hinge.
 
+- While its Try again or Check again is out, Exact keeps the full-screen failed-load or no-vehicle state on screen with the button disabled until the answer lands, rather than swapping in the loading layout for the length of the request.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Capability icons | The vehicle data carries SF Symbol names (`Capability.symbol`) | — needs a symbol-to-platform-icon mapping, since the names come from shared data |

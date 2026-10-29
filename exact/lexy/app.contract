@@ -312,11 +312,14 @@ component Lexy
   derive shownGarage = dataState == "live" ? garage : forcedGarage
   derive shownOnline = (dataState == "offline-cached" or dataState == "offline-empty") ? false : (dataState == "live" or dataState == "loading" ? page.onLine : true)
   derive forcedLoading = dataState == "loading" or dataState == "offline-empty"
+  // A retry from the no-vehicle or failed-load state (Try again, Check again
+  // or a pull): the state stays with its button disabled, not the skeleton
+  derive retrying = pulling and pending(garage) and shownGarage.car.vin == ""
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
   // The status answers with no car too (no VIN): that answer is not the car's.
   derive statusAnswered = status.ok or status.status != 0 or status.error != ""
   // Keep the skeleton until both the vehicle and its status arrive
-  derive firstLoad = statusLoading and (shownGarage.car.vin == "" or not statusAnswered)
+  derive firstLoad = statusLoading and not retrying and (shownGarage.car.vin == "" or not statusAnswered)
   // Reserve UIKit's large-title space with a blank title while loading
   derive statusTitle = firstLoad ? "​" : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))
   // The Status hero (map, car, Last Parked) pulses gently while the app is
@@ -1099,11 +1102,11 @@ component Lexy
                       button press=toggleTrace testId="trace" aria-label="Record Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.stopwatch"
                   if e.name == "status"
-                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=statusLoading, firstLoad=firstLoad, notice=notice, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, wide=wide, fold=fold, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok)
+                    StatusScreen(garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=(statusLoading and not retrying), retrying=retrying, firstLoad=firstLoad, notice=notice, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, wide=wide, fold=fold, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok)
                   if e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=openError, open=openIn, pick=pickAndOpen, tried=mapsTried, close=back)
                   if e.name == "specs"
-                    SpecsScreen(garage=shownGarage, spec=spec, services=services, specLoading=pending(spec), servicesLoading=pending(services), utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading), online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold)
+                    SpecsScreen(garage=shownGarage, spec=spec, services=services, specLoading=pending(spec), servicesLoading=pending(services), utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=(not retrying and (dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading)), retrying=retrying, online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold)
                   if e.name == "settings"
                     SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left), fold=fold)
                   if e.name == "updates"
