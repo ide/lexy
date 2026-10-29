@@ -121,12 +121,11 @@ component ChoiceRow
 component DeveloperPanes
   props
     expanded: bool
-    fold: string
     id: string
   slot
   view
     scroll id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "env(safe-area-inset-left)") padding-right=(expanded ? "0px" : "env(safe-area-inset-right)")
-      column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" padding-top=(fold == "down" ? "calc(env(viewport-segment-top 0 1) - env(safe-area-inset-top))" : "0px") padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
+      column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
 component DeveloperPane
@@ -153,7 +152,7 @@ component UpdatesScreen
     apply: action
   derive expanded = fold == "across" or (wide and fold != "down")
   view
-    DeveloperPanes(expanded=expanded, fold=fold, id="updates-panes")
+    DeveloperPanes(expanded=expanded, id="updates-panes")
       DeveloperPane(expanded=expanded, first=true, id="updates-details")
         column
           SectionHeader(title="Running")
@@ -363,7 +362,7 @@ component PerformanceScreen
     copyText(selectedReport)
   derive expanded = fold == "across" or (wide and fold != "down")
   view
-    DeveloperPanes(expanded=expanded, fold=fold, id="performance-panes")
+    DeveloperPanes(expanded=expanded, id="performance-panes")
       DeveloperPane(expanded=expanded, first=true, id="performance-recent")
         if not observed.ok
           SectionFooter(words="Performance data is unavailable.")
