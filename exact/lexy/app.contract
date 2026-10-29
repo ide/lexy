@@ -508,8 +508,6 @@ component Lexy
     send started = authStart(authAttempt, previewScenario)
   action resend
     restartSignIn("resend")
-  action differentMethod
-    restartSignIn("choice")
   action restartSignIn(stage: string)
     if not signingIn and signStep == "otp"
       if email.trim() == "" or (password == "" and not (account.demo and previewScenario == ""))
@@ -1079,7 +1077,7 @@ component Lexy
                     header
                       button id="back" press=back aria-label="Back" testId="auth-back" disabled=signingIn width=44 height=44
                       text "Sign In" role="heading" aria-level=1
-                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=(e.name == "authCode" ? "otp" : (e.name == "authChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=(e.name == "authCode" ? "otp" : (e.name == "authChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
                 else
                   header
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
@@ -1114,7 +1112,7 @@ component Lexy
                   if e.name == "dataState"
                     DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
                   if e.name == "login" or e.name == "loginChoice" or e.name == "loginCode"
-                    LoginPreviewScreen(fold=fold, compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, runAgain=runPreviewAgain, step=(e.name == "loginCode" ? "otp" : (e.name == "loginChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=signError, busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, getLexusApp=getLexusApp, nextField=focusPassword)
+                    LoginPreviewScreen(fold=fold, compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, runAgain=runPreviewAgain, step=(e.name == "loginCode" ? "otp" : (e.name == "loginChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=signError, busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, getLexusApp=getLexusApp, nextField=focusPassword)
                   if e.name == "eas"
                     EasScreen(open=openExternal)
                   if e.name == "performance"

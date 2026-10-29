@@ -274,12 +274,11 @@ component LoginPreviewScreen
     choose: action
     verify: action
     resend: action
-    differentMethod: action
     getLexusApp: action
     nextField: action
   view
     if not done or step != "credentials"
-      LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, differentMethod=differentMethod, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
+      LockScreen(compact=compact, developer=false, step=step, email=email, password=password, code=code, error=error, busy=busy, info=info, choices=choices, prompt=prompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=runAgain, getLexusApp=getLexusApp, nextField=nextField, method=method, embedded=true, fold=fold, banner=scenarioTitle(scenario), bannerSymbol=scenarioSymbol(scenario))
     if done and step == "credentials"
       scroll id="sign-in-scroll" testId="preview-result" flex=1 min-height=0 overflow-x="hidden" class=SafeScroll
         FormColumn(fold=fold, id="preview-result-column")

@@ -83,7 +83,6 @@ component LockScreen
     choose: action
     verify: action
     resend: action
-    differentMethod: action
     tryDemo: action
     // Developer mode (lexy://developer): only then is Try Demo offered
     developer: bool
@@ -114,30 +113,37 @@ component LockScreen
           text heroTitle(step, method) testId="sign-in-title" role="heading" aria-level=(embedded ? 2 : 1) text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
         if step == "credentials"
-          column gap=16
+          // A section, so the keyboard's reveal of a focused field keeps the
+          // rest of it above the keys: the password, then Sign In
+          section display="flex" flex-direction="column" gap=16
             // The group is the fields' look, so each is a bare box
             // (appearance="none": no default field border).
             column border-radius=16 background-color="-exact-secondary-grouped-background" overflow="hidden"
               input hatch="login-field" appearance="none" value=email input=setEmail type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" autofocus=true autocomplete="username" disabled=busy submit=nextField enterkeyhint="next" placeholder="Email" id="email" testId="email" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
               box height=0.5 margin-left=16 background-color="-exact-separator"
               input hatch="login-field" appearance="none" value=password input=setPassword submit=signIn type="password" id="password" autocomplete="current-password" enterkeyhint="go" disabled=busy placeholder="Password" testId="password" box-sizing="border-box" width="100%" padding=16 font-size=17 color="-exact-label"
-            PrimaryButton(label="Sign In", disabled=(email.trim() == "" or password == ""), press=signIn, id="sign-in-button")
+            // Disabled while the sign-in is out, which the button's grey shows
+            PrimaryButton(label="Sign In", disabled=(email.trim() == "" or password == "" or busy), press=signIn, id="sign-in-button")
         if step == "choice"
-          // Keep the full delivery address readable, including on a narrow segment
-          row testId="method-actions" flex-wrap="wrap" gap=12
+          // One width for every method, however many and however long, capped
+          // in rem so the cap grows with the text size; a delivery address wraps
+          column testId="method-actions" gap=12 width="100%" max-width="20rem" align-self="center"
             for m, i in choices key=m
-              button press=choose(i) disabled=busy testId=`method-${i}` flex="1 1 9rem" appearance="auto" buttonStyle="tinted" accent-color="AccentColor" min-width=0 min-height=50 padding=16 border-radius=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align="left" gap=12
+              button press=choose(i) disabled=busy testId=`method-${i}` width="100%" appearance="auto" buttonStyle="tinted" accent-color="AccentColor" min-height=50 padding=16 border-radius=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align="left" gap=12
                 image `symbol:icon.${choiceSymbol(m)}` font-size=17 -exact-tint-color="AccentColor"
                 text m font-size=17 font-weight=600 color="AccentColor" white-space="normal"
         if step == "otp"
-          column gap=16
+          // A section, so the keyboard's reveal of the code keeps Resend Code
+          // and Verify above the keys
+          section display="flex" flex-direction="column" gap=16
+            // Resend Code under the field at its trailing edge; Back returns to
+            // the method choice, so the step needs no link of its own for that
             column
               input hatch="login-field" appearance="none" value=code input=setCode submit=verify inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autofocus=true enterkeyhint="done" disabled=busy placeholder="Verification Code" id="code" testId="code" box-sizing="border-box" width="100%" padding=16 border-radius=16 background-color="-exact-secondary-grouped-background" font-size=17 color="-exact-label"
-            PrimaryButton(label="Verify", disabled=(code.trim() == ""), press=verify, id="verify-button")
-            row testId="verification-actions" flex-wrap="wrap" justify-content="space-between" gap=8
-              SecondaryButton(label="Resend Code", disabled=busy, press=resend, id="resend")
-              if choices.length > 1
-                SecondaryButton(label="Use a Different Method", disabled=busy, press=differentMethod, id="different-method")
+              row testId="verification-actions" justify-content="flex-end" padding-right=8
+                SecondaryButton(label="Resend Code", disabled=busy, press=resend, id="resend")
+            // Disabled while the code is checked, which the button's grey shows
+            PrimaryButton(label="Verify", disabled=(code.trim() == "" or busy), press=verify, id="verify-button")
         if error != ""
           Notice(id="sign-in-error", symbol="exclamationmark.triangle.fill", tint="-exact-system-orange", message=error)
         if error == "" and info != ""
