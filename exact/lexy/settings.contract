@@ -204,5 +204,6 @@ component RenameScreen
           row gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background" align-items="center" testId="rename-error"
             image "symbol:icon.exclamationmark.triangle.fill" font-size=18 color="-exact-system-orange" object-fit="scale-down" width=24 height=22
             text error font-size=13 font-weight=500 flex=1
-        button press=save disabled=(not changed or saving) testId="save-name" appearance="auto" buttonStyle="prominent-glass" accent-color="AccentColor" height=50 border-radius=25 display="flex" align-items="center" justify-content="center"
-          text "Save" font-size=17 font-weight=600 color="#ffffff"
+        // Sized to its label, as the sign-in screen's primary button is
+        button press=save disabled=(not changed or saving) testId="save-name" appearance="auto" buttonStyle="prominent-glass" accent-color="AccentColor" align-self="center" padding="12px 28px" display="flex" align-items="center" justify-content="center"
+          text "Save" font-size=17 font-weight=600

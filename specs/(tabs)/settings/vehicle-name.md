@@ -55,6 +55,8 @@ what every screen, and the Home Screen widget, calls this car.
 
 - Exact uses a compact UIKit title and keeps heading level 1.
 
+- Exact's Save is sized to its label and centred under the form, as the sign-in screen's primary button is, rather than spanning the width.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Field seeding | The form mounts only once the current name is known, because the native field captures its initial value on first render. The contract either way is "the field opens pre-filled with the current name" | Same late-mount mechanism, seeding a Compose field's observable state |
