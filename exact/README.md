@@ -97,15 +97,17 @@ snapshots, maps preferences, and concurrent reads. Screen specs live in
 - A failed or malformed response preserves the last valid vehicle and telemetry.
   A valid empty vehicle list is a separate result.
 - Only the `session` source refreshes the token; vehicle reads wait for its
-  refresh but never start one. When Exact asks a resource again, it lets the
-  old answer go and rejects that answer's fetches, though the request may
-  already have reached Lexus. Lexus rotates refresh tokens, so a refresh cut
-  off that way can spend the token without delivering its replacement, and
-  Contract asks a vehicle read again far more often than the session.
-- A refresh that fails without a reply from Lexus keeps the session. Its
-  rejection runs between answers, where the store reads as empty, so the
-  session source decides a sign-out from the failure itself, never from an
-  empty store read.
+  refresh but never start one. Lexus rotates refresh tokens, so a refresh
+  that spends its token must deliver the replacement. When Exact asks a
+  resource again, it lets the old answer go but runs a request with effects,
+  such as the refresh's POST, to its end, and that request's continuation
+  keeps the store (Exact LLP 1146 D2); a read's GET is cancelled. Contract asks
+  a vehicle read again far more often than the session.
+- A refresh that fails without a reply from Lexus keeps the session. Where a
+  continuation has no store (background work, or an answer Exact let go),
+  every store operation throws (LLP 1146 D3). So an answer reads the store
+  before its first await, and the session source decides a sign-out only from
+  Lexus's refusal, never from a store it could not read.
 - An old refresh cannot overwrite a newer sign-in or restore a session after
   sign-out. A read whose token is rejected retries once if a refresh issued a
   newer one meanwhile; otherwise it fails with a 401, Contract asks for the

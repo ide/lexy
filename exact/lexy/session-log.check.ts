@@ -103,7 +103,7 @@ assert.equal(await refreshing, true);
 abortRefresh = null;
 l = await log();
 assert.deepEqual(kinds(l).slice(0, 2), ['refresh failed', 'signed out']);
-assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; no reply: Exact let the answer go/);
+assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; no reply: the request was cut off/);
 await session(5);
 assert.equal((await log()).events[0].kind, 'refresh failed', 'a launch after a sign-out was logged as a lost session');
 console.log('5 a cut-off refresh is logged as no reply, and sign-out still explains the next launch');

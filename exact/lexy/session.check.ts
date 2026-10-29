@@ -181,8 +181,12 @@ console.log('10 omitted ID tokens do not lose a rotated refresh token');
 // reads are empty and writes throw (exact2 js/src/prelude.js `__exact_forget`,
 // js/src/door.rs). A refresh so cut off is not a sign-out.
 let betweenAnswers = false;
+// Exact's store where a continuation has none (LLP 1146 D3): every operation throws
 const answerStore = {
-  get: (k: string) => (betweenAnswers ? null : mem.get(k) ?? null),
+  get: (k: string) => {
+    if (betweenAnswers) throw new Error('store.get: no store');
+    return mem.get(k) ?? null;
+  },
   set: (k: string, v: string) => {
     if (betweenAnswers) throw new Error('store.set: no store');
     mem.set(k, v);
@@ -217,5 +221,24 @@ assert.equal(cutOff.signedIn, true, 'a refresh let go signed the user out');
 assert.notEqual(cutOff.status, 401);
 assert.notEqual(cutOffGarage.status, 401, 'a read waiting on a refresh let go reported a sign-out');
 assert.equal(mem.get('lexy.session'), kept);
-console.log('11 a refresh let go between answers keeps the session');
+console.log('11 a refresh cut off before its reply keeps the session');
+
+// 12. A refusal Lexus sends to a continuation with no store keeps the session:
+// the store, unread, says nothing about a sign-out.
+globalThis.fetch = (async (url: string, init?: RequestInit) => {
+  if (String(url).includes('access_token')) {
+    calls++;
+    betweenAnswers = true;
+    return new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400, headers: { 'content-type': 'application/json' } });
+  }
+  return realFetch(url, init);
+}) as any;
+calls = 0;
+mem.set('lexy.session', kept);
+const unread = await answer('session', [14, now], answerStore, null, null);
+betweenAnswers = false;
+assert.equal(calls, 1);
+assert.equal(unread.signedIn, true, 'a refusal read with no store signed the user out');
+assert.equal(mem.get('lexy.session'), kept);
+console.log('12 a refusal its continuation cannot read the store for keeps the session');
 globalThis.fetch = realFetch;

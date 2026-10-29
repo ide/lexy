@@ -172,8 +172,9 @@ async function readJson(response: Reply): Promise<Json> {
 // --- Session (Keychain) --------------------------------------------------------
 
 function readSession(store: Store): Session | null {
+  const saved = store.get('lexy.session'); // throws where this turn has no store (LLP 1146 D3): never "signed out"
   try {
-    const s = JSON.parse(store.get('lexy.session') ?? 'null') as Session | null;
+    const s = JSON.parse(saved ?? 'null') as Session | null;
     return s && s.accessToken && s.refreshToken ? s : null;
   } catch {
     return null;
@@ -203,15 +204,14 @@ function tokens(body: Json, previous: Session | undefined, at: number): Session 
 // rejection forgets the session only if the stored token is still the one
 // rejected.
 //
-// A refresh must also get its reply. When Exact asks a resource again with
-// newer arguments, it lets the old answer go and rejects the fetches that
-// answer made, though the request may already have reached Lexus, which then
-// spent the token. Contract asks the `session` source again only once it has
-// answered, while it asks a vehicle read again whenever its car or revision
-// moves, so only `session` refreshes: a read waits for its refresh but never
-// starts one. A rejected fetch's continuation runs between answers, where the
-// store reads as empty, so a refresh that failed without a reply from Lexus
-// never reads the store to decide whether the user signed out.
+// A refresh must also get its reply. When Exact asks a resource again, it
+// lets the old answer go but runs a request with effects, such as the
+// refresh's POST, to its end, its continuation keeping the store (LLP 1146
+// D2); it cancels a read's GET. Contract asks `session` again only once it
+// has answered, while it asks a vehicle read again whenever its car or
+// revision moves, so only `session` refreshes: a read waits for its refresh
+// but never starts one. A refresh cut off (offline, or the app ended) never
+// reads the store to decide whether the user signed out.
 let refreshing: Promise<Session> | null = null;
 
 // Marks the failures that mean the session is gone, as against a refresh that
@@ -253,8 +253,7 @@ async function refreshOnce(store: Store, session: Session, at: number): Promise<
     next = tokens(await readJson(response), session, at);
   } catch (e) {
     logSession(at, 'refresh failed', tokenPrint(session.refreshToken).then(sent => `sent ${sent}; ${refreshFailure(e)}`));
-    // No reply from Lexus (offline, or let go between answers): the session
-    // stays for the next try
+    // No reply from Lexus (offline, or cut off): the session stays
     if (!(e instanceof HttpError)) {
       throw e;
     }
@@ -296,7 +295,7 @@ function refreshFailure(e: unknown): string {
   }
   const kind = str(rec(e).kind);
   if (kind === 'Aborted') {
-    return 'no reply: Exact let the answer go, and the request may have reached Lexus';
+    return 'no reply: the request was cut off, and may have reached Lexus';
   }
   return `no reply: ${/^[A-Za-z]{1,20}$/.test(kind) ? kind : 'the request failed'}`;
 }
@@ -1235,6 +1234,7 @@ const pageOrigin = (): string => globalThis.origin ?? '';
 // gone, the chooser asks again (src/hooks/use-maps-provider.ts,
 // src/data/maps-providers.ts).
 async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
+  const kept = store.get('lexy.maps'); // before any await: a continuation may have no store (LLP 1146 D3)
   let installed = { apple: true, google: false, waze: false };
   let known = false;
   try {
@@ -1253,7 +1253,7 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
   // The choice is the database's, not the Keychain's: a Keychain write would
   // ask every vehicle resource again. A choice an earlier build kept in the
   // Keychain is read until the database has one.
-  let provider = (await choice('maps')) ?? store.get('lexy.maps') ?? '';
+  let provider = (await choice('maps')) ?? kept ?? '';
   if (known && provider !== '' && !installed[provider as keyof typeof installed]) {
     // Clear only the removed choice; a newer selection may already be queued
     await withDb(db => db.execute(
