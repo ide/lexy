@@ -84,7 +84,7 @@ stale data at all.
 
 - Exact leaves navigation-title font, weight, color, and header spacing to UIKit. Map and login previews use inline titles; other routes use large titles. UIKit supplies the bottom safe area once; page padding adds only content spacing.
 
-- With Developer Mode on, every Exact screen but the map has a Record Trace button at the trailing end of its navigation bar. The button is a stopwatch. The first press starts recording every frame, and the stopwatch fills and takes the accent colour while it records; at rest it is untinted. The next press stops, puts the trace on the clipboard as JSON for an agent to read, cut to 7,500 bytes so that it fits a message of 8 KB, and plays a success haptic. The trace splits each scroll into its drag and its glide and lists the late frames.
+- With Developer Mode on, every Exact screen but the map has a Record Trace button at the trailing end of its navigation bar. The button is a stopwatch. The first press starts recording each frame the app draws, at the rate the system gives it, and the stopwatch fills and takes the accent colour while it records; at rest it is untinted. The next press stops, puts the trace on the clipboard as JSON for an agent to read, cut to 7,500 bytes so that it fits a message of 8 KB, and plays a success haptic. The trace splits each scroll into its drag and its glide with each one's frame rate, lists the late frames with what made each late, and names what on screen costs the render server.
 
 | Concern | iOS | Android |
 | --- | --- | --- |
