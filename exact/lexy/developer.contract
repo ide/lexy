@@ -182,16 +182,17 @@ component UpdatesScreen
       DeveloperPane(expanded=expanded, first=false, id="updates-actions")
         column
           SectionHeader(title="Actions")
-          // Rows of a card, as Data State's Clear Maps provider is, each a native
-          // button with its symbol; Apply waits for a download
+          // A list's rows in a card, each a button with its symbol, so a press
+          // greys the whole row as a UIKit cell's does; the card's edges take
+          // no separator. Apply waits for a download
           column class=Card
-            button text-align="left" press=check testId="updates-check" padding=16 display="flex"
-              image "symbol:icon.arrow_triangle_2_circlepath"
-              text "Check for Update" font-size=17 color="AccentColor"
-            Divider()
-            button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" padding=16 display="flex"
-              image "symbol:icon.arrow.down.circle.fill"
-              text "Apply Downloaded Update" font-size=17 color=(delivery.staged ? "AccentColor" : "-exact-tertiary-label")
+            list
+              button text-align="left" press=check testId="updates-check" width="100%" box-sizing="border-box" padding=16 display="flex" align-items="center" gap=8 border-top="none"
+                image "symbol:icon.arrow_triangle_2_circlepath" font-size=21 color="AccentColor"
+                text "Check for Update" font-size=17 color="AccentColor"
+              button text-align="left" press=apply disabled=(not delivery.staged) testId="updates-apply" width="100%" box-sizing="border-box" padding=16 display="flex" align-items="center" gap=8 border-bottom="none"
+                image "symbol:icon.arrow.down.circle.fill" font-size=21 color=(delivery.staged ? "AccentColor" : "-exact-tertiary-label")
+                text "Apply Downloaded Update" font-size=17 color=(delivery.staged ? "AccentColor" : "-exact-tertiary-label")
           SectionFooter(words=(checked and not delivery.staged ? "Checked for updates. Downloads appear here when ready." : "Updates download in the background and apply at the next launch. You can also apply a downloaded update now."))
 
 // data-state-screen.ios.tsx: one override at a time, Live by default and

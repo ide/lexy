@@ -74,7 +74,7 @@ internal preview builds it also carries the entry points to the developer tools.
 
 - Exact section titles are level-2 headings in the platform headline style.
 
-- The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it.
+- The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it. Sign Out is its card's cell, so a press greys the whole row as a UIKit cell's does, not only the label.
 - The Exact app adds 16 points of bottom content spacing inside the system safe area, and its list fills the width on a wide display, as a UIKit inset-grouped list does. A fold leaves the list in place rather than moving it to one side of the hinge; on a book fold only the Sign Out label moves, to the leading edge of its row, so that it stays clear of the hinge.
 - In Exact, dragging from the Maps App row scrolls the list without opening the chooser. A tap opens the chooser; choosing an app saves the preference.
 - When unfolded, Exact’s Performance screen puts launch and screen metrics on the left and medians on the right. Each pane scrolls independently beneath the native heading and bottom bars. On iOS 27, UIKit keeps the safe area unchanged as the navigation bar minimizes, so scrolling one pane does not move the other’s content. UIKit insets each pane’s content once. Closed and laptop views use one column.

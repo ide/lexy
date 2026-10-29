@@ -122,6 +122,8 @@ component SettingsScreen
     signOut: action
     signingOut: bool
     fold: string
+  action askSignOut
+    showModal("sign-out-confirmation")
   view
     scroll id="screen-scroll" testId="settings-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" class=SafeScroll
       SettingsColumn(id="settings-column")
@@ -143,12 +145,15 @@ component SettingsScreen
               SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : name), opensScreen=true)
         column
           SectionHeader(title="Lexus Account")
+          // A list's row, so a press greys the whole row as a UIKit cell's
+          // does; the card's edges take no separator
           column class=Card
-            // Start the label at the leading edge on a book fold, where a
-            // centred label crosses the hinge
-            button commandfor="sign-out-confirmation" command="show-modal" disabled=signingOut testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align=(fold == "across" ? "start" : "center") gap=8
-              image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17 -exact-tint-color="-exact-system-red"
-              text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
+            list
+              // Start the label at the leading edge on a book fold, where a
+              // centred label crosses the hinge
+              button press=askSignOut disabled=signingOut testId="sign-out" width="100%" box-sizing="border-box" padding=16 display="flex" flex-direction="row" align-items="center" justify-content=(fold == "across" ? "flex-start" : "center") gap=8 border-top="none" border-bottom="none"
+                image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=21 color="-exact-system-red"
+                text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
           dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
             text "You’ll need to sign in again to access your vehicle."
             button destructive=true press=signOut commandfor="sign-out-confirmation" command="close" testId="confirm-sign-out"
