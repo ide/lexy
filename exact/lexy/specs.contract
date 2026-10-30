@@ -11,6 +11,7 @@ use fuelName from "./model.contract"
 use headUnit from "./model.contract"
 use failureSummary from "./model.contract"
 use failureAdvice from "./model.contract"
+use failureDetail from "./model.contract"
 use VehicleState from "./status.contract"
 use WarningBanner from "./status.contract"
 use Activity from "./model.contract"
@@ -55,6 +56,8 @@ component SpecsScreen
     refreshing: bool
     loading: bool
     retrying: bool
+    // Developer mode: failures name their read, status and Lexus's words
+    developer: bool
     online: bool
     specLoading: bool
     servicesLoading: bool
@@ -63,6 +66,7 @@ component SpecsScreen
     wide: bool
     fold: string
   derive car = garage.car
+  derive failureNote = developer ? ` ${failureDetail("Vehicle list", garage.status, garage.error)}` : ""
   view
     scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing class=SafeScroll
       column box-sizing="border-box" min-height="100%"
@@ -72,7 +76,7 @@ component SpecsScreen
         // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
         if online and car.vin != "" and not garage.ok and not loading and garage.status != 401
           column margin-left=16 margin-right=16 margin-top=16
-            WarningBanner(id="specs-garage-error", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.`)
+            WarningBanner(id="specs-garage-error", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.${failureNote}`)
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
@@ -82,7 +86,7 @@ component SpecsScreen
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16
-            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), label="Try again", press=reload, busy=retrying, id="specs-error")
+            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=`${failureAdvice(garage.status, garage.error)}${failureNote}`, label="Try again", press=reload, busy=retrying, id="specs-error")
         if car.vin != "" or loading
           column box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId=(car.vin == "" ? "specs-skeleton" : "specs-body")
             column gap=8 testId="specs-vehicle" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"

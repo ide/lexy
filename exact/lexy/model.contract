@@ -268,6 +268,9 @@ fn summaryOf(kind: string): string = (
   "Something unexpected went wrong."
 )
 fn failureAdvice(status: number, error: string): string = adviceOf(failureKind(status, error))
+// Developer mode's note on a failed read: which one, its HTTP status, and
+// Lexus's own words when it gave any, for a report the wording above hides
+fn failureDetail(read: string, status: number, error: string): string = error != "" ? `${read}: HTTP ${status}, "${error}".` : `${read}: HTTP ${status}.`
 fn adviceOf(kind: string): string = (
   kind == "permission" ? "Lexus didn't let Lexy read your vehicle's data. Your saved sign-in may no longer have access, for example if the vehicle was removed from your Lexus account. Sign out and sign back in; if the vehicle still doesn't appear, check that it's listed in the Lexus app." :
   kind == "server" ? "The Lexus service had a problem on its end, not something you did. It usually recovers within a few minutes. Try again shortly." :
