@@ -1,244 +1,164 @@
 // bun exact/lexy/session.check.ts
-// Drives app.ts's session source against a fake rotating-token server.
+// Drives app.ts's session and vehicle reads through @exact/oauth against a
+// fake Lexus realm: what Lexy asks of the package, and what it does with what
+// the package says. The protocol itself is the package's cases' (exact2's
+// packages/oauth/test).
 import { strict as assert } from 'node:assert';
-const L = import.meta.dir;
-let current = 'r1', calls = 0, delay = 30;
-let tokenFailure: { status: number; body: unknown } | null = null;
-let omitIdToken = false;
-const jwt = (o: object) => 'h.' + Buffer.from(JSON.stringify(o)).toString('base64url') + '.s';
-const vehicleAuthorizations: string[] = [];
-let rejectFirstVehicleRead = false;
-// The gateway accepts only the access token issued with the current refresh token
-let requireCurrentToken = false;
-globalThis.fetch = (async (url: string, init?: RequestInit) => {
-  const u = String(url);
-  if (u.includes('access_token')) {
-    calls++;
-    if (tokenFailure) {
-      return new Response(typeof tokenFailure.body === 'string' ? tokenFailure.body : JSON.stringify(tokenFailure.body), { status: tokenFailure.status });
-    }
-    const body = new URLSearchParams(String(init?.body ?? ''));
-    await new Promise(r => setTimeout(r, delay));
-    if (body.get('refresh_token') !== current) {
-      return new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400, headers: { 'content-type': 'application/json' } });
-    }
-    const next = 'r' + (Number(current.slice(1)) + 1);
-    current = next;
-    return new Response(JSON.stringify({ access_token: 'a-' + next, refresh_token: next, ...(omitIdToken ? {} : { id_token: jwt({ extension_tmsguid: 'g' }) }), expires_in: 3600, token_type: 'Bearer' }), { status: 200, headers: { 'content-type': 'application/json' } });
-  }
-  if (u.includes('/vehicle/guid')) {
-    vehicleAuthorizations.push((init?.headers as Record<string, string>).Authorization ?? '');
-    const authorization = (init?.headers as Record<string, string>).Authorization ?? '';
-    if (rejectFirstVehicleRead || (requireCurrentToken && authorization !== 'Bearer a-' + current)) {
-      rejectFirstVehicleRead = false;
-      return new Response(JSON.stringify({ error: 'invalid_token' }), { status: 401, headers: { 'content-type': 'application/json' } });
-    }
-    return new Response(JSON.stringify({ payload: [{ vin: 'VIN1' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
-  }
-  throw new Error('unexpected ' + u);
-}) as any;
-const { answer } = await import(L + '/app.ts');
-const mem = new Map<string, string>();
-const store = { get: (k: string) => mem.get(k) ?? null, set: (k: string, v: string) => void mem.set(k, v), forget: (k: string) => void mem.delete(k) } as any;
+import { gateway, lexusRealm, memoryStorage, memoryStore, signIn } from './check-support';
+
+const timeout = setTimeout((): never => { throw new Error('Session check did not finish within 10 seconds'); }, 10_000);
+const gate = gateway(), { expired, reads } = gate;
+const realm = lexusRealm(gate.answer);
+// Every request the app makes, to Lexus or anywhere else
+let requests = 0;
+globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) => { requests++; return realm.fetch(input, init); }) as typeof fetch;
+const { answer } = await import('./app.ts');
+const store = memoryStore();
+const { storage, database } = memoryStorage();
 const now = 1_790_900_000_000;
-const expired = (rt: string) => JSON.stringify({ accessToken: 'a0', refreshToken: rt, idToken: 'x', expiresAt: now - 1000, tokenType: 'Bearer' });
+type Account = { signedIn: boolean; status: number; error: string; expiresAt: number };
+const account = async (): Promise<Account> => answer('session', [now], store, storage, null) as Promise<Account>;
+const garage = (rev: number, on: typeof store = store): Promise<{ ok: boolean; status: number; car: { vin: string } }> =>
+  answer('garage', [true, rev, now], on, storage, null) as never;
+const cars = (): number => Number(database.prepare('SELECT count(*) FROM cars').values()[0][0]);
 
-// 1. Two launches' asks at once share one refresh.
-mem.set('lexy.session', expired('r1'));
-const [a, b] = await Promise.all([answer('session', [0, now], store, null, null), answer('session', [1, now], store, null, null)]);
-console.log('1 concurrent:', calls === 1 ? 'one refresh' : `${calls} refreshes`, a.signedIn && b.signedIn ? 'both signed in' : 'SIGNED OUT', 'stored', JSON.parse(mem.get('lexy.session')!).refreshToken);
-assert.equal(calls, 1);
-assert.equal(a.signedIn && b.signedIn, true);
+// 1. Signed out with nothing saved: no notice to sign in again, and no
+// request made first (the realm's endpoints are fixed: no discovery).
+assert.deepEqual(await account(), { signedIn: false, demo: false, expiresAt: 0, status: 401, error: '' });
+assert.equal(requests, 0);
+console.log('1 nothing saved: signed out, with no notice and no request');
 
-// 2. A refresh rejected because another already rotated the token keeps the session.
-current = 'r9'; calls = 0;
-mem.set('lexy.session', expired('r1'));           // the ask still holds r1 …
-const ask = answer('session', [2, now], store, null, null);
-mem.set('lexy.session', JSON.stringify({ accessToken: 'a-r9', refreshToken: 'r9', idToken: jwt({ extension_tmsguid: 'g' }), expiresAt: now + 3_600_000, tokenType: 'Bearer' })); // … while r9 landed
-const c = await ask;
-assert.equal(c.signedIn, true);
-assert.equal(calls, 1);
-assert.equal(JSON.parse(mem.get('lexy.session')!).refreshToken, 'r9');
-console.log('2 stale rejection keeps the rotated session');
+// 2. A read carries the access token and the ID token's guid.
+await signIn(answer, store, storage);
+assert.equal((await account()).signedIn, true);
+assert.equal((await garage(0)).car.vin, 'VIN1');
+assert.equal(reads[0].get('Authorization'), 'Bearer a-r1');
+assert.equal(reads[0].get('X-GUID'), 'g');
+console.log('2 a read carries the token and the X-GUID from the ID token');
 
-// 3. A real revocation signs out.
-current = 'zz'; calls = 0;
-mem.set('lexy.session', expired('r3'));
-const d = await answer('session', [3, now], store, null, null);
-console.log('3 revoked:', d.signedIn ? 'STILL SIGNED IN' : 'signed out', mem.has('lexy.session') ? 'KEPT' : 'forgotten');
-assert.equal(d.signedIn, false);
-assert.equal(mem.has('lexy.session'), false);
+// 3. Two reads the gateway refuses at once renew the token once, with the
+// scope, and each answers.
+expired.add('Bearer a-r1');
+const [a, b] = await Promise.all([garage(1), garage(2)]);
+assert.equal(a.ok && b.ok, true);
+assert.equal(realm.refreshes, 1);
+assert.equal(realm.refreshed[0].get('scope'), 'openid profile write');
+assert.equal(reads.at(-1)!.get('Authorization'), 'Bearer a-r2');
+// The refresh's new ID token passed its checks: the session and its guid stand
+assert.equal(reads.at(-1)!.get('X-GUID'), 'g');
+// The sign-in's exchange and the refresh keep the package's 60 s, not the tree's 15 s: Lexus spends the refresh token
+// it is sent, so a reply given up on would sign the person out at the next refresh
+assert.deepEqual(realm.deadlines, [['authorization_code', 60_000], ['refresh_token', 60_000]]);
+// A 401 renews too
+gate.refusal = 401;
+expired.add('Bearer a-r2');
+assert.equal((await garage(3)).ok, true);
+assert.equal(realm.refreshes, 2);
+gate.refusal = 403;
+console.log('3 a 403 or 401 renews once for reads at once, with the scope, and each answers');
 
-// 4. An empty build-time store must not bake a signed-out first frame.
-const buildSession = await answer('session', [4, now], store, null, null);
-assert.equal(buildSession.signedIn, false);
-const liveStorage = { fs: { readFile: async (): Promise<never> => {
-  throw Object.assign(new Error('missing probe'), { code: 'ENOENT' });
-} } } as any;
-const empty = await answer('session', [5, now], store, liveStorage, null);
-assert.equal(empty.signedIn, false);
-assert.equal(empty.status, 401);
-console.log('4 bake deferred; live empty session signed out');
+// 3b. A read with no reply says Lexus could not be reached, which the screens
+// word as a network failure; a refresh Lexus answers 503 says its status.
+const restBefore = realm.rest;
+realm.rest = () => { throw new TypeError('The network connection was lost.'); };
+const lost = await garage(4);
+assert.deepEqual([lost.ok, lost.status], [false, 0]);
+assert.match((lost as unknown as { error: string }).error, /^Couldn’t reach Lexus/);
+realm.rest = restBefore;
+expired.add('Bearer a-r3');
+realm.next = { status: 503, body: { error: 'server_error' } };
+assert.equal((await garage(5)).status, 503);
+console.log('3b no reply reads as Lexus unreachable, and a refresh 503 as its status');
 
-// 5. A vehicle read asked while the session refreshes waits for that refresh,
-// and a vehicle read never starts one: only the session source writes the
-// rotated token (see `refreshing` in app.ts).
-current = 'r10';
-calls = 0;
-vehicleAuthorizations.length = 0;
-mem.set('lexy.session', expired('r10'));
-const [refreshedAccount, refreshedGarage] = await Promise.all([
-  answer('session', [6, now], store, null, null),
-  answer('garage', [true, now - 1000, 0, now], store, null, null),
-]);
-assert.equal(refreshedAccount.signedIn, true);
-assert.equal(refreshedGarage.car.vin, 'VIN1');
-assert.equal(calls, 1);
-assert.deepEqual(vehicleAuthorizations, ['Bearer a-r11']);
-mem.set('lexy.session', expired('r11'));
-calls = 0;
-const expiredGarage = await answer('garage', [true, now - 1000, 1, now], store, null, null);
-assert.equal(calls, 0);
-assert.equal(expiredGarage.car.vin, 'VIN1');
-console.log('5 a vehicle read joins the session refresh and never starts one');
-
-// 6. A token rejected before its expiry fails the read without a refresh; the
-// next session answer refreshes it, and the read then succeeds.
-current = 'r11';
-calls = 0;
-vehicleAuthorizations.length = 0;
-rejectFirstVehicleRead = true;
-mem.set('lexy.session', JSON.stringify({ accessToken: 'a-stale', refreshToken: 'r11', idToken: jwt({ extension_tmsguid: 'g' }), expiresAt: now + 3_600_000, tokenType: 'Bearer' }));
-const rejectedGarage = await answer('garage', [true, now + 3_600_000, 1, now], store, null, null);
-assert.equal(rejectedGarage.status, 401);
-assert.equal(calls, 0);
-const rerefreshed = await answer('session', [12, now], store, null, null);
-assert.equal(rerefreshed.signedIn, true);
-assert.equal(calls, 1);
-const retriedGarage = await answer('garage', [true, rerefreshed.expiresAt, 1, now], store, null, null);
-assert.equal(retriedGarage.car.vin, 'VIN1');
-assert.deepEqual(vehicleAuthorizations, ['Bearer a-stale', 'Bearer a-r12']);
-console.log('6 a rejected access token fails the read and the next session answer refreshes it');
-
-// 7. An old refresh must not restore a session after sign-out.
-current = 'r12';
-mem.set('lexy.session', expired('r12'));
-const signingOut = answer('session', [7, now], store, null, null);
-await answer('signOut', [], store, null, null);
-assert.equal((await signingOut).signedIn, false);
-assert.equal(mem.has('lexy.session'), false);
-console.log('7 an in-flight refresh cannot undo sign-out');
-
-// 8. A successful old refresh must not overwrite a newer sign-in either.
-current = 'r13';
-mem.set('lexy.session', expired('r13'));
-const signingIn = answer('session', [8, now], store, null, null);
-const newSession = JSON.stringify({ accessToken: 'new-account', refreshToken: 'new-refresh', idToken: jwt({ extension_tmsguid: 'new-account' }), expiresAt: now + 3_600_000, tokenType: 'Bearer' });
-mem.set('lexy.session', newSession);
-assert.equal((await signingIn).signedIn, true);
-assert.equal(mem.get('lexy.session'), newSession);
-console.log('8 an in-flight refresh cannot overwrite a newer sign-in');
-
-// Only a confirmed refresh-token rejection can remove a saved session
-for (const reply of [
+// 3c. These transient and unclassified failures keep the session and the cars, whatever the body says: a rate limit, a
+// timeout, another refusal, an unreadable reply and a server error. 3b left `a-r3` refused.
+const carsBefore = cars();
+assert(carsBefore > 0, "the account has cars to keep");
+const page = async (): Promise<Response> => new Response('<html>Gateway unavailable</html>', { status: 400, headers: { 'Content-Type': 'text/html' } });
+for (const [i, reply] of [
   { status: 429, body: { error: 'slow_down' } },
+  { status: 429, body: { error: 'invalid_grant' } },
   { status: 408, body: { error: 'request_timeout' } },
   { status: 403, body: { error: 'access_denied' } },
   { status: 401, body: { error: 'invalid_client' } },
   { status: 400, body: { error: 'invalid_request' } },
-  { status: 400, body: '<html>Gateway unavailable</html>' },
+  page,
   { status: 503, body: { error: 'invalid_grant' } },
-]) {
-  tokenFailure = reply;
-  const saved = expired('r14');
-  mem.set('lexy.session', saved);
-  const account = await answer('session', [9, now], store, null, null);
-  assert.equal(account.signedIn, true, `HTTP ${reply.status} is not a confirmed revocation`);
-  assert.equal(account.status, reply.status);
-  assert.equal(mem.get('lexy.session'), saved);
+].entries()) {
+  realm.next = reply;
+  assert.equal((await garage(10 + i)).ok, false);
+  const said = typeof reply === 'function' ? 'an HTML page' : `${reply.status} ${JSON.stringify(reply.body)}`;
+  assert.equal((await account()).signedIn, true, `a refresh answered ${said} is no refusal of the token`);
+  assert.equal(cars(), carsBefore);
 }
-tokenFailure = null;
-console.log('9 retryable and unclassified refresh failures preserve the session');
+console.log('3c a rate limit, a timeout, another refusal, an unreadable reply and a server error keep the session and the cars');
 
-// A refresh can rotate its token without returning another ID token
-current = 'r20';
-omitIdToken = true;
-mem.set('lexy.session', expired(current));
-const resumed = await answer('session', [10, now], store, null, null);
-assert.equal(resumed.signedIn, true);
-assert.equal(resumed.error, '');
-const rotated = JSON.parse(mem.get('lexy.session')!);
-assert.equal(rotated.refreshToken, 'r21');
-assert.equal(rotated.idToken, 'x');
-const resumedAgain = await answer('session', [11, now + 3_600_001], store, null, null);
-assert.equal(resumedAgain.signedIn, true);
-assert.equal(resumedAgain.error, '');
-assert.equal(JSON.parse(mem.get('lexy.session')!).refreshToken, 'r22');
-console.log('10 omitted ID tokens do not lose a rotated refresh token');
+// 4. A refresh that gets no reply keeps the session: the read fails, retryable. 3b left `a-r3` refused.
+realm.next = 'throw';
+const unanswered = await garage(3);
+assert.equal(unanswered.ok, false);
+assert.equal(unanswered.status, 0);
+assert.equal((await account()).signedIn, true);
+console.log('4 a refresh with no reply keeps the session');
 
-// 11. Exact lets go an answer whose resource it asks again, and rejects the
-// fetches that answer made; the rejection runs between answers, where store
-// reads are empty and writes throw (exact2 js/src/prelude.js `__exact_forget`,
-// js/src/door.rs). A refresh so cut off is not a sign-out.
-let betweenAnswers = false;
-// Exact's store where a continuation has none (LLP 1146 D3): every operation throws
+// 5. A refresh whose reply's turn has no store (LLP 1146 D3) keeps it too.
+let unavailable = false;
 const answerStore = {
-  get: (k: string) => {
-    if (betweenAnswers) throw new Error('store.get: no store');
-    return mem.get(k) ?? null;
-  },
-  set: (k: string, v: string) => {
-    if (betweenAnswers) throw new Error('store.set: no store');
-    mem.set(k, v);
-  },
-  forget: (k: string) => {
-    if (betweenAnswers) throw new Error('store.forget: no store');
-    mem.delete(k);
-  },
-} as any;
-const realFetch = globalThis.fetch;
-globalThis.fetch = (async (url: string, init?: RequestInit) => {
-  if (String(url).includes('access_token')) {
-    calls++;
-    await new Promise(r => setTimeout(r, delay));
-    betweenAnswers = true;
-    throw Object.assign(new Error('the answer was let go before this reply; the request may already have been sent'), { kind: 'Aborted' });
-  }
-  return realFetch(url, init);
-}) as any;
-omitIdToken = false;
-current = 'r30';
-calls = 0;
-const kept = expired('r30');
-mem.set('lexy.session', kept);
-const [cutOff, cutOffGarage] = await Promise.all([
-  answer('session', [13, now], answerStore, null, null),
-  answer('garage', [true, now - 1000, 3, now], answerStore, null, null),
-]);
-betweenAnswers = false;
-assert.equal(calls, 1);
-assert.equal(cutOff.signedIn, true, 'a refresh let go signed the user out');
-assert.notEqual(cutOff.status, 401);
-assert.notEqual(cutOffGarage.status, 401, 'a read waiting on a refresh let go reported a sign-out');
-assert.equal(mem.get('lexy.session'), kept);
-console.log('11 a refresh cut off before its reply keeps the session');
+  get: (k: string) => { if (unavailable) throw new Error('store.get: no store here'); return store.get(k); },
+  set: (k: string, v: string) => { if (unavailable) throw new Error('store.set: no store here'); store.set(k, v); },
+  forget: (k: string) => { if (unavailable) throw new Error('store.forget: no store here'); store.forget(k); },
+} as typeof store;
+realm.next = async () => {
+  unavailable = true;
+  return new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 });
+};
+assert.equal((await garage(4, answerStore)).ok, false);
+unavailable = false;
+assert.equal((await account()).signedIn, true, 'a refusal read with no store signed the person out');
+console.log('5 a refusal its turn cannot read the store for keeps the session');
 
-// 12. A refusal Lexus sends to a continuation with no store keeps the session:
-// the store, unread, says nothing about a sign-out.
-globalThis.fetch = (async (url: string, init?: RequestInit) => {
-  if (String(url).includes('access_token')) {
-    calls++;
-    betweenAnswers = true;
-    return new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400, headers: { 'content-type': 'application/json' } });
+// 5b. A refusal that stands after the refresh reads as a 401, whatever the gateway answered, and keeps the session.
+gate.refuseAll = true;
+const stood = await garage(30);
+gate.refuseAll = false;
+assert.deepEqual([stood.ok, stood.status], [false, 401]);
+assert.equal((await account()).signedIn, true);
+console.log('5b a refusal that stands after the refresh reads as a 401 and keeps the session');
+
+// 6. Lexus ending the session ends it in Lexy, with a session error, for which the sign-in screen shows its notice,
+// and the vehicle data gone: a refused refresh token, a refresh that asks for a new sign-in (OpenID Connect Core
+// §3.1.2.6), and a refresh whose ID token is another issuer's. Each starts from a session with a car saved.
+const issued = Math.floor(Date.now() / 1000);
+const stranger = `e30.${Buffer.from(JSON.stringify({ iss: 'https://login.example', sub: 'user-1', aud: 'oneappsdkclient', iat: issued, exp: issued + 3600 })).toString('base64url')}.sig`;
+for (const [i, reply] of [
+  { status: 400, body: { error: 'invalid_grant' } },
+  { status: 400, body: { error: 'login_required' } },
+  { status: 200, body: { access_token: 'a-stranger', refresh_token: 'r-stranger', token_type: 'Bearer', expires_in: 3600, id_token: stranger } },
+].entries()) {
+  if (!(await account()).signedIn) {
+    await signIn(answer, store, storage);
   }
-  return realFetch(url, init);
-}) as any;
-calls = 0;
-mem.set('lexy.session', kept);
-const unread = await answer('session', [14, now], answerStore, null, null);
-betweenAnswers = false;
-assert.equal(calls, 1);
-assert.equal(unread.signedIn, true, 'a refusal read with no store signed the user out');
-assert.equal(mem.get('lexy.session'), kept);
-console.log('12 a refusal its continuation cannot read the store for keeps the session');
-globalThis.fetch = realFetch;
+  assert.equal((await garage(20 + 2 * i)).ok, true);
+  assert(cars() > 0, 'the account has a car to forget');
+  expired.add(`Bearer a-${realm.refresh}`);
+  realm.next = reply;
+  assert.equal((await garage(21 + 2 * i)).status, 401);
+  const ended = await account();
+  assert.equal(ended.signedIn, false);
+  assert.equal(ended.status, 401);
+  assert.notEqual(ended.error, '', `a session error says the session ended (${JSON.stringify(reply.body)})`);
+  assert.equal(cars(), 0);
+}
+console.log('6 a refused refresh token, a sign-in asked again and another issuer\'s ID token sign out, with a session error and no vehicle data');
+
+// 7. Sign-out revokes the session at Lexus and forgets it.
+await signIn(answer, store, storage);
+const refresh = realm.refresh;
+await answer('signOut', [now], store, storage, null);
+assert.deepEqual(realm.revoked, [refresh]);
+assert.equal((await account()).signedIn, false);
+assert.equal((await garage(6)).status, 401);
+console.log('7 sign-out revokes the refresh token and forgets the session');
+
+clearTimeout(timeout);
+database.close();

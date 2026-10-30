@@ -78,6 +78,8 @@ deps() {
     git -C "$EXACT2" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
   fi
   (cd "$EXACT2" && bun install --frozen-lockfile >&2)
+  # The app's @exact/oauth, a copy of the pinned exact2's (package.json's file: path)
+  (cd "$APP" && bun install --frozen-lockfile >&2)
   # exact2's scripts run Cargo --locked --offline: fetch both workspaces' crates first.
   log "crates"
   (cd "$EXACT2" && cargo fetch --locked >&2)

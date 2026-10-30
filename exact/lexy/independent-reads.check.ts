@@ -2,15 +2,17 @@
 import { strict as assert } from 'node:assert';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import type { NativeModule, SQLCommand } from './app.contract.d.ts';
-import { memoryStorage, memoryStore } from './check-support';
+import { lexusRealm, memoryStorage, memoryStore, signIn as signInto } from './check-support';
 
 type Request = { url: string; init: RequestInit; reply: (response: Response) => void };
 const pending: Request[] = [];
 let requested: (() => void) | undefined;
-globalThis.fetch = ((url: string, init: RequestInit): Promise<Response> => new Promise<Response>((resolve): void => {
+// Lexus's API answers when the check says; its identity host at once
+const realm = lexusRealm((url: string, init: RequestInit): Promise<Response> => new Promise<Response>((resolve): void => {
   pending.push({ url, init, reply: resolve });
   requested?.();
-})) as typeof fetch;
+}));
+globalThis.fetch = realm.fetch as typeof fetch;
 const { answer } = await import('./app');
 
 async function nextRequest(): Promise<Request> {
@@ -51,9 +53,8 @@ const { storage, database } = memoryStorage({
   },
 });
 const at = 1_790_900_000_000;
-function signIn(): void {
-  store.set('lexy.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', idToken: 'x', expiresAt: at + 3_600_000, tokenType: 'Bearer' }));
-}
+const signIn = (): Promise<void> => signInto(answer, store, storage);
+const signedIn = async (): Promise<boolean> => ((await answer('session', [at], store, storage, null)) as { signedIn: boolean }).signedIn;
 function savedName(): string | null {
   const row = database.query<{ car: string }, []>('SELECT car FROM cars').get();
   return row ? JSON.parse(row.car).nickName : null;
@@ -67,8 +68,8 @@ function pauseGarageWrite(): NonNullable<typeof writeGate> {
   writeGate = { entered: Promise.withResolvers<void>(), released: Promise.withResolvers<void>() };
   return writeGate;
 }
-signIn();
-const initial = answer('garage', [true, at + 3_600_000, 0, at], store, storage, null);
+await signIn();
+const initial = answer('garage', [true, 0, at], store, storage, null);
 const discovery = await nextRequest();
 lane(discovery, true, '/vehicle/guid');
 respond(discovery, cars('Initial'));
@@ -153,8 +154,8 @@ for (const source of ['spec', 'services'] as const) {
   assert.equal((await reading).ok, true);
 }
 
-const oldGarage = answer('garage', [true, at + 3_600_000, 1, at], store, storage, null);
-const newGarage = answer('garage', [true, at + 3_600_000, 2, at + 1], store, storage, null);
+const oldGarage = answer('garage', [true, 1, at], store, storage, null);
+const newGarage = answer('garage', [true, 2, at + 1], store, storage, null);
 const oldDiscovery = await nextRequest();
 const newDiscovery = await nextRequest();
 respond(newDiscovery, cars('Current'));
@@ -165,10 +166,10 @@ assert.equal(savedName(), 'Current');
 
 // Hold the first transaction until the newer response is ready to save
 const gate = pauseGarageWrite();
-const beforeWrite = answer('garage', [true, at + 3_600_000, 3, at + 2], store, storage, null);
+const beforeWrite = answer('garage', [true, 3, at + 2], store, storage, null);
 respond(await nextRequest(), cars('Before'));
 await gate.entered.promise;
-const afterWrite = answer('garage', [true, at + 3_600_000, 4, at + 3], store, storage, null);
+const afterWrite = answer('garage', [true, 4, at + 3], store, storage, null);
 respond(await nextRequest(), cars('After'));
 // Drain response decoding so the second write reaches the held database queue
 await nextTurn();
@@ -178,7 +179,7 @@ assert.equal(savedName(), 'After');
 
 // Recheck freshness after waiting for another resource's transaction
 const queuedGate = pauseGarageWrite();
-const heldGarage = answer('garage', [true, at + 3_600_000, 5, at + 4], store, storage, null);
+const heldGarage = answer('garage', [true, 5, at + 4], store, storage, null);
 respond(await nextRequest(), cars('Held'));
 await queuedGate.entered.promise;
 const queuedTires = answer('tires', [car.vin, car, 4, at + 3], store, storage, null);
@@ -194,25 +195,57 @@ assert.equal((await failedTires).tires[0].value, 34);
 assert.equal(savedPressure(), 34);
 
 const signOutGate = pauseGarageWrite();
-const readDuringSignOut = answer('garage', [true, at + 3_600_000, 6, at + 5], store, storage, null);
+const readDuringSignOut = answer('garage', [true, 6, at + 5], store, storage, null);
 respond(await nextRequest(), cars('Signing out'));
 await signOutGate.entered.promise;
-const signOut = answer('signOut', [], store, storage, null);
+const signOut = answer('signOut', [at + 5], store, storage, null);
 await nextTurn();
 signOutGate.released.resolve();
 await Promise.all([readDuringSignOut, signOut]);
 assert.equal(savedName(), null);
 assert.equal(database.query<{ count: bigint }, []>('SELECT COUNT(*) AS count FROM readings').get()?.count, 0n);
-assert.equal(store.get('lexy.session'), null);
+assert.equal(await signedIn(), false);
 
-signIn();
-const late = answer('garage', [true, at + 3_600_000, 7, at + 6], store, storage, null);
+await signIn();
+const late = answer('garage', [true, 7, at + 6], store, storage, null);
 const lateRequest = await nextRequest();
-await answer('signOut', [], store, storage, null);
+await answer('signOut', [at + 6], store, storage, null);
 respond(lateRequest, cars('Late'));
 await late;
 assert.equal(savedName(), null);
+// A sign-in after the sign-outs logs the time it happened, once the package has made its token's print
+await signIn();
+let logged = await answer('sessionLog', [200], store, storage, null);
+for (let i = 0; i < 100 && logged.events[0]?.kind !== 'signed in'; i++) {
+  await new Promise(done => setTimeout(done, 10));
+  logged = await answer('sessionLog', [200], store, storage, null);
+}
+assert(logged.events[0]?.kind === 'signed in' && Number.isFinite(logged.events[0].at) && logged.events[0].at > 0, JSON.stringify(logged.events.slice(0, 2)));
+assert.equal(pending.length, 0);
+
+// A sign-out while a refresh is held: the package forgets the session only once that refresh lands, so a read made
+// meanwhile still answers and saves; what it saved goes too, and the refreshed token is the one revoked
+await signIn();
+const refreshing = Promise.withResolvers<void>(), released = Promise.withResolvers<void>();
+realm.hold = { entered: refreshing.resolve, released: released.promise };
+const refused = answer('garage', [true, 8, at + 7], store, storage, null);
+(await nextRequest()).reply(new Response('{}', { status: 403 }));
+await refreshing.promise;
+const signingOut = answer('signOut', [at + 8], store, storage, null);
+await nextTurn();
+const meanwhile = answer('garage', [true, 9, at + 8], store, storage, null);
+respond(await nextRequest(), cars('Meanwhile'));
+await meanwhile;
+assert.equal(savedName(), 'Meanwhile', 'a read made while the sign-out waits for the refresh saves');
+released.resolve();
+// The refused read, asked again with the refreshed token
+respond(await nextRequest(), cars('Refreshed'));
+await Promise.all([refused, signingOut]);
+assert.equal(savedName(), null);
+assert.equal(database.query<{ count: bigint }, []>('SELECT COUNT(*) AS count FROM readings').get()?.count, 0n);
+assert.equal(realm.revoked.at(-1), realm.refresh, 'the sign-out revoked the refreshed token');
+assert.equal(await signedIn(), false);
 assert.equal(pending.length, 0);
 clearTimeout(timeout);
 database.close();
-console.log('PASS: HTTP lanes, newest saved reads, per-car isolation, queued writes, and sign-out during writes and HTTP');
+console.log('PASS: HTTP lanes, newest saved reads, per-car isolation, queued writes, and sign-out during writes, HTTP and a refresh');

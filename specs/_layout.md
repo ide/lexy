@@ -55,15 +55,21 @@ turns out to be dead is discovered behind
 the screen: the session manager refreshes in the background, and if the refresh
 token is rejected it clears the session and the cached vehicle data, which drops
 the user back to sign-in with an explanatory message already set.
-The Exact build keeps the Keychain session across updates. Only an OAuth
-`invalid_grant` response with HTTP 400 or 401 clears it automatically; rate limits,
-network failures, and other server errors keep the session for retry. Refreshes
-retain the prior ID token when the server omits it and save any rotated refresh
-token. Initial sign-in still requires all tokens. Only the session source
-refreshes; vehicle reads wait for its refresh but never start one, because Exact
-cuts off the requests of a read it asks again, and a refresh cut off after Lexus
-spent the token loses its replacement, which signs the user out at the next
-refresh. A refresh cut off that way, or failing offline, keeps the session.
+The Exact build keeps its Keychain session with Exact's `@exact/oauth`, across
+updates, but for the update from the build with Lexy's own client: its first
+launch forgets that build's session, its vehicle data and demo mode, and asks
+for one sign-in. Lexus refusing the refresh token (`invalid_grant`) ends it, as do
+OpenID Connect's sign-in-again errors and a refreshed ID token that fails its
+checks; rate limits, network failures, a refresh with no reply and other server
+errors keep the session for retry. A read the gateway refuses (403, or 401)
+renews the token once and tries again, one renewal at a time, and each rotated
+refresh token is kept before its access token is used. By `@exact/oauth`'s
+rule, a token the gateway refuses right after the renewal that issued it is not
+renewed again until the gateway's `Date` says it has expired or, its expiry
+unknown, that a minute has passed since that refusal: those reads fail with the
+refusal, and a refusal without a `Date` renews as any other does. Initial sign-in still requires an ID
+token. Signing out also asks Lexus to revoke the refresh token, and forgets the
+session whether or not Lexus answers.
 
 Exact waits for active writes before clearing vehicle data. Late replies cannot
 restore it after sign-out. Personal choices, including the maps app, remain saved.

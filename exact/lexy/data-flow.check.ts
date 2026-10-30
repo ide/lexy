@@ -1,23 +1,24 @@
 // bun exact/lexy/data-flow.check.ts
 // Only validated replies may replace the saved vehicle and status snapshot
 import { strict as assert } from 'node:assert';
-import { memoryStorage, memoryStore } from './check-support';
+import { lexusRealm, memoryStorage, memoryStore, signIn } from './check-support';
 
 let body: unknown;
 let statusCode = 200;
-globalThis.fetch = (async (): Promise<Response> => new Response(JSON.stringify(body), { status: statusCode })) as unknown as typeof fetch;
+const realm = lexusRealm(async (): Promise<Response> => new Response(JSON.stringify(body), { status: statusCode }));
+globalThis.fetch = realm.fetch as typeof fetch;
 const { answer } = await import('./app');
 const store = memoryStore();
 const { storage, database } = memoryStorage();
 const at = 1_790_900_000_000;
-store.set('lexy.session', JSON.stringify({ accessToken: 'a', refreshToken: 'r', idToken: 'x', expiresAt: at + 3_600_000, tokenType: 'Bearer' }));
+await signIn(answer, store, storage);
 
 body = { payload: [{ vin: 'VIN1', nickName: 'My Car', image: 'https://example.com/car.png' }] };
-const garage = await answer('garage', [true, at + 3_600_000, 0, at], store, storage, null);
+const garage = await answer('garage', [true, 0, at], store, storage, null);
 assert.equal(garage.ok, true);
 for (const malformed of [{ message: 'Temporarily unavailable' }, { payload: {} }, { payload: [{}] }]) {
   body = malformed;
-  const failed = await answer('garage', [true, at + 3_600_000, 1, at], store, storage, null);
+  const failed = await answer('garage', [true, 1, at], store, storage, null);
   assert.equal(failed.ok, false);
   assert.equal(failed.car.vin, garage.car.vin);
   assert.equal(failed.car.image, garage.car.image);
@@ -50,7 +51,7 @@ assert.equal(missing.status, 503);
 
 statusCode = 200;
 body = { payload: [] };
-const empty = await answer('garage', [true, at + 3_600_000, 2, at], store, storage, null);
+const empty = await answer('garage', [true, 2, at], store, storage, null);
 assert.equal(empty.ok, true);
 assert.equal(empty.car.vin, '');
 assert.equal(empty.carCount, 0);

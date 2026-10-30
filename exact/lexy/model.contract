@@ -35,7 +35,7 @@ shape Time
   epochAtZero: number
   utcOffset: number
 
-// Refresh tokens through one session source so concurrent reads share the refresh
+// The session as the sign-in screen and the reads see it (app.ts `session`)
 shape Account
   signedIn: bool
   demo: bool
@@ -51,7 +51,8 @@ shape AuthNode
   status: number
   error: string
   raw: string
-  tokenId: string
+  // The tree is done: Lexus gave its SSO token, which app.ts keeps for the authorization step
+  done: bool
   types: string[]
   prompts: string[]
   // The prompts name a code (lexus-auth.ts's test, matched in the source).
@@ -228,7 +229,7 @@ fn any(values: string[], value: string): bool = values.filter(v => v == value).l
 // Contract has no regex or case folding, and a hand-listed set of casings
 // missed ForgeRock's "One Time Password", so choosing email or SMS read the
 // code step as a password step and failed.
-fn stepOf(tokenId: string, types: string[], asksCode: bool): string = tokenId != "" ? "complete" : (any(types, "NameCallback") ? "username" : (asksCode ? "otp" : (any(types, "PasswordCallback") ? "password" : (any(types, "TextInputCallback") ? "otp" : "choice"))))
+fn stepOf(done: bool, types: string[], asksCode: bool): string = done ? "complete" : (any(types, "NameCallback") ? "username" : (asksCode ? "otp" : (any(types, "PasswordCallback") ? "password" : (any(types, "TextInputCallback") ? "otp" : "choice"))))
 
 fn otpCallback(types: string[]): string = any(types, "TextInputCallback") ? "TextInputCallback" : "PasswordCallback"
 

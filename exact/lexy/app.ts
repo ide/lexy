@@ -1,14 +1,18 @@
-// HTTP, token storage, PKCE, and response decoding. Contract owns app state.
-// Demo mode uses demo.ts's local server and needs no Lexus account.
+// HTTP and response decoding; @exact/oauth keeps the Lexus session. Contract
+// owns app state. Demo mode uses demo.ts's local server and needs no Lexus account.
+import { oauth, OAuthError, type OAuthConfig, type OAuthEvent, type OAuthProvider, type OAuthResult, type OAuthStore } from '@exact/oauth';
 import type { Answer, Database, NativeModule, Overlay, Result, SQLCommand, SQLValue, Sources, Storage, Store } from './app.contract.d.ts';
-import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario, type Reply } from './demo';
+import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario } from './demo';
 
 export const appId = 'app.ide.lexy.exact';
 export const grants = [
   'net.fetch https://login.lexusdriverslogin.com',
   'net.fetch https://onecdn.telematicsct.com',
-  'secret.keep lexy.session',
+  'secret.keep lexy.lexus',
   'secret.keep lexy.demo',
+  'secret.keep lexy.demo.session',
+  // The session builds before @exact/oauth kept, forgotten at the first launch (`session`)
+  'secret.keep lexy.session',
   'secret.keep lexy.maps',
   'sqlite.open app:/data/lexy.db',
   // The files builds before the database kept, read once into it and removed
@@ -19,8 +23,7 @@ export const grants = [
 const IDENTITY = 'https://login.lexusdriverslogin.com';
 const REALM = 'realms/root/realms/tmna-native';
 const AUTHENTICATE_URL = `${IDENTITY}/json/${REALM}/authenticate?authIndexType=service&authIndexValue=signin_2.0&locale=en-US`;
-const AUTHORIZE_URL = `${IDENTITY}/oauth2/${REALM}/authorize`;
-const TOKEN_URL = `${IDENTITY}/oauth2/${REALM}/access_token`;
+const ISSUER = `${IDENTITY}/oauth2/${REALM}`;
 const CLIENT_ID = 'oneappsdkclient';
 const REDIRECT_URI = 'com.toyota.oneapp:/oauth2Callback';
 const SCOPE = 'openid profile write';
@@ -44,20 +47,10 @@ const X_API_KEY = String.fromCharCode(
   52, 70, 55, 99, 67, 48, 74, 68, 111, 49, 79, 121, 110, 112, 65, 115, 71,
 );
 
-// Refresh an access token this close to its expiry.
-const EXPIRY_MARGIN_MS = 60_000;
-
 type Json = Record<string, unknown>;
 type Car = Result<'garage'>['car'];
-type Session = {
-  accessToken: string;
-  refreshToken: string;
-  idToken: string;
-  expiresAt: number;
-  tokenType: string;
-};
 // `fetch`, or the demo's in-memory Lexus.
-type Request = (url: string, init: RequestInit) => Promise<Reply>;
+type Request = (url: string, init: RequestInit) => Promise<Response>;
 
 // --- Decoding: wire → shape, nothing more ------------------------------------
 
@@ -111,10 +104,12 @@ function keepCookies(header: string | null) {
   }
 }
 
-async function identityFetch(url: string, init: RequestInit): Promise<Reply> {
+async function identityFetch(url: string, init: RequestInit): Promise<Response> {
   const headers = { ...(init.headers as Record<string, string>) };
   if (jar.size) headers.Cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
-  const response = await fetch(url, { ...init, headers, exactTimeout: 15000 });
+  // The tree's steps wait 15 s; a token request keeps the package's 60 s, as Lexus spends the refresh token it is sent
+  // once it has the request, and a reply given up on signs the person out at the next refresh
+  const response = await fetch(url, { exactTimeout: 15000, ...init, headers });
   keepCookies(response.headers.get('set-cookie'));
   return response;
 }
@@ -130,17 +125,20 @@ const wait = async (ms: number) => {
   }
 };
 
-function transport(store: Store, at: number): Request {
-  if (store.get('lexy.demo') === '1') return (url, init) => demoFetch(url, init, at, wait);
-  return (url, init) => (url.startsWith(IDENTITY + '/') ? identityFetch(url, init) : fetch(url, init));
-}
+// Lexus's transport, its identity host's through the cookie jar; the demo's
+// in-memory Lexus; and a Login Flow preview's mock tree (Settings → Developer Tools)
+const lexusTransport: Request = (url, init) => (url.startsWith(IDENTITY + '/') ? identityFetch(url, init) : fetch(url, init));
+const demoTransport: Request = (url, init) => demoFetch(url, init, latestAt, wait);
+const previewTransport = (scenario: PreviewScenario): Request => (url, init) => previewFetch(scenario, url, init, wait);
 
-// Sign-in's transport: the Login Flow preview's scenario when one is named
-// (Settings → Developer Tools), else the app's own.
-function signInTransport(store: Store, preview: string, at: number): Request {
-  const scenario = PREVIEW_SCENARIOS.find(s => s === preview);
-  if (scenario) return (url, init) => previewFetch(scenario as PreviewScenario, url, init, wait);
-  return transport(store, at);
+const isDemo = (store: Store): boolean => store.get('lexy.demo') === '1';
+const previewScenario = (preview: string): PreviewScenario | undefined => PREVIEW_SCENARIOS.find(s => s === preview);
+
+// The sign-in tree's transport: the preview's when one is named, else the demo's or Lexus's
+function signInTransport(store: Store, preview: string): Request {
+  const scenario = previewScenario(preview);
+  if (scenario) return previewTransport(scenario);
+  return isDemo(store) ? demoTransport : lexusTransport;
 }
 
 // src/utils/haptics.ts's kinds.
@@ -154,171 +152,77 @@ function haptic(style: HapticStyle): void {
 }
 
 class HttpError extends Error {
-  constructor(readonly status: number, text: string, readonly code = '') {
+  constructor(readonly status: number, text: string) {
     super(text);
   }
 }
 
-async function readJson(response: Reply): Promise<Json> {
+async function readJson(response: Response): Promise<Json> {
   const body = rec(await response.json().catch(() => null));
   if (!response.ok) {
     // Lexus's own words when it gives any; otherwise the screen says what failed (failureText)
-    const text = str(body.message) || str(body.error_description) || str(body.error);
-    throw new HttpError(response.status, text, str(body.error));
+    throw new HttpError(response.status, lexusText(body));
   }
   return body;
 }
 
-// --- Session (Keychain) --------------------------------------------------------
+// What Lexus said of a refusal, "" when it said nothing
+const lexusText = (body: Json): string => str(body.message) || str(body.error_description) || str(body.error);
 
-function readSession(store: Store): Session | null {
-  const saved = store.get('lexy.session'); // throws where this turn has no store (LLP 1146 D3): never "signed out"
-  try {
-    const s = JSON.parse(saved ?? 'null') as Session | null;
-    return s && s.accessToken && s.refreshToken ? s : null;
-  } catch {
-    return null;
-  }
-}
+// --- Session: @exact/oauth -----------------------------------------------------
+// Lexus is a ForgeRock realm (exact2's packages/oauth/test/PROVIDERS.md FR-1
+// to FR-4). Lexy answers its sign-in tree with its own screens and sends the
+// authorization request itself (`finishSignIn`); @exact/oauth keeps the rest:
+// PKCE, the code exchange, the ID token's checks, refreshes one at a time
+// with the rotated refresh token kept, a read's refresh when the gateway
+// refuses an expired token, and revocation at sign-out (LLP 1146 D5, D8, D9).
 
-function tokens(body: Json, previous: Session | undefined, at: number): Session {
-  const refreshToken = str(body.refresh_token) || previous?.refreshToken;
-  // Keep the prior identity when a refresh omits id_token (OpenID Connect Core 12.2)
-  const idToken = str(body.id_token) || previous?.idToken;
-  if (!str(body.access_token) || !idToken || typeof body.expires_in !== 'number' || !refreshToken) {
-    throw new HttpError(200, 'Lexus returned an incomplete token response');
-  }
+// The latest time a read, command, sign-in or sign-out was given, which the
+// session log's events and the demo's car take for now, as data code reads no
+// clock (LLP 1027.000). A resource's time is when it was asked, which may be
+// earlier than another's, so the time only moves forward.
+let latestAt = 0;
+const saw = (at: number): void => { latestAt = Math.max(latestAt, at); };
+
+function lexusConfig(key: string, send: Request, log?: (event: OAuthEvent) => void): OAuthConfig {
   return {
-    accessToken: str(body.access_token),
-    refreshToken,
-    idToken,
-    expiresAt: at + body.expires_in * 1000,
-    tokenType: str(body.token_type) || 'Bearer',
+    issuer: ISSUER,
+    // The realm's discovery document's, so a signed-out launch waits on no request
+    endpoints: { authorization: `${ISSUER}/authorize`, token: `${ISSUER}/access_token`, revocation: `${ISSUER}/token/revoke` },
+    clientId: CLIENT_ID,
+    scopes: SCOPE.split(' '),
+    key,
+    apis: [REST],
+    callback: REDIRECT_URI,
+    // The OneApp sends its scope with each refresh
+    refreshScopes: true,
+    expiredStatus: EXPIRED,
+    fetch: send,
+    log,
   };
 }
 
-// A confirmed invalid_grant ends the session; other refresh failures keep it.
-// Lexus rotates refresh tokens: each refresh spends the one it sends, and a
-// spent one is refused as invalid_grant. Two refreshes racing with the same
-// token would have the loser refused, so a refresh in flight is shared, and a
-// rejection forgets the session only if the stored token is still the one
-// rejected.
-//
-// A refresh must also get its reply. When Exact asks a resource again, it
-// lets the old answer go but runs a request with effects, such as the
-// refresh's POST, to its end, its continuation keeping the store (LLP 1146
-// D2); it cancels a read's GET. Contract asks `session` again only once it
-// has answered, while it asks a vehicle read again whenever its car or
-// revision moves, so only `session` refreshes: a read waits for its refresh
-// but never starts one. A refresh cut off (offline, or the app ended) never
-// reads the store to decide whether the user signed out.
-let refreshing: Promise<Session> | null = null;
+// The gateway answers 403, and sometimes 401, once the access token lapses
+const EXPIRED = [401, 403];
 
-// Marks the failures that mean the session is gone, as against a refresh that
-// can be tried again
-const SIGNED_OUT = 'signed_out';
-const signedOut = (text = 'Signed out') => new HttpError(401, text, SIGNED_OUT);
+// The demo's session is kept apart from Lexus's, so no demo token reaches Lexus
+const lexus = oauth(lexusConfig('lexy.lexus', lexusTransport, logEvent));
+const demoLexus = oauth(lexusConfig('lexy.demo.session', demoTransport, logEvent));
+const provider = (store: Store): OAuthProvider => (isDemo(store) ? demoLexus : lexus);
 
-function refreshed(store: Store, session: Session, at: number): Promise<Session> {
-  if (refreshing) {
-    return refreshing;
-  }
-  const stored = readSession(store);
-  if (!stored) {
-    return Promise.reject(signedOut());
-  }
-  if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
-    return Promise.resolve(stored);
-  }
-  refreshing = refreshOnce(store, session, at).finally(() => {
-    refreshing = null;
-  });
-  return refreshing;
-}
-
-async function refreshOnce(store: Store, session: Session, at: number): Promise<Session> {
-  let next: Session;
-  try {
-    const response = await transport(store, at)(TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        grant_type: 'refresh_token',
-        refresh_token: session.refreshToken,
-        response_type: 'token',
-        scope: SCOPE,
-      }).toString(),
-    });
-    next = tokens(await readJson(response), session, at);
-  } catch (e) {
-    logSession(at, 'refresh failed', tokenPrint(session.refreshToken).then(sent => `sent ${sent}; ${refreshFailure(e)}`));
-    // No reply from Lexus (offline, or cut off): the session stays
-    if (!(e instanceof HttpError)) {
-      throw e;
-    }
-    const stored = readSession(store);
-    if (!stored) {
-      throw signedOut();
-    }
-    if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
-      return stored;
-    }
-    if ((e.status === 400 || e.status === 401) && e.code === 'invalid_grant') {
-      store.forget('lexy.session');
-      logSession(at, 'session deleted', 'Lexus refused the refresh token (invalid_grant)');
-      await forgetStored();
-      throw signedOut('Your Lexus session expired. Please sign in again.');
-    }
-    throw e;
-  }
-  // Adopt the reply only while the session that requested it is still current
-  const stored = readSession(store);
-  if (!stored) {
-    throw signedOut();
-  }
-  if (stored.accessToken !== session.accessToken || stored.refreshToken !== session.refreshToken) {
-    return stored;
-  }
-  store.set('lexy.session', JSON.stringify(next));
-  logSession(at, 'refreshed', Promise.all([tokenPrint(session.refreshToken), tokenPrint(next.refreshToken)])
-    .then(([sent, got]) => `sent ${sent}, got ${sent === got ? 'the same token' : got}; the access token lasts ${Math.round((next.expiresAt - at) / 1000)} s`));
-  return next;
-}
-
-// Why a refresh failed, as the session log says it: an HTTP status and an OAuth
-// error code, or the kind of failure that left no reply, never words Lexus or
-// the host chose, which could carry a token or an address
-function refreshFailure(e: unknown): string {
-  if (e instanceof HttpError) {
-    return e.status === 200 ? 'an incomplete token response' : `HTTP ${e.status}${/^[a-z_]{1,40}$/.test(e.code) ? ` ${e.code}` : ''}`;
-  }
-  const kind = str(rec(e).kind);
-  if (kind === 'Aborted') {
-    return 'no reply: the request was cut off, and may have reached Lexus';
-  }
-  return `no reply: ${/^[A-Za-z]{1,20}$/.test(kind) ? kind : 'the request failed'}`;
-}
-
-function guid(idToken: string): string {
-  try {
-    const part = idToken.split('.')[1] ?? '';
-    const padded = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(part.length + ((4 - (part.length % 4)) % 4), '=');
-    return str(rec(JSON.parse(atob(padded))).extension_tmsguid);
-  } catch {
-    return '';
-  }
-}
+// The signed-in account's guid, which Lexus's business endpoints name in
+// `X-GUID` and the store keys a garage by; "" while signed out.
+const account = (store: Store): string => str(provider(store).claims(store)?.extension_tmsguid);
 
 // Lexus's DATETIME header: whole epoch milliseconds, as the OneApp's `Date.now()`
 // sends it; `at` is `epochAtZero + performanceNow()`, which has a fraction.
 const datetime = (at: number) => String(Math.floor(at));
 
-function businessHeaders(session: Session): Record<string, string> {
+// The package sends the access token itself (`Authorization`).
+function businessHeaders(id: string): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
-    Authorization: `${session.tokenType} ${session.accessToken}`,
     'X-API-KEY': X_API_KEY,
     'X-APPBRAND': 'L',
     'X-CHANNEL': 'ONEAPP',
@@ -329,14 +233,13 @@ function businessHeaders(session: Session): Record<string, string> {
     'X-DEVICE-TIMEZONE': 'PST',
     'X-CORRELATIONID': crypto.randomUUID(),
   };
-  const id = guid(session.idToken);
   if (id) headers['X-GUID'] = id;
   return headers;
 }
 
-function vehicleHeaders(session: Session, car: Car): Record<string, string> {
+function vehicleHeaders(id: string, car: Car): Record<string, string> {
   return {
-    ...businessHeaders(session),
+    ...businessHeaders(id),
     VIN: car.vin,
     'X-BRAND': car.brand,
     'X-GENERATION': car.generation,
@@ -345,95 +248,63 @@ function vehicleHeaders(session: Session, car: Car): Record<string, string> {
   };
 }
 
-// The gateway rejected this token before its stated expiry: the next session
-// answer refreshes it even though it is not due. A new token clears the marker.
-let rejectedAccessToken = '';
-
-// A vehicle read's session: the refresh in flight's, else the stored one. A
-// read never starts a refresh (see `refreshing`); a token past its expiry goes
-// as it is, and the 401 it earns asks Contract for the session again.
-async function readerSession(store: Store): Promise<Session> {
-  if (refreshing) {
-    return refreshing;
-  }
-  const stored = readSession(store);
-  if (!stored) {
-    throw signedOut();
-  }
-  return stored;
-}
-
 /**
- * Use the current token, waiting for a refresh in flight, and retry once with
- * a token a refresh issued while the request was out.
+ * A request with the session's access token, which the package refreshes
+ * once when the gateway refuses it. A refusal that stands fails with 401 and
+ * keeps the session; no session, or one that ended, also empties what the
+ * screens held, as a sign-out does. The package's other errors keep the words
+ * the screens classify by (model.contract `failureKind`): no reply reads as
+ * Lexus unreachable, a refusal by its status.
  */
-async function authorized(
-  store: Store,
-  at: number,
-  call: (session: Session, request: Request) => Promise<Reply>,
-): Promise<Json> {
-  // The request's path, for the session log: every URL here is a constant, and
-  // the car and the account travel in headers
-  let path = '';
-  const request: Request = (url, init) => {
-    path = new URL(url).pathname;
-    return transport(store, at)(url, init);
-  };
-  let current = await readerSession(store);
-  let response = await call(current, request);
-  if (response.status === 401 || response.status === 403) {
-    const next = await readerSession(store);
-    if (next.accessToken !== current.accessToken) {
-      current = next;
-      response = await call(current, request);
+async function authorized(store: Store, at: number, url: string, init: RequestInit): Promise<Json> {
+  saw(at);
+  let response: Response;
+  try {
+    response = await provider(store).fetch(store, url, init);
+  } catch (e) {
+    if (!(e instanceof OAuthError)) throw e;
+    if (e.signedOut) {
+      await forgetStored();
+      throw new HttpError(401, e.message);
     }
-    if (response.status === 401 || response.status === 403) {
-      logSession(at, 'request refused', `HTTP ${response.status} on ${path}`);
-      rejectedAccessToken = current.accessToken;
-      throw new HttpError(401, 'Lexus rejected the session');
-    }
+    throw e.code === 'network' ? new Error(`Couldn’t reach Lexus: ${e.message}`) : new HttpError(e.status, e.message);
+  }
+  if (EXPIRED.includes(response.status)) {
+    throw new HttpError(401, 'Lexus rejected the session');
   }
   return readJson(response);
 }
 
+// `at` is the launch's time, which the log's first entry of a launch keeps.
 async function session(store: Store, at: number): Promise<Result<'session'>> {
-  const demo = store.get('lexy.demo') === '1';
-  const current = readSession(store);
-  if (!current) {
-    // Once per sign-out: a launch with nothing saved after none was logged means
-    // the Keychain lost the session
+  // A session an earlier build kept, which this one cannot use: forgotten with its data, as `signOut` does, but not
+  // revoked, and logged as a sign-out, not a lost session
+  const earlier = store.get('lexy.session') !== null;
+  if (earlier) {
+    store.forget('lexy.session');
+    store.forget('lexy.demo');
+    logSession(at, 'signed out', 'this build keeps the session differently: sign in again');
+  }
+  const demo = isDemo(store), asked = provider(store).session(store);
+  if (earlier) await forgetStored();
+  const s = await asked;
+  if (!s.signedIn && !s.ended) {
+    // Once per sign-out: a launch with nothing saved after none was logged
+    // means the Keychain lost the session
     logSession(at, 'no saved session', 'the Keychain held no session', true);
-    return { signedIn: false, demo, expiresAt: 0, status: 401, error: '' };
   }
-  try {
-    let latest = current;
-    if (refreshing || rejectedAccessToken === current.accessToken || current.expiresAt - EXPIRY_MARGIN_MS <= at) {
-      latest = await refreshed(store, current, at);
-      if (rejectedAccessToken === current.accessToken) {
-        rejectedAccessToken = '';
-      }
-    }
-    return { signedIn: true, demo, expiresAt: latest.expiresAt, status: 200, error: '' };
-  } catch (e) {
-    // Only a refused refresh token or a sign-out ends the session; anything
-    // else (offline, a 5xx, a refresh let go) keeps it for the next try
-    const signedIn = !(e instanceof HttpError && e.code === SIGNED_OUT);
-    const { status, error } = failure(e);
-    if (!signedIn) {
-      logSession(at, 'sign-in shown', error);
-    }
-    return { signedIn, demo, expiresAt: signedIn ? current.expiresAt : 0, status, error };
-  }
+  // A session the provider ended says why, for the sign-in screen's notice
+  return { signedIn: s.signedIn, demo, expiresAt: s.expiresAt, status: s.signedIn ? 200 : 401, error: s.ended ? s.error : '' };
 }
 
 // Keep status ordered after wake-up and through closure folding
-function get(url: string, headers: Record<string, string>, independent = false): (request: Request) => Promise<Reply> {
-  return (request: Request): Promise<Reply> => request(url, {
+function reading(headers: Record<string, string>, independent = false): RequestInit {
+  return {
     method: 'GET',
     headers,
     exactTimeout: 15000,
     ...(independent ? { exactIndependentHttp: { maxResponseBytes: 4 * 1024 * 1024 } } : {}),
-  });
+  } as RequestInit;
 }
 
 function failure(e: unknown) {
@@ -463,8 +334,9 @@ function decodeNode(attempt: number, node: Json): Result<'authStart'> {
     ok: true,
     status: 200,
     error: str(node.message),
-    raw: JSON.stringify(node),
-    tokenId: str(node.tokenId),
+    // A finished tree answers nothing more, and its node holds the SSO token
+    raw: str(node.tokenId) ? '' : JSON.stringify(node),
+    done: tree(attempt, str(node.tokenId)),
     types: callbacks.map(c => str(c.type)),
     prompts,
     // classifyAuthenticationNode's test (lexus-auth.ts), case-insensitive: a
@@ -484,10 +356,10 @@ const AUTH_HEADERS = {
 async function postNode(store: Store, attempt: number, preview: string, raw = '{}', type = '', value: string | number = ''): Promise<Result<'authStart'>> {
   try {
     const body = type ? answered(raw, type, value) : raw;
-    const response = await signInTransport(store, preview, 0)(AUTHENTICATE_URL, { method: 'POST', headers: AUTH_HEADERS, body });
+    const response = await signInTransport(store, preview)(AUTHENTICATE_URL, { method: 'POST', headers: AUTH_HEADERS, body });
     return decodeNode(attempt, await readJson(response));
   } catch (e) {
-    return { ...failure(e), attempt, raw: '', tokenId: '', types: [], prompts: [], asksCode: false, choices: [] };
+    return { ...failure(e), attempt, raw: '', done: false, types: [], prompts: [], asksCode: false, choices: [] };
   }
 }
 
@@ -519,69 +391,59 @@ function answered(raw: string, type: string, value: string | number): string {
   return JSON.stringify(node);
 }
 
-const b64url = (bytes: Uint8Array): string =>
-  btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+// The tree's SSO token, which signs in as the person, stays here: Contract is
+// told only that the tree is done (`done`), as an answer is kept and
+// shown, and the authorization step of the same attempt takes it.
+let sso = { attempt: -1, token: '' };
+function tree(attempt: number, token: string): boolean {
+  if (!token) return false;
+  sso = { attempt, token };
+  return true;
+}
 
-async function finishSignIn(store: Store, attempt: number, preview: string, tokenId: string, at: number): Promise<Result<'authFinish'>> {
-  try {
-    const request = signInTransport(store, preview, at);
-    const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
-    const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-    const authorize = await request(AUTHORIZE_URL, {
-      method: 'POST',
-      redirect: 'manual',
-      headers: {
-        Accept: 'application/x-www-form-urlencoded',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        iPlanetDirectoryPro: tokenId,
-      },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        code_challenge: challenge,
-        code_challenge_method: 'S256',
-        csrf: tokenId,
-        decision: 'allow',
-        redirect_uri: REDIRECT_URI,
-        response_type: 'code',
-        scope: SCOPE,
-      }).toString(),
-    });
-    if (authorize.status < 300 || authorize.status >= 400) {
-      await readJson(authorize);
-      throw new HttpError(authorize.status, `Lexus authorization failed (${authorize.status})`);
-    }
-    let location: URL;
-    try {
-      location = new URL(authorize.headers.get('Location') ?? '');
-    } catch {
-      throw new HttpError(200, 'Lexus did not return a valid authorization redirect');
-    }
-    const code = location.searchParams.get('code');
-    if (!code) {
-      throw new HttpError(200, location.searchParams.get('error_description') ?? 'Lexus did not return an authorization code');
-    }
-    const token = await request(TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        code,
-        code_verifier: verifier,
-        grant_type: 'authorization_code',
-        redirect_uri: REDIRECT_URI,
-      }).toString(),
-    });
-    const session = tokens(await readJson(token), undefined, at);
-    // A preview proves the exchange and keeps nothing: the session in the
-    // Keychain is the user's.
-    if (!preview) {
-      store.set('lexy.session', JSON.stringify(session));
-      logSession(at, 'signed in', tokenPrint(session.refreshToken).then(token => `refresh token ${token}`));
-    }
-    return { attempt, ok: true, status: 200, error: '' };
-  } catch (e) {
-    return { attempt, ...failure(e) };
-  }
+// The authorization step of a sign-in: the tree's SSO token goes in the POST
+// ForgeRock takes from an app with its own screens, `csrf` repeating it and
+// consent given (FR-2); the package checks where Lexus redirects and
+// exchanges the code. A preview signs in on a store that lives for the one
+// sign-in: it proves the exchange, keeps nothing and logs nothing.
+async function finishSignIn(store: Store, attempt: number, preview: string, at: number): Promise<Result<'authFinish'>> {
+  saw(at);
+  // Another attempt's step stays its own
+  if (sso.attempt !== attempt || !sso.token) return { attempt, ok: false, status: 200, error: 'The sign-in step is no longer readable' };
+  const tokenId = sso.token;
+  sso = { attempt: -1, token: '' };
+  const scenario = previewScenario(preview);
+  const [p, on] = scenario ? [oauth(lexusConfig('lexy.preview', previewTransport(scenario))), scratchStore()] : [provider(store), store];
+  const result = await p.signIn(on, {
+    authorize: async ({ endpoint, params, fetch: send }) => {
+      const reply = await send(endpoint, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { Accept: 'application/x-www-form-urlencoded', 'Content-Type': 'application/x-www-form-urlencoded', iPlanetDirectoryPro: tokenId },
+        body: new URLSearchParams({ ...params, csrf: tokenId, decision: 'allow' }).toString(),
+      });
+      if (reply.status < 300 || reply.status >= 400) {
+        const body = rec(await reply.json().catch(() => null));
+        const unavailable = reply.status === 429 || reply.status >= 500;
+        throw new OAuthError(unavailable ? 'server' : 'access_denied', lexusText(body) || `Lexus authorization failed (${reply.status})`, reply.status, unavailable);
+      }
+      return reply.headers.get('Location') ?? '';
+    },
+  });
+  return { attempt, ok: result.ok, status: signInStatus(result), error: result.error };
+}
+
+// The status the sign-in screen words a failure by (model.contract
+// `signInError`): 0 when no reply came, the status of one that failed, and
+// 200 for an answer that cannot be used.
+function signInStatus(result: OAuthResult): number {
+  if (result.code === 'network') return 0;
+  return result.status >= 400 ? result.status : 200;
+}
+
+function scratchStore(): OAuthStore {
+  const values = new Map<string, string>();
+  return { get: k => values.get(k) ?? null, set: (k, v) => { values.set(k, v); }, forget: k => { values.delete(k); } };
 }
 
 // --- Vehicle reads ---------------------------------------------------------------
@@ -621,14 +483,12 @@ function decodeCar(v: unknown): Car {
 const noCar = decodeCar({});
 
 // Whose garage it is: the signed-in account's guid.
-const account = (store: Store) => guid(readSession(store)?.idToken ?? '');
-
 async function garage(store: Store, at: number): Promise<Result<'garage'>> {
   const owner = account(store);
-  if (!readSession(store)) return { ok: false, status: 401, error: 'Signed out', car: noCar, carCount: 0 };
+  if (!owner) return { ok: false, status: 401, error: 'Signed out', car: noCar, carCount: 0 };
   const current = beginRead(`garage:${owner}`);
   try {
-    const body = await authorized(store, at, (s, r) => get(DISCOVERY_URL, businessHeaders(s), true)(r));
+    const body = await authorized(store, at, DISCOVERY_URL, reading(businessHeaders(owner), true));
     if (!Array.isArray(body.payload) || body.payload.some(v => str(rec(v).vin) === '')) {
       throw new Error('Lexus returned an incomplete vehicle list. Try again.');
     }
@@ -841,23 +701,22 @@ async function forgetStored() {
 // token: a refresh token shows as the first six hex digits of its SHA-256, which
 // is enough to see one token sent twice.
 const SESSION_LOG_LIMIT = 200;
-// The kinds that say whether a session is held, as against attempts and refusals
+// The kinds that say whether a session is held, as against attempts and refusals;
+// 'sign-in shown' only earlier builds wrote, and their rows still say a sign-out
 const STATE_KINDS = ['signed in', 'refreshed', 'signed out', 'session deleted', 'sign-in shown', 'no saved session'];
 // State kinds after which a launch without a saved session is expected
 const SIGNED_OUT_KINDS = ['signed out', 'session deleted', 'sign-in shown', 'no saved session'];
 const marks = (values: string[]) => values.map(() => '?').join(', ');
 
-// Log writes in the order they were made, though a token print takes a turn
+// Log writes in the order they were made
 let sessionLogTurn: Promise<unknown> = Promise.resolve();
 
 // Log in the background: a log write never holds up or fails the answer.
 // `unlessSignedOut` skips the event when the last state logged already says no
 // session is held.
-function logSession(at: number, kind: string, detail: string | Promise<string>, unlessSignedOut = false) {
-  const words = Promise.resolve(detail);
+function logSession(at: number, kind: string, text: string, unlessSignedOut = false) {
   sessionLogTurn = sessionLogTurn
-    .then(() => words)
-    .then(text => withDb(db => db.transaction([
+    .then(() => withDb(db => db.transaction([
       unlessSignedOut
         ? {
           sql: `INSERT INTO session_log (at, kind, detail) SELECT ?, ?, ? WHERE coalesce((SELECT kind FROM session_log WHERE kind IN (${marks(STATE_KINDS)}) ORDER BY id DESC LIMIT 1), '') NOT IN (${marks(SIGNED_OUT_KINDS)})`,
@@ -869,9 +728,23 @@ function logSession(at: number, kind: string, detail: string | Promise<string>, 
     .catch(() => undefined);
 }
 
-async function tokenPrint(token: string): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)));
-  return Array.from(digest.slice(0, 3), b => b.toString(16).padStart(2, '0')).join('');
+// What the package says the session did (LLP 1146 D9), as the session log
+// words it. A token shows as its print.
+function logEvent(event: OAuthEvent): void {
+  switch (event.type) {
+    case 'signed-in':
+      return logSession(latestAt, 'signed in', `refresh token ${event.token}`);
+    case 'refreshed':
+      return logSession(latestAt, 'refreshed', `sent ${event.sent}, got ${event.sent === event.got ? 'the same token' : event.got}; the access token lasts ${event.expiresIn} s`);
+    case 'refresh-failed':
+      return logSession(latestAt, 'refresh failed', `sent ${event.sent}; ${event.code === 'network' ? 'no reply: the request was cut off or failed, and may have reached Lexus' : `${event.status ? `HTTP ${event.status}` : 'an unusable reply'}${/^[a-z_]{1,40}$/.test(event.code) ? ` ${event.code}` : ''}`}`);
+    case 'ended':
+      return logSession(latestAt, 'session deleted', `the session ended (${/^[a-z_]{1,40}$/.test(event.code) ? event.code : 'unknown'})`);
+    case 'refused':
+      return logSession(latestAt, 'request refused', `HTTP ${event.status} on ${new URL(event.url).pathname}`);
+    case 'signed-out':
+      return logSession(latestAt, 'signed out', 'from Settings');
+  }
 }
 
 async function sessionLog(limit: number): Promise<Result<'sessionLog'>> {
@@ -917,7 +790,7 @@ async function status(store: Store, car: Car, at: number): Promise<Result<'statu
   const empty = { occurredMs: 0, fetchedMs: at, fuel: 0, range: 0, rangeUnit: '', odometer: 0, odometerUnit: '', caution: 0, latitude: 0, longitude: 0, tripA: 0, tripB: 0, sections: [], closuresStaleMs: 0 };
   if (!car.vin) return { ok: false, status: 0, error: '', ...empty };
   try {
-    const body = await authorized(store, at, (s, r) => get(STATUS_URL, vehicleHeaders(s, car))(r));
+    const body = await authorized(store, at, STATUS_URL, reading(vehicleHeaders(account(store), car)));
     const st = rec(rec(body.payload).status);
     const telemetry = rec(st.telemetry);
     const occurredMs = epochMs(st.occurrenceDate);
@@ -1027,7 +900,7 @@ async function keepingLast<T>(kind: Reading, vin: string, empty: T, read: () => 
 
 // A vehicle-scoped GET's payload.
 async function payload(store: Store, car: Car, at: number, url: string, independent = false): Promise<Json> {
-  return rec((await authorized(store, at, (s, r) => get(url, vehicleHeaders(s, car), independent)(r))).payload);
+  return rec((await authorized(store, at, url, reading(vehicleHeaders(account(store), car), independent))).payload);
 }
 
 async function tires(store: Store, car: Car, at: number): Promise<Result<'tires'>> {
@@ -1071,8 +944,8 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
   const empty: Result<'services'> = { ok: false, items: [] };
   if (!car.vin || !car.region || !car.asiCode || !car.hwType) return empty;
   return keepingLast('services', car.vin, empty, async () => {
-    const headers = (s: Session) => ({
-      ...businessHeaders(s),
+    const headers = {
+      ...businessHeaders(account(store)),
       VIN: car.vin,
       'X-BRAND': car.brand,
       GENERATION: car.generation,
@@ -1081,8 +954,8 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
       'HW-TYPE': car.hwType,
       DATETIME: datetime(at),
       entryPoint: 'SUBSCRIPTIONS',
-    });
-    const p = rec((await authorized(store, at, (s, r) => get(SUBSCRIPTIONS_URL, headers(s), true)(r))).payload);
+    };
+    const p = rec((await authorized(store, at, SUBSCRIPTIONS_URL, reading(headers, true))).payload);
     const items = (['paid', 'trial', 'complimentary'] as const).flatMap(bucket =>
       arr(p[`${bucket}Subscriptions`]).map(rec).map(sub => ({
         bucket,
@@ -1100,13 +973,11 @@ async function services(store: Store, car: Car, at: number): Promise<Result<'ser
 
 async function command(store: Store, car: Car, name: string, at: number): Promise<Result<'command'>> {
   try {
-    const body = await authorized(store, at, (s, r) =>
-      r(COMMAND_URL, {
-        method: 'POST',
-        headers: vehicleHeaders(s, car),
-        body: JSON.stringify(name === 'buzzer-warning' ? { command: name, autoFixPopup: false, beepCount: 10 } : { command: name, autoFixPopup: false }),
-      }),
-    );
+    const body = await authorized(store, at, COMMAND_URL, {
+      method: 'POST',
+      headers: vehicleHeaders(account(store), car),
+      body: JSON.stringify(name === 'buzzer-warning' ? { command: name, autoFixPopup: false, beepCount: 10 } : { command: name, autoFixPopup: false }),
+    });
     const returnCode = str(rec(body.payload).returnCode) || str(body.returnCode);
     return { ok: true, status: 200, error: '', command: name, returnCode, at };
   } catch (e) {
@@ -1116,7 +987,7 @@ async function command(store: Store, car: Car, name: string, at: number): Promis
 
 async function prime(store: Store, car: Car, at: number): Promise<Result<'prime'>> {
   try {
-    await authorized(store, at, (s, r) => r(REFRESH_STATUS_URL, { method: 'POST', headers: vehicleHeaders(s, car), body: JSON.stringify({ autoFixPopup: false }) }));
+    await authorized(store, at, REFRESH_STATUS_URL, { method: 'POST', headers: vehicleHeaders(account(store), car), body: JSON.stringify({ autoFixPopup: false }) });
     return { ok: true, status: 200, error: '', at };
   } catch (e) {
     return { ...failure(e), at };
@@ -1125,14 +996,12 @@ async function prime(store: Store, car: Car, at: number): Promise<Result<'prime'
 
 async function rename(store: Store, car: Car, name: string, at: number): Promise<Result<'rename'>> {
   try {
-    await authorized(store, at, (s, r) => {
-      const id = guid(s.idToken);
-      if (!id) throw new Error('This session has no customer GUID to rename a vehicle with.');
-      return r(NICKNAME_URL, {
-        method: 'PUT',
-        headers: { ...businessHeaders(s), 'X-BRAND': car.brand, DATETIME: datetime(at) },
-        body: JSON.stringify({ nickName: name, guid: id, vin: car.vin }),
-      });
+    const id = account(store);
+    if (!id) throw new Error('This session has no customer GUID to rename a vehicle with.');
+    await authorized(store, at, NICKNAME_URL, {
+      method: 'PUT',
+      headers: { ...businessHeaders(id), 'X-BRAND': car.brand, DATETIME: datetime(at) },
+      body: JSON.stringify({ nickName: name, guid: id, vin: car.vin }),
     });
     return { ok: true, status: 200, error: '' };
   } catch (e) {
@@ -1170,7 +1039,7 @@ function decodeClimate(body: Json): Climate {
 
 async function climate(store: Store, car: Car, at: number): Promise<Climate> {
   if (!car.vin) return noClimate;
-  return keepingLast('climate', car.vin, noClimate, async () => decodeClimate(await authorized(store, at, (s, r) => get(CLIMATE_URL, vehicleHeaders(s, car))(r))));
+  return keepingLast('climate', car.vin, noClimate, async () => decodeClimate(await authorized(store, at, CLIMATE_URL, reading(vehicleHeaders(account(store), car)))));
 }
 
 async function setClimate(store: Store, car: Car, raw: string, on: boolean, temperature: number, front: boolean, rear: boolean, at: number): Promise<Climate> {
@@ -1182,7 +1051,7 @@ async function setClimate(store: Store, car: Car, raw: string, on: boolean, temp
       ...o,
       acParameters: arr(o.acParameters).map(rec).map(x => x.name === 'frontDefrost' ? { ...x, enabled: front } : x.name === 'rearDefrost' ? { ...x, enabled: rear } : x),
     });
-    await authorized(store, at, (s, r) => r(CLIMATE_URL, { method: 'PUT', headers: vehicleHeaders(s, car), body: JSON.stringify(p) }));
+    await authorized(store, at, CLIMATE_URL, { method: 'PUT', headers: vehicleHeaders(account(store), car), body: JSON.stringify(p) });
     // Accepted is saved: the settings answer as written, with no read-back,
     // and are kept as the last reading (a relaunch shows them).
     return await saveReading(car.vin, 'climate', decodeClimate(p), generation);
@@ -1286,7 +1155,7 @@ async function developerMode(on: boolean): Promise<Result<'developerMode'>> {
 // --- Sources ---------------------------------------------------------------------
 
 const sources: Sources = {
-  session: ([_rev, at], store) => session(store, at),
+  session: ([at], store) => session(store, at),
   // A wait the host keeps (`wait`): how long an app-started refresh runs
   // before the Status title says "Updating…", and how long it says so.
   pause: async ([ms]) => {
@@ -1303,9 +1172,13 @@ const sources: Sources = {
     return { ok: true, status: 200, error: '' };
   },
   signOut: async ([at], store) => {
-    store.forget('lexy.session');
-    logSession(at, 'signed out', 'from Settings');
+    saw(at);
+    // The package forgets the session once a refresh in flight has landed, then asks Lexus to revoke it; the persisted
+    // vehicle data goes now, and again once the session is gone, as a read made meanwhile may have saved
+    const out = provider(store).signOut(store);
     store.forget('lexy.demo');
+    await forgetStored();
+    await out;
     await forgetStored();
     return { ok: true, status: 200, error: '' };
   },
@@ -1315,7 +1188,7 @@ const sources: Sources = {
   },
   authAnswer: ([attempt, preview, raw, type, value], store): Promise<Result<'authStart'>> => postNode(store, attempt, preview, raw, type, value),
   authChoose: ([attempt, preview, raw, index], store): Promise<Result<'authChoose'>> => postNode(store, attempt, preview, raw, 'ChoiceCallback', index),
-  authFinish: ([attempt, preview, tokenId, at], store): Promise<Result<'authFinish'>> => finishSignIn(store, attempt, preview, tokenId, at),
+  authFinish: ([attempt, preview, at], store): Promise<Result<'authFinish'>> => finishSignIn(store, attempt, preview, at),
   // Settings → Developer Tools → Data State: the garage the screens are
   // shown, rewritten in only the fields they branch on, so each forced state
   // runs the code path a real one does (src/debug/data-state.ts).
@@ -1335,8 +1208,8 @@ const sources: Sources = {
         return real;
     }
   },
-  garage: ([_signedIn, _expiresAt, _rev, at], store) => garage(store, at),
-  status: ([_vin, car, _expiresAt, _rev, at], store) => status(store, car, at),
+  garage: ([_signedIn, _rev, at], store) => garage(store, at),
+  status: ([_vin, car, _rev, at], store) => status(store, car, at),
   tires: ([_vin, car, _rev, at], store) => tires(store, car, at),
   engine: ([_vin, car, _rev, at], store) => engine(store, car, at),
   spec: ([_vin, car, at], store) => spec(store, car, at),

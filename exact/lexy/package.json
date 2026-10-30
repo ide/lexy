@@ -1,0 +1,8 @@
+{
+  "name": "lexy-exact",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@exact/oauth": "file:../../../exact2/packages/oauth"
+  }
+}

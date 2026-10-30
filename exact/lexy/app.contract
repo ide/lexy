@@ -69,11 +69,9 @@ component Lexy
   resource viewport = exactViewport() as shape Viewport
   derive fold = foldOf(viewport)
   derive wide = viewport.width >= 700 or fold == "across"
-  state sessionRev = 0
-  state sessionAt = 0
   // Clear the expired-session notice when sign-in starts
   state sessionNoticeSeen = false
-  resource account = session() with sessionRev, orEpoch(sessionAt, time.epochAtZero) as shape Account
+  resource account = session() with time.epochAtZero as shape Account
   // Show the dashboard skeleton until the session resolves to avoid a sign-in flash
   derive shell = not entering and (account.signedIn or (account.status == 0 and account.error == ""))
   // Hand off to the dashboard once the saved session is ready
@@ -139,7 +137,9 @@ component Lexy
   // The demo's server errors (Settings → Simulate Server Errors).
   state demoFailing = false
   mutation demoFailures as shape Done
-  derive signingIn = entering or pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real)
+  // A sign-out still landing counts: the package forgets the session before its revocation lands, and a sign-in
+  // begun meanwhile would be reset by afterSignOut
+  derive signingIn = entering or pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real) or pending(left)
 
   // --- Vehicle data -------------------------------------------------------------
   state garageRev = 0
@@ -157,8 +157,8 @@ component Lexy
   // A sign-in ends as a pull does, once its car is known: the car is asked to
   // report and the status re-read, which a plain read after sign-in can miss.
   state primeOnSignIn = false
-  // Back from the background, the refresh ladder waits for a fresh session:
-  // a token refreshed while the reads are out asks every one of them again.
+  // Back from the background: the refresh ladder runs once the reads in
+  // flight have landed.
   state resumeDue = false
   // A refresh the app started on its own (launch, resume): the only kind
   // announced on screen (use-vehicle-auto-refresh.ts useIsAutoRefreshing).
@@ -180,16 +180,14 @@ component Lexy
   // Show the pull spinner only for requests started by that pull
   state pulling = false
   // Keep refresh inputs in `with` so cached answers retain stable identities
-  resource garage = garage(account.signedIn) with account.expiresAt, garageRev, orEpoch(garageAt, time.epochAtZero) as shape Garage
+  resource garage = garage(account.signedIn) with garageRev, orEpoch(garageAt, time.epochAtZero) as shape Garage
   derive car = garage.car
   // Keep the accepted name until a profile read catches up
   state savedName = ""
   derive carName = savedName != "" ? savedName : vehicleName(car.nickName, car.modelName)
   // Key cached reads by VIN: the full car record can exceed 8 KB and changes with
   // profile updates
-  // A refreshed token reads status again: a read refused with the old one
-  // waits for no other ask
-  resource status = status(car.vin) with car, account.expiresAt, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
+  resource status = status(car.vin) with car, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Status
   resource tires = tires(car.vin) with car, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
   resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
   resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
@@ -395,13 +393,6 @@ component Lexy
     if tempHeld and not (climateUnwritten or pending(climateSaved) or pending(climateRead)) and (tempSaving or climate.temperature == tempDraft)
       tempHeld = false
       tempSaving = false
-    // Ask for the session every 15 s. Only the session source refreshes
-    // (app.ts `refreshing`), and it does so only ahead of expiry or after the
-    // gateway refused a token any read or command sent, so an answer that
-    // changes nothing moves nothing; a failed refresh is tried again here.
-    if account.signedIn and not pending(account) and time.epochAtZero + performanceNow() - sessionAt > 15000
-      sessionRev = sessionRev + 1
-      sessionAt = time.epochAtZero + performanceNow()
     if notice != "" and time.epochAtZero + performanceNow() - noticeAt > 6000
       notice = ""
     let timedOut = (lockPending and not pending(status) and not pending(sent) and lockPolls >= 10) or (enginePending and clock - engineAt >= 20000 and not pending(sent) and not pending(engine) and enginePolls >= 4)
@@ -431,9 +422,7 @@ component Lexy
     // car is asked to report first (at most every three minutes).
     if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and not account.signedIn
       resumeDue = false
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and account.signedIn and (pending(account) or time.epochAtZero + performanceNow() > account.expiresAt - 60000)
-      resumeDue = true
-    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
+    if (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed)
       resumeDue = false
       if time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
         lastPrimeAt = time.epochAtZero + performanceNow()
@@ -455,7 +444,7 @@ component Lexy
     // the car to report, and the wait before the hero pulses.
     let primeLock = lockTarget != "" and not pending(status) and not pending(sent) and not lockSettled and lockPolls == 5
     let primeLaunch = (primeOnLaunch) and account.signedIn and car.vin != ""
-    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed) and time.epochAtZero + performanceNow() <= account.expiresAt - 60000
+    let resumes = (resumeDue or (lastTick > 0 and time.epochAtZero + performanceNow() - lastTick > 15000 or wasHidden and page.visibilityState == "visible")) and lockTarget == "" and account.signedIn and car.vin != "" and not pending(account) and not pending(status) and not pending(primed)
     let primeResume = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 900000 and time.epochAtZero + performanceNow() - lastPrimeAt > 180000
     let rereads = resumes and time.epochAtZero + performanceNow() - status.fetchedMs >= 60000
     let primeSignIn = primeOnSignIn and car.vin != "" and statusAnswered and not pending(status) and not pending(garage) and not pending(primed)
@@ -587,7 +576,7 @@ component Lexy
           if not n.ok
             signInFailed((restartStage != "" ? restartStage : "credentials"), n.status)
           else
-            if stepOf(n.tokenId, n.types, n.asksCode) == "username"
+            if stepOf(n.done, n.types, n.asksCode) == "username"
               send named = authAnswer(authAttempt, previewScenario, n.raw, "NameCallback", email.trim())
             else
               signInFailed("credentials", 200)
@@ -597,7 +586,7 @@ component Lexy
     match named
       case some(n)
         if n.attempt == authAttempt
-          if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "password"
+          if n.ok and stepOf(n.done, n.types, n.asksCode) == "password"
             send passed = authAnswer(authAttempt, previewScenario, n.raw, "PasswordCallback", (password == "" and account.demo and previewScenario == "" ? "demo" : password))
           else
             // A tree that answers but won't ask for the password refused the email.
@@ -613,17 +602,17 @@ component Lexy
           else
             signError = ""
             // A restart that ends here (no choice to re-pick) is over.
-            if stepOf(n.tokenId, n.types, n.asksCode) != "choice"
+            if stepOf(n.done, n.types, n.asksCode) != "choice"
               restartStage = ""
               resending = false
-            if stepOf(n.tokenId, n.types, n.asksCode) == "complete"
-              send finished = authFinish(authAttempt, previewScenario, n.tokenId, time.epochAtZero + performanceNow())
-            if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+            if stepOf(n.done, n.types, n.asksCode) == "complete"
+              send finished = authFinish(authAttempt, previewScenario, time.epochAtZero + performanceNow())
+            if stepOf(n.done, n.types, n.asksCode) == "otp"
               signStep = "otp"
               nodeRaw = n.raw
               nodeTypes = n.types
               signInfo = (resending ? "Lexus sent a new code." : "")
-            if stepOf(n.tokenId, n.types, n.asksCode) == "choice"
+            if stepOf(n.done, n.types, n.asksCode) == "choice"
               if n.choices.length == 0
                 // A choice with nothing to choose is how the tree says "no such account".
                 signError = signInError((restartStage != "" ? restartStage : "credentials"), 401)
@@ -643,7 +632,7 @@ component Lexy
                   nodeRaw = n.raw
                   choices = n.choices
                   choicePrompt = match first(n.prompts) { case some(t) => t, case none => "" }
-            if stepOf(n.tokenId, n.types, n.asksCode) == "username" or stepOf(n.tokenId, n.types, n.asksCode) == "password"
+            if stepOf(n.done, n.types, n.asksCode) == "username" or stepOf(n.done, n.types, n.asksCode) == "password"
               startOver()
               signError = signInError("credentials", 200)
       case none
@@ -659,7 +648,7 @@ component Lexy
     match chose
       case some(n)
         if n.attempt == authAttempt
-          if n.ok and stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+          if n.ok and stepOf(n.done, n.types, n.asksCode) == "otp"
             signStep = "otp"
             nodeRaw = n.raw
             nodeTypes = n.types
@@ -687,10 +676,10 @@ component Lexy
           if not n.ok
             signInFailed("otp", n.status)
           else
-            if n.tokenId != ""
-              send finished = authFinish(authAttempt, previewScenario, n.tokenId, time.epochAtZero + performanceNow())
+            if n.done
+              send finished = authFinish(authAttempt, previewScenario, time.epochAtZero + performanceNow())
             else
-              if stepOf(n.tokenId, n.types, n.asksCode) == "otp"
+              if stepOf(n.done, n.types, n.asksCode) == "otp"
                 nodeRaw = n.raw
                 nodeTypes = n.types
                 code = ""
@@ -758,6 +747,8 @@ component Lexy
       nav = open(nav, "/")
   action afterSignOut
     startOver()
+    // A session that ended before this one was signed in to and out of says nothing now
+    sessionNoticeSeen = true
     entering = false
     climateWritten = none
     primeOnLaunch = false
@@ -1077,7 +1068,7 @@ component Lexy
                     header
                       button id="back" press=back aria-label="Back" testId="auth-back" disabled=signingIn width=44 height=44
                       text "Sign In" role="heading" aria-level=1
-                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=(e.name == "authCode" ? "otp" : (e.name == "authChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.status != 401 or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=(e.name == "authCode" ? "otp" : (e.name == "authChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
                 else
                   header
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"

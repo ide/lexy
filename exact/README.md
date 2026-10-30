@@ -4,7 +4,8 @@ Lexy's Exact app lives in [`lexy/`](lexy/) with native iOS and browser builds.
 It is separate from the Expo app at the repository root.
 
 Contract owns the screens, sign-in flow, vehicle state, commands, and refresh
-policy. TypeScript handles HTTP, token storage, PKCE, and response decoding.
+policy. TypeScript handles HTTP and response decoding; Exact's `@exact/oauth`
+keeps the Lexus session.
 The Swift module provides MapKit, geocoding, maps-app links, and haptics.
 
 | File | Responsibility |
@@ -27,7 +28,9 @@ Use the Bun and Exact revisions in [`ci/pins.sh`](ci/pins.sh), the Rust toolchai
 in [`lexy/rust-toolchain.toml`](lexy/rust-toolchain.toml), and Xcode 27.1 release.
 Exact and Lexy must be sibling checkouts: the app's Cargo paths point to
 `../../../exact2`. Exact's build tools provision the Hermes inputs they need.
-Run `bun install --frozen-lockfile` in the Exact checkout first.
+Run `bun install --frozen-lockfile` in the Exact checkout first, then in
+`exact/lexy`, which copies `@exact/oauth` from that checkout; run it there
+again after the Exact checkout changes.
 
 Build a simulator app without installing or launching it:
 
@@ -54,8 +57,10 @@ RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract types --check app.
 "Explore the Demo" uses a local Lexus server, so no account or remote vehicle
 is needed. Vehicle reads take about a second; commands take about three seconds
 to appear in the next vehicle report. This exercises loading and reconciliation.
-Token refreshes also take about a second, and the server refuses a refresh token
-it has already seen spent, as Lexus does, so a lost rotation signs the demo out.
+Its access tokens last an hour of the app's clock, after which its gateway
+answers 403, as Lexus's does. Token refreshes take about a second, and the server
+refuses a refresh token it has already seen spent, as Lexus does, so a lost
+rotation signs the demo out.
 The Login Flow developer tool also uses local responses.
 
 In the simulated sign-in flow, any email and password are accepted except the
@@ -84,34 +89,38 @@ bun exact/lexy/data-flow.check.ts
 bun exact/lexy/closures.check.ts
 bun exact/lexy/maps-preference.check.ts
 bun exact/lexy/independent-reads.check.ts
+bun exact/lexy/demo.check.ts
 ```
 
-They cover sign-in and preview isolation, token refresh and sign-out, the session log, malformed responses, sparse closure
+They cover sign-in and preview isolation, token refresh and sign-out, the session log, demo mode, malformed responses, sparse closure
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 
 ## Runtime rules
 
-- A pending resource retains its last answer. That answer may be displayed, but
-  a new authenticated request must wait for a token refresh in flight.
+- A pending resource retains its last answer. That answer may be displayed.
+  An authenticated request goes with the access token it has; one the gateway
+  refuses waits for the refresh in flight, or starts it.
 - A failed or malformed response preserves the last valid vehicle and telemetry.
   A valid empty vehicle list is a separate result.
-- Only the `session` source refreshes the token; vehicle reads wait for its
-  refresh but never start one. Lexus rotates refresh tokens, so a refresh
-  that spends its token must deliver the replacement. When Exact asks a
-  resource again, it lets the old answer go but runs a request with effects,
-  such as the refresh's POST, to its end, and that request's continuation
-  keeps the store (Exact LLP 1146 D2); a read's GET is cancelled. Contract asks
-  a vehicle read again far more often than the session.
-- A refresh that fails without a reply from Lexus keeps the session. Where a
-  continuation has no store (background work, or an answer Exact let go),
-  every store operation throws (LLP 1146 D3). So an answer reads the store
-  before its first await, and the session source decides a sign-out only from
-  Lexus's refusal, never from a store it could not read.
-- An old refresh cannot overwrite a newer sign-in or restore a session after
-  sign-out. A read whose token is rejected retries once if a refresh issued a
-  newer one meanwhile; otherwise it fails with a 401, Contract asks for the
-  session again, and status is read again with the new token.
+- Exact's `@exact/oauth` keeps the Lexus session (Exact LLP 1146 D5, D8, D9).
+  Lexy answers the sign-in tree with its own screens and sends the
+  authorization request with the tree's SSO token; the package exchanges the
+  code with PKCE, checks the ID token, renews the token one refresh at a time
+  keeping each rotated refresh token, renews and retries a read the gateway
+  refuses (403, or 401), and asks Lexus to revoke the refresh token at
+  sign-out, which forgets the session whether or not Lexus answers. By the
+  package's rule (D9), a token the gateway refuses right after the renewal
+  that issued it is not renewed again until the gateway's `Date` says it has
+  expired or, its expiry unknown, that a minute has passed since that
+  refusal, and those reads fail with the refusal; a refusal without a `Date`
+  renews as any other does. Its events are the session log's.
+- A refresh's POST runs to its end when Exact lets its answer go, and its
+  reply's turn keeps the store (LLP 1146 D2); on iOS Exact asks for background
+  time while it is in flight, which the system may end first. A refresh that
+  fails without a reply keeps the session. Lexus refusing the refresh token
+  ends it, as do OpenID Connect's sign-in-again errors and a refreshed ID
+  token that fails its checks; an end empties the vehicle data.
 - A command is confirmed only by a newer vehicle report that agrees with it.
   An older matching reading does not confirm a later command.
 - Sparse snapshots retain older window and opening readings with their original

@@ -10,13 +10,6 @@
 // the password "wrong" is rejected. The choice and code nodes stay for a
 // drive that answers them.
 
-export type Reply = {
-  status: number;
-  ok: boolean;
-  headers: { get(name: string): string | null };
-  json(): Promise<unknown>;
-};
-
 // How long the demo car takes to act on an accepted command (start, stop,
 // lock, unlock). A climate setting persists within its round trip.
 const ACT_AFTER_MS = 3000;
@@ -25,12 +18,8 @@ const ACT_AFTER_MS = 3000;
 // is one tap).
 const ROUND_TRIP_MS = 1000;
 
-const reply = (status: number, body: unknown, location?: string): Reply => ({
-  status,
-  ok: status >= 200 && status < 300,
-  headers: { get: name => (name.toLowerCase() === 'location' ? location ?? null : null) },
-  json: () => Promise.resolve(body),
-});
+const reply = (status: number, body: unknown, headers: Record<string, string> = {}): Response =>
+  new Response(body === '' ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 
 type Car = {
   locked: boolean;
@@ -94,7 +83,7 @@ const nodes: Record<string, unknown> = {
   },
 };
 
-function authenticate(posted: Record<string, any>): Reply {
+function authenticate(posted: Record<string, any>): Response {
   const answer = posted.callbacks?.[0]?.input?.[0]?.value;
   switch (posted.authId) {
     case 'demo-username':
@@ -114,8 +103,54 @@ function authenticate(posted: Record<string, any>): Reply {
   }
 }
 
-const idToken = `${b64url('{"alg":"none"}')}.${b64url(JSON.stringify({ extension_tmsguid: 'demo-guid' }))}.`;
-const tokens = { access_token: 'demo-access', refresh_token: 'demo-refresh', id_token: idToken, token_type: 'Bearer', expires_in: 3600 };
+// The realm's OpenID Connect side, as @exact/oauth meets it (exact2's
+// packages/oauth/test/PROVIDERS.md FR-2, FR-3; app.ts fixes its endpoints, so
+// there is no discovery): the authorization POST, answered with a code for its
+// `state`; the code's exchange, whose ID token carries the request's `nonce`;
+// refreshes that rotate the refresh token and carry a new ID token, as Lexus's
+// do; and revocation. A token reply's `Date` is the car's clock, so the package
+// checks the ID token's lifetime as it does Lexus's; a preview's, with no
+// clock, carries none. An access token names when it was issued, so one a
+// relaunch kept expires too.
+const ACCESS_MS = 3600_000;
+const jwt = (claims: object) => `${b64url('{"alg":"none"}')}.${b64url(JSON.stringify(claims))}.`;
+// Each code's `nonce`
+const codes = new Map<string, string>();
+
+const idToken = (url: string, form: URLSearchParams, at: number, nonce?: string): string => {
+  const iat = Math.floor(at / 1000);
+  return jwt({ iss: url.slice(0, url.lastIndexOf('/access_token')), sub: 'demo-user', aud: form.get('client_id'), iat, exp: iat + ACCESS_MS / 1000, ...(nonce === undefined ? {} : { nonce }), extension_tmsguid: 'demo-guid' });
+};
+
+function identity(url: string, init: RequestInit, at: number): Response | null {
+  const path = new URL(url).pathname;
+  const form = new URLSearchParams(typeof init.body === 'string' && !init.body.startsWith('{') ? init.body : '');
+  if (path.endsWith('/authorize')) {
+    const code = `demo-code-${crypto.randomUUID().slice(0, 8)}`;
+    codes.set(code, form.get('nonce') ?? '');
+    const back = new URL(form.get('redirect_uri') ?? 'com.toyota.oneapp:/oauth2Callback');
+    back.searchParams.set('code', code);
+    back.searchParams.set('state', form.get('state') ?? '');
+    return reply(302, '', { Location: back.toString() });
+  }
+  if (path.endsWith('/token/revoke')) return reply(200, {});
+  if (!path.endsWith('/access_token') || form.get('grant_type') !== 'authorization_code') return null;
+  const nonce = codes.get(form.get('code') ?? '');
+  if (nonce === undefined) return reply(400, { error: 'invalid_grant', error_description: 'The demo code was already used.' });
+  codes.delete(form.get('code') ?? '');
+  return tokens(`${crypto.randomUUID().slice(0, 8)}-1`, at, idToken(url, form, at, nonce));
+}
+
+function tokens(next: string, at: number, id: string): Response {
+  const body = { access_token: `demo-access-${next}.${Math.floor(at)}`, refresh_token: `demo-refresh-${next}`, token_type: 'Bearer', expires_in: ACCESS_MS / 1000, id_token: id };
+  return reply(200, body, at ? { Date: new Date(at).toUTCString() } : {});
+}
+
+// The gateway's answer to an access token past its hour, as Lexus's (FR-4)
+function expired(init: RequestInit, at: number): Response | null {
+  const since = /^Bearer demo-access-.+\.(\d+)$/.exec(String(new Headers(init.headers).get('Authorization') ?? ''))?.[1];
+  return since !== undefined && at - Number(since) >= ACCESS_MS ? reply(403, { message: 'The demo access token has expired.' }) : null;
+}
 
 // --- The car -------------------------------------------------------------------
 
@@ -224,32 +259,29 @@ const failure = () => reply(500, { message: 'The demo server is simulating an er
 // app's other answers can move on while one is out.
 const spentRefreshTokens = new Set<string>();
 
-async function grant(init: RequestInit, wait: Wait): Promise<Reply> {
+async function refresh(url: string, init: RequestInit, at: number, wait: Wait): Promise<Response> {
   const form = new URLSearchParams(typeof init.body === 'string' ? init.body : '');
-  let next = `${crypto.randomUUID().slice(0, 8)}-1`;
-  if (form.get('grant_type') === 'refresh_token') {
-    await wait(ROUND_TRIP_MS);
-    const refreshToken = form.get('refresh_token') ?? '';
-    if (spentRefreshTokens.has(refreshToken)) {
-      return reply(400, { error: 'invalid_grant', error_description: 'The demo refresh token was already used.' });
-    }
-    spentRefreshTokens.add(refreshToken);
-    // Continue the spent token's chain, so no launch issues a token an
-    // earlier one spent
-    const [, chain, count] = /^demo-refresh-(.+)-(\d+)$/.exec(refreshToken) ?? [];
-    if (chain) {
-      next = `${chain}-${Number(count) + 1}`;
-    }
+  await wait(ROUND_TRIP_MS);
+  const refreshToken = form.get('refresh_token') ?? '';
+  if (spentRefreshTokens.has(refreshToken)) {
+    return reply(400, { error: 'invalid_grant', error_description: 'The demo refresh token was already used.' });
   }
-  return reply(200, { ...tokens, access_token: `demo-access-${next}`, refresh_token: `demo-refresh-${next}` });
+  spentRefreshTokens.add(refreshToken);
+  // Continue the spent token's chain, so no launch issues a token an
+  // earlier one spent
+  const [, chain, count] = /^demo-refresh-(.+)-(\d+)$/.exec(refreshToken) ?? [];
+  return tokens(chain ? `${chain}-${Number(count) + 1}` : `${crypto.randomUUID().slice(0, 8)}-1`, at + ROUND_TRIP_MS, idToken(url, form, at + ROUND_TRIP_MS));
 }
 
-export async function demoFetch(url: string, init: RequestInit, at: number, wait: Wait): Promise<Reply> {
+export async function demoFetch(url: string, init: RequestInit, at: number, wait: Wait): Promise<Response> {
   const path = new URL(url).pathname;
   const body = typeof init.body === 'string' && init.body.startsWith('{') ? JSON.parse(init.body) : {};
   if (path.endsWith('/authenticate')) return authenticate(body);
-  if (path.endsWith('/authorize')) return reply(302, '', 'com.toyota.oneapp:/oauth2Callback?code=demo-code');
-  if (path.endsWith('/access_token')) return grant(init, wait);
+  const signIn = identity(url, init, at);
+  if (signIn) return signIn;
+  if (path.endsWith('/access_token')) return refresh(url, init, at, wait);
+  const refused = expired(init, at);
+  if (refused) return refused;
   await wait(ROUND_TRIP_MS);
   at += ROUND_TRIP_MS;
   if (path === '/oneapi/v2/vehicle/guid') return reply(200, discovery());
@@ -292,16 +324,16 @@ export async function demoFetch(url: string, init: RequestInit, at: number, wait
 // --- Login Flow preview ----------------------------------------------------------
 
 // Settings → Developer Tools → Login Flow: the real sign-in screen and the
-// real step machine against a mock tree, never the Keychain (the session
-// stays as it is). Each scenario steers where the walk succeeds or fails,
-// as src/auth/preview-lexus-backend.ts does for the Expo app. Stateless: the
+// real step machine against a mock tree, signed in on a store of its own (the
+// person's session stays as it is). Each scenario steers where the walk
+// succeeds or fails, as src/auth/preview-lexus-backend.ts does for the Expo app. Stateless: the
 // step rides in the node's authId, as ForgeRock threads its own.
 export const PREVIEW_SCENARIOS = ['success-multi', 'success-single', 'wrong-password', 'wrong-code', 'network-error'] as const;
 export type PreviewScenario = (typeof PREVIEW_SCENARIOS)[number];
 
 const previewNode = (step: keyof typeof nodes) => ({ ...(nodes[step] as Record<string, unknown>), authId: `preview-${step}` });
 
-function previewAuthenticate(posted: Record<string, any>, scenario: PreviewScenario): Reply {
+function previewAuthenticate(posted: Record<string, any>, scenario: PreviewScenario): Response {
   switch (Array.isArray(posted.callbacks) ? posted.authId : 'start') {
     case 'preview-username':
       return reply(200, previewNode('password'));
@@ -321,14 +353,12 @@ function previewAuthenticate(posted: Record<string, any>, scenario: PreviewScena
 // A beat of latency, so the busy states show as they would.
 const PREVIEW_LATENCY_MS = 350;
 
-export async function previewFetch(scenario: PreviewScenario, url: string, init: RequestInit, wait: Wait): Promise<Reply> {
+export async function previewFetch(scenario: PreviewScenario, url: string, init: RequestInit, wait: Wait): Promise<Response> {
   await wait(PREVIEW_LATENCY_MS);
   // Before any endpoint answers, so the failure surfaces where an outage's would.
   if (scenario === 'network-error') throw new TypeError('The Internet connection appears to be offline.');
   const path = new URL(url).pathname;
   const body = typeof init.body === 'string' && init.body.startsWith('{') ? JSON.parse(init.body) : {};
   if (path.endsWith('/authenticate')) return previewAuthenticate(body, scenario);
-  if (path.endsWith('/authorize')) return reply(302, '', 'com.toyota.oneapp:/oauth2Callback?code=preview-code');
-  if (path.endsWith('/access_token')) return reply(200, tokens);
-  return reply(404, { message: `The preview has no ${path}` });
+  return identity(url, init, 0) ?? reply(404, { message: `The preview has no ${path}` });
 }

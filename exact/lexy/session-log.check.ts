@@ -1,131 +1,142 @@
 // bun exact/lexy/session-log.check.ts
-// Drives app.ts's session sources over real SQLite and checks the session log
-// they keep: what each event says, that it outlives sign-out, that it tells a
-// lost Keychain item from a sign-out, that it holds no token, and that it keeps
-// the newest 200.
+// Drives app.ts's session sources over real SQLite against a fake Lexus realm
+// and checks the session log they keep from @exact/oauth's events: what each
+// says, that it outlives sign-out, that it tells a lost Keychain item from a
+// sign-out, that it holds no token, that it keeps the newest 200, that it
+// explains the first launch after an earlier build's session, and that it tells
+// a refresh with no reply from one with an unusable reply.
 import { strict as assert } from 'node:assert';
-import { memoryStorage, memoryStore } from './check-support';
+import { gateway, lexusRealm, memoryStorage, memoryStore, signIn } from './check-support';
 
 const timeout = setTimeout((): never => { throw new Error('Session log check did not finish within 10 seconds'); }, 10_000);
-let current = 'r1';
-let abortRefresh: Promise<void> | null = null;
-const jwt = (o: object): string => 'h.' + Buffer.from(JSON.stringify(o)).toString('base64url') + '.s';
-const json = (status: number, body: unknown): Response =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-globalThis.fetch = (async (url: string, init?: RequestInit): Promise<Response> => {
-  const u = String(url);
-  if (u.includes('/authorize')) {
-    return new Response(null, { status: 302, headers: { Location: 'com.toyota.oneapp:/oauth2Callback?code=c1' } });
-  }
-  if (u.includes('access_token')) {
-    const body = new URLSearchParams(String(init?.body ?? ''));
-    if (body.get('grant_type') === 'authorization_code') {
-      current = 'r1';
-      return json(200, { access_token: 'a-r1', refresh_token: 'r1', id_token: jwt({ extension_tmsguid: 'g' }), expires_in: 3600, token_type: 'Bearer' });
-    }
-    if (abortRefresh) {
-      await abortRefresh;
-      throw Object.assign(new Error('the answer was let go before this reply; the request may already have been sent'), { kind: 'Aborted' });
-    }
-    if (body.get('refresh_token') !== current) {
-      // Words a server chose can carry anything; the log must not keep them
-      return json(400, { error: 'invalid_grant', error_description: `Refresh token ${body.get('refresh_token')} of driver@example.com is invalid` });
-    }
-    current = 'r' + (Number(current.slice(1)) + 1);
-    return json(200, { access_token: 'a-' + current, refresh_token: current, id_token: jwt({ extension_tmsguid: 'g' }), expires_in: 3600, token_type: 'Bearer' });
-  }
-  if (u.includes('/vehicle/guid')) {
-    const authorization = (init?.headers as Record<string, string>).Authorization ?? '';
-    return authorization === 'Bearer stale' ? json(401, { error: 'invalid_token' }) : json(200, { payload: [{ vin: 'VIN1' }] });
-  }
-  throw new Error('unexpected ' + u);
-}) as typeof fetch;
+const gate = gateway();
+const realm = lexusRealm(gate.answer);
+globalThis.fetch = realm.fetch as typeof fetch;
 
 const { answer } = await import('./app.ts');
 const { storage, database } = memoryStorage();
 const store = memoryStore();
 const now = 1_790_900_000_000;
-const saved = (refreshToken: string, accessToken: string, expiresAt: number): string =>
-  JSON.stringify({ accessToken, refreshToken, idToken: jwt({ extension_tmsguid: 'g' }), expiresAt, tokenType: 'Bearer' });
 type Log = { ok: boolean; signedInAt: number; refreshes: number; lastRefreshAt: number; events: { at: number; kind: string; detail: string }[] };
-// The log source reads after the events already logged have landed
 const log = (): Promise<Log> => answer('sessionLog', [200, 1], store, storage, null) as Promise<Log>;
 const kinds = (l: Log): string[] => l.events.map(e => e.kind);
-const session = async (rev: number): Promise<boolean> =>
-  (await answer('session', [rev, now], store, storage, null) as { signedIn: boolean }).signedIn;
+// The package says what happened once a token's print is made: wait, a
+// second at most, for the log to hold `n` events, or for `kind` to be the newest
+const logged = async (n: number, kind?: string): Promise<Log> => {
+  for (let i = 0; i < 200; i++) {
+    const l = await log();
+    if (kind ? l.events[0]?.kind === kind : l.events.length >= n) return l;
+    await Bun.sleep(5);
+  }
+  throw new Error(`the session log never held ${kind ?? `${n} events`}: ${kinds(await log()).slice(0, 12).join(', ')}`);
+};
+const session = async (): Promise<boolean> => (await answer('session', [now], store, storage, null)).signedIn;
+const garage = (rev: number): Promise<unknown> => answer('garage', [true, rev, now], store, storage, null);
 
-// 1. An upgrade onto a saved session logs from its first event, with an empty
-// table: a refused refresh token is the failure, the deletion and the sign-in
-store.set('lexy.session', saved('r9', 'a-r9', now - 1000));
-assert.equal(await session(0), false);
-let l = await log();
-assert.deepEqual(kinds(l), ['sign-in shown', 'session deleted', 'refresh failed']);
-assert.equal(l.events[2].detail.endsWith('; HTTP 400 invalid_grant'), true, l.events[2].detail);
-await session(1);
-assert.equal((await log()).events.length, 3, 'a known sign-out was logged as a lost session');
-console.log('1 a refused refresh token is logged in order from an empty log, and its sign-out once');
+// 1. A launch with nothing saved logs a lost session once.
+assert.equal(await session(), false);
+assert.equal(await session(), false);
+assert.deepEqual(kinds(await logged(1)), ['no saved session']);
+console.log('1 a launch with nothing saved is logged once');
 
-// 2. Sign-in, then a refresh: the refresh names both tokens by their prints
-await answer('authFinish', [1, '', 'sso-token', now], store, storage, null);
-assert.equal((await log()).events[0].kind, 'signed in');
-store.set('lexy.session', saved('r1', 'a-r1', now - 1000));
-assert.equal(await session(2), true);
-l = await log();
+// 2. A sign-in, then a refresh the gateway's 403 started: the refresh names
+// both tokens by their prints.
+await signIn(answer, store, storage, now);
+let l = await logged(2);
+assert.equal(l.events[0].kind, 'signed in');
+assert.match(l.events[0].detail, /^refresh token [0-9a-f]{6}$/);
+gate.expired.add('Bearer a-r1');
+await garage(0);
+l = await logged(3);
 assert.equal(l.events[0].kind, 'refreshed');
 assert.match(l.events[0].detail, /^sent [0-9a-f]{6}, got [0-9a-f]{6}; the access token lasts 3600 s$/);
+assert.equal(l.events[0].detail.slice(5, 11), l.events[1].detail.slice(14), 'the refresh sent the token the sign-in kept');
 assert.equal(l.refreshes, 1);
 assert.equal(l.signedInAt, now);
 console.log('2 a sign-in and a refresh are logged, the refresh with both token prints');
 
-// 3. A read the gateway refuses names its path
-store.set('lexy.session', saved('r2', 'stale', now + 3_600_000));
-await answer('garage', [true, now + 3_600_000, 0, now], store, storage, null);
-l = await log();
-assert.equal(l.events[0].kind, 'request refused');
-assert.equal(l.events[0].detail, 'HTTP 401 on /oneapi/v2/vehicle/guid');
-console.log('3 a refused request is logged with its path');
+// 3. A refresh that gets no reply says so.
+gate.expired.add('Bearer a-r2');
+realm.next = 'throw';
+await garage(1);
+l = await logged(4);
+assert.equal(l.events[0].kind, 'refresh failed');
+assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; no reply/);
+console.log('3 a refresh with no reply is logged as such');
 
-// 4. A session that vanishes while signed in is a lost Keychain item
-store.forget('lexy.session');
-assert.equal(await session(3), false);
-assert.equal((await log()).events[0].kind, 'no saved session');
-console.log('4 a session gone without a sign-out is logged as lost');
+// 4. A read the gateway refuses again after a refresh names its path.
+gate.refuseAll = true;
+await garage(2);
+l = await logged(6);
+assert.deepEqual(kinds(l).slice(0, 2), ['request refused', 'refreshed']);
+assert.equal(l.events[0].detail, 'HTTP 403 on /oneapi/v2/vehicle/guid');
+gate.refuseAll = false;
+console.log('4 a refused request is logged with its path');
 
-// 5. A refresh Exact cuts off says so; one that lands after a sign-out does not
-// make the next launch look like a lost session
-store.set('lexy.session', saved('r2', 'a-r2', now - 1000));
-const { promise: cutOff, resolve: cutOffNow } = Promise.withResolvers<void>();
-abortRefresh = cutOff;
-const refreshing = session(4);
+// 5. Lexus refusing the refresh token deletes the session, and the next
+// launch is not a lost one.
+gate.expired.add('Bearer a-r3');
+realm.next = { status: 400, body: { error: 'invalid_grant' } };
+await garage(3);
+l = await logged(7);
+assert.equal(l.events[0].kind, 'session deleted');
+assert.equal(l.events[0].detail, 'the session ended (invalid_grant)');
+assert.equal(await session(), false);
+assert.equal((await log()).events.length, 7, 'a session Lexus ended was logged as lost');
+console.log('5 a refused refresh token is logged, and its sign-out explains the next launch');
+
+// 6. Signing out is logged, explains the next launch, and keeps the log.
+await signIn(answer, store, storage, now);
 await answer('signOut', [now], store, storage, null);
-cutOffNow();
-assert.equal(await refreshing, true);
-abortRefresh = null;
-l = await log();
-assert.deepEqual(kinds(l).slice(0, 2), ['refresh failed', 'signed out']);
-assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; no reply: the request was cut off/);
-await session(5);
-assert.equal((await log()).events[0].kind, 'refresh failed', 'a launch after a sign-out was logged as a lost session');
-console.log('5 a cut-off refresh is logged as no reply, and sign-out still explains the next launch');
+l = await logged(9);
+assert.deepEqual(kinds(l).slice(0, 2), ['signed out', 'signed in']);
+assert.equal(await session(), false);
+assert.equal((await log()).events.length, 9, 'a launch after a sign-out was logged as a lost session');
+console.log('6 sign-out is logged, explains the next launch, and the log outlives it');
 
-// 6. Signing out empties the vehicle data but keeps the log
-assert.equal(kinds(await log()).includes('signed in'), true);
-console.log('6 the log outlives sign-out');
-
-// 7. No token, account or address appears anywhere in it
+// 7. No token, account or address appears anywhere in it.
 const details = database.prepare('SELECT detail FROM session_log').values().map(row => String(row[0]));
-assert.equal(details.length, 9);
-assert.equal(details.some(d => /\b(a-)?r\d+\b|stale|sso-token|c1|@|example/.test(d)), false, `a secret reached the session log: ${details.join(' | ')}`);
+assert.equal(details.some(d => /\b(a-)?r\d+\b|sso-token|test-code|@|example/.test(d)), false, `a secret reached the session log: ${details.join(' | ')}`);
 console.log('7 the log holds no token, account or address');
 
-// 8. Only the newest 200 are kept
+// 8. Only the newest 200 are kept.
 for (let i = 0; i < 250; i++) {
   database.prepare('INSERT INTO session_log (at, kind, detail) VALUES (?, ?, ?)').run(now, 'filler', String(i));
 }
-store.set('lexy.session', saved('r2', 'stale', now + 3_600_000));
-await answer('garage', [true, now + 3_600_000, 1, now], store, storage, null);
-assert.equal((await log()).events[0].kind, 'request refused');
+await signIn(answer, store, storage, now);
+await logged(0, 'signed in');
 assert.equal(Number(database.prepare('SELECT count(*) FROM session_log').values()[0][0]), 200);
 console.log('8 the log keeps the newest 200 events');
 
+// 9. A session an earlier build kept is forgotten at the first launch, with
+// the vehicle data it read, which is logged as a sign-out, not as a lost session.
+await answer('signOut', [now], store, storage, null);
+await logged(0, 'signed out');
+store.set('lexy.session', JSON.stringify({ refreshToken: 'r-old', accessToken: 'a-old' }));
+store.set('lexy.demo', '1');
+database.prepare("INSERT INTO cars (account, vin, position, car) VALUES ('old', 'VIN0', 0, '{}')").run();
+database.prepare("INSERT INTO readings VALUES ('VIN0', 'tires', '{}')").run();
+database.prepare("INSERT INTO closures VALUES ('VIN0', 'door', 'front-left', 0, 'closed', 1, 'locked', 1)").run();
+assert.equal(await session(), false);
+assert.equal(await session(), false);
+assert.deepEqual([store.get('lexy.session'), store.get('lexy.demo')], [null, null], "the earlier build's session or demo mode is still kept");
+for (const table of ['cars', 'readings', 'closures']) {
+  assert.equal(Number(database.prepare(`SELECT count(*) FROM ${table}`).values()[0][0]), 0, `the earlier account's ${table} are still kept`);
+}
+const earlier = 'this build keeps the session differently: sign in again';
+l = await log();
+assert.deepEqual(l.events.slice(0, 2).map(e => [e.kind, e.detail]), [['signed out', earlier], ['signed out', 'from Settings']]);
+console.log("9 an earlier build's session and vehicle data (cars, readings, closures) are forgotten at launch, logged as a sign-out");
+
+// 10. A refresh answered with a token reply the package cannot use says so, not that no reply came.
+await signIn(answer, store, storage, now);
+gate.refuseAll = true;
+realm.next = { status: 200, body: { token_type: 'Bearer' } };
+await garage(4);
+gate.refuseAll = false;
+l = await logged(0, 'refresh failed');
+assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; an unusable reply invalid_response$/);
+console.log('10 a refresh with an unusable reply is logged as such');
+
 clearTimeout(timeout);
+database.close();
