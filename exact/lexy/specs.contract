@@ -70,20 +70,22 @@ component SpecsScreen
     fold: string
   derive car = garage.car
   derive refreshFailed = online and car.vin != "" and not garage.ok and not loading and garage.status != 401
-  derive bannerShown = not online or refreshFailed
   derive failureNote = developer ? ` ${failureDetail("Vehicle list", garage.status, garage.error)}` : ""
   view
     scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing class=SafeScroll
       column box-sizing="border-box" min-height="100%"
-        // The banners, each its `if`'s root so its exit plays; the column
-        // holds their top margin only while one shows, so what follows
-        // glides with it
-        column padding-left=16 padding-right=16 padding-top=(bannerShown ? "16px" : "0px")
+        // The banners, each its `if`'s root so its exit plays. Each carries
+        // the 16 above it, so the space leaves with it and the column stays
+        // as it is: on the web, Exact reads a leaving view after the rest of
+        // the commit's changes, so a column that dropped its padding in that
+        // commit would move the banner up as it starts to fade (to revisit in
+        // Exact, then go back to one padded column)
+        column padding-left=16 padding-right=16
           if not online
-            WarningBanner(id="specs-offline", still=still, symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
+            WarningBanner(id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           if refreshFailed
-            WarningBanner(id="specs-garage-error", still=still, symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.${failureNote}`)
+            WarningBanner(id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.${failureNote}`)
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
