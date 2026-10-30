@@ -19,6 +19,7 @@ shape Page
 shape Viewport
   height: number
   displayMode: string
+  prefersReducedMotion: bool
   width: number
   horizontalViewportSegments: number
   verticalViewportSegments: number
@@ -417,5 +418,8 @@ style SmallBold
   font-size=14 font-weight=700
 // status-banner.tsx: a tinted row of a symbol and words (the tint's wash is
 // the node's own background-color).
+// What a banner's coming and going moves: the content after it glides to its
+// new place, except under Reduce Motion, where it moves at once
+fn bannerGlide(still: bool): string = still ? "none" : "300ms cubic-bezier(.32,.72,0,1)"
 style Banner
   gap=8 padding-left=16 padding-right=16 padding-top=8 padding-bottom=8 border-radius=14 align-items="center"

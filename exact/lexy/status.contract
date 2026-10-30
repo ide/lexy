@@ -2,6 +2,7 @@
 // the car over its parked map, fuel, remote controls, remote-start climate,
 // doors and windows, odometer, tires, and when it last synced.
 use SafeScroll from "./model.contract"
+use bannerGlide from "./model.contract"
 use Garage from "./model.contract"
 use Status from "./model.contract"
 use Tires from "./model.contract"
@@ -50,6 +51,21 @@ timeline Pending
 keyframes pending
   from opacity=0.4
   to opacity=1
+
+// A banner fades in from just above where it comes to rest and leaves the same
+// way; under Reduce Motion it only fades, as Apple's guidance has it. It comes
+// in once what follows has mostly glided out of its way, and goes before what
+// follows reaches it, so the two never show through each other
+keyframes bannerIn
+  from opacity=0 translate="0px -8px"
+keyframes bannerOut
+  to opacity=0 translate="0px -8px"
+keyframes bannerFadeIn
+  from opacity=0
+keyframes bannerFadeOut
+  to opacity=0
+fn bannerEnter(still: bool): string = still ? "bannerFadeIn 200ms ease-out both" : "bannerIn 220ms cubic-bezier(.32,.72,0,1) 120ms both"
+fn bannerExit(still: bool): string = still ? "bannerFadeOut 150ms ease-in both" : "bannerOut 120ms ease-in both"
 
 // The climate card breathes while a change is written to the car.
 keyframes climateWriting
@@ -117,8 +133,11 @@ component WarningBanner
     framed: bool
     title: string
     message: string
+    // Reduce Motion: the banner only fades
+    still: bool
   view
-    row testId=id class=Banner background-color=wash("-exact-system-orange")
+    // It comes and goes with its `if`, so its own exit plays
+    row testId=id class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation=bannerExit(still)
       if framed
         image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange" object-fit="scale-down" width=22 height=22
       else
@@ -197,6 +216,8 @@ component StatusScreen
     retrying: bool
     // Developer mode: failures name their read, status and Lexus's words
     developer: bool
+    // Reduce Motion: banners fade without moving, and nothing glides
+    still: bool
     // Until both the car and its status are in: the skeleton, not the cards.
     firstLoad: bool
     notice: string
@@ -280,10 +301,10 @@ component StatusScreen
           // Banners (src/components/ui/status-banner.tsx)
           // use-vehicle-screen.tsx / status-banner.tsx: offline, amber.
           if not online
-            WarningBanner(id="offline", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
+            WarningBanner(id="offline", still=still, symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           if online and car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.error != "" and status.status != 401))
-            WarningBanner(id="garage-error", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))}${(status.ok ? " Showing the latest data we saved." : "")} Pull down to try again.${failureNote}`)
+            WarningBanner(id="garage-error", still=still, symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))}${(status.ok ? " Showing the latest data we saved." : "")} Pull down to try again.${failureNote}`)
           if car.vin == "" and not loading and garage.ok and garage.carCount == 0
             VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, busy=retrying, id="no-vehicle")
           if car.vin == "" and not loading and not garage.ok
@@ -298,11 +319,11 @@ component StatusScreen
             button commandfor="command-failed" command="close" testId="command-failed-ok"
               text "OK"
           if notice != ""
-            row testId="notice" class=Banner background-color=wash("-exact-system-blue")
+            row testId="notice" class=Banner background-color=wash("-exact-system-blue") animation=bannerEnter(still) -exact-exit-animation=bannerExit(still)
               image "symbol:icon.checkmark.circle.fill" font-size=17 color="-exact-system-blue" object-fit="scale-down" width=22 height=22
               text notice class=SmallBold color="-exact-system-blue" flex=1
           if firstLoad or car.vin != ""
-            column testId=(firstLoad ? "skeleton" : "status-body") gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") margin-left=(fold == "across" ? "-16px" : "0px") margin-right=(fold == "across" ? "-16px" : "0px") animation=(firstLoad and online ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
+            column testId=(firstLoad ? "skeleton" : "status-body") -exact-layout-transition=bannerGlide(still) gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") margin-left=(fold == "across" ? "-16px" : "0px") margin-right=(fold == "across" ? "-16px" : "0px") animation=(firstLoad and online ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
               if firstLoad
                 column class=Card testId="skeleton-hero" height=265 padding=16 box-sizing="border-box" justify-content="flex-end" align-items="flex-end" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto")
                   box width=148 height=48 border-radius=24 background-color="-exact-tertiary-fill"

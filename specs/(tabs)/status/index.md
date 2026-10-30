@@ -438,6 +438,8 @@ telling.
 
 - While a retry the person started is out (Try again, Check again or a pull), Exact keeps the full-screen no-vehicle or failed-load state on screen with its button disabled until the answer lands, rather than swapping in the loading skeleton for the length of the request.
 
+- Exact animates its banners (offline, "Couldn't refresh" and the blue notice) as they come and go: the dashboard glides to make room or to close the gap, a banner fades in from just above its place once the room is mostly open, and fades out before the content reaches it. With Reduce Motion a banner only fades, and the dashboard moves at once.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Confirmation UI | Centered alert with system Cancel | Centered Material dialog with an explicit Cancel |
