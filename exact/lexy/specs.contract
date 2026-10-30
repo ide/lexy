@@ -95,7 +95,8 @@ component SpecsScreen
           column flex-grow=1 margin-top=16
             VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=`${failureAdvice(garage.status, garage.error)}${failureNote}`, label="Try again", press=reload, busy=retrying, id="specs-error")
         if car.vin != "" or loading
-          column -exact-layout-transition=bannerGlide(still) box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId=(car.vin == "" ? "specs-skeleton" : "specs-body")
+          // Above the banners, which it covers as they come and go
+          column -exact-layout-transition=bannerGlide(still) z-index=1 box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId=(car.vin == "" ? "specs-skeleton" : "specs-body")
             column gap=8 testId="specs-vehicle" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
               text "Vehicle" role="heading" aria-level=2 class=SectionTitle
               column class=Card padding-left=16 padding-right=16 animation=(car.vin == "" and online ? "skeletonPulse 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity

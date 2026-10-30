@@ -52,20 +52,16 @@ keyframes pending
   from opacity=0.4
   to opacity=1
 
-// A banner fades in from just above where it comes to rest and leaves the same
-// way; under Reduce Motion it only fades, as Apple's guidance has it. It comes
-// in once what follows has mostly glided out of its way, and goes before what
-// follows reaches it, so the two never show through each other
+// A banner lies under what follows it, which glides down to uncover it as it
+// fades in. Leaving, it fades out fast instead, before what follows reaches
+// it: a node that leaves paints over its siblings on every host (LLP 1083 D4),
+// so it cannot be covered. Under Reduce Motion nothing glides
 keyframes bannerIn
-  from opacity=0 translate="0px -8px"
-keyframes bannerOut
-  to opacity=0 translate="0px -8px"
-keyframes bannerFadeIn
   from opacity=0
-keyframes bannerFadeOut
+keyframes bannerOut
   to opacity=0
-fn bannerEnter(still: bool): string = still ? "bannerFadeIn 200ms ease-out both" : "bannerIn 220ms cubic-bezier(.32,.72,0,1) 120ms both"
-fn bannerExit(still: bool): string = still ? "bannerFadeOut 150ms ease-in both" : "bannerOut 120ms ease-in both"
+fn bannerEnter(still: bool): string = still ? "bannerIn 200ms ease-out both" : "bannerIn 250ms ease-out both"
+fn bannerExit(still: bool): string = still ? "bannerOut 150ms ease-in both" : "bannerOut 120ms ease-in both"
 
 // The climate card breathes while a change is written to the car.
 keyframes climateWriting
@@ -323,7 +319,8 @@ component StatusScreen
               image "symbol:icon.checkmark.circle.fill" font-size=17 color="-exact-system-blue" object-fit="scale-down" width=22 height=22
               text notice class=SmallBold color="-exact-system-blue" flex=1
           if firstLoad or car.vin != ""
-            column testId=(firstLoad ? "skeleton" : "status-body") -exact-layout-transition=bannerGlide(still) gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") margin-left=(fold == "across" ? "-16px" : "0px") margin-right=(fold == "across" ? "-16px" : "0px") animation=(firstLoad and online ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
+            // Above the banners, which it covers as they come and go
+            column testId=(firstLoad ? "skeleton" : "status-body") -exact-layout-transition=bannerGlide(still) z-index=1 gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") margin-left=(fold == "across" ? "-16px" : "0px") margin-right=(fold == "across" ? "-16px" : "0px") animation=(firstLoad and online ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Activity
               if firstLoad
                 column class=Card testId="skeleton-hero" height=265 padding=16 box-sizing="border-box" justify-content="flex-end" align-items="flex-end" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - env(safe-area-inset-left) - 32px)" : "auto")
                   box width=148 height=48 border-radius=24 background-color="-exact-tertiary-fill"

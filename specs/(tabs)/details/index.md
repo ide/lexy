@@ -85,7 +85,7 @@ pull-refresh.
 
 - While its Try again or Check again is out, Exact keeps the full-screen failed-load or no-vehicle state on screen with the button disabled until the answer lands, rather than swapping in the loading layout for the length of the request.
 
-- Exact animates its banners (offline and "Couldn't refresh") as they come and go: the content below glides to make room or to close the gap, a banner fades in from just above its place once the room is mostly open, and fades out before the content reaches it. With Reduce Motion a banner only fades, and the content moves at once.
+- Exact animates its banners (offline and "Couldn't refresh") as they come and go. A banner lies under the content, which glides down on a spring to uncover it as it fades in; leaving, it fades out fast, before the content glides back over its place. With Reduce Motion a banner only fades, and the content moves at once.
 
 | Concern | iOS | Android |
 | --- | --- | --- |
