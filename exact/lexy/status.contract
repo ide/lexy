@@ -53,11 +53,10 @@ keyframes pending
   to opacity=1
 
 // A banner lies under what follows it, which glides down to uncover it as it
-// fades in. Leaving, it fades out fast instead, before what follows reaches
-// it: a node that leaves paints over its siblings on every host (LLP 1083 D4),
-// so it cannot be covered. Under Reduce Motion nothing glides. The exit is one
-// literal, the same with or without Reduce Motion: the web's JS target takes
-// no dynamic exit animation
+// fades in, and back over it as it fades out: a node that leaves keeps its
+// place in paint order (LLP 1083 D4). Under Reduce Motion nothing glides. The
+// exit is one literal, the same with or without Reduce Motion: the web's JS
+// target takes no dynamic exit animation
 keyframes bannerIn
   from opacity=0
 keyframes bannerOut
@@ -136,7 +135,7 @@ component WarningBanner
     above: string
   view
     // It comes and goes with its `if`, so its own exit plays
-    row testId=id margin-top=above class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation="bannerOut 120ms ease-in both"
+    row testId=id margin-top=above class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation="bannerOut 250ms ease-in both"
       if framed
         image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange" object-fit="scale-down" width=22 height=22
       else
@@ -318,7 +317,7 @@ component StatusScreen
             button commandfor="command-failed" command="close" testId="command-failed-ok"
               text "OK"
           if notice != ""
-            row testId="notice" class=Banner background-color=wash("-exact-system-blue") animation=bannerEnter(still) -exact-exit-animation="bannerOut 120ms ease-in both"
+            row testId="notice" class=Banner background-color=wash("-exact-system-blue") animation=bannerEnter(still) -exact-exit-animation="bannerOut 250ms ease-in both"
               image "symbol:icon.checkmark.circle.fill" font-size=17 color="-exact-system-blue" object-fit="scale-down" width=22 height=22
               text notice class=SmallBold color="-exact-system-blue" flex=1
           if firstLoad or car.vin != ""
