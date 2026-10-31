@@ -132,12 +132,15 @@ component SpecsScreen
               if car.vin != "" and services.items.length > 0
                 column gap=8
                   text "Connected Services" role="heading" aria-level=2 class=SectionTitle
-                  column class=Card padding-left=16 padding-right=16
-                    for s, i in services.items key=`${s.bucket}-${s.name}`
-                      row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`
-                        column flex-shrink=1
-                          text s.name class=Small color="-exact-label" user-select="text"
-                          text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="-exact-secondary-label"
-                        text s.status class=SmallBold color=(s.status == "Active" ? "-exact-system-green" : "-exact-secondary-label")
+                  column class=Card
+                    // The rows' inset. The link below spans the card with UIKit's own button insets, as a
+                    // list's button row does, so its words have the card's width to stay on one line.
+                    column padding-left=16 padding-right=16
+                      for s, i in services.items key=`${s.bucket}-${s.name}`
+                        row justify-content="space-between" align-items="center" gap=16 padding-top=16 padding-bottom=16 border-bottom-width=0.5 border-bottom-style="solid" border-color="-exact-separator" testId=`service-${i}`
+                          column flex-shrink=1
+                            text s.name class=Small color="-exact-label" user-select="text"
+                            text (s.endMs > 0 ? `${s.bucket == "trial" ? "Trial expires" : "Expires"} ${formatDate(s.endMs, utcOffset, "month-year")}` : (s.bucket == "trial" ? "Trial" : "")) class=Small color="-exact-secondary-label"
+                          text s.status class=SmallBold color=(s.status == "Active" ? "-exact-system-green" : "-exact-secondary-label")
                     button press=manage testId="manage-subscriptions" appearance="auto" buttonStyle="plain" padding-top=22 padding-bottom=22 display="flex" align-items="center"
                       text "Manage your subscriptions in the Lexus app" font-size=14 color="AccentColor" text-align="center"
