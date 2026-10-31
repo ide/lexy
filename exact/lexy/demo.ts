@@ -16,7 +16,7 @@ const ACT_AFTER_MS = 3000;
 // Every call to the vehicle plane takes a second, as the real one does: an
 // instant answer made "Refreshing…" a flicker. Sign-in stays quick (the demo
 // is one tap).
-const ROUND_TRIP_MS = 1000;
+export const ROUND_TRIP_MS = 1000;
 
 const reply = (status: number, body: unknown, headers: Record<string, string> = {}): Response =>
   new Response(body === '' ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
@@ -249,7 +249,9 @@ export type Wait = (ms: number) => Promise<void>;
 // Settings → Simulate Server Errors: every write (a command, a climate
 // setting, a name) fails as a 500 does, after its usual latency, so the app's
 // error paths and the state it restores can be tried. Reads still answer.
-export const demoServer = { failing: false };
+// `tokens`: the origin of demo-tokens.ts, which a launch at
+// `/settings?developer=on&demoTokens=<origin>` names; "" answers refreshes here.
+export const demoServer = { failing: false, tokens: '' };
 const failure = () => reply(500, { message: 'The demo server is simulating an error.' });
 
 // Lexus rotates refresh tokens (docs/authentication.md): a refresh spends the
@@ -260,8 +262,22 @@ const failure = () => reply(500, { message: 'The demo server is simulating an er
 const spentRefreshTokens = new Set<string>();
 
 async function refresh(url: string, init: RequestInit, at: number, wait: Wait): Promise<Response> {
+  // Over HTTP when demo-tokens.ts answers: then the refresh is a request the
+  // host keeps, as Lexus's is, where this one is a wait the host can let go
+  if (demoServer.tokens) {
+    const headers = new Headers(init.headers);
+    headers.set('X-Demo-At', String(at));
+    headers.set('X-Demo-Url', url);
+    return fetch(`${demoServer.tokens}/access_token`, { ...init, headers });
+  }
   const form = new URLSearchParams(typeof init.body === 'string' ? init.body : '');
   await wait(ROUND_TRIP_MS);
+  return rotate(url, form, at + ROUND_TRIP_MS);
+}
+
+// A refresh's answer at `at`: invalid_grant for a token already spent, else
+// the next tokens, the sent one spent
+export function rotate(url: string, form: URLSearchParams, at: number): Response {
   const refreshToken = form.get('refresh_token') ?? '';
   if (spentRefreshTokens.has(refreshToken)) {
     return reply(400, { error: 'invalid_grant', error_description: 'The demo refresh token was already used.' });
@@ -270,7 +286,7 @@ async function refresh(url: string, init: RequestInit, at: number, wait: Wait): 
   // Continue the spent token's chain, so no launch issues a token an
   // earlier one spent
   const [, chain, count] = /^demo-refresh-(.+)-(\d+)$/.exec(refreshToken) ?? [];
-  return tokens(chain ? `${chain}-${Number(count) + 1}` : `${crypto.randomUUID().slice(0, 8)}-1`, at + ROUND_TRIP_MS, idToken(url, form, at + ROUND_TRIP_MS));
+  return tokens(chain ? `${chain}-${Number(count) + 1}` : `${crypto.randomUUID().slice(0, 8)}-1`, at, idToken(url, form, at));
 }
 
 export async function demoFetch(url: string, init: RequestInit, at: number, wait: Wait): Promise<Response> {

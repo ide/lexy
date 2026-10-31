@@ -137,6 +137,7 @@ component Lexy
   // The demo's server errors (Settings → Simulate Server Errors).
   state demoFailing = false
   mutation demoFailures as shape Done
+  mutation demoTokens as shape Done
   // A sign-out still landing counts: the package forgets the session before its revocation lands, and a sign-in
   // begun meanwhile would be reset by afterSignOut
   derive signingIn = entering or pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real) or pending(left)
@@ -720,6 +721,10 @@ component Lexy
     send demoFailures = setDemoFailures(on)
   action unlockDeveloper
     send developerSet = setDeveloperMode(true)
+    // A drive's token server (demo-tokens.ts), read before the link's query
+    // is dropped below
+    if searchParam(top(nav), "demoTokens") != ""
+      send demoTokens = setDemoTokens(searchParam(top(nav), "demoTokens"))
     // Leave Login Flow's preview as a tab switch does, or the sign-in would
     // push its screens back over Settings
     if previewScenario != ""

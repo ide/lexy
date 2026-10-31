@@ -8,6 +8,8 @@ export const appId = 'app.ide.lexy.exact';
 export const grants = [
   'net.fetch https://login.lexusdriverslogin.com',
   'net.fetch https://onecdn.telematicsct.com',
+  // A drive's demo token server (demo-tokens.ts), in development builds only
+  'development net.fetch http://127.0.0.1:4310',
   'secret.keep lexy.lexus',
   'secret.keep lexy.demo',
   'secret.keep lexy.demo.session',
@@ -1164,6 +1166,12 @@ const sources: Sources = {
   },
   setDemoFailures: ([on]) => {
     demoServer.failing = on === true;
+    return { ok: true, status: 200, error: '' };
+  },
+  // A development build's only: a production bake leaves the server's grant
+  // out of `grants`, so an installed build's demo answers refreshes in the app
+  setDemoTokens: ([origin]) => {
+    if (grants.split('\n').includes('net.fetch http://127.0.0.1:4310')) demoServer.tokens = str(origin);
     return { ok: true, status: 200, error: '' };
   },
   useDemo: ([on], store) => {
