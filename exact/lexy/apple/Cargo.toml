@@ -13,7 +13,7 @@ crate-type = ["rlib"]
 exact-logic = { path = "../../../../exact2/logic" }
 exact-apple = { path = "../../../../exact2/host/apple" }
 exact-js = { path = "../../../../exact2/js" }
-# The update store (deploy.store.ios = "A"): the archive must link it.
+# The host with an update store, which host.rs names when app.json's deploy.store has one
 exact-apple-update = { path = "../../../../exact2/host/apple-update" }
 
 [build-dependencies]
