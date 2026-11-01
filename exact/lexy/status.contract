@@ -390,10 +390,11 @@ component StatusScreen
                   // Remote controls (vehicle-controls.ios.tsx)
                   column gap=8 testId="controls"
                     // The title's inset is the row's, so statuses that wrap under the title start where its
-                    // words do, and only the gap between them counts toward the line
-                    row justify-content="space-between" align-items="center" flex-wrap="wrap" row-gap=8 column-gap=16 padding-left=16 testId="controls-header"
+                    // words do. Only what shows counts toward the line, the words, their symbols and the gap,
+                    // so the statuses move under the title only when less than the gap would part them.
+                    row justify-content="space-between" align-items="center" flex-wrap="wrap" gap=8 padding-left=16 testId="controls-header"
                       text "Remote Controls" role="heading" aria-level=2 class=SectionTitle padding-left=0 margin-top=4
-                      row gap=8 margin-right=8 align-items="center" flex-wrap="wrap"
+                      row gap=8 align-items="center" flex-wrap="wrap"
                         row gap=4 align-items="center" flex-shrink=0 testId="lock-state"
                           image `symbol:icon.${(lockState == "unknown" ? "lock.shield.fill" : (lockState == "locked" ? "lock.fill" : "lock.open.fill"))}` font-size=13 color=lockColor object-fit="scale-down" width=13 height=13
                           text lockWord testId="lock-label" class=SmallBold color=lockColor animation=(lockPending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
@@ -401,14 +402,7 @@ component StatusScreen
                         if canEngine and (engineKnown or enginePending)
                           row gap=4 align-items="center" flex-shrink=0 testId="engine-state"
                             image "symbol:icon.power" font-size=13 color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") object-fit="scale-down" width=13 height=13
-                            // One label, its width the longest the engine can say:
-                            // hidden copies of every word share its cell and size it
-                            // at any text size, so Locked beside it never moves. The
-                            // label is the one element that changes.
-                            box display="grid"
-                              for word in ["Stopped", "Starting", "Started", "Stopping"] key=word
-                                text word class=SmallBold grid-row="1" grid-column="1" visibility="hidden"
-                              text engineWord class=SmallBold grid-row="1" grid-column="1" color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
+                            text engineWord class=SmallBold color=(engineRunning ? "-exact-system-green" : "-exact-secondary-label") animation=(enginePending ? "pending 800ms ease-in-out infinite alternate" : "none") animation-timeline=Pending
                     // vehicle-controls.ios.tsx: Lock, Unlock and Start/Stop, always.
                     row gap=8
                       ControlButton(command="door-lock", label="Lock", symbol="lock.fill", tint="-exact-system-green", title="Lock your vehicle?", message="This locks all doors.", action="Lock", destructive=false, disabled=false, glass=true, iconSize=20, run=run)
