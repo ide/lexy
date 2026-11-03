@@ -383,6 +383,8 @@ telling.
 
 - Exact draws the climate card's thermometer in the accent's red as a colour of its own, which stays red behind a sheet or an alert; the slider and the defrost chips are controls, in the tint, and grey with it.
 
+- Exact draws the More controls and Doors & Windows badges, symbol and wash, in the badge's colour as its tint, so they grey behind a sheet or an alert because the rows are pressable.
+
 - The Exact iOS dashboard uses UIKit's soft scroll edge treatment, including the blur behind its title when it returns during scrolling. Page symbols use their semantic colors in both appearances; native button symbols retain their control tint.
 
 - Exact sends one impact haptic when a command starts. Lock and engine success notifications wait for the vehicle reading to confirm the requested state; request acceptance alone does not notify success. Rejection or reconciliation timeout gives one error notification. Commands without a reportable outcome have no success notification.

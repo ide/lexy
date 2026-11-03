@@ -224,6 +224,19 @@ component WarningBanner
         text title class=SmallBold color="-exact-system-orange"
         text message class=Small color="-exact-system-orange" opacity=0.85
 
+// A pressable row's badge (expandable-card.tsx): its symbol over a 15% wash, both in
+// `tint` as the badge's accent, so they grey with the tint behind a sheet or an alert, as a
+// control does. The symbol is positioned too, so it paints over the wash.
+component RowBadge
+  props
+    tint: string
+  slot
+  view
+    box width=36 height=36 border-radius=18 accent-color=tint position="relative" display="flex" align-items="center" justify-content="center"
+      box position="absolute" inset=0 border-radius=18 background-color="AccentColor" opacity=0.15
+      box position="relative" display="flex"
+        children
+
 // A status line in a corner of Doors & Windows: symbol, then words.
 component StatusLine
   props
@@ -496,8 +509,8 @@ component StatusScreen
                         button text-align="left" press=toggleMore disabled=wide testId="toggle-more" min-height=56 padding-top=12 padding-bottom=12 box-sizing="content-box" padding-left=16 padding-right=16 display="flex" flex-direction="row" align-items="center" gap=8
                           // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                           row flex=1 min-width=0 align-items="center" gap=12
-                            box width=36 height=36 border-radius=18 background-color=wash("-exact-system-blue") display="flex" align-items="center" justify-content="center"
-                              image "symbol:icon.slider_horizontal_3" font-size=16 color="-exact-system-blue" object-fit="scale-down" width=22 height=20
+                            RowBadge(tint="-exact-system-blue")
+                              image "symbol:icon.slider_horizontal_3" font-size=16 color="AccentColor" object-fit="scale-down" width=22 height=20
                             column flex=1 min-width=0 gap=2
                               text "More controls" font-size=17 font-weight=600 color="-exact-label"
                               text extrasText font-size=13 color="-exact-secondary-label"
@@ -557,8 +570,8 @@ component StatusScreen
                       button text-align="left" press=toggleClosures testId="toggle-closures" min-height=44 padding-top=12 padding-bottom=12 padding-left=16 padding-right=16 display="flex" flex-direction="row" align-items="center" gap=8
                         // expandable-card.tsx: the badge and words 12 apart, the chevron 8.
                         row flex=1 min-width=0 align-items="center" gap=12
-                          box width=36 height=36 border-radius=18 background-color=wash(verdictTint) display="flex" align-items="center" justify-content="center"
-                            image `symbol:icon.${verdictSymbol}` font-size=18 color=verdictTint object-fit="scale-down" width=24 height=22
+                          RowBadge(tint=verdictTint)
+                            image `symbol:icon.${verdictSymbol}` font-size=18 color="AccentColor" object-fit="scale-down" width=24 height=22
                           column flex=1 min-width=0 gap=2
                             text headline testId="closures-headline" font-size=17 font-weight=600 color="-exact-label" line-clamp=1
                             text subline font-size=13 color="-exact-secondary-label" line-clamp=1
