@@ -1,5 +1,5 @@
 // Lexus sign-in: credentials, delivery method, and verification code
-use SafeScroll, trailingSegmentInset from "./model.contract"
+use SafeScroll, trailingSegmentInset, accent from "./model.contract"
 
 // sign-in-copy.ts classifyDeliveryMethod: a method label's channel.
 fn channel(method: string): string = (method.includes("mail") or method.includes("Mail") or method.includes("E-mail")) ? "email" : ((method.includes("SMS") or method.includes("sms") or method.includes("Text") or method.includes("text") or method.includes("hone") or method.includes("obile") or method.includes("all")) ? "sms" : "unknown")
@@ -109,7 +109,7 @@ component LockScreen
           if step == "credentials"
             LexyMark(size=76)
           if step != "credentials"
-            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color="AccentColor" margin-bottom=4
+            image `symbol:icon.${heroSymbol(step, method)}` font-size=44 color=accent() margin-bottom=4
           text heroTitle(step, method) testId="sign-in-title" role="heading" aria-level=(embedded ? 2 : 1) text-align="center"
           text heroSubtitle(step, method, prompt) testId="sign-in-subtitle" font-size=15 color="-exact-secondary-label" text-align="center" padding-left=8 padding-right=8
         if step == "credentials"

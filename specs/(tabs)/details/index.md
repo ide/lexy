@@ -79,6 +79,8 @@ pull-refresh.
 
 - Exact section titles are level-2 headings in the platform headline style.
 
+- Exact draws the capability icons in the accent's red as a colour of their own, which stays red behind a sheet or an alert: they say what the car can do and are not controls.
+
 - Exact renders the vehicle rows during first load, with neutral bars in place of values. Loading uses the same row and pane layout as the loaded screen. Specification values and connected services also show placeholders while their first requests are pending; cached values stay visible during refreshes. Offline placeholders remain still.
 
 - The Exact app uses two columns on wide displays: vehicle details first, capabilities and connected services second. A book fold places each column in its own segment, clear of the hinge.
