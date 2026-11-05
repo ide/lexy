@@ -54,6 +54,13 @@ RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract types --check app.
 
 ## Demo and inspection
 
+Lexy enables Exact's bounded frame-health counters from launch in development
+and release builds (`frame_health.mode` is `"core"` in `lexy/app.json`). On iOS,
+open the four-finger developer menu and choose **Frame Health** to show the
+card. Its Details and Share controls expose the readings; closing the card
+leaves the core counters enabled. Rebuild the native app after changing this
+policy.
+
 "Explore the Demo" uses a local Lexus server, so no account or remote vehicle
 is needed. Vehicle reads take about a second; commands take about three seconds
 to appear in the next vehicle report. This exercises loading and reconciliation.

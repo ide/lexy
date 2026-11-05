@@ -73,6 +73,7 @@ internal preview builds it also carries the entry points to the developer tools.
 ## Platform notes
 
 - Exact section titles are level-2 headings in the platform headline style.
+- Exact builds collect bounded frame-health counters from launch, including release builds. The four-finger developer menu's "Frame Health" row shows or hides the native card; its Details and Share controls expose the readings. The card starts hidden, and closing it leaves the core counters enabled.
 
 - The Exact app presents a native confirmation alert before signing out. "Cancel" keeps the session; the destructive "Sign Out" action ends it, and also asks Lexus to revoke the refresh token, which the Expo app does not; the session ends whether or not Lexus answers. Sign Out is its card's cell, so a press greys the whole row as a UIKit cell's does, not only the label.
 - The Exact app adds 16 points of bottom content spacing inside the system safe area, and its list fills the width on a wide display, as a UIKit inset-grouped list does. A fold leaves the list in place rather than moving it to one side of the hinge; on a book fold only the Sign Out label moves, to the leading edge of its row, so that it stays clear of the hinge.

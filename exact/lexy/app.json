@@ -20,6 +20,9 @@
     "id": "app.ide.lexy.exact",
     "name": "Lexy"
   },
+  "frame_health": {
+    "mode": "core"
+  },
   "launch": [
     "observe"
   ],
