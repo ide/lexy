@@ -42,6 +42,7 @@ use PerformanceScreen, Observed, ObservedCleared from "./developer.contract"
 use SessionScreen, SessionLog from "./developer.contract"
 use Delivery from "./developer.contract"
 use signInError from "./model.contract"
+use statusWarning from "./model.contract"
 
 routes nav
   tab status "/"
@@ -315,6 +316,13 @@ component Lexy
   // or a pull): the state stays with its button disabled, not the skeleton
   derive retrying = pulling and pending(garage) and shownGarage.car.vin == ""
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
+  // Keep brief warning and foreground transitions after the banner has gone
+  derive warning = statusWarning(shownOnline, shownGarage, status, statusLoading and not retrying)
+  derive vehicleState = `${top(nav).name}|${dataState}|${page.visibilityState}|${shownOnline}|${warning}|${pending(garage)}|${pending(status)}|${garage.ok}|${garage.status}|${status.status}|${status.error != ""}`
+  state lastVehicleState = ""
+  mutation vehicleLogged as shape Done
+  task vehicleStateChanged when account.signedIn and vehicleState != lastVehicleState
+    after(1, recordVehicleState)
   // The status answers with no car too (no VIN): that answer is not the car's.
   derive statusAnswered = status.ok or status.status != 0 or status.error != ""
   // Keep the skeleton until both the vehicle and its status arrive
@@ -376,6 +384,9 @@ component Lexy
   action onVisible
     if lastTick > 0
       resumeDue = true
+  action recordVehicleState
+    lastVehicleState = vehicleState
+    send vehicleLogged = logVehicleState(top(nav).name, dataState, page.visibilityState, shownOnline, warning, pending(garage), pending(status), garage.ok, garage.status, status.status, status.error != "", status.fetchedMs, time.epochAtZero + performanceNow())
   action tick
     clock = time.epochAtZero + performanceNow()
     // A launch prime waits for a signed-in car; signed out, there is none.

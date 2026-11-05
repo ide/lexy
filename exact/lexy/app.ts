@@ -716,7 +716,7 @@ let sessionLogTurn: Promise<unknown> = Promise.resolve();
 // Log in the background: a log write never holds up or fails the answer.
 // `unlessSignedOut` skips the event when the last state logged already says no
 // session is held.
-function logSession(at: number, kind: string, text: string, unlessSignedOut = false) {
+function logSession(at: number, kind: string, text: string, unlessSignedOut = false): void {
   sessionLogTurn = sessionLogTurn
     .then(() => withDb(db => db.transaction([
       unlessSignedOut
@@ -1248,6 +1248,12 @@ const sources: Sources = {
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),
   observed: ([limit]) => observed(limit),
   sessionLog: ([limit]) => sessionLog(limit),
+  logVehicleState: ([route, scenario, visibility, online, banner, garagePending, statusPending, garageOK, garageCode, statusCode, statusError, fetchedMs, at]): Result<'logVehicleState'> => {
+    const warning = banner === 'offline' ? 'You’re offline' : banner === 'garage-error' ? 'Couldn’t refresh' : 'none';
+    const age = fetchedMs > 0 ? `${Math.max(0, Math.round(at - fetchedMs))} ms` : 'unknown';
+    logSession(at, 'vehicle state', `screen=${route}; data=${scenario}; page=${visibility}; online=${online}; banner=${warning}; vehicle=${garagePending ? 'pending' : garageOK ? 'ready' : 'failed'} (HTTP ${garageCode}); status=${statusPending ? 'pending' : statusError ? 'failed' : 'ready'} (HTTP ${statusCode}); data age=${age}`);
+    return { ok: true, status: 200, error: '' };
+  },
   clearObserved: () => clearObserved(),
 };
 

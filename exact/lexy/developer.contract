@@ -439,7 +439,7 @@ shape SessionLog
   lastRefreshAt: number
   events: SessionLogEvent[]
 
-fn sessionLogText(log: SessionLog, utcOffset: number): string = log.events.map((e, i) => `${exactTime(e.at, utcOffset)}  ${e.kind}: ${e.detail}`).join("\n")
+fn sessionLogText(log: SessionLog, utcOffset: number): string = log.events.map((e, i) => `${exactTime(e.at, utcOffset)} [${e.at} ms]  ${e.kind}: ${e.detail}`).join("\n")
 
 // Session: the sign-in session now, and the log app.ts keeps of its refreshes,
 // failures and sign-outs, so a sign-out can be explained after it. Copy Log

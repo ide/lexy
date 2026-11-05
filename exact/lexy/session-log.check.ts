@@ -138,5 +138,30 @@ l = await logged(0, 'refresh failed');
 assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; an unusable reply invalid_response$/);
 console.log('10 a refresh with an unusable reply is logged as such');
 
+// Read the log after both kinds of brief warning have already gone
+for (const [delay, visibility, online, banner, pending, code, failed] of [
+  [0, 'hidden', true, '', false, 200, false],
+  [100, 'visible', false, 'offline', false, 200, false],
+  [600, 'visible', true, '', false, 200, false],
+  [1000, 'visible', true, 'garage-error', false, 503, true],
+  [1500, 'visible', true, '', true, 503, true],
+  [2500, 'visible', true, '', false, 200, false],
+] as const) {
+  await answer('logVehicleState', ['status', 'live', visibility, online, banner, false, pending, true, 200, code, failed, now, now + delay], store, storage, null);
+}
+l = await log();
+const vehicle = l.events.filter(e => e.kind === 'vehicle state').reverse();
+assert.deepEqual(vehicle.map(e => e.at - now), [0, 100, 600, 1000, 1500, 2500]);
+assert.match(vehicle[0].detail, /page=hidden; online=true; banner=none/);
+assert.match(vehicle[1].detail, /page=visible; online=false; banner=You’re offline/);
+assert.match(vehicle[2].detail, /online=true; banner=none/);
+assert.match(vehicle[3].detail, /banner=Couldn’t refresh;.*status=failed \(HTTP 503\)/);
+assert.match(vehicle[4].detail, /banner=none;.*status=pending \(HTTP 503\)/);
+assert.match(vehicle[5].detail, /status=ready \(HTTP 200\); data age=2500 ms/);
+assert.equal(l.events.length, 200, 'vehicle diagnostics use the same bounded log');
+await answer('signOut', [now + 3000], store, storage, null);
+assert.equal((await log()).events.filter(e => e.kind === 'vehicle state').length, vehicle.length, 'sign-out preserves the warning history');
+console.log('brief offline and refresh-failure warnings remain distinguishable after recovery and sign-out');
+
 clearTimeout(timeout);
 database.close();
