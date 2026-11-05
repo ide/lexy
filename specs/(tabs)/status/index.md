@@ -393,6 +393,8 @@ telling.
 
 - Exact writes the footer's two times and the stale-readings note with the platform's live relative time, which updates itself at minute boundaries without the app's clock: one unit in the platform's short style ("now", "5 min. ago", "2 hr. ago") rather than seconds and two units. The footer lines are Exact's own buttons with the platform's press dim, since a native button's title cannot hold a live time.
 
+- Exact keeps a command or climate error alert waiting while another confirmation is open. The visible confirmation remains usable; after it closes, waiting errors appear in request order. Closing a waiting error or leaving its screen cancels that presentation.
+
 - The Exact app uses two columns on wide displays. On a book fold, the vehicle readings occupy the leading segment and the remote controls and climate settings occupy the trailing segment, clear of the hinge. More controls stays expanded in this layout. Narrow displays retain the single scrolling column and collapsible controls, and More controls keeps the narrow layout's own open or closed choice: a fold or unfold shows each layout's state at once, and only a tap on the header animates the disclosure. A confirmation that is open stays open through a fold or unfold.
 
 - **The hero has no map backdrop on Android.** The card there is the vehicle's

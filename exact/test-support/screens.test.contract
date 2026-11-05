@@ -21,6 +21,42 @@ test "command controls wait for the request and then enable the current choices"
   expect enabled "command-buzzer-warning"
   expect enabled "command-sound-horn"
 
+test "a climate error waits until the remote confirmation closes"
+  tap "finish"
+  tap "failed"
+  tap "command-door-lock"
+  clock settle
+  expect state climatePending == true
+  clock +60000
+  clock settle
+  expect state climatePending == false
+  expect tree has "cancel-door-lock"
+  tap "cancel-door-lock"
+  clock settle
+  expect text "climate-failed-message" == "Lexus didn't accept the new climate settings. Try the change again in a moment."
+  tap "climate-failed-ok"
+  clock settle
+  tap "command-door-lock"
+  clock settle
+  expect tree has "cancel-door-lock"
+  tap "cancel-door-lock"
+  clock settle
+
+test "Confirm still dispatches its command before the waiting error is acknowledged"
+  tap "finish"
+  tap "failed"
+  tap "command-door-lock"
+  clock settle
+  clock +60000
+  clock settle
+  tap "confirm-door-lock"
+  clock settle
+  expect state lastCommand == "door-lock"
+  expect text "climate-failed-message" == "Lexus didn't accept the new climate settings. Try the change again in a moment."
+  tap "climate-failed-ok"
+  clock settle
+  expect state lastCommand == "door-lock"
+
 test "Performance distinguishes a pending read, failure and empty success"
   tap "performance"
   clock settle
