@@ -145,15 +145,14 @@ component SettingsScreen
               SettingsRowFace(symbol="car.fill", title="Name", subtitle=(car.vin == "" ? "…" : name), opensScreen=true)
         column
           SectionHeader(title="Lexus Account")
-          // A list's row, so a press greys the whole row as a UIKit cell's
-          // does; the card's edges take no separator
           column class=Card
-            list
-              // Start the label at the leading edge on a book fold, where a
-              // centred label crosses the hinge
-              button press=askSignOut disabled=signingOut testId="sign-out" width="100%" box-sizing="border-box" padding=16 display="flex" flex-direction="row" align-items="center" justify-content=(fold == "across" ? "flex-start" : "center") gap=8 border-top="none" border-bottom="none"
-                image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=21 color="-exact-system-red"
-                text "Sign Out" font-size=17 font-weight=600 color="-exact-system-red"
+            // A native button, as Copy Log is: its title and symbol take the
+            // destructive red together, so UIKit fades both as it highlights.
+            // Start the label at the leading edge on a book fold, where a
+            // centred label crosses the hinge
+            button press=askSignOut disabled=signingOut destructive=true testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align=(fold == "across" ? "start" : "center") gap=8
+              image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17
+              text "Sign Out" font-size=17 font-weight=600
           dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
             text "You’ll need to sign in again to access your vehicle."
             button destructive=true press=signOut commandfor="sign-out-confirmation" command="close" testId="confirm-sign-out"
