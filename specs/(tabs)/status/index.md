@@ -327,7 +327,7 @@ telling.
   thing being said.
 
 - **Confirming a command.** A medium impact haptic fires immediately, the whole
-  control row disables while the command is in flight, and the command is POSTed.
+  control row, including every button in More controls, disables while the command request is in flight, and the command is POSTed. The buttons become available when that request finishes, while confirmation from the vehicle can still be pending.
   Acceptance (not completion) gives a success haptic; failure gives an error
   haptic and a "Command failed" alert carrying the underlying message. There is
   **no success alert** — the section title's pending state is the feedback.

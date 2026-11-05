@@ -1,0 +1,132 @@
+// Exercise Status and Performance without Lexus requests
+use StatusScreen from "./status.contract"
+use PerformanceScreen, Observed, ObservedMetric, ObservedSummary from "./developer.contract"
+use Car, Garage, Status, Tires, Climate, Viewport from "./model.contract"
+
+fn sampleCar(): Car = Car(
+  vin="DEMO",
+  brand="LEXUS",
+  generation="",
+  region="",
+  asiCode="",
+  hwType="",
+  nickName="",
+  modelName="Test vehicle",
+  modelYear="",
+  description="",
+  color="",
+  image="",
+  fuelType="",
+  grade="",
+  modelCode="",
+  capabilities=["trunkLockUnlockCapable", "hazardCapable", "lightsCapable", "buzzerCapable", "hornCapable"],
+)
+
+fn sampleGarage(): Garage = Garage(
+  ok=true,
+  status=0,
+  error="",
+  car=sampleCar(),
+  carCount=1,
+)
+
+fn sampleStatus(): Status = Status(
+  ok=true,
+  status=0,
+  error="",
+  occurredMs=0,
+  fetchedMs=0,
+  fuel=0,
+  range=0,
+  rangeUnit="",
+  odometer=0,
+  odometerUnit="",
+  caution=0,
+  latitude=0,
+  longitude=0,
+  tripA=0,
+  tripB=0,
+  sections=[],
+  closuresStaleMs=0,
+)
+
+fn sampleTires(): Tires = Tires(
+  ok=true,
+  status="",
+  unit="",
+  tires=[],
+)
+
+fn sampleClimate(): Climate = Climate(
+  ok=false,
+  raw="",
+  on=false,
+  temperature=0,
+  unit="",
+  min=0,
+  max=0,
+  step=0,
+  front=false,
+  frontEnabled=false,
+  rear=false,
+  rearEnabled=false,
+)
+
+fn sampleMetric(i: number): ObservedMetric = ObservedMetric(session="test", time=1793800000 + i, category="navigation", name="tti", value=i, route=`/screen/${i}`, sent=false, trace="", phases="", items="", changes="", fromStart="", steps="A screen’s commit and first frame")
+fn sampleLaunch(): ObservedMetric = ObservedMetric(sampleMetric(0), category="appStartup", name="timeToInteractive", route="/", phases="layout 2 ms", items="source 3 ms", trace="loaded")
+
+component Screens
+  resource viewport = exactViewport() as shape Viewport
+  state screen = "controls"
+  state busy = true
+  state loading = true
+  state available = false
+  state full = false
+  state repeated = false
+  action finish
+    busy = false
+  action performance
+    screen = "performance"
+  action failed
+    loading = false
+    available = false
+  action empty
+    loading = false
+    available = true
+    full = false
+  action fill
+    loading = false
+    available = true
+    repeated = full
+    full = true
+  action ignoreCommand(command: string)
+    busy = busy
+  action ignoreClimate(on: bool)
+    busy = busy
+  action ignoreTemperature(value: number)
+    busy = busy
+  action nothing
+    busy = busy
+  derive ten = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  derive twenty = ten.concat(ten)
+  derive hundred = twenty.concat(twenty).concat(twenty).concat(twenty).concat(twenty)
+  derive metrics = hundred.concat(hundred).map((n, i) => sampleMetric(i))
+  derive latest = (repeated ? [ObservedMetric(sampleLaunch(), time=1793799999, value=42)] : []).concat([sampleLaunch()])
+  derive observed = Observed(ok=available, session="test", launch="test", latest=(full ? latest : []), metrics=(full ? metrics : []), summary=(full ? [ObservedSummary(name="timeToInteractive", count=1, median=3)] : []))
+  view
+    column height="100%" width="100%" min-height=0
+      row height=44 flex-shrink=0
+        button press=finish testId="finish"
+          text "Finish"
+        button press=performance testId="performance"
+          text "Performance"
+        button press=failed testId="failed"
+          text "Fail"
+        button press=empty testId="empty"
+          text "Empty"
+        button press=fill testId="fill"
+          text "Fill"
+      if screen == "controls"
+        StatusScreen(garage=sampleGarage(), status=sampleStatus(), tires=sampleTires(), climate=sampleClimate(), engineRunning=not busy, enginePending=false, engineTarget="", lockPending=false, lockTarget="", doorLock="locked", hazardsOn=not busy, busy=busy, refreshing=false, heroDim=false, loading=false, retrying=false, developer=false, still=true, firstLoad=false, notice="", checkedAt=0, moreOpen=true, wide=false, fold="", closuresOpen=false, climateLoading=false, climateWriting=false, utcOffset=0, online=true, commandError="", climateError="", engineKnown=true, climateWanted=false, frontDefrost=false, rearDefrost=false, reload=nothing, run=ignoreCommand, openMap=nothing, toggleMore=nothing, toggleClosures=nothing, setClimateOn=ignoreClimate, setTemperature=ignoreTemperature, temperature=0, dragTemperature=ignoreTemperature, toggleDefrost=ignoreCommand)
+      else
+        PerformanceScreen(wide=(viewport.width >= 700), fold="", observed=observed, loading=loading, utcOffset=0)

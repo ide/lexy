@@ -96,6 +96,10 @@ They cover sign-in and preview isolation, token refresh and sign-out, the sessio
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 
+The screen checks use the real Status and Performance components with fixture data and no Lexus requests. Build the iOS development app first, then run `EXACT_SIM=<test-simulator-udid> bun exact/lexy/screens.check.ts` from the repository root. The checks cover disabled remote controls, loading and error messages, the phone and unfolded Performance lists, and row identity when a launch mark arrives earlier than an existing mark.
+
+The [Performance list comparison](test-support/performance-list-benchmark.json) uses an iOS 27.1 Duo simulator at 390×844 with 200 navigation metrics, one warm-up pair, then five alternating pairs. Median open time in ms (IQR) was 260 (250–305) before virtualization and 111 (106–132) after; process CPU time in ms was 260 (220–260) and 60 (60–80), measured with 10 ms resolution. Resident-memory growth in MiB was 60.2 (59.8–60.3) and 35.9 (34.8–36.0). The first viewport and its preload constructed 200 navigation rows before and 17 after. The Mac’s one-minute load average ranged from 166 to 207; these are simulator observations, not phone timings or render-server memory measurements.
+
 ## Runtime rules
 
 - A pending resource retains its last answer. That answer may be displayed.

@@ -89,3 +89,5 @@ internal preview builds it also carries the entry points to the developer tools.
 | Row icons | SF Symbols with a per-row tint | The same semantic registry names drawn as Material glyphs with the same tints |
 | Row pressed state | SwiftUI's own highlight | Compose's own ripple (`clickable` indication), not JS opacity |
 | Version copy | The value is selectable; a long press offers Copy | Not yet — Compose text spans aren't selectable through expo/ui today, so the row is read-only until a selection container or clipboard affordance exists |
+
+- Exact’s Performance screen keeps its unavailable message hidden while its metrics query is pending. A completed failed query shows the message; an empty successful query shows "Nothing recorded yet." Its metric lists create views as rows approach the viewport. The phone keeps all sections in one scroller; an unfolded view keeps launch and screen metrics in the leading scroller and medians in the trailing one. The launch TTI row retains its Copy menu.

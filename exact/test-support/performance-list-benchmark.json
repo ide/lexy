@@ -1,0 +1,354 @@
+{
+  "environment": "iPhone Duo iOS 27.1 simulator; 390x844 viewport; 200 navigation metrics; frozen agent clock; one warm-up pair then five alternating pairs; CPU timer resolution 10 ms",
+  "rows": [
+    {
+      "round": -1,
+      "variant": "before",
+      "warmup": true,
+      "wallMs": 237.6059580000001,
+      "cpuMs": 200,
+      "rssKB": 353808,
+      "rssDeltaKB": 62944,
+      "nodes": 2049,
+      "navigationMetrics": 200,
+      "nodeLayouts": 2462,
+      "load": [
+        165.01953125,
+        174.2900390625,
+        166.11865234375
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    },
+    {
+      "round": -1,
+      "variant": "after",
+      "warmup": true,
+      "wallMs": 99.57675000000017,
+      "cpuMs": 50,
+      "rssKB": 326800,
+      "rssDeltaKB": 36032,
+      "nodes": 255,
+      "navigationMetrics": 17,
+      "nodeLayouts": 299,
+      "load": [
+        165.01953125,
+        174.2900390625,
+        166.11865234375
+      ],
+      "viewport": {
+        "h": 844,
+        "w": 390
+      }
+    },
+    {
+      "round": 0,
+      "variant": "before",
+      "warmup": false,
+      "wallMs": 248.65350000000035,
+      "cpuMs": 290,
+      "rssKB": 350448,
+      "rssDeltaKB": 63616,
+      "nodes": 2049,
+      "navigationMetrics": 200,
+      "nodeLayouts": 2462,
+      "load": [
+        167.8203125,
+        174.716796875,
+        166.31689453125
+      ],
+      "viewport": {
+        "h": 844,
+        "w": 390
+      }
+    },
+    {
+      "round": 0,
+      "variant": "after",
+      "warmup": false,
+      "wallMs": 103.52700000000004,
+      "cpuMs": 140,
+      "rssKB": 324816,
+      "rssDeltaKB": 38496,
+      "nodes": 255,
+      "navigationMetrics": 17,
+      "nodeLayouts": 299,
+      "load": [
+        166.95361328125,
+        174.42236328125,
+        166.26220703125
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    },
+    {
+      "round": 1,
+      "variant": "before",
+      "warmup": false,
+      "wallMs": 260.1018330000006,
+      "cpuMs": 200,
+      "rssKB": 351888,
+      "rssDeltaKB": 61184,
+      "nodes": 2049,
+      "navigationMetrics": 200,
+      "nodeLayouts": 2462,
+      "load": [
+        166.076171875,
+        174.1162109375,
+        166.20166015625
+      ],
+      "viewport": {
+        "h": 844,
+        "w": 390
+      }
+    },
+    {
+      "round": 1,
+      "variant": "after",
+      "warmup": false,
+      "wallMs": 111.36637499999779,
+      "cpuMs": 60,
+      "rssKB": 327456,
+      "rssDeltaKB": 7408,
+      "nodes": 255,
+      "navigationMetrics": 17,
+      "nodeLayouts": 299,
+      "load": [
+        174.87841796875,
+        175.8076171875,
+        166.8447265625
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    },
+    {
+      "round": 2,
+      "variant": "before",
+      "warmup": false,
+      "wallMs": 250.2546250000014,
+      "cpuMs": 220,
+      "rssKB": 353344,
+      "rssDeltaKB": 61648,
+      "nodes": 2049,
+      "navigationMetrics": 200,
+      "nodeLayouts": 2457,
+      "load": [
+        174.87841796875,
+        175.8076171875,
+        166.8447265625
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    },
+    {
+      "round": 2,
+      "variant": "after",
+      "warmup": false,
+      "wallMs": 263.44545899999866,
+      "cpuMs": 80,
+      "rssKB": 327840,
+      "rssDeltaKB": 35600,
+      "nodes": 255,
+      "navigationMetrics": 17,
+      "nodeLayouts": 299,
+      "load": [
+        184.0966796875,
+        177.703125,
+        167.56591796875
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    },
+    {
+      "round": 3,
+      "variant": "before",
+      "warmup": false,
+      "wallMs": 433.39887499999895,
+      "cpuMs": 260,
+      "rssKB": 353248,
+      "rssDeltaKB": 61712,
+      "nodes": 2049,
+      "navigationMetrics": 200,
+      "nodeLayouts": 2462,
+      "load": [
+        200.67041015625,
+        181.39990234375,
+        168.9921875
+      ],
+      "viewport": {
+        "h": 844,
+        "w": 390
+      }
+    },
+    {
+      "round": 3,
+      "variant": "after",
+      "warmup": false,
+      "wallMs": 105.70074999999633,
+      "cpuMs": 60,
+      "rssKB": 326640,
+      "rssDeltaKB": 36832,
+      "nodes": 255,
+      "navigationMetrics": 17,
+      "nodeLayouts": 299,
+      "load": [
+        204.06005859375,
+        182.42236328125,
+        169.42578125
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    },
+    {
+      "round": 4,
+      "variant": "before",
+      "warmup": false,
+      "wallMs": 305.13595799999894,
+      "cpuMs": 260,
+      "rssKB": 351456,
+      "rssDeltaKB": 60144,
+      "nodes": 2049,
+      "navigationMetrics": 200,
+      "nodeLayouts": 2462,
+      "load": [
+        207.25830078125,
+        183.4443359375,
+        169.8623046875
+      ],
+      "viewport": {
+        "h": 844,
+        "w": 390
+      }
+    },
+    {
+      "round": 4,
+      "variant": "after",
+      "warmup": false,
+      "wallMs": 132.36316700000316,
+      "cpuMs": 60,
+      "rssKB": 327104,
+      "rssDeltaKB": 36752,
+      "nodes": 255,
+      "navigationMetrics": 17,
+      "nodeLayouts": 299,
+      "load": [
+        202.7529296875,
+        182.9052734375,
+        169.75146484375
+      ],
+      "viewport": {
+        "w": 390,
+        "h": 844
+      }
+    }
+  ],
+  "summary": {
+    "before": {
+      "wallMs": {
+        "median": 260.1018330000006,
+        "q1": 250.2546250000014,
+        "q3": 305.13595799999894
+      },
+      "cpuMs": {
+        "median": 260,
+        "q1": 220.0,
+        "q3": 260.0
+      },
+      "rssKB": {
+        "median": 351888,
+        "q1": 351456.0,
+        "q3": 353248.0
+      },
+      "rssDeltaKB": {
+        "median": 61648,
+        "q1": 61184.0,
+        "q3": 61712.0
+      },
+      "nodes": {
+        "median": 2049,
+        "q1": 2049.0,
+        "q3": 2049.0
+      },
+      "navigationMetrics": {
+        "median": 200,
+        "q1": 200.0,
+        "q3": 200.0
+      },
+      "nodeLayouts": {
+        "median": 2462,
+        "q1": 2462.0,
+        "q3": 2462.0
+      }
+    },
+    "after": {
+      "wallMs": {
+        "median": 111.36637499999779,
+        "q1": 105.70074999999633,
+        "q3": 132.36316700000316
+      },
+      "cpuMs": {
+        "median": 60,
+        "q1": 60.0,
+        "q3": 80.0
+      },
+      "rssKB": {
+        "median": 327104,
+        "q1": 326640.0,
+        "q3": 327456.0
+      },
+      "rssDeltaKB": {
+        "median": 36752,
+        "q1": 35600.0,
+        "q3": 36832.0
+      },
+      "nodes": {
+        "median": 255,
+        "q1": 255.0,
+        "q3": 255.0
+      },
+      "navigationMetrics": {
+        "median": 17,
+        "q1": 17.0,
+        "q3": 17.0
+      },
+      "nodeLayouts": {
+        "median": 299,
+        "q1": 299.0,
+        "q3": 299.0
+      }
+    },
+    "loadOneMinuteRange": [
+      166.076171875,
+      207.25830078125
+    ]
+  },
+  "recordedAt": "2026-11-05T04:40:56.204399+00:00",
+  "source": {
+    "exactBase": "95d98db7e5ca7be0fbd17350ef0f0b7ff416cfdf",
+    "exactCommit": "d19d727fefe64d901e9da13d733f5a90163d3fe6",
+    "lexyBase": "6703c80cf24928b3ceff2dd19bc2b755d8d5a032",
+    "before": "Performance with pending-loading support, before virtualization",
+    "after": "Final virtualized Performance with timestamp-based keys",
+    "fixtureNote": "The benchmark fills once. The later repeated-mark test only changes the unused second-fill path.",
+    "beforeDeveloperSha256": "d3af92aba5b0b8d536d637fc9b8d38ba7ee5374cabff292ade203e47493ea336",
+    "beforeFixtureSha256": "62ba4405a0d83dba872a2d0ac92eb6a0c0010ba4f9717958ac07355113127162",
+    "afterDeveloperSha256": "dbcf5cd24939bfa0ebc36bb64504f96976e36c2673541bfc78339255dc413c80",
+    "afterFixtureSha256": "62ba4405a0d83dba872a2d0ac92eb6a0c0010ba4f9717958ac07355113127162"
+  },
+  "physicalSimulatorScreen": {
+    "pose": "open, hinge 180 degrees, portrait",
+    "note": "Both variants use the same fixed 390\u00d7844 agent viewport."
+  }
+}

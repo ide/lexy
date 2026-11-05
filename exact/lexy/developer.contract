@@ -343,75 +343,87 @@ component MetricRow
           text metricPill(name) font-size=11 font-weight=700 color=(metricPill(name) == "TTI" ? "-exact-system-green" : (metricPill(name) == "WARM TTR" ? "-exact-system-orange" : (metricPill(name).includes("TTR") ? "-exact-system-blue" : "-exact-secondary-label"))) background-color="-exact-tertiary-fill" border-radius=6 padding-left=6 padding-right=6 padding-top=4 padding-bottom=4 text-box="trim-both cap alphabetic" flex-shrink=0
           text metricWhere(name, route) font-family="ui-monospace" font-size=15 flex-shrink=1 min-width=0 overflow="hidden" white-space="nowrap" text-overflow="ellipsis"
         text detail font-size=13 color="-exact-secondary-label"
-      text value testId=id font-size=17 color="-exact-secondary-label" flex-shrink=0
+      text value testId=id font-size=17 color="-exact-secondary-label" flex-shrink=0 font-variant-numeric="tabular-nums"
 
-// Performance: this device's Observe metrics, read back from Exact's local
-// queue — the last launch, each screen this launch, and the 7-day median of
-// each launch metric. Long-press the launch's TTI to copy what held it.
+// Flatten the sections into rows so only the visible metrics construct views.
+shape PerformanceRow
+  key: string
+  id: string
+  heading: string
+  name: string
+  route: string
+  detail: string
+  value: string
+  lines: string[]
+  report: string
+  last: bool
+  footer: string
+
+fn performanceMetric(m: ObservedMetric, id: string, heading: string, last: bool, launch: bool, utcOffset: number): PerformanceRow = PerformanceRow(
+  key=`${m.category}-${m.session}-${m.route}-${m.name}-${m.time}`, id=id, heading=heading, name=m.name, route=m.route,
+  detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value),
+  lines=(launch ? [m.fromStart, m.phases == "" ? "" : `Phases: ${m.phases}`, m.items == "" ? "" : `Held by (ms from process start): ${m.items}`, m.changes == "" ? "" : `Still changing: ${m.changes}`, m.trace == "" ? "" : `Waited on: ${m.trace}`] : [m.steps]).filter(line => line != ""),
+  report=(launch and m.name == "timeToInteractive" ? metricReport(m, utcOffset) : ""),
+  last=last, footer=""
+)
+
 component PerformanceScreen
   props
     wide: bool
     fold: string
     observed: Observed
+    loading: bool
     utcOffset: number
   state selectedReport = ""
-  action aimMetric(m: ObservedMetric)
-    selectedReport = metricReport(m, utcOffset)
+  action aimMetric(report: string)
+    selectedReport = report
   action copyMetric
     copyText(selectedReport)
   derive expanded = fold == "across" or (wide and fold != "down")
+  derive navigation = observed.metrics.filter(m => m.session == observed.session and m.category == "navigation")
+  derive launches = observed.latest.map((m, i) => performanceMetric(m, `perf-launch-${m.name}`, i == 0 ? (observed.launch == observed.session ? "This Launch" : "Last Launch") : "", i == observed.latest.length - 1, true, utcOffset))
+  derive screens = navigation.map((m, i) => performanceMetric(m, `perf-nav-${i}`, i == 0 ? "Screens" : "", i == navigation.length - 1, false, utcOffset))
+  derive sent = observed.metrics.filter(m => m.sent).length
+  derive medians = observed.summary.map((s, i) => PerformanceRow(key=`median-${s.name}`, id=`perf-median-${s.name}`, heading=(i == 0 ? "Median" : ""), name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), lines=[], report="", last=(i == observed.summary.length - 1), footer=(i == observed.summary.length - 1 ? `${sent} of ${observed.metrics.length} sent to Observe.` : "")))
+  derive recent = launches.concat(screens)
+  derive message = not observed.ok ? (loading ? "" : "Performance data is unavailable.") : (recent.length == 0 and medians.length == 0 ? "Nothing recorded yet. Open a screen or relaunch the app." : "")
   view
-    DeveloperPanes(expanded=expanded, id="performance-panes")
-      DeveloperPane(expanded=expanded, first=true, id="performance-recent")
-        if not observed.ok
-          SectionFooter(words="Performance data is unavailable.")
-        if observed.ok and observed.latest.length == 0 and observed.summary.length == 0 and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length == 0
-          SectionFooter(words="Nothing recorded yet. Open a screen or relaunch the app.")
-        if observed.ok and observed.latest.length > 0
-          column
-            SectionHeader(title=(observed.launch == observed.session ? "This Launch" : "Last Launch"))
-            column class=Card
-              for m, i in observed.latest key=`${m.name}-${m.time}`
-                column testId=`perf-launch-row-${m.name}` user-select=(m.name == "timeToInteractive" ? "none" : "text") contextmenu=aimMetric(m) contextPopover=(m.name == "timeToInteractive" ? "metric-menu" : "")
-                  if i > 0
-                    Divider()
-                  MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-launch-${m.name}`)
-                  if m.fromStart != ""
-                    text m.fromStart font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.phases != ""
-                    text `Phases: ${m.phases}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.items != ""
-                    text `Held by (ms from process start): ${m.items}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.changes != ""
-                    text `Still changing: ${m.changes}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=8
-                  if m.trace != ""
-                    text `Waited on: ${m.trace}` font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=12
-        if observed.ok and observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation").length > 0
-          column
-            SectionHeader(title="Screens")
-            column class=Card
-              for m, i in observed.metrics.filter((m, i) => m.session == observed.session and m.category == "navigation") key=`${m.route}-${m.name}-${m.time}`
-                column user-select="text"
-                  if i > 0
-                    Divider()
-                  MetricRow(name=m.name, route=m.route, detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value), id=`perf-nav-${i}`)
-                  if m.steps != ""
-                    text m.steps font-size=13 color="-exact-secondary-label" padding-left=16 padding-right=16 padding-bottom=10
-      DeveloperPane(expanded=expanded, first=false, id="performance-medians")
-        if observed.ok and observed.summary.length > 0
-          column
-            SectionHeader(title="Median")
-            column class=Card
-              for s, i in observed.summary key=s.name
-                column
-                  if i > 0
-                    Divider()
-                  MetricRow(name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), id=`perf-median-${s.name}`)
-            SectionFooter(words=`${observed.metrics.filter((m, i) => m.sent).length} of ${observed.metrics.length} sent to Observe.`)
-
+    column hatch="developer-panes" data-expanded=expanded testId="performance-panes" display="flex" flex-direction=(expanded ? "row" : "column") flex=1 min-height=0 width="100%" height="100%"
+      PerformanceList(rows=(observed.ok ? (expanded ? recent : recent.concat(medians)) : []), message=message, expanded=expanded, first=true, id="performance-recent", aimMetric=aimMetric)
+      if expanded
+        PerformanceList(rows=(observed.ok ? medians : []), message="", expanded=expanded, first=false, id="performance-medians", aimMetric=aimMetric)
     column id="metric-menu" popover="auto" role="menu"
       button press=copyMetric popovertarget="metric-menu" popovertargetaction="hide" testId="copy-metric"
         text "Copy"
+
+component PerformanceList
+  props
+    rows: PerformanceRow[]
+    message: string
+    expanded: bool
+    first: bool
+    id: string
+    aimMetric: action
+  view
+    column testId=id flex="1 1 0%" min-width=0 min-height=0 height="100%"
+      if message != ""
+        column testId=`${id}-message`
+          SectionFooter(words=message)
+      list id=(expanded ? (first ? "developer-first-scroll" : "developer-second-scroll") : "screen-scroll") testId=`${id}-list` appearance="none" virtualized=true estimated-item-height=80 flex=1 min-height=0 width="100%" overflow-x="hidden" box-sizing="border-box" padding-top=16 padding-bottom=16
+        for r, i in rows key=r.key
+          column padding-left=(not expanded or first ? "calc(env(safe-area-inset-left) + 16px)" : "16px") padding-right=(not expanded or not first ? "calc(env(safe-area-inset-right) + 16px)" : "16px") box-sizing="border-box" width="100%" padding-top=(r.heading != "" and i > 0 ? 24 : 0)
+            if r.heading != ""
+              SectionHeader(title=r.heading)
+            column testId=(r.id.startsWith("perf-launch-") ? `perf-launch-row-${r.name}` : `${r.id}-row`) class=Card border-radius=0 border-top-left-radius=(r.heading != "" ? 18 : 0) border-top-right-radius=(r.heading != "" ? 18 : 0) border-bottom-left-radius=(r.last ? 18 : 0) border-bottom-right-radius=(r.last ? 18 : 0) user-select=(r.report != "" ? "none" : "text") contextmenu=aimMetric(r.report) contextPopover=(r.report != "" ? "metric-menu" : "")
+              if r.heading == ""
+                Divider()
+              MetricRow(name=r.name, route=r.route, detail=r.detail, value=r.value, id=r.id)
+              if r.lines.length > 0
+                column padding-left=16 padding-right=16 padding-bottom=12 gap=8
+                  for line in r.lines key=line
+                    text line font-size=13 color="-exact-secondary-label"
+            if r.footer != ""
+              SectionFooter(words=r.footer)
 
 // One session log entry from app.ts: when, what, and why
 shape SessionLogEvent

@@ -1112,7 +1112,7 @@ component Lexy
                   if e.name == "eas"
                     EasScreen(open=openExternal)
                   if e.name == "performance"
-                    PerformanceScreen(wide=wide, fold=fold, observed=observed, utcOffset=time.utcOffset)
+                    PerformanceScreen(wide=wide, fold=fold, observed=observed, loading=pending(observed), utcOffset=time.utcOffset)
                   if e.name == "session"
                     SessionScreen(log=sessionLog, loading=pending(sessionLog), signedIn=account.signedIn, expiresAt=account.expiresAt, utcOffset=time.utcOffset)
                   if e.name == "rename"

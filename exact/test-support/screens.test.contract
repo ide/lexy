@@ -1,0 +1,52 @@
+size 390x844
+
+test "command controls wait for the request and then enable the current choices"
+  expect disabled "command-door-lock"
+  expect disabled "command-door-unlock"
+  expect disabled "command-engine-start"
+  expect disabled "command-trunk-lock"
+  expect disabled "command-trunk-unlock"
+  expect disabled "command-hazard-on"
+  expect disabled "command-headlight-on"
+  expect disabled "command-buzzer-warning"
+  expect disabled "command-sound-horn"
+  tap "finish"
+  expect enabled "command-door-lock"
+  expect enabled "command-door-unlock"
+  expect enabled "command-engine-stop"
+  expect enabled "command-trunk-lock"
+  expect enabled "command-trunk-unlock"
+  expect enabled "command-hazard-off"
+  expect enabled "command-headlight-on"
+  expect enabled "command-buzzer-warning"
+  expect enabled "command-sound-horn"
+
+test "Performance distinguishes a pending read, failure and empty success"
+  tap "performance"
+  clock settle
+  expect tree missing "performance-recent-message"
+  tap "failed"
+  expect text "performance-recent-message" == "Performance data is unavailable."
+  tap "empty"
+  expect text "performance-recent-message" == "Nothing recorded yet. Open a screen or relaunch the app."
+  tap "fill"
+  clock settle
+  expect tree missing "performance-recent-message"
+  expect tree has "perf-launch-timeToInteractive"
+  expect tree missing "perf-nav-199"
+  tap "perf-launch-row-timeToInteractive" contextmenu
+  clock settle
+  expect tree has "copy-metric"
+  tap "copy-metric"
+  clock settle
+
+test "the unfolded Performance screen keeps medians in their own pane"
+  size 951x669
+  tap "performance"
+  tap "fill"
+  clock settle
+  expect tree has "performance-recent-list"
+  expect tree has "performance-medians-list"
+  expect tree has "perf-median-timeToInteractive"
+  expect tree has "perf-launch-timeToInteractive"
+  expect tree missing "perf-nav-199"
