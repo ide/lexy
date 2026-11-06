@@ -379,6 +379,8 @@ telling.
 
 ## Platform notes
 
+- Exact waits for an offline or refresh-failure condition to remain present for one continuous second while this screen and the app are visible before showing its yellow banner. A new warning, a switch between the two warnings, a tab change, or a return from the background starts a fresh confirmation. Recovery cancels a pending warning or starts dismissing a visible one immediately; background time never counts. Full-screen load errors and command-error alerts keep their existing timing.
+
 - Exact card section titles are level-2 headings in the platform headline style.
 
 - Exact draws the climate card's thermometer in the accent's red as a colour of its own, which stays red behind a sheet or an alert; the slider and the defrost chips are controls, in the tint, and grey with it.

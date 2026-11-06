@@ -75,6 +75,8 @@ pull-refresh.
 
 ## Platform notes
 
+- Exact waits for an offline or refresh-failure condition to remain present for one continuous second while this screen and the app are visible before showing its yellow banner. A new warning, a switch between the two warnings, a tab change, or a return from the background starts a fresh confirmation. Recovery cancels a pending warning or starts dismissing a visible one immediately; background time never counts. Full-screen load errors and command-error alerts keep their existing timing.
+
 - Exact keeps 16 points of content spacing above UIKit’s bottom safe area.
 
 - Exact section titles are level-2 headings in the platform headline style.

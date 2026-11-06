@@ -1251,7 +1251,7 @@ const sources: Sources = {
   logVehicleState: ([route, scenario, visibility, online, banner, garagePending, statusPending, garageOK, garageCode, statusCode, statusError, fetchedMs, at]): Result<'logVehicleState'> => {
     const warning = banner === 'offline' ? 'You’re offline' : banner === 'garage-error' ? 'Couldn’t refresh' : 'none';
     const age = fetchedMs > 0 ? `${Math.max(0, Math.round(at - fetchedMs))} ms` : 'unknown';
-    logSession(at, 'vehicle state', `screen=${route}; data=${scenario}; page=${visibility}; online=${online}; banner=${warning}; vehicle=${garagePending ? 'pending' : garageOK ? 'ready' : 'failed'} (HTTP ${garageCode}); status=${statusPending ? 'pending' : statusError ? 'failed' : 'ready'} (HTTP ${statusCode}); data age=${age}`);
+    logSession(at, 'vehicle state', `screen=${route}; data=${scenario}; page=${visibility}; online=${online}; warning=${warning}; vehicle=${garagePending ? 'pending' : garageOK ? 'ready' : 'failed'} (HTTP ${garageCode}); status=${statusPending ? 'pending' : statusError ? 'failed' : 'ready'} (HTTP ${statusCode}); data age=${age}`);
     return { ok: true, status: 200, error: '' };
   },
   clearObserved: () => clearObserved(),

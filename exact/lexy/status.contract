@@ -215,16 +215,20 @@ component WarningBanner
     still: bool
     // The space above it, which comes and goes with it
     above: string
+    confirmation: number
+  // Capture the confirmation at mount so an earlier warning cannot qualify this one
+  state entered = confirmation
   view
-    // It comes and goes with its `if`, so its own exit plays
-    row testId=id margin-top=above class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation="bannerOut 250ms ease-in both"
-      if framed
-        image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange" object-fit="scale-down" width=22 height=22
-      else
-        image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange"
-      column gap=2 flex=1
-        text title class=SmallBold color="-exact-system-orange"
-        text message class=Small color="-exact-system-orange" opacity=0.85
+    if confirmation != entered
+      // It comes and goes with its `if`, so its own exit plays
+      row testId=id margin-top=above class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation="bannerOut 250ms ease-in both"
+        if framed
+          image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange" object-fit="scale-down" width=22 height=22
+        else
+          image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange"
+        column gap=2 flex=1
+          text title class=SmallBold color="-exact-system-orange"
+          text message class=Small color="-exact-system-orange" opacity=0.85
 
 // A pressable row's badge (expandable-card.tsx): its symbol over a 15% wash, both in
 // `tint` as the badge's accent, so they grey with the tint behind a sheet or an alert, as a
@@ -324,6 +328,8 @@ component StatusScreen
     climateWriting: bool
     utcOffset: number
     online: bool
+    warningsVisible: bool
+    warningConfirmation: number
     commandError: string
     climateError: string
     engineKnown: bool
@@ -394,11 +400,11 @@ component StatusScreen
         column box-sizing="border-box" padding-top=16 padding-left=16 padding-right=16 gap=16 flex-grow=(car.vin == "" and not loading ? 1 : 0)
           // Banners (src/components/ui/status-banner.tsx)
           // use-vehicle-screen.tsx / status-banner.tsx: offline, amber.
-          if warning == "offline"
-            WarningBanner(id="offline", still=still, above="0px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
+          if warningsVisible and warning == "offline"
+            WarningBanner(confirmation=warningConfirmation, id="offline", still=still, above="0px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
-          if warning == "garage-error"
-            WarningBanner(id="garage-error", still=still, above="0px", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))}${(status.ok ? " Showing the latest data we saved." : "")} Pull down to try again.${failureNote}`)
+          if warningsVisible and warning == "garage-error"
+            WarningBanner(confirmation=warningConfirmation, id="garage-error", still=still, above="0px", symbol="exclamationmark.triangle.fill", framed=true, title="Couldn’t refresh", message=`${(not garage.ok ? failureSummary(garage.status, garage.error) : failureSummary(status.status, status.error))}${(status.ok ? " Showing the latest data we saved." : "")} Pull down to try again.${failureNote}`)
           if car.vin == "" and not loading and garage.ok and garage.carCount == 0
             VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, busy=retrying, id="no-vehicle")
           if car.vin == "" and not loading and not garage.ok

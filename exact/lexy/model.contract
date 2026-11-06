@@ -129,6 +129,8 @@ shape Status
 // Keep the rendered warning and its diagnostic log on the same condition
 fn statusWarning(online: bool, garage: Garage, status: Status, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.error != "" and status.status != 401)) ? "garage-error" : "")
 
+fn specsWarning(online: bool, garage: Garage, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and not garage.ok and garage.status != 401 ? "garage-error" : "")
+
 shape Tire
   position: string
   value: number

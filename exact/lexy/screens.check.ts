@@ -32,8 +32,90 @@ async function main(): Promise<void> {
     });
     assert.equal(await run.exited, 0, 'The iOS screen tests failed; the driver output identifies the assertion');
     await checkRepeatedMarks(exact, root, plan);
+    await checkWarningQuiescence(exact, root);
   } finally {
     rmSync(directory, { recursive: true });
+  }
+}
+
+async function checkWarningQuiescence(exact: string, root: string): Promise<void> {
+  const { open } = await import(resolve(exact, 'scripts/agent.mjs'));
+  const session = await open({ host: 'ios', app: root, url: '/settings?developer=on', storage: 'lexy-warning-quiescence', env: { EXACT_AGENT_STORAGE_FRESH: '1' } });
+  try {
+    await session.clock('settle');
+    await session.tap('try-demo');
+    await session.clock('settle');
+    await session.tap('tab-status');
+    await session.clock('settle');
+
+    async function expectWarnings(expected: string[], reason: string): Promise<void> {
+      const tree = await session.tree();
+      const warnings = tree.nodes.filter((node: { props: { testId?: string } }): boolean => ['offline', 'garage-error', 'specs-offline', 'specs-garage-error'].includes(node.props.testId ?? '')).map((node: { props: { testId: string } }): string => node.props.testId);
+      assert.deepEqual(warnings, expected, reason);
+    }
+
+    async function expectAfterQuietPeriod(id: string): Promise<void> {
+      await expectWarnings([], 'A new warning waits before it occupies space');
+      await session.clock('+999');
+      await expectWarnings([], 'The warning has not survived a full visible second');
+      await session.clock('+1');
+      await expectWarnings([id], 'A sustained warning appears at the quiet-period boundary');
+    }
+
+    async function chooseState(kind: string): Promise<void> {
+      await session.tap('tab-settings');
+      const tree = await session.tree();
+      if (!tree.nodes.some((node: { props: { testId?: string } }): boolean => node.props.testId === `data-state-${kind}`)) {
+        await session.tap('dev-data-state');
+      }
+      await session.tap(`data-state-${kind}`);
+      await session.clock('settle');
+    }
+
+    await session.prefer({ online: 'false' });
+    await session.clock('+500');
+    await expectWarnings([], 'A half-second offline condition never shows a banner');
+    await session.prefer({ online: 'true' });
+    await session.clock('+1000');
+    await expectWarnings([], 'A cancelled confirmation never appears later');
+
+    for (let repeat = 0; repeat < 2; repeat++) {
+      await session.prefer({ online: 'false' });
+      await expectAfterQuietPeriod('offline');
+      await session.prefer({ online: 'true' });
+      await expectWarnings([], 'Recovery dismisses a confirmed warning immediately');
+    }
+
+    await session.prefer({ online: 'false' });
+    await session.clock('+500');
+    await session.prefer({ 'visibility-state': 'hidden' });
+    await session.clock('+10000');
+    await session.prefer({ 'visibility-state': 'visible' });
+    await expectAfterQuietPeriod('offline');
+    await session.prefer({ 'visibility-state': 'hidden' });
+    await session.prefer({ 'visibility-state': 'visible' });
+    await expectAfterQuietPeriod('offline');
+
+    await session.tap('tab-specs');
+    await expectAfterQuietPeriod('specs-offline');
+    await session.tap('tab-status');
+    await expectAfterQuietPeriod('offline');
+    await session.prefer({ online: 'true' });
+    await expectWarnings([], 'Neither tab retains an offline warning after recovery');
+
+    await chooseState('error-cached');
+    await session.tap('tab-status');
+    await expectAfterQuietPeriod('garage-error');
+    await session.tap('tab-specs');
+    await expectAfterQuietPeriod('specs-garage-error');
+
+    await chooseState('error-empty');
+    await session.tap('tab-status');
+    const tree = await session.tree();
+    assert(tree.nodes.some((node: { props: { testId?: string } }): boolean => node.props.testId === 'vehicle-error'), 'A failed load without cached data keeps its immediate full-screen error');
+    console.log('PASS: brief warnings stay absent, sustained warnings appear after one visible second, recovery is immediate, and foregrounding and tab changes restart confirmation');
+  } finally {
+    await session.close();
   }
 }
 

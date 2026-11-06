@@ -152,11 +152,11 @@ for (const [delay, visibility, online, banner, pending, code, failed] of [
 l = await log();
 const vehicle = l.events.filter(e => e.kind === 'vehicle state').reverse();
 assert.deepEqual(vehicle.map(e => e.at - now), [0, 100, 600, 1000, 1500, 2500]);
-assert.match(vehicle[0].detail, /page=hidden; online=true; banner=none/);
-assert.match(vehicle[1].detail, /page=visible; online=false; banner=You’re offline/);
-assert.match(vehicle[2].detail, /online=true; banner=none/);
-assert.match(vehicle[3].detail, /banner=Couldn’t refresh;.*status=failed \(HTTP 503\)/);
-assert.match(vehicle[4].detail, /banner=none;.*status=pending \(HTTP 503\)/);
+assert.match(vehicle[0].detail, /page=hidden; online=true; warning=none/);
+assert.match(vehicle[1].detail, /page=visible; online=false; warning=You’re offline/);
+assert.match(vehicle[2].detail, /online=true; warning=none/);
+assert.match(vehicle[3].detail, /warning=Couldn’t refresh;.*status=failed \(HTTP 503\)/);
+assert.match(vehicle[4].detail, /warning=none;.*status=pending \(HTTP 503\)/);
 assert.match(vehicle[5].detail, /status=ready \(HTTP 200\); data age=2500 ms/);
 assert.equal(l.events.length, 200, 'vehicle diagnostics use the same bounded log');
 await answer('signOut', [now + 3000], store, storage, null);
