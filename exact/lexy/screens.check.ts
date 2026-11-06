@@ -55,9 +55,9 @@ async function checkWarningQuiescence(exact: string, root: string): Promise<void
     }
 
     async function expectAfterQuietPeriod(id: string): Promise<void> {
-      await expectWarnings([], 'A new warning waits before it occupies space');
+      await expectWarnings([], 'The warning waits before it occupies space');
       await session.clock('+999');
-      await expectWarnings([], 'The warning has not survived a full visible second');
+      await expectWarnings([], 'The settling period has not reached its boundary');
       await session.clock('+1');
       await expectWarnings([id], 'A sustained warning appears at the quiet-period boundary');
     }
@@ -72,36 +72,54 @@ async function checkWarningQuiescence(exact: string, root: string): Promise<void
       await session.clock('settle');
     }
 
-    await session.prefer({ online: 'false' });
-    await session.clock('+500');
-    await expectWarnings([], 'A half-second offline condition never shows a banner');
-    await session.prefer({ online: 'true' });
-    await session.clock('+1000');
-    await expectWarnings([], 'A cancelled confirmation never appears later');
-
     for (let repeat = 0; repeat < 2; repeat++) {
       await session.prefer({ online: 'false' });
-      await expectAfterQuietPeriod('offline');
+      await expectWarnings(['offline'], 'Going offline during active use is immediate');
+      await session.clock('+500');
+      await expectWarnings(['offline'], 'A short active-use outage is still shown');
       await session.prefer({ online: 'true' });
-      await expectWarnings([], 'Recovery dismisses a confirmed warning immediately');
+      await expectWarnings([], 'Recovery remains immediate');
     }
 
-    await session.prefer({ online: 'false' });
-    await session.clock('+500');
-    await session.prefer({ 'visibility-state': 'hidden' });
+    await session.prefer({ 'visibility-state': 'hidden', online: 'false' });
     await session.clock('+10000');
     await session.prefer({ 'visibility-state': 'visible' });
-    await expectAfterQuietPeriod('offline');
+    await session.clock('+500');
+    await expectWarnings([], 'A half-second offline report on foregrounding stays hidden');
+    await session.prefer({ online: 'true' });
+    await session.clock('+500');
+    await expectWarnings([], 'Recovery during foreground grace never shows an offline banner');
+
+    await session.prefer({ 'visibility-state': 'hidden' });
+    await session.prefer({ 'visibility-state': 'visible' });
+    await session.clock('+500');
+    await session.prefer({ online: 'false' });
+    await session.clock('+499');
+    await expectWarnings([], 'A late offline report still waits for the foreground window to end');
+    await session.clock('+1');
+    await expectWarnings(['offline'], 'Foreground grace ends one second after return');
+
+    await session.prefer({ 'visibility-state': 'hidden' });
+    await session.prefer({ 'visibility-state': 'visible' });
+    await session.clock('+500');
     await session.prefer({ 'visibility-state': 'hidden' });
     await session.prefer({ 'visibility-state': 'visible' });
     await expectAfterQuietPeriod('offline');
 
+    await session.prefer({ 'visibility-state': 'hidden' });
+    await session.prefer({ 'visibility-state': 'visible' });
+    await session.clock('+500');
     await session.tap('tab-specs');
-    await expectAfterQuietPeriod('specs-offline');
+    await session.clock('+499');
+    await expectWarnings([], 'Tab changes share the current foreground window');
+    await session.clock('+1');
+    await expectWarnings(['specs-offline'], 'Switching tabs does not restart foreground grace');
     await session.tap('tab-status');
-    await expectAfterQuietPeriod('offline');
+    await expectWarnings(['offline'], 'An existing offline state is immediate on another tab');
     await session.prefer({ online: 'true' });
-    await expectWarnings([], 'Neither tab retains an offline warning after recovery');
+    await session.prefer({ online: 'false' });
+    await expectWarnings(['offline'], 'Later outages in the same foreground are immediate');
+    await session.prefer({ online: 'true' });
 
     await chooseState('error-cached');
     await session.tap('tab-status');
@@ -113,7 +131,7 @@ async function checkWarningQuiescence(exact: string, root: string): Promise<void
     await session.tap('tab-status');
     const tree = await session.tree();
     assert(tree.nodes.some((node: { props: { testId?: string } }): boolean => node.props.testId === 'vehicle-error'), 'A failed load without cached data keeps its immediate full-screen error');
-    console.log('PASS: brief warnings stay absent, sustained warnings appear after one visible second, recovery is immediate, and foregrounding and tab changes restart confirmation');
+    console.log('PASS: only foregrounding delays offline presentation; active-use outages and recovery are immediate; refresh failures keep their settling period');
   } finally {
     await session.close();
   }

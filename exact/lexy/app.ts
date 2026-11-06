@@ -88,6 +88,8 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : String
 let native: NativeModule | null = null;
 // The session's storage (its database, and the files an earlier build kept), set beside it.
 let hostStorage: Storage | null = null;
+// Skip the cold-launch grace; subsequent visible observations follow a background transition
+let pageObserved = false;
 
 // The identity host's cookies. ForgeRock's load balancer pins a sign-in to
 // one server with `route` and `amlbcookie`; a step that lands elsewhere fails
@@ -116,8 +118,7 @@ async function identityFetch(url: string, init: RequestInit): Promise<Response> 
   return response;
 }
 
-// The demo's latency, from the native module's `wait`: a data source has no
-// timer on any host (Hermes gives it none, and the web refuses it the page's).
+// The demo's latency uses the native module's `wait`, skipped under the agent.
 // Where the module has no `wait`, as on the web, the demo answers at once.
 const wait = async (ms: number) => {
   try {
@@ -1157,6 +1158,14 @@ async function developerMode(on: boolean): Promise<Result<'developerMode'>> {
 // --- Sources ---------------------------------------------------------------------
 
 const sources: Sources = {
+  foregroundGrace: async ([visibility]): Promise<Result<'foregroundGrace'>> => {
+    const initial = !pageObserved;
+    pageObserved = true;
+    if (!initial && visibility === 'visible') {
+      await new Promise<void>((resolve): void => { setTimeout(resolve, 1000); });
+    }
+    return { ok: true, status: 200, error: '' };
+  },
   session: ([at], store) => session(store, at),
   // A wait the host keeps (`wait`): how long an app-started refresh runs
   // before the Status title says "Updating…", and how long it says so.

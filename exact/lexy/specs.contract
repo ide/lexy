@@ -66,6 +66,7 @@ component SpecsScreen
     online: bool
     warningsVisible: bool
     warningConfirmation: number
+    offlineReady: bool
     specLoading: bool
     servicesLoading: bool
     manage: action
@@ -86,10 +87,10 @@ component SpecsScreen
         // Exact, then go back to one padded column)
         column padding-left=16 padding-right=16
           if warningsVisible and warning == "offline"
-            WarningBanner(confirmation=warningConfirmation, id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
+            WarningBanner(immediate=offlineReady, confirmation=warningConfirmation, id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           if warningsVisible and warning == "garage-error"
-            WarningBanner(confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.${failureNote}`)
+            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.${failureNote}`)
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.

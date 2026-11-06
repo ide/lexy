@@ -163,5 +163,27 @@ await answer('signOut', [now + 3000], store, storage, null);
 assert.equal((await log()).events.filter(e => e.kind === 'vehicle state').length, vehicle.length, 'sign-out preserves the warning history');
 console.log('brief offline and refresh-failure warnings remain distinguishable after recovery and sign-out');
 
+const originalTimeout = globalThis.setTimeout;
+const waits: number[] = [];
+let release: (() => void) | undefined;
+globalThis.setTimeout = ((callback: () => void, ms: number): ReturnType<typeof setTimeout> => {
+  waits.push(ms);
+  release = callback;
+  return 0 as unknown as ReturnType<typeof setTimeout>;
+}) as typeof setTimeout;
+try {
+  await answer('foregroundGrace', ['visible'], store, storage, null);
+  await answer('foregroundGrace', ['hidden'], store, storage, null);
+  assert.deepEqual(waits, [], 'Cold launch and backgrounding add no delay');
+  const resumed = answer('foregroundGrace', ['visible'], store, storage, null);
+  assert.deepEqual(waits, [1000], 'Returning to the foreground starts the connectivity grace');
+  assert(release);
+  release();
+  await resumed;
+} finally {
+  globalThis.setTimeout = originalTimeout;
+}
+console.log('connectivity grace waits on a background return without adding a cold-launch delay');
+
 clearTimeout(timeout);
 database.close();

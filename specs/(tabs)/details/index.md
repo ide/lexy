@@ -75,7 +75,7 @@ pull-refresh.
 
 ## Platform notes
 
-- Exact waits for an offline or refresh-failure condition to remain present for one continuous second while this screen and the app are visible before showing its yellow banner. A new warning, a switch between the two warnings, a tab change, or a return from the background starts a fresh confirmation. Recovery cancels a pending warning or starts dismissing a visible one immediately; background time never counts. Full-screen load errors and command-error alerts keep their existing timing.
+- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. Refresh-failure banners still require one continuous visible second on their screen before appearing. Recovery cancels a pending warning or starts dismissing a visible one immediately. Full-screen load errors and command-error alerts keep their existing timing.
 
 - Exact keeps 16 points of content spacing above UIKit’s bottom safe area.
 
