@@ -33,6 +33,8 @@ final class LexyModule: ExactModule {
     }
 
     #if os(iOS)
+    private var paneControllers: [ObjectIdentifier: UIViewController] = [:]
+
     override func element(_ element: ExactElement) {
         if element.hatch == .loginField, let field = element.platform as? UITextField {
             // Hide editing shortcuts; UIKit keeps password and code suggestions
@@ -41,25 +43,31 @@ final class LexyModule: ExactModule {
             return
         }
         guard element.hatch == .developerPanes else { return }
+        element.reusable = true
         if #available(iOS 27.1, *) {
             guard element.data[.expanded] == "true" else {
                 element.arrange(using: nil)
                 return
             }
+            let key = ObjectIdentifier(element)
+            if let controller = paneControllers[key] as? UIArrangementViewController {
+                element.arrange(using: controller)
+                return
+            }
             let controller = UIArrangementViewController()
             controller.updateArrangement(.split.axes(.horizontal))
-            element.arrange(using: controller)
+            if element.arrange(using: controller) { paneControllers[key] = controller }
         }
+    }
+
+    override func elementEnded(_ element: ExactElement) {
+        paneControllers[ObjectIdentifier(element)] = nil
     }
 
     override func route(_ route: ExactRoute) {
         switch route.data[.screen] {
         case "rename", "map", "login", "loginChoice", "loginCode", "authChoice", "authCode":
             route.controller.navigationItem.largeTitleDisplayMode = .never
-        case "performance", "updates":
-            if #available(iOS 27.0, *) {
-                route.controller.navigationItem.navigationBarMinimization.safeAreaAdjustment = .disabled
-            }
         default:
             break
         }

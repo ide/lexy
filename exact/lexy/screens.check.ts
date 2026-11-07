@@ -33,8 +33,45 @@ async function main(): Promise<void> {
     assert.equal(await run.exited, 0, 'The iOS screen tests failed; the driver output identifies the assertion');
     await checkRepeatedMarks(exact, root, plan);
     await checkWarningQuiescence(exact, root);
+    await checkScrollMeasurement(exact, root);
   } finally {
     rmSync(directory, { recursive: true });
+  }
+}
+
+async function checkScrollMeasurement(exact: string, root: string): Promise<void> {
+  const { open } = await import(resolve(exact, 'scripts/agent.mjs'));
+  const session = await open({ host: 'ios', app: root, url: '/settings?developer=on', storage: 'lexy-scroll-measurement', env: { EXACT_AGENT_STORAGE_FRESH: '1' } });
+  try {
+    await session.clock('settle');
+    await session.tap('try-demo');
+    await session.clock('settle');
+    await session.tap('tab-settings');
+    await session.tap('dev-performance');
+    await session.clock('settle');
+    const hasStopwatch = async (): Promise<boolean> => (await session.tree()).nodes.some((node: { props: { testId?: string } }): boolean => node.props.testId === 'trace');
+    assert.equal(await hasStopwatch(), false, 'Scroll measurement starts disabled');
+    await session.tap('scroll-measurement');
+    assert.equal(await hasStopwatch(), true, 'Enabling measurement shows the stopwatch');
+    await session.tap('trace');
+    assert.equal((await session.state()).slots.recordingTrace, true, 'The stopwatch starts recording');
+    await session.tap('tab-status');
+    assert.equal(await hasStopwatch(), true, 'The stopwatch remains available on the screen being measured');
+    await session.tap('tab-settings');
+    await session.tap('scroll-measurement');
+    assert.equal(await hasStopwatch(), false, 'Disabling measurement hides the stopwatch');
+    assert.equal((await session.state()).slots.recordingTrace, false, 'Disabling measurement ends the active recording');
+    const stopped = await session.logs({ all: true });
+    assert(JSON.stringify(stopped).includes('trace copied:'), 'The native host ends and saves the recording');
+    await session.tap('scroll-measurement');
+    assert.equal((await session.state()).slots.recordingTrace, false, 'Re-enabling measurement does not resume recording');
+    await session.tap('trace');
+    const restarted = JSON.stringify(await session.logs());
+    assert(restarted.includes('trace recording started'), 'The native sampler accepts a new recording after being stopped');
+    assert(!restarted.includes('startTrace_EXPERIMENTAL refused'), 'The old recording no longer occupies the sampler');
+    await session.tap('trace');
+  } finally {
+    await session.close();
   }
 }
 

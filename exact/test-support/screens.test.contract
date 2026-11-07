@@ -60,7 +60,7 @@ test "Confirm still dispatches its command before the waiting error is acknowled
 test "Performance distinguishes a pending read, failure and empty success"
   tap "performance"
   clock settle
-  expect tree missing "performance-recent-message"
+  expect text "performance-recent-message" == "Loading performance data…"
   tap "failed"
   expect text "performance-recent-message" == "Performance data is unavailable."
   tap "empty"

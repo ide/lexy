@@ -308,6 +308,7 @@ component Lexy
   mutation observedCleared as shape ObservedCleared refreshes observed
   state updateChecked = false
   state recordingTrace = false
+  state scrollMeasurement = false
   // Data State: the override the vehicle screens are shown, Live at launch.
   state dataState = "live"
   resource forcedGarage = debugGarage(dataState, garage) as shape Garage
@@ -760,6 +761,8 @@ component Lexy
     else if shell
       nav = open(nav, "/settings")
   action setDeveloper(on: bool)
+    if not on
+      setScrollMeasurement(false)
     send developerSet = setDeveloperMode(on)
   action signOut
     send left = signOut(time.epochAtZero + performanceNow())
@@ -988,6 +991,11 @@ component Lexy
   // Record every frame for an agent to read: the first press starts, the
   // next stops and puts the trace on the clipboard, cut to fit a message in
   // a conversation that takes up to 8 KB
+  action setScrollMeasurement(on: bool)
+    if not on and recordingTrace
+      stopTrace_EXPERIMENTAL(7500)
+      recordingTrace = false
+    scrollMeasurement = on
   action toggleTrace
     if recordingTrace
       stopTrace_EXPERIMENTAL(7500)
@@ -1109,11 +1117,11 @@ component Lexy
                     if e.name == "login" or e.name == "loginChoice" or e.name == "loginCode"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.wrench.and.screwdriver"
-                    if developer.on and e.name != "map" and recordingTrace
+                    if developer.on and scrollMeasurement and e.name != "map" and recordingTrace
                       button press=toggleTrace testId="trace" aria-label="Stop Recording and Copy Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         // Tint the stopwatch only while it records; at rest the bar draws it untinted
                         image "symbol:icon.stopwatch.fill" color="AccentColor"
-                    if developer.on and e.name != "map" and not recordingTrace
+                    if developer.on and scrollMeasurement and e.name != "map" and not recordingTrace
                       button press=toggleTrace testId="trace" aria-label="Record Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.stopwatch"
                   if e.name == "status"
@@ -1133,7 +1141,7 @@ component Lexy
                   if e.name == "eas"
                     EasScreen(open=openExternal)
                   if e.name == "performance"
-                    PerformanceScreen(wide=wide, fold=fold, observed=observed, loading=pending(observed), utcOffset=time.utcOffset)
+                    PerformanceScreen(scrollMeasurement=scrollMeasurement, setScrollMeasurement=setScrollMeasurement, wide=wide, fold=fold, observed=observed, loading=pending(observed), utcOffset=time.utcOffset)
                   if e.name == "session"
                     SessionScreen(log=sessionLog, loading=pending(sessionLog), signedIn=account.signedIn, expiresAt=account.expiresAt, utcOffset=time.utcOffset)
                   if e.name == "rename"

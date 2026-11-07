@@ -124,7 +124,7 @@ component DeveloperPanes
     id: string
   slot
   view
-    scroll id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "hidden" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "env(safe-area-inset-left)") padding-right=(expanded ? "0px" : "env(safe-area-inset-right)")
+    column id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "visible" : "auto") overflow-x="hidden" flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "env(safe-area-inset-left)") padding-right=(expanded ? "0px" : "env(safe-area-inset-right)")
       column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
@@ -353,6 +353,7 @@ shape PerformanceRow
   name: string
   route: string
   detail: string
+  at: number
   value: string
   lines: string[]
   report: string
@@ -361,7 +362,7 @@ shape PerformanceRow
 
 fn performanceMetric(m: ObservedMetric, id: string, heading: string, last: bool, launch: bool, utcOffset: number): PerformanceRow = PerformanceRow(
   key=`${m.category}-${m.session}-${m.route}-${m.name}-${m.time}`, id=id, heading=heading, name=m.name, route=m.route,
-  detail=exactTime(m.time * 1000, utcOffset), value=milliseconds(m.value),
+  detail="Unknown time", at=m.time * 1000, value=milliseconds(m.value),
   lines=(launch ? [m.fromStart, m.phases == "" ? "" : `Phases: ${m.phases}`, m.items == "" ? "" : `Held by (ms from process start): ${m.items}`, m.changes == "" ? "" : `Still changing: ${m.changes}`, m.trace == "" ? "" : `Waited on: ${m.trace}`] : [m.steps]).filter(line => line != ""),
   report=(launch and m.name == "timeToInteractive" ? metricReport(m, utcOffset) : ""),
   last=last, footer=""
@@ -369,6 +370,8 @@ fn performanceMetric(m: ObservedMetric, id: string, heading: string, last: bool,
 
 component PerformanceScreen
   props
+    scrollMeasurement: bool
+    setScrollMeasurement: action
     wide: bool
     fold: string
     observed: Observed
@@ -384,20 +387,25 @@ component PerformanceScreen
   derive launches = observed.latest.map((m, i) => performanceMetric(m, `perf-launch-${m.name}`, i == 0 ? (observed.launch == observed.session ? "This Launch" : "Last Launch") : "", i == observed.latest.length - 1, true, utcOffset))
   derive screens = navigation.map((m, i) => performanceMetric(m, `perf-nav-${i}`, i == 0 ? "Screens" : "", i == navigation.length - 1, false, utcOffset))
   derive sent = observed.metrics.filter(m => m.sent).length
-  derive medians = observed.summary.map((s, i) => PerformanceRow(key=`median-${s.name}`, id=`perf-median-${s.name}`, heading=(i == 0 ? "Median" : ""), name=s.name, route="", detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), lines=[], report="", last=(i == observed.summary.length - 1), footer=(i == observed.summary.length - 1 ? `${sent} of ${observed.metrics.length} sent to Observe.` : "")))
+  derive medians = observed.summary.map((s, i) => PerformanceRow(key=`median-${s.name}`, id=`perf-median-${s.name}`, heading=(i == 0 ? "Median" : ""), name=s.name, route="", at=0, detail=(s.count == 1 ? "1 launch" : `${s.count} launches`), value=milliseconds(s.median), lines=[], report="", last=(i == observed.summary.length - 1), footer=(i == observed.summary.length - 1 ? `${sent} of ${observed.metrics.length} sent to Observe.` : "")))
   derive recent = launches.concat(screens)
-  derive message = not observed.ok ? (loading ? "" : "Performance data is unavailable.") : (recent.length == 0 and medians.length == 0 ? "Nothing recorded yet. Open a screen or relaunch the app." : "")
+  derive message = not observed.ok ? (loading ? "Loading performance data…" : "Performance data is unavailable.") : (recent.length == 0 and medians.length == 0 ? "Nothing recorded yet. Open a screen or relaunch the app." : "")
   view
-    column hatch="developer-panes" data-expanded=expanded testId="performance-panes" display="flex" flex-direction=(expanded ? "row" : "column") flex=1 min-height=0 width="100%" height="100%"
-      PerformanceList(rows=(observed.ok ? (expanded ? recent : recent.concat(medians)) : []), message=message, expanded=expanded, first=true, id="performance-recent", aimMetric=aimMetric)
-      if expanded
-        PerformanceList(rows=(observed.ok ? medians : []), message="", expanded=expanded, first=false, id="performance-medians", aimMetric=aimMetric)
-    column id="metric-menu" popover="auto" role="menu"
-      button press=copyMetric popovertarget="metric-menu" popovertargetaction="hide" testId="copy-metric"
-        text "Copy"
+    column flex=1 min-height=0 width="100%" height="100%"
+      row padding=16 gap=12 align-items="center" flex-shrink=0
+        text "Measure Scroll Performance" font-size=17 flex=1 min-width=0
+        input type="checkbox" switch checked=scrollMeasurement change=setScrollMeasurement aria-label="Measure Scroll Performance" testId="scroll-measurement" accent-color="auto"
+      column hatch="developer-panes" data-expanded=expanded testId="performance-panes" display="flex" flex-direction=(expanded ? "row" : "column") flex=1 min-height=0 width="100%" height="100%"
+        PerformanceList(rows=(observed.ok ? (expanded ? recent : recent.concat(medians)) : []), message=message, expanded=expanded, first=true, shown=true, utcOffset=utcOffset, id="performance-recent", aimMetric=aimMetric)
+        PerformanceList(rows=(observed.ok ? medians : []), message="", expanded=expanded, first=false, shown=expanded, utcOffset=utcOffset, id="performance-medians", aimMetric=aimMetric)
+      column id="metric-menu" popover="auto" role="menu"
+        button press=copyMetric popovertarget="metric-menu" popovertargetaction="hide" testId="copy-metric"
+          text "Copy"
 
 component PerformanceList
   props
+    shown: bool
+    utcOffset: number
     rows: PerformanceRow[]
     message: string
     expanded: bool
@@ -405,7 +413,7 @@ component PerformanceList
     id: string
     aimMetric: action
   view
-    column testId=id flex="1 1 0%" min-width=0 min-height=0 height="100%"
+    column testId=id display=(shown ? "flex" : "none") flex="1 1 0%" min-width=0 min-height=0 height="100%"
       if message != ""
         column testId=`${id}-message`
           SectionFooter(words=message)
@@ -417,7 +425,7 @@ component PerformanceList
             column testId=(r.id.startsWith("perf-launch-") ? `perf-launch-row-${r.name}` : `${r.id}-row`) class=Card border-radius=0 border-top-left-radius=(r.heading != "" ? 18 : 0) border-top-right-radius=(r.heading != "" ? 18 : 0) border-bottom-left-radius=(r.last ? 18 : 0) border-bottom-right-radius=(r.last ? 18 : 0) user-select=(r.report != "" ? "none" : "text") contextmenu=aimMetric(r.report) contextPopover=(r.report != "" ? "metric-menu" : "")
               if r.heading == ""
                 Divider()
-              MetricRow(name=r.name, route=r.route, detail=r.detail, value=r.value, id=r.id)
+              MetricRow(name=r.name, route=r.route, detail=(r.at > 0 ? exactTime(r.at, utcOffset) : r.detail), value=r.value, id=r.id)
               if r.lines.length > 0
                 column padding-left=16 padding-right=16 padding-bottom=12 gap=8
                   for line in r.lines key=line

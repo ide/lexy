@@ -350,5 +350,365 @@
   "physicalSimulatorScreen": {
     "pose": "open, hinge 180 degrees, portrait",
     "note": "Both variants use the same fixed 390\u00d7844 agent viewport."
+  },
+  "screenOpening20261106": {
+    "environment": "iPhone 18 Pro iOS 27.0 simulator; viewport recorded per run; 200 navigation metrics; frozen agent clock; one warm-up pair then five alternating pairs; CPU timer resolution 10 ms",
+    "rows": [
+      {
+        "round": -1,
+        "variant": "before",
+        "warmup": true,
+        "wallMs": 96.90187500000002,
+        "cpuMs": 50,
+        "rssKB": 222688,
+        "rssDeltaKB": 4720,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          265.689453125,
+          217.59716796875,
+          199.232421875
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      },
+      {
+        "round": -1,
+        "variant": "after",
+        "warmup": true,
+        "wallMs": 96.3539580000006,
+        "cpuMs": 60,
+        "rssKB": 222848,
+        "rssDeltaKB": 4800,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          253.3818359375,
+          215.84375,
+          198.72119140625
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      },
+      {
+        "round": 0,
+        "variant": "before",
+        "warmup": false,
+        "wallMs": 143.88429199999973,
+        "cpuMs": 60,
+        "rssKB": 222832,
+        "rssDeltaKB": 4784,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          253.3818359375,
+          215.84375,
+          198.72119140625
+        ],
+        "viewport": {
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "round": 0,
+        "variant": "after",
+        "warmup": false,
+        "wallMs": 88.87829099999999,
+        "cpuMs": 50,
+        "rssKB": 222784,
+        "rssDeltaKB": 4752,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          253.3818359375,
+          215.84375,
+          198.72119140625
+        ],
+        "viewport": {
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "round": 1,
+        "variant": "before",
+        "warmup": false,
+        "wallMs": 1436.7353330000005,
+        "cpuMs": 90,
+        "rssKB": 221104,
+        "rssDeltaKB": 5872,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          261.78564453125,
+          218.77294921875,
+          199.9541015625
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      },
+      {
+        "round": 1,
+        "variant": "after",
+        "warmup": false,
+        "wallMs": 100.20579200000066,
+        "cpuMs": 60,
+        "rssKB": 222720,
+        "rssDeltaKB": 4800,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          285.10546875,
+          224.3212890625,
+          202.0224609375
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      },
+      {
+        "round": 2,
+        "variant": "before",
+        "warmup": false,
+        "wallMs": 94.01970900000015,
+        "cpuMs": 60,
+        "rssKB": 222560,
+        "rssDeltaKB": 4848,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          285.10546875,
+          224.3212890625,
+          202.0224609375
+        ],
+        "viewport": {
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "round": 2,
+        "variant": "after",
+        "warmup": false,
+        "wallMs": 95.55416699999842,
+        "cpuMs": 60,
+        "rssKB": 222736,
+        "rssDeltaKB": 4752,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          291.9833984375,
+          226.75634765625,
+          203.01220703125
+        ],
+        "viewport": {
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "round": 3,
+        "variant": "before",
+        "warmup": false,
+        "wallMs": 91.42854100000113,
+        "cpuMs": 60,
+        "rssKB": 222544,
+        "rssDeltaKB": 4704,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          291.9833984375,
+          226.75634765625,
+          203.01220703125
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      },
+      {
+        "round": 3,
+        "variant": "after",
+        "warmup": false,
+        "wallMs": 108.63754100000006,
+        "cpuMs": 50,
+        "rssKB": 222672,
+        "rssDeltaKB": 4768,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          291.9833984375,
+          226.75634765625,
+          203.01220703125
+        ],
+        "viewport": {
+          "w": 390,
+          "h": 844
+        }
+      },
+      {
+        "round": 4,
+        "variant": "before",
+        "warmup": false,
+        "wallMs": 116.38624999999956,
+        "cpuMs": 50,
+        "rssKB": 222560,
+        "rssDeltaKB": 4736,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          296.94921875,
+          228.86865234375,
+          203.896484375
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      },
+      {
+        "round": 4,
+        "variant": "after",
+        "warmup": false,
+        "wallMs": 87.1385420000006,
+        "cpuMs": 50,
+        "rssKB": 222832,
+        "rssDeltaKB": 4864,
+        "nodes": 247,
+        "navigationMetrics": 15,
+        "nodeLayouts": 289,
+        "load": [
+          296.94921875,
+          228.86865234375,
+          203.896484375
+        ],
+        "viewport": {
+          "h": 844,
+          "w": 390
+        }
+      }
+    ],
+    "summary": {
+      "before": {
+        "wallMs": {
+          "median": 116.38624999999956,
+          "interquartileRange": 49.864582999999584
+        },
+        "cpuMs": {
+          "median": 60,
+          "interquartileRange": 0
+        },
+        "rssDeltaKB": {
+          "median": 4784,
+          "interquartileRange": 112
+        }
+      },
+      "after": {
+        "wallMs": {
+          "median": 95.55416699999842,
+          "interquartileRange": 11.327501000000666
+        },
+        "cpuMs": {
+          "median": 50,
+          "interquartileRange": 10
+        },
+        "rssDeltaKB": {
+          "median": 4768,
+          "interquartileRange": 48
+        }
+      }
+    },
+    "runtime": "3a8a19bed8b7deccc426eaef432f60da6a20257f",
+    "comparison": "Only timestamp formatting differs: eager performanceMetric formatting versus formatting when the virtual list creates a visible row. Both variants include the same scroll measurement switch and retained pane structure. The final code preserves the prior Unknown time fallback for nonpositive timestamps.",
+    "limitation": "High shared-machine load; this fixture comparison does not reproduce the reported long blank screen and does not measure the service query.",
+    "fullQuery": {
+      "environment": "Owned iPhone 18 Pro iOS 27.0 simulator; demo account; local SQLite history seeded with 200 navigation metrics after upload fence and service-queue barrier; synthetic rows removed afterward; five repeated opens; firstCommitMs is agent tap completion, not a displayed-frame timestamp",
+      "rows": [
+        {
+          "i": 0,
+          "firstCommitMs": 31.84912499999882,
+          "settledMs": 168.1191659999986,
+          "metrics": 200,
+          "currentMetrics": 200,
+          "load": [
+            166.3974609375,
+            181.23095703125,
+            187.59375
+          ],
+          "nodes": 778
+        },
+        {
+          "i": 1,
+          "firstCommitMs": 169.8612090000006,
+          "settledMs": 417.1114170000001,
+          "metrics": 200,
+          "currentMetrics": 200,
+          "load": [
+            166.3974609375,
+            181.23095703125,
+            187.59375
+          ],
+          "nodes": 778
+        },
+        {
+          "i": 2,
+          "firstCommitMs": 152.53991599999972,
+          "settledMs": 340.7076250000009,
+          "metrics": 200,
+          "currentMetrics": 200,
+          "load": [
+            166.3974609375,
+            181.23095703125,
+            187.59375
+          ],
+          "nodes": 778
+        },
+        {
+          "i": 3,
+          "firstCommitMs": 89.55037500000071,
+          "settledMs": 178.68283300000076,
+          "metrics": 200,
+          "currentMetrics": 200,
+          "load": [
+            166.3974609375,
+            181.23095703125,
+            187.59375
+          ],
+          "nodes": 778
+        },
+        {
+          "i": 4,
+          "firstCommitMs": 45.61737499999981,
+          "settledMs": 135.94466699999975,
+          "metrics": 200,
+          "currentMetrics": 200,
+          "load": [
+            161.16015625,
+            179.89892578125,
+            187.0859375
+          ],
+          "nodes": 778
+        }
+      ]
+    }
   }
 }
