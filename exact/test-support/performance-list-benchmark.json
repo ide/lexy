@@ -1118,5 +1118,241 @@
         "iqr": 0.02591699999982211
       }
     }
+  },
+  "explicitCutoffInputs": {
+    "environment": "Bun 1.4.2 on macOS; real source functions and in-memory SQLite; 200 mock Observe metrics; a fresh module instance for each sample, developer link initialization via setDeveloperMode without a developerMode resource read; unrelated write holds the shared database queue for 100 ms; one warm-up pair then five alternating pairs. Measures data-answer readiness, not phone presentation or a full reproduction of the 1099 ms phone stall.",
+    "before": "bd9430a (production app ID only)",
+    "after": "working tree: cutoff passed explicitly by the resource",
+    "rows": [
+      {
+        "variant": "before",
+        "round": -1,
+        "warmup": true,
+        "readyMs": 126.38437499999999,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": -1,
+        "warmup": true,
+        "readyMs": 1.06495799999999,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 0,
+        "warmup": false,
+        "readyMs": 102.69791700000002,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 0,
+        "warmup": false,
+        "readyMs": 0.1502500000000282,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 1,
+        "warmup": false,
+        "readyMs": 101.314708,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 1,
+        "warmup": false,
+        "readyMs": 0.19237499999997,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 2,
+        "warmup": false,
+        "readyMs": 100.79920800000002,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 2,
+        "warmup": false,
+        "readyMs": 0.27395799999999326,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 3,
+        "warmup": false,
+        "readyMs": 107.21095899999989,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 3,
+        "warmup": false,
+        "readyMs": 0.2956669999998667,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 4,
+        "warmup": false,
+        "readyMs": 101.9175409999998,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 4,
+        "warmup": false,
+        "readyMs": 0.2592500000000655,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "load": [
+          127.31494140625,
+          301.55224609375,
+          424.1728515625
+        ]
+      }
+    ],
+    "summary": {
+      "before": {
+        "median": 101.9175409999998,
+        "iqr": 1.3832090000000221
+      },
+      "after": {
+        "median": 0.2592500000000655,
+        "iqr": 0.08158300000002328
+      }
+    }
+  },
+  "explicitCutoffNative": {
+    "environment": "iPhone 18 Pro iOS 27.0 simulator; existing named scratch profile; main and native Observe timings use the system monotonic clock; open, Clear, reopen, then a fresh module with the same storage. Clear produces one metrics read. This is functional verification under shared machine load, not a phone latency benchmark.",
+    "rows": [
+      {
+        "i": 0,
+        "readyMs": 284.3610840000001,
+        "metrics": 195,
+        "load": [
+          369.23583984375,
+          329.4521484375,
+          314.93603515625
+        ]
+      },
+      {
+        "i": 1,
+        "readyMs": 236.41700000000037,
+        "metrics": 197,
+        "load": [
+          369.23583984375,
+          329.4521484375,
+          314.93603515625
+        ]
+      },
+      {
+        "i": 2,
+        "readyMs": 243.8862909999998,
+        "metrics": 200,
+        "load": [
+          369.23583984375,
+          329.4521484375,
+          314.93603515625
+        ]
+      }
+    ],
+    "timings": [
+      {
+        "at": 1794035363187.032,
+        "kind": "performance data",
+        "detail": "ready; total=25 ms; Observe=25 ms; processing=0 ms; native Observe=3 ms; rows=200"
+      },
+      {
+        "at": 1794035362774.535,
+        "kind": "performance data",
+        "detail": "ready; total=5 ms; Observe=5 ms; processing=0 ms; native Observe=2 ms; rows=200"
+      },
+      {
+        "at": 1794035362524.299,
+        "kind": "performance data",
+        "detail": "ready; total=45 ms; Observe=45 ms; processing=0 ms; native Observe=9 ms; rows=200"
+      },
+      {
+        "at": 1794035362100.2002,
+        "kind": "performance data",
+        "detail": "ready; total=43 ms; Observe=43 ms; processing=0 ms; native Observe=5 ms; rows=197"
+      },
+      {
+        "at": 1794035361594.954,
+        "kind": "performance data",
+        "detail": "ready; total=59 ms; Observe=59 ms; processing=0 ms; native Observe=6 ms; rows=195"
+      }
+    ],
+    "clearPersistsAcrossModuleReplacement": true
   }
 }

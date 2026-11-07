@@ -199,6 +199,7 @@ shape Address
 // switch.
 shape DeveloperMode
   on: bool
+  clearedAt: number
   // The page's origin on the web, whose `/settings?developer=on` is that
   // link there; "" in the native app.
   origin: string

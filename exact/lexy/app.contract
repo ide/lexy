@@ -301,7 +301,8 @@ component Lexy
   // This device's Observe metrics, read when Performance opens and again
   // each time (none asked before it first does).
   state observedRev = 0
-  resource observed = observed(observedRev > 0 ? 200 : 0) with observedRev as shape Observed
+  derive observedCutoff = match observedCleared { case some(c) => c.ok and c.clearedAt > developer.clearedAt ? c.clearedAt : developer.clearedAt, case none => developer.clearedAt }
+  resource observed = observed(observedRev > 0 ? 200 : 0, observedCutoff) with observedRev as shape Observed
   // Settings → Developer Tools → Session: read each time the screen opens
   state sessionLogRev = 0
   resource sessionLog = sessionLog(sessionLogRev > 0 ? 200 : 0) with sessionLogRev as shape SessionLog

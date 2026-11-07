@@ -42,6 +42,7 @@ shape ObservedSummary
 // Clear's answer: what is recorded so far is hidden from Performance.
 shape ObservedCleared
   ok: bool
+  clearedAt: number
 
 shape Observed
   ok: bool

@@ -179,18 +179,17 @@ const performanceModule: NativeModule = {
 };
 database.query('INSERT OR REPLACE INTO choices VALUES (?, ?)').run('developer', 'on');
 database.query('INSERT OR REPLACE INTO choices VALUES (?, ?)').run('observe-cleared', '2');
-await answer('developerMode', [], store, storage, performanceModule);
 // Hold the first transaction until the newer response is ready to save
 const gate = pauseGarageWrite();
 const beforeWrite = answer('garage', [true, 3, at + 2], store, storage, null);
 respond(await nextRequest(), cars('Before'));
 await gate.entered.promise;
-const performanceRead = answer('observed', [200, 1], store, storage, performanceModule);
+const performanceRead = answer('observed', [200, 2, 1], store, storage, performanceModule);
 await nextTurn();
 assert.equal(observeRequests, 1, 'Performance queries Observe while a vehicle-cache write holds the database');
 const performanceResult = await performanceRead;
 assert.equal(performanceResult.ok, true, 'The metrics answer does not wait for that write');
-assert.deepEqual(performanceResult.metrics.map((metric): number => metric.time), [3], 'Developer settings load the saved clear-history cutoff');
+assert.deepEqual(performanceResult.metrics.map((metric): number => metric.time), [3], 'Performance filters against its supplied clear-history cutoff');
 const afterWrite = answer('garage', [true, 4, at + 3], store, storage, null);
 respond(await nextRequest(), cars('After'));
 // Drain response decoding so the second write reaches the held database queue
@@ -198,6 +197,9 @@ await nextTurn();
 gate.released.resolve();
 await Promise.all([beforeWrite, afterWrite]);
 assert.equal(savedName(), 'After');
+const developer = await answer('developerMode', [], store, storage, performanceModule);
+assert.equal(developer.clearedAt, 2, 'Developer settings carry the persisted clear-history cutoff');
+assert.equal((await answer('setDeveloperMode', [true], store, storage, performanceModule)).clearedAt, 2, 'Developer links also carry the stored cutoff');
 
 // Recheck freshness after waiting for another resource's transaction
 const queuedGate = pauseGarageWrite();
