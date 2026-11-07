@@ -6,6 +6,7 @@
 // explains the first launch after an earlier build's session, and that it tells
 // a refresh with no reply from one with an unusable reply.
 import { strict as assert } from 'node:assert';
+import type { NativeModule } from './app.contract.d.ts';
 import { gateway, lexusRealm, memoryStorage, memoryStore, signIn } from './check-support';
 
 const timeout = setTimeout((): never => { throw new Error('Session log check did not finish within 10 seconds'); }, 10_000);
@@ -22,10 +23,10 @@ const log = (): Promise<Log> => answer('sessionLog', [200, 1], store, storage, n
 const kinds = (l: Log): string[] => l.events.map(e => e.kind);
 // The package says what happened once a token's print is made: wait, a
 // second at most, for the log to hold `n` events, or for `kind` to be the newest
-const logged = async (n: number, kind?: string): Promise<Log> => {
+const logged = async (n: number, kind?: string, detail?: string): Promise<Log> => {
   for (let i = 0; i < 200; i++) {
     const l = await log();
-    if (kind ? l.events[0]?.kind === kind : l.events.length >= n) return l;
+    if (kind ? l.events[0]?.kind === kind && (detail === undefined || l.events[0]?.detail === detail) : l.events.length >= n) return l;
     await Bun.sleep(5);
   }
   throw new Error(`the session log never held ${kind ?? `${n} events`}: ${kinds(await log()).slice(0, 12).join(', ')}`);
@@ -184,6 +185,39 @@ try {
   globalThis.setTimeout = originalTimeout;
 }
 console.log('connectivity grace waits on a background return without adding a cold-launch delay');
+
+let clockRead = 0;
+let failObserve = false;
+let hasClock = true;
+const observedModule: NativeModule = {
+  available: true,
+  call(): Record<string, unknown> {
+    if (!hasClock) {
+      throw new Error('Clock unavailable');
+    }
+    return { ms: [0, 20, 100, 130][clockRead++], epoch: now + 4000 };
+  },
+  async later(): Promise<Record<string, unknown>> {
+    if (failObserve) {
+      throw new Error('Observe unavailable');
+    }
+    return { session: 'diagnostic', metrics: [{ session: 'diagnostic', time: 1793800000, category: 'navigation', name: 'tti', value: 0.1, route: '/settings', params: {} }] };
+  },
+  watch(): void {},
+};
+assert.equal((await answer('observed', [200, 1], store, storage, observedModule)).ok, true);
+l = await logged(200, 'performance data');
+assert.equal(l.events[0].at, now + 4000);
+assert.equal(l.events[0].detail, 'ready; total=130 ms; saved preference=20 ms; Observe=80 ms; processing=30 ms; rows=1');
+failObserve = true;
+clockRead = 0;
+assert.equal((await answer('observed', [200, 2], store, storage, observedModule)).ok, false);
+l = await logged(200, 'performance data', 'failed; total=100 ms; saved preference=20 ms; Observe=80 ms; rows=0');
+assert.equal(l.events[0].detail, 'failed; total=100 ms; saved preference=20 ms; Observe=80 ms; rows=0');
+hasClock = false;
+failObserve = false;
+assert.equal((await answer('observed', [200, 3], store, storage, observedModule)).ok, true, 'A diagnostic clock failure preserves the metrics answer');
+console.log('Performance records storage, Observe and processing durations, including failures; unavailable diagnostics preserve the answer');
 
 clearTimeout(timeout);
 database.close();

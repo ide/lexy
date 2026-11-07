@@ -1319,11 +1319,41 @@ function order(name: string): number {
 }
 
 async function observed(limit: number): Promise<Observed> {
-  if (!native?.available || limit <= 0) return noObserved;
+  const module = native;
+  if (!module?.available || limit <= 0) return noObserved;
+  const clock = (): { ms: number; epoch: number } | null => {
+    try {
+      const value = module.call({ op: 'performance-clock' });
+      return typeof value.ms === 'number' && typeof value.epoch === 'number' ? { ms: value.ms, epoch: value.epoch } : null;
+    } catch {
+      return null;
+    }
+  };
+  const began = clock();
+  let previous = began?.ms ?? 0;
+  let phase = 'saved preference';
+  let outcome = 'failed';
+  let count = 0;
+  const stages: string[] = [];
+  const mark = (): void => {
+    const now = began ? clock() : null;
+    if (now) {
+      stages.push(`${phase}=${Math.round(now.ms - previous)} ms`);
+      previous = now.ms;
+    }
+  };
   try {
     const cleared = Number(await choice('observe-cleared') ?? 0) || 0;
-    const r = await native.later({ op: 'observe', limit });
-    if (!Array.isArray(r.metrics)) return noObserved;
+    mark();
+    phase = 'Observe';
+    const r = await module.later({ op: 'observe', limit });
+    mark();
+    phase = 'processing';
+    if (!Array.isArray(r.metrics)) {
+      outcome = 'unavailable';
+      return noObserved;
+    }
+    count = r.metrics.length;
     const records = (r.metrics as Record<string, unknown>[])
       .map(m => ({ m, params: (m.params ?? {}) as Record<string, unknown> }))
       .filter(({ m }) => num(m.time) > cleared);
@@ -1367,9 +1397,15 @@ async function observed(limit: number): Promise<Observed> {
     // The launch's marks in the order they happen: launch, TTR, TTI.
     const latest = metrics.filter(m => m.session === launch && m.category === 'appStartup').sort((a, b) => order(a.name) - order(b.name));
     summary.sort((a, b) => order(a.name) - order(b.name));
+    outcome = 'ready';
     return { ok: true, session: str(r.session), launch, latest, metrics, summary };
   } catch {
     return noObserved;
+  } finally {
+    if (began) {
+      mark();
+      logSession(began.epoch, 'performance data', `${outcome}; total=${Math.round(previous - began.ms)} ms; ${stages.join('; ')}; rows=${count}`);
+    }
   }
 }
 

@@ -154,7 +154,10 @@ final class LexyModule: ExactModule {
     }
 
     override func call(_ request: [String: Any]) throws -> [String: Any] {
-        guard request["op"] as? String == "haptic" else { throw ExactNativeRefusal("Lexy answers only haptic now") }
+        if request["op"] as? String == "performance-clock" {
+            return ["ms": ProcessInfo.processInfo.systemUptime * 1000, "epoch": Date().timeIntervalSince1970 * 1000]
+        }
+        guard request["op"] as? String == "haptic" else { throw ExactNativeRefusal("Lexy accepts haptic and performance-clock calls") }
         context.diagnostics.log("haptic: \(request["style"] as? String ?? "impact-medium")")
         #if os(iOS)
         switch request["style"] as? String {
