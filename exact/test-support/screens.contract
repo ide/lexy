@@ -1,6 +1,6 @@
 // Exercise Status and Performance without Lexus requests
 use StatusScreen from "./status.contract"
-use PerformanceScreen, Observed, ObservedMetric, ObservedSummary from "./developer.contract"
+use PerformanceScreen, UpdatesScreen, Delivery, Observed, ObservedMetric, ObservedSummary from "./developer.contract"
 use Car, Garage, Status, Tires, Climate, Viewport from "./model.contract"
 
 fn sampleCar(): Car = Car(
@@ -78,6 +78,8 @@ fn sampleLaunch(): ObservedMetric = ObservedMetric(sampleMetric(0), category="ap
 component Screens
   resource viewport = exactViewport() as shape Viewport
   state screen = "controls"
+  state compact = false
+  state fixedAbove = false
   state busy = true
   state loading = true
   state available = false
@@ -90,6 +92,17 @@ component Screens
     after(60000, failClimate)
   action finish
     busy = false
+  action nativePerformance
+    screen = "native-performance"
+    full = true
+    available = true
+    loading = false
+  action nativeUpdates
+    screen = "native-updates"
+  action fixedHeader
+    fixedAbove = not fixedAbove
+  action foldPane
+    compact = not compact
   action performance
     screen = "performance"
   action failed
@@ -125,20 +138,43 @@ component Screens
   derive metrics = hundred.concat(hundred).map((n, i) => sampleMetric(i))
   derive latest = (repeated ? [ObservedMetric(sampleLaunch(), time=1793799999, value=42)] : []).concat([sampleLaunch()])
   derive observed = Observed(ok=available, session="test", launch="test", latest=(full ? latest : []), metrics=(full ? metrics : []), summary=(full ? [ObservedSummary(name="timeToInteractive", count=1, median=3)] : []))
+  derive nativeObserved = Observed(observed, latest=ten.map((n, i) => ObservedMetric(sampleLaunch(), time=1793800000 + i)))
   view
-    column height="100%" width="100%" min-height=0
-      row height=44 flex-shrink=0
-        button press=finish testId="finish"
-          text "Finish"
-        button press=performance testId="performance"
-          text "Performance"
-        button press=failed testId="failed"
-          text "Fail"
-        button press=empty testId="empty"
-          text "Empty"
-        button press=fill testId="fill"
-          text "Fill"
-      if screen == "controls"
-        StatusScreen(garage=sampleGarage(), status=sampleStatus(), tires=sampleTires(), climate=sampleClimate(), engineRunning=not busy, enginePending=false, engineTarget="", lockPending=false, lockTarget="", doorLock="locked", hazardsOn=not busy, busy=busy, refreshing=false, heroDim=false, loading=false, retrying=false, developer=false, still=true, firstLoad=false, notice="", checkedAt=0, moreOpen=true, wide=false, fold="", closuresOpen=false, climateLoading=false, climateWriting=climatePending, utcOffset=0, online=true, warningsVisible=true, warningConfirmation=0, offlineReady=true, commandError="", climateError=climateError, engineKnown=true, climateWanted=false, frontDefrost=false, rearDefrost=false, reload=nothing, run=ignoreCommand, openMap=nothing, toggleMore=nothing, toggleClosures=nothing, setClimateOn=ignoreClimate, setTemperature=ignoreTemperature, temperature=0, dragTemperature=ignoreTemperature, toggleDefrost=ignoreCommand)
+    main navigationKey=screen navigationBack="back" width="100%" height="100%" viewport-fit="cover" background-color="-exact-grouped-background"
+      if screen.startsWith("native-")
+        column navigationKey=screen navigationScroll=(viewport.width >= 700 and not compact ? "developer-first-scroll" : "screen-scroll") position="absolute" inset=0 display="flex" flex-direction="column"
+          header
+            text (screen == "native-performance" ? "Performance" : "Updates") role="heading" aria-level=1
+            button press=nativePerformance testId="native-performance"
+              text "Performance"
+            button press=nativeUpdates testId="native-updates"
+              text "Updates"
+            button press=foldPane testId="fold-pane"
+              text "Fold"
+            button press=fixedHeader testId="fixed-header"
+              text "Fixed"
+          if fixedAbove
+            text "Fixed content above the scroller" height=44
+          if screen == "native-performance"
+            PerformanceScreen(scrollMeasurement=false, setScrollMeasurement=ignoreClimate, wide=(viewport.width >= 700), fold=(compact ? "down" : ""), observed=nativeObserved, loading=false, utcOffset=0)
+          else
+            UpdatesScreen(wide=(viewport.width >= 700), fold=(compact ? "down" : ""), delivery=Delivery(stream="test", seq=1, embeddedSeq=1, staged=false, sunset=twenty.map(n => "This test build is being retired after the next update.").join(" "), interpreted=[], compatibilityId="fixture"), version="1.0.1", checked=false, check=nothing, apply=nothing)
       else
-        PerformanceScreen(scrollMeasurement=false, setScrollMeasurement=ignoreClimate, wide=(viewport.width >= 700), fold="", observed=observed, loading=loading, utcOffset=0)
+        column height="100%" width="100%" min-height=0
+          row height=44 flex-shrink=0
+            button press=finish testId="finish"
+              text "Finish"
+            button press=performance testId="performance"
+              text "Performance"
+            button press=failed testId="failed"
+              text "Fail"
+            button press=empty testId="empty"
+              text "Empty"
+            button press=fill testId="fill"
+              text "Fill"
+            button press=nativePerformance testId="native-performance"
+              text "Native"
+          if screen == "controls"
+            StatusScreen(garage=sampleGarage(), status=sampleStatus(), tires=sampleTires(), climate=sampleClimate(), engineRunning=not busy, enginePending=false, engineTarget="", lockPending=false, lockTarget="", doorLock="locked", hazardsOn=not busy, busy=busy, refreshing=false, heroDim=false, loading=false, retrying=false, developer=false, still=true, firstLoad=false, notice="", checkedAt=0, moreOpen=true, wide=false, fold="", closuresOpen=false, climateLoading=false, climateWriting=climatePending, utcOffset=0, online=true, warningsVisible=true, warningConfirmation=0, offlineReady=true, commandError="", climateError=climateError, engineKnown=true, climateWanted=false, frontDefrost=false, rearDefrost=false, reload=nothing, run=ignoreCommand, openMap=nothing, toggleMore=nothing, toggleClosures=nothing, setClimateOn=ignoreClimate, setTemperature=ignoreTemperature, temperature=0, dragTemperature=ignoreTemperature, toggleDefrost=ignoreCommand)
+          else
+            PerformanceScreen(scrollMeasurement=false, setScrollMeasurement=ignoreClimate, wide=(viewport.width >= 700), fold="", observed=observed, loading=loading, utcOffset=0)

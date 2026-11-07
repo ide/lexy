@@ -1,6 +1,6 @@
 // Run against an iOS development build, with EXACT_SIM naming a test simulator
 import assert from 'node:assert/strict';
-import { copyFileSync, cpSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import process from 'node:process';
@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   const exact = resolve(root, '../../../exact2');
   const directory = mkdtempSync(resolve(tmpdir(), 'lexy-screen-tests-'));
   try {
-    prepareSimulator(exact, directory, simulator);
+    const unfolded = prepareSimulator(exact, directory, simulator);
     for (const file of readdirSync(root).filter((file): boolean => file.endsWith('.contract'))) {
       copyFileSync(resolve(root, file), resolve(directory, file));
     }
@@ -32,10 +32,106 @@ async function main(): Promise<void> {
     });
     assert.equal(await run.exited, 0, 'The iOS screen tests failed; the driver output identifies the assertion');
     await checkRepeatedMarks(exact, root, plan);
+    await checkDeveloperPaneLayout(exact, root, directory, unfolded);
     await checkWarningQuiescence(exact, root);
     await checkScrollMeasurement(exact, root);
   } finally {
     rmSync(directory, { recursive: true });
+  }
+}
+
+async function checkDeveloperPaneLayout(exact: string, root: string, directory: string, unfolded: boolean = true): Promise<void> {
+  const { open } = await import(resolve(exact, 'scripts/agent.mjs'));
+  const fixture = resolve(directory, 'app.contract');
+  const source = readFileSync(fixture, 'utf8');
+  writeFileSync(fixture, source.replace('state screen = "controls"', 'state screen = "native-performance"').replace('state full = false', 'state full = true').replace('state available = false', 'state available = true'));
+  const plan = resolve(directory, 'native-panes.plan');
+  const compiled = Bun.spawnSync([resolve(exact, 'target/debug/contract'), 'build', fixture, '-o', plan, '--map'], { cwd: directory });
+  assert.equal(compiled.exitCode, 0, compiled.stderr.toString());
+  type Node = { id: number; parent: number | null; props: { testId?: string; text?: string } };
+  type Box = { id: number; x: number; y: number; w: number; h: number; sy?: number; port?: number[] };
+  for (const size of (unfolded ? ['390x844', '951x669'] : ['390x844'])) {
+    const session = await open({ host: 'ios', app: root, chrome: 'platform', plan, size, storage: `lexy-pane-layout-${size}` });
+    try {
+      await session.clock('settle');
+      async function snapshot(): Promise<{ nodes: Node[]; boxes: Box[]; navigation: { barHeight: number; collapseScroller: number | null; arrangedScrollers: number[] } }> {
+        return { nodes: (await session.tree()).nodes, boxes: (await session.layout()).nodes, navigation: (await session.state()).navigation };
+      }
+      function node(snap: Awaited<ReturnType<typeof snapshot>>, id: string): Node {
+        const result = snap.nodes.find((candidate): boolean => candidate.props.testId === id);
+        assert(result, `${id} is mounted`);
+        return result;
+      }
+      function box(snap: Awaited<ReturnType<typeof snapshot>>, id: string): Box {
+        const result = snap.boxes.find((candidate): boolean => candidate.id === node(snap, id).id);
+        assert(result, `${id} has native bounds`);
+        return result;
+      }
+      function inside(snap: Awaited<ReturnType<typeof snapshot>>, child: string, parent: string): void {
+        let current: Node | undefined = node(snap, child);
+        const ancestor = node(snap, parent).id;
+        while (current && current.id !== ancestor) {
+          current = snap.nodes.find((candidate): boolean => candidate.id === current?.parent);
+        }
+        assert(current, `${child} belongs to ${parent}`);
+      }
+      const initial = await snapshot();
+      const wide = size.startsWith('951');
+      inside(initial, 'scroll-measurement-row', 'performance-recent-list');
+      const list = box(initial, 'performance-recent-list');
+      const measurement = box(initial, 'scroll-measurement-row');
+      assert(list.port, 'The leading list exposes its inset scrollport');
+      assert(measurement.y >= list.port[1] + 15, 'The switch clears the top safe area');
+      assert(measurement.x >= list.port[0] + 15, 'The switch clears the leading safe area');
+      assert(measurement.x + measurement.w <= list.port[0] + list.port[2] - 15, 'The switch clears the trailing safe area');
+      const launch = initial.nodes.find((candidate): boolean => candidate.props.text === 'This Launch');
+      assert(launch, 'This Launch is visible');
+      const launchBox = initial.boxes.find((candidate): boolean => candidate.id === launch.id);
+      assert(launchBox && launchBox.y >= measurement.y + measurement.h, 'The switch precedes This Launch');
+      if (wide) {
+        inside(initial, 'perf-median-timeToInteractive', 'performance-medians-list');
+        inside(initial, 'perf-nav-0', 'performance-medians-list');
+        assert(box(initial, 'perf-median-timeToInteractive').y < box(initial, 'perf-nav-0').y, 'Median precedes Screens');
+        assert.equal(initial.navigation.arrangedScrollers.length, 2, 'Both panes own their native insets');
+      }
+      assert.equal(initial.navigation.collapseScroller, list.id, 'The leading list owns header collapse');
+      await session.tap('performance-recent-list', { wheel: [0, 250] });
+      await session.clock('settle');
+      const scrolled = await snapshot();
+      assert(scrolled.navigation.barHeight < initial.navigation.barHeight - 30, 'Performance collapses its native large title');
+      assert(box(scrolled, 'scroll-measurement-row').y < measurement.y - 100, 'The switch scrolls away with the launch rows');
+      if (wide) {
+        assert(Math.abs(box(scrolled, 'perf-median-timeToInteractive').y - box(initial, 'perf-median-timeToInteractive').y) < 1, 'The opposite pane stays still during header collapse');
+      }
+      await session.tap('performance-recent-list', { wheel: [0, -1000] });
+      await session.clock('settle');
+      const reopened = await snapshot();
+      assert(Math.abs(reopened.navigation.barHeight - initial.navigation.barHeight) < 1, 'Returning to the top reopens Performance’s header');
+      await session.tap('fixed-header');
+      await session.clock('settle');
+      assert.equal((await snapshot()).navigation.collapseScroller, null, 'Fixed content above a nested scroller keeps the header still');
+      await session.tap('fixed-header');
+      await session.clock('settle');
+      assert.equal((await snapshot()).navigation.collapseScroller, list.id, 'Removing fixed content restores header collapse');
+      await session.tap('native-updates');
+      await session.clock('settle');
+      const updates = await snapshot();
+      const updatesList = wide ? 'updates-details' : 'updates-panes-scroll';
+      assert.equal(updates.navigation.collapseScroller, box(updates, updatesList).id, 'Updates binds the shared header to its leading scroller');
+      if (wide) {
+        assert.equal(updates.navigation.arrangedScrollers.length, 2, 'Updates gives both panes native inset ownership');
+      }
+      await session.tap(updatesList, { wheel: [0, 200] });
+      await session.clock('settle');
+      const updatesScrolled = await snapshot();
+      assert(updatesScrolled.navigation.barHeight < updates.navigation.barHeight - 30, 'Updates collapses its native large title');
+      if (wide) {
+        assert(Math.abs(box(updatesScrolled, 'updates-check').y - box(updates, 'updates-check').y) < 1, 'Updates’ opposite pane stays still while its header collapses');
+      }
+      console.log(`PASS: ${size} safe-area placement, pane grouping, native header collapse, and stable peer insets`);
+    } finally {
+      await session.close();
+    }
   }
 }
 
@@ -197,7 +293,7 @@ async function checkRepeatedMarks(exact: string, root: string, plan: string): Pr
 }
 
 // Open the Duo’s hinge so UIKit arranges panes using the physical window scene
-function prepareSimulator(exact: string, directory: string, simulator: string): void {
+function prepareSimulator(exact: string, directory: string, simulator: string): boolean {
   function checked(arguments_: string[]): string {
     const result = Bun.spawnSync(arguments_);
     assert.equal(result.exitCode, 0, `${arguments_.join(' ')} failed: ${result.stderr.toString()}`);
@@ -213,13 +309,14 @@ function prepareSimulator(exact: string, directory: string, simulator: string): 
     checked(['xcrun', 'simctl', 'bootstatus', simulator, '-b']);
   }
   if (!device.deviceTypeIdentifier.endsWith('.iPhone-Duo')) {
-    return;
+    return false;
   }
   const helper = resolve(directory, 'hinge_helper');
   checked(['xcrun', '-sdk', 'iphonesimulator', 'clang', '-arch', process.arch, '-mios-simulator-version-min=17.0', '-O2', '-framework', 'IOKit', '-framework', 'CoreFoundation', '-o', helper, resolve(exact, 'scripts/duo/hinge_helper.c')]);
   checked(['codesign', '-s', '-', helper]);
   checked(['xcrun', 'simctl', 'spawn', simulator, helper, 'orient', 'portrait']);
   checked(['xcrun', 'simctl', 'spawn', simulator, helper, 'set', '180']);
+  return true;
 }
 
 await main();
