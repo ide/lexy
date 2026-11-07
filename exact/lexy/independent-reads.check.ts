@@ -164,11 +164,33 @@ respond(oldDiscovery, cars('Old'));
 assert.equal((await oldGarage).car.nickName, 'Old');
 assert.equal(savedName(), 'Current');
 
+let observeRequests = 0;
+const performanceModule: NativeModule = {
+  available: true,
+  call(): Record<string, unknown> { return {}; },
+  async later(request): Promise<Record<string, unknown>> {
+    if (request.op === 'observe') {
+      observeRequests++;
+      return { session: 'performance', metrics: [1, 3].map((time): Record<string, unknown> => ({ session: 'performance', time, category: 'navigation', name: 'tti', value: 0.1, route: '/settings', params: {} })) };
+    }
+    return {};
+  },
+  watch(): void {},
+};
+database.query('INSERT OR REPLACE INTO choices VALUES (?, ?)').run('developer', 'on');
+database.query('INSERT OR REPLACE INTO choices VALUES (?, ?)').run('observe-cleared', '2');
+await answer('developerMode', [], store, storage, performanceModule);
 // Hold the first transaction until the newer response is ready to save
 const gate = pauseGarageWrite();
 const beforeWrite = answer('garage', [true, 3, at + 2], store, storage, null);
 respond(await nextRequest(), cars('Before'));
 await gate.entered.promise;
+const performanceRead = answer('observed', [200, 1], store, storage, performanceModule);
+await nextTurn();
+assert.equal(observeRequests, 1, 'Performance queries Observe while a vehicle-cache write holds the database');
+const performanceResult = await performanceRead;
+assert.equal(performanceResult.ok, true, 'The metrics answer does not wait for that write');
+assert.deepEqual(performanceResult.metrics.map((metric): number => metric.time), [3], 'Developer settings load the saved clear-history cutoff');
 const afterWrite = answer('garage', [true, 4, at + 3], store, storage, null);
 respond(await nextRequest(), cars('After'));
 // Drain response decoding so the second write reaches the held database queue

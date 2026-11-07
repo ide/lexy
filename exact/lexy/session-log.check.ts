@@ -189,34 +189,48 @@ console.log('connectivity grace waits on a background return without adding a co
 let clockRead = 0;
 let failObserve = false;
 let hasClock = true;
+let missedClock = -1;
 const observedModule: NativeModule = {
   available: true,
   call(): Record<string, unknown> {
     if (!hasClock) {
       throw new Error('Clock unavailable');
     }
-    return { ms: [0, 20, 100, 130][clockRead++], epoch: now + 4000 };
+    const read = clockRead++;
+    if (read === missedClock) {
+      throw new Error('Clock sample unavailable');
+    }
+    return { ms: [0, 20, 100, 130][read], epoch: now + 4000 };
   },
   async later(): Promise<Record<string, unknown>> {
     if (failObserve) {
       throw new Error('Observe unavailable');
     }
-    return { session: 'diagnostic', metrics: [{ session: 'diagnostic', time: 1793800000, category: 'navigation', name: 'tti', value: 0.1, route: '/settings', params: {} }] };
+    return { session: 'diagnostic', observeMs: 8, metrics: [{ session: 'diagnostic', time: 1793800000, category: 'navigation', name: 'tti', value: 0.1, route: '/settings', params: {} }] };
   },
   watch(): void {},
 };
 assert.equal((await answer('observed', [200, 1], store, storage, observedModule)).ok, true);
 l = await logged(200, 'performance data');
 assert.equal(l.events[0].at, now + 4000);
-assert.equal(l.events[0].detail, 'ready; total=130 ms; saved preference=20 ms; Observe=80 ms; processing=30 ms; rows=1');
+assert.equal(l.events[0].detail, 'ready; total=130 ms; saved preference=20 ms; Observe=80 ms; processing=30 ms; native Observe=8 ms; rows=1');
 failObserve = true;
 clockRead = 0;
 assert.equal((await answer('observed', [200, 2], store, storage, observedModule)).ok, false);
-l = await logged(200, 'performance data', 'failed; total=100 ms; saved preference=20 ms; Observe=80 ms; rows=0');
-assert.equal(l.events[0].detail, 'failed; total=100 ms; saved preference=20 ms; Observe=80 ms; rows=0');
+l = await logged(200, 'performance data', 'failed; total=100 ms; saved preference=20 ms; Observe=80 ms; processing=unavailable; rows=0');
+assert.equal(l.events[0].detail, 'failed; total=100 ms; saved preference=20 ms; Observe=80 ms; processing=unavailable; rows=0');
+failObserve = false;
+clockRead = 0;
+missedClock = 1;
+assert.equal((await answer('observed', [200, 3], store, storage, observedModule)).ok, true);
+l = await logged(200, 'performance data', 'ready; total=130 ms; saved preference=unavailable; Observe=unavailable; processing=30 ms; native Observe=8 ms; clock errors=Clock sample unavailable; rows=1');
+assert(!l.events[0].detail.includes('Observe=100 ms'), 'A missing preference boundary cannot inflate the Observe duration');
+missedClock = -1;
 hasClock = false;
 failObserve = false;
 assert.equal((await answer('observed', [200, 3], store, storage, observedModule)).ok, true, 'A diagnostic clock failure preserves the metrics answer');
+assert.equal((await answer('clearObserved', [], store, storage, observedModule)).ok, true);
+assert.equal((await answer('observed', [200, 4], store, storage, observedModule)).metrics.length, 0, 'Clear updates the cached cutoff before refreshing metrics');
 console.log('Performance records storage, Observe and processing durations, including failures; unavailable diagnostics preserve the answer');
 
 clearTimeout(timeout);

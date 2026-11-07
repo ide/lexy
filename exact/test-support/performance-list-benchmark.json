@@ -933,5 +933,190 @@
       }
     },
     "limitation": "The first-open-only phone symptom is not reproduced here. The regression test observes actual SQLite file opens: the old service opens on main, while the new service opens only on its worker. This measures constructor blocking, not end-to-end first-paint latency."
+  },
+  "sharedDatabaseQueue": {
+    "environment": "Bun 1.4.2 on macOS; real Lexy source functions and in-memory SQLite; 200 mock Observe metrics; an unrelated choices write holds the shared database queue for 100 ms; one warm-up pair followed by five alternating before/after pairs. Measures data-answer readiness, not phone UI or a reproduction of the supplied phone stall.",
+    "before": "2765cec (signed device worktree; production app ID only)",
+    "after": "working tree: cached clear cutoff loaded with developer settings",
+    "rows": [
+      {
+        "variant": "before",
+        "round": -1,
+        "warmup": true,
+        "readyMs": 105.137583,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": -1,
+        "warmup": true,
+        "readyMs": 0.16137500000002092,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 0,
+        "warmup": false,
+        "readyMs": 104.003042,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 0,
+        "warmup": false,
+        "readyMs": 0.11408399999993435,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 1,
+        "warmup": false,
+        "readyMs": 120.13183400000003,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 1,
+        "warmup": false,
+        "readyMs": 0.08124999999995453,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 2,
+        "warmup": false,
+        "readyMs": 101.31366700000001,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 2,
+        "warmup": false,
+        "readyMs": 0.13274999999998727,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 3,
+        "warmup": false,
+        "readyMs": 100.83237499999996,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 3,
+        "warmup": false,
+        "readyMs": 0.10499999999979082,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "before",
+        "round": 4,
+        "warmup": false,
+        "readyMs": 171.57391600000005,
+        "readyWhileWriteHeld": false,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      },
+      {
+        "variant": "after",
+        "round": 4,
+        "warmup": false,
+        "readyMs": 0.08816700000011224,
+        "readyWhileWriteHeld": true,
+        "metrics": 200,
+        "observeRequested": true,
+        "load": [
+          503.92138671875,
+          471.33642578125,
+          625.07666015625
+        ]
+      }
+    ],
+    "summary": {
+      "before": {
+        "median": 104.003042,
+        "iqr": 18.818167000000017
+      },
+      "after": {
+        "median": 0.10499999999979082,
+        "iqr": 0.02591699999982211
+      }
+    }
   }
 }

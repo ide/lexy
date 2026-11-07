@@ -88,8 +88,11 @@ final class LexyModule: ExactModule {
         // This device's Observe metrics: the service's own answer, as it gives it.
         if request["op"] as? String == "observe" {
             let limit = (request["limit"] as? Int) ?? Int((request["limit"] as? Double) ?? 50)
+            let began = ProcessInfo.processInfo.systemUptime
             service("observe", ["op": "recent", "limit": limit]) { answer in
-                reply.send(answer ?? [:])
+                var result = answer ?? [:]
+                result["observeMs"] = (ProcessInfo.processInfo.systemUptime - began) * 1000
+                reply.send(result)
             }
             return
         }

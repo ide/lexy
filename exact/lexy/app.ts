@@ -1,7 +1,7 @@
 // HTTP and response decoding; @exact/oauth keeps the Lexus session. Contract
 // owns app state. Demo mode uses demo.ts's local server and needs no Lexus account.
 import { oauth, OAuthError, type OAuthConfig, type OAuthEvent, type OAuthProvider, type OAuthResult, type OAuthStore } from '@exact/oauth';
-import type { Answer, Database, NativeModule, Overlay, Result, SQLCommand, SQLValue, Sources, Storage, Store } from './app.contract.d.ts';
+import type { Answer, Database, NativeModule, Overlay, Result, SQLCommand, SQLRows, SQLValue, Sources, Storage, Store } from './app.contract.d.ts';
 import { demoFetch, demoServer, previewFetch, PREVIEW_SCENARIOS, type PreviewScenario } from './demo';
 
 export const appId = 'app.ide.lexy.exact';
@@ -1155,6 +1155,16 @@ async function developerMode(on: boolean): Promise<Result<'developerMode'>> {
   return { on, origin, device };
 }
 
+async function developerEnabled(): Promise<boolean> {
+  const rows = await withDb((db): Promise<SQLRows> => db.query('SELECT key, value FROM choices WHERE key IN (?, ?)', ['developer', 'observe-cleared'])).catch((): null => null);
+  if (!rows) {
+    return false;
+  }
+  const values = new Map(rows.rows.map(([key, value]): [string, string] => [String(key), String(value)]));
+  observedCutoff ??= Number(values.get('observe-cleared') ?? 0) || 0;
+  return values.get('developer') === 'on';
+}
+
 // --- Sources ---------------------------------------------------------------------
 
 const sources: Sources = {
@@ -1241,7 +1251,7 @@ const sources: Sources = {
   // Developer mode, per device (per browser on the web): a `lexy://developer`
   // link turns it on (on the web, the page's `/settings?developer=on`), and
   // Developer Tools' switch turns it off
-  developerMode: async () => developerMode((await choice('developer')) === 'on'),
+  developerMode: async () => developerMode(await developerEnabled()),
   setDeveloperMode: async ([on]) => {
     await choose('developer', on ? 'on' : 'off');
     return developerMode(on);
@@ -1271,6 +1281,15 @@ const sources: Sources = {
 // module asks it for the newest. Each startup mark's median is over those kept.
 type Observed = Result<'observed'>;
 const noObserved: Observed = { ok: false, session: '', launch: '', latest: [], metrics: [], summary: [] };
+let observedCutoff: number | undefined;
+
+async function storedObservedCutoff(): Promise<number> {
+  const rows = await withDb((db): Promise<SQLRows> => db.query('SELECT value FROM choices WHERE key = ?', ['observe-cleared'])).catch((): null => null);
+  if (rows) {
+    observedCutoff ??= Number(rows.rows[0]?.[0] ?? 0) || 0;
+  }
+  return observedCutoff ?? 0;
+}
 // Observe's launch phases, in the order they happen, as one line.
 const PHASES: [string, string][] = [['phase.exec', 'exec'], ['phase.initializers', 'initializers'], ['phase.uikit', 'UIKit to app delegate'], ['phase.launching', 'app delegate launch'], ['phase.scene', 'scene'], ['phase.boot_wait', 'boot wait'], ['phase.boot', 'boot'], ['boot.runner', 'runner + first layout'], ['boot.apply', 'first batch to UIKit'], ['phase.present', 'first frame'], ['phase.activate', 'activation'], ['data.draw_receipt', 'until first draw'], ['data.app_module', 'app module'], ['data.wait', 'data module wait'], ['data.ready', 'data ready'], ['data.apply', 'first data batch']];
 function phases(params: Record<string, unknown> | undefined, name: string): string {
@@ -1295,7 +1314,10 @@ async function clearObserved(): Promise<Result<'clearObserved'>> {
   const r = await native.later({ op: 'observe', limit: 1 }).catch(() => null);
   if (!Array.isArray(r?.metrics)) return { ok: false };
   const newest = num((r.metrics as Record<string, unknown>[])[0]?.time);
-  if (newest > 0) await choose('observe-cleared', String(newest));
+  if (newest > 0) {
+    await choose('observe-cleared', String(newest));
+    observedCutoff = newest;
+  }
   return { ok: true };
 }
 
@@ -1321,33 +1343,36 @@ function order(name: string): number {
 async function observed(limit: number): Promise<Observed> {
   const module = native;
   if (!module?.available || limit <= 0) return noObserved;
+  const clockErrors: string[] = [];
   const clock = (): { ms: number; epoch: number } | null => {
     try {
       const value = module.call({ op: 'performance-clock' });
-      return typeof value.ms === 'number' && typeof value.epoch === 'number' ? { ms: value.ms, epoch: value.epoch } : null;
-    } catch {
+      if (typeof value.ms === 'number' && typeof value.epoch === 'number') {
+        return { ms: value.ms, epoch: value.epoch };
+      }
+      clockErrors.push('Invalid clock response');
+      return null;
+    } catch (e) {
+      clockErrors.push(message(e).slice(0, 200));
       return null;
     }
   };
   const began = clock();
-  let previous = began?.ms ?? 0;
+  let preferenceDone: ReturnType<typeof clock> = null;
+  let observeDone: ReturnType<typeof clock> = null;
+  let nativeMs: number | undefined;
   let phase = 'saved preference';
   let outcome = 'failed';
   let count = 0;
-  const stages: string[] = [];
-  const mark = (): void => {
-    const now = began ? clock() : null;
-    if (now) {
-      stages.push(`${phase}=${Math.round(now.ms - previous)} ms`);
-      previous = now.ms;
-    }
-  };
+  const duration = (name: string, from: ReturnType<typeof clock>, to: ReturnType<typeof clock>): string =>
+    `${name}=${from && to ? `${Math.round(to.ms - from.ms)} ms` : 'unavailable'}`;
   try {
-    const cleared = Number(await choice('observe-cleared') ?? 0) || 0;
-    mark();
+    const cleared = observedCutoff ?? await storedObservedCutoff();
+    preferenceDone = began ? clock() : null;
     phase = 'Observe';
     const r = await module.later({ op: 'observe', limit });
-    mark();
+    observeDone = began ? clock() : null;
+    nativeMs = typeof r.observeMs === 'number' ? r.observeMs : undefined;
     phase = 'processing';
     if (!Array.isArray(r.metrics)) {
       outcome = 'unavailable';
@@ -1403,8 +1428,15 @@ async function observed(limit: number): Promise<Observed> {
     return noObserved;
   } finally {
     if (began) {
-      mark();
-      logSession(began.epoch, 'performance data', `${outcome}; total=${Math.round(previous - began.ms)} ms; ${stages.join('; ')}; rows=${count}`);
+      const ended = clock();
+      const stages = [duration('total', began, ended), duration('saved preference', began, phase === 'saved preference' ? ended : preferenceDone), duration('Observe', preferenceDone, phase === 'Observe' ? ended : observeDone), duration('processing', phase === 'processing' ? observeDone : null, ended)];
+      if (nativeMs !== undefined) {
+        stages.push(`native Observe=${Math.round(nativeMs)} ms`);
+      }
+      if (clockErrors.length) {
+        stages.push(`clock errors=${clockErrors.join(' | ')}`);
+      }
+      logSession(began.epoch, 'performance data', `${outcome}; ${stages.join('; ')}; rows=${count}`);
     }
   }
 }
