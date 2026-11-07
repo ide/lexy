@@ -710,5 +710,228 @@
         }
       ]
     }
+  },
+  "coldObserveInitialization20261106": {
+    "environment": "macOS 27.2; Xcode 27.1 release; fresh service process per run; prepopulated SQLite with 20,000 expired metrics and 20,000 expired logs; one warm-up pair and five alternating before/after pairs; constructor on main; query and event processing on the serial service queue; measures constructor blocking, not displayed frames or phone timings",
+    "bytes": 10457088,
+    "rows": [
+      {
+        "round": -1,
+        "variant": "before",
+        "warmup": true,
+        "readyMs": 162.701875,
+        "returnedMs": 138.725625,
+        "threads": {
+          "mainOpens": 2,
+          "totalOpens": 2
+        },
+        "load": [
+          322.09912109375,
+          490.67236328125,
+          452.64501953125
+        ]
+      },
+      {
+        "round": -1,
+        "variant": "after",
+        "warmup": true,
+        "threads": {
+          "mainOpens": 0,
+          "totalOpens": 2
+        },
+        "returnedMs": 29.629583,
+        "readyMs": 105.97525,
+        "load": [
+          322.09912109375,
+          490.67236328125,
+          452.64501953125
+        ]
+      },
+      {
+        "round": 0,
+        "variant": "before",
+        "warmup": false,
+        "returnedMs": 70.640333,
+        "readyMs": 75.012958,
+        "threads": {
+          "mainOpens": 2,
+          "totalOpens": 2
+        },
+        "load": [
+          322.09912109375,
+          490.67236328125,
+          452.64501953125
+        ]
+      },
+      {
+        "round": 0,
+        "variant": "after",
+        "warmup": false,
+        "threads": {
+          "mainOpens": 0,
+          "totalOpens": 2
+        },
+        "returnedMs": 7.891625,
+        "readyMs": 95.102958,
+        "load": [
+          322.09912109375,
+          490.67236328125,
+          452.64501953125
+        ]
+      },
+      {
+        "round": 1,
+        "variant": "before",
+        "warmup": false,
+        "returnedMs": 125.181667,
+        "readyMs": 129.97875,
+        "threads": {
+          "totalOpens": 2,
+          "mainOpens": 2
+        },
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 1,
+        "variant": "after",
+        "warmup": false,
+        "readyMs": 65.756625,
+        "threads": {
+          "totalOpens": 2,
+          "mainOpens": 0
+        },
+        "returnedMs": 5.126291,
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 2,
+        "variant": "before",
+        "warmup": false,
+        "returnedMs": 58.0455,
+        "threads": {
+          "mainOpens": 2,
+          "totalOpens": 2
+        },
+        "readyMs": 62.666833,
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 2,
+        "variant": "after",
+        "warmup": false,
+        "returnedMs": 5.415375,
+        "threads": {
+          "totalOpens": 2,
+          "mainOpens": 0
+        },
+        "readyMs": 61.5025,
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 3,
+        "variant": "before",
+        "warmup": false,
+        "readyMs": 57.350583,
+        "returnedMs": 53.54575,
+        "threads": {
+          "mainOpens": 2,
+          "totalOpens": 2
+        },
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 3,
+        "variant": "after",
+        "warmup": false,
+        "readyMs": 69.999125,
+        "returnedMs": 4.603709,
+        "threads": {
+          "totalOpens": 2,
+          "mainOpens": 0
+        },
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 4,
+        "variant": "before",
+        "warmup": false,
+        "readyMs": 71.049708,
+        "returnedMs": 65.613917,
+        "threads": {
+          "mainOpens": 2,
+          "totalOpens": 2
+        },
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      },
+      {
+        "round": 4,
+        "variant": "after",
+        "warmup": false,
+        "readyMs": 91.269,
+        "returnedMs": 14.069583,
+        "threads": {
+          "mainOpens": 0,
+          "totalOpens": 2
+        },
+        "load": [
+          337.8662109375,
+          491.142578125,
+          453.03369140625
+        ]
+      }
+    ],
+    "runtime": "fb00fca6c68c8a69e395d624a22fa2f5c31553ce",
+    "beforeRuntime": "3a8a19bed8b7deccc426eaef432f60da6a20257f",
+    "summary": {
+      "before": {
+        "returnedMs": {
+          "median": 65.613917,
+          "interquartileRange": 12.594833000000001
+        },
+        "readyMs": {
+          "median": 71.049708,
+          "interquartileRange": 12.346125
+        }
+      },
+      "after": {
+        "returnedMs": {
+          "median": 5.415375,
+          "interquartileRange": 2.765334
+        },
+        "readyMs": {
+          "median": 69.999125,
+          "interquartileRange": 25.512375000000006
+        }
+      }
+    },
+    "limitation": "The first-open-only phone symptom is not reproduced here. The regression test observes actual SQLite file opens: the old service opens on main, while the new service opens only on its worker. This measures constructor blocking, not end-to-end first-paint latency."
   }
 }
