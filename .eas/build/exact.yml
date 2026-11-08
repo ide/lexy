@@ -18,8 +18,7 @@ build:
         outputs: [hermes_key, hermes_cache]
         command: bash exact/ci/ios.sh deps
 
-    # The Hermes inputs exact2 links take ~15 minutes to build from source;
-    # they are keyed on the Hermes pin and the Xcode build.
+    # Verified Hermes bundles are keyed on the pinned bundle table.
     - eas/restore_cache:
         name: Restore Hermes
         inputs:
