@@ -27,9 +27,9 @@ The Swift module provides MapKit, geocoding, maps-app links, and haptics.
 Use the Bun and Exact revisions in [`ci/pins.sh`](ci/pins.sh), the Rust toolchain
 in [`lexy/rust-toolchain.toml`](lexy/rust-toolchain.toml), and Xcode 27.1 release.
 Exact and Lexy must be sibling checkouts: the app's Cargo paths point to
-`../../../exact2`. Exact's build tools provision the Hermes inputs they need.
+`../../../exact2`. The build uses Exact's pinned Hermes bundles.
 Run `bun install --frozen-lockfile` in the Exact checkout first, then in
-`exact/lexy`, which copies `@exact/oauth` from that checkout; run it there
+`exact/lexy`, which resolves `@exact/oauth` from that checkout; run it there
 again after the Exact checkout changes.
 
 Build a simulator app without installing or launching it:
@@ -105,7 +105,16 @@ snapshots, maps preferences, and concurrent reads. Screen specs live in
 
 The screen checks use the real Status and Performance components with fixture data and no Lexus requests. Build the iOS development app first, then run `EXACT_SIM=<test-simulator-udid> bun exact/lexy/screens.check.ts` from the repository root. The checks cover disabled remote controls, a climate error waiting behind a command confirmation, loading and error messages, the phone and unfolded Performance lists, and row identity when a launch mark arrives earlier than an existing mark.
 
-The [Performance list comparison](test-support/performance-list-benchmark.json) uses an iOS 27.1 Duo simulator at 390×844 with 200 navigation metrics, one warm-up pair, then five alternating pairs. Median open time in ms (IQR) was 260 (250–305) before virtualization and 111 (106–132) after; process CPU time in ms was 260 (220–260) and 60 (60–80), measured with 10 ms resolution. Resident-memory growth in MiB was 60.2 (59.8–60.3) and 35.9 (34.8–36.0). The first viewport and its preload constructed 200 navigation rows before and 17 after. The Mac’s one-minute load average ranged from 166 to 207; these are simulator observations, not phone timings or render-server memory measurements.
+The [Performance list benchmark](test-support/performance-list-benchmark.json) compares an eager list with a viewport list on an iOS 27.1 Duo simulator at 390×844 with 200 navigation metrics. It uses one warm-up pair and five alternating measured pairs. Values are medians with interquartile ranges in parentheses.
+
+| Metric | Eager list | Viewport list |
+| --- | --- | --- |
+| Open time (ms) | 260 (250–305) | 111 (106–132) |
+| Process CPU time (ms) | 260 (220–260) | 60 (60–80) |
+| Resident-memory growth (MiB) | 60.2 (59.8–60.3) | 35.9 (34.8–36.0) |
+| Navigation rows constructed for the first viewport and preload | 200 | 17 |
+
+CPU measurements have 10 ms resolution. Recorded one-minute load averages span 166–207. The artifact identifies the source revisions; these fixture results do not establish current-build timings, phone timings or render-server memory use.
 
 ## Runtime rules
 

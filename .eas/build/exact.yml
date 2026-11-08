@@ -18,7 +18,7 @@ build:
         outputs: [hermes_key, hermes_cache]
         command: bash exact/ci/ios.sh deps
 
-    # Verified Hermes bundles are keyed on the pinned bundle table.
+    # Cache verified Hermes bundles by their pinned bundle table
     - eas/restore_cache:
         name: Restore Hermes
         inputs:

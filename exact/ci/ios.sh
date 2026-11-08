@@ -1,20 +1,18 @@
 #!/bin/bash
-# Build the Exact app (exact/lexy) as an ad hoc .ipa on a Mac with nothing but
-# Xcode on it: EAS's macOS workers run it from .eas/build/exact.yml, one phase
-# per step, and it runs the same way on a developer Mac.
+# Build the Exact app as a signed ad hoc IPA on macOS
+# EAS runs one phase per step in .eas/build/exact.yml.
 #
 #   exact/ci/ios.sh toolchain          Bun, Rust (+ aarch64-apple-ios), the Metal toolchain
 #   exact/ci/ios.sh deps               exact2 at the pinned commit beside this repo, its bun install
-#   exact/ci/ios.sh hermes             the verified Hermes bundles Exact links (downloaded once, then cached)
+#   exact/ci/ios.sh hermes             install and verify pinned Hermes bundles
 #   exact/ci/ios.sh signing <creds>    keychain + profile from EAS's buildCredentials JSON
 #   exact/ci/ios.sh archive            app id, version contract, `bun exact.mjs ios --device --archive`
 #   exact/ci/ios.sh cleanup            removes the keychain from the search list
 #
-# Layout: exact/lexy's Cargo paths name ../../../exact2, so exact2 is cloned
-# beside the repo root. Hermes bundles live in $CARGO_HOME/hermes-lean-sys. The
-# phases share state through $WORK/.exact-ci/env.sh (EAS runs each step in a
-# fresh shell). Overrides: EXACT_IDENTITY + EXACT_PROFILE (skip `signing`),
-# EXACT_CI_VERSION, EXACT_CI_BUILD_NUMBER.
+# Keep Exact beside the repository to satisfy exact/lexy's Cargo paths.
+# Share phase settings through $WORK/.exact-ci/env.sh because EAS uses a fresh shell
+# for each step. EXACT_IDENTITY and EXACT_PROFILE supply signing credentials;
+# EXACT_CI_VERSION and EXACT_CI_BUILD_NUMBER override the version.
 set -euo pipefail
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
@@ -28,12 +26,11 @@ mkdir -p "$STATE"
 touch "$STATE/env.sh"
 # shellcheck disable=SC1091
 . "$STATE/env.sh"
-HERMES_CACHE=${CARGO_HOME:-$HOME/.cargo}/hermes-lean-sys
 
 log() { printf '\n== exact/ci: %s\n' "$*" >&2; }
 die() { printf 'exact/ci: %s\n' "$*" >&2; exit 1; }
 remember() { printf '%s\n' "$@" >> "$STATE/env.sh"; }
-# A step output when EAS runs us, else just printed.
+# Publish step outputs to EAS and print them for local runs
 output() { if command -v set-output >/dev/null 2>&1; then set-output "$1" "$2"; fi; printf '%s=%s\n' "$1" "$2"; }
 
 toolchain() {
@@ -68,6 +65,7 @@ toolchain() {
 }
 
 deps() {
+  local directory bundle_digest
   log "exact2 $EXACT2_COMMIT"
   if [ "$(git -C "$EXACT2" rev-parse HEAD 2>/dev/null || true)" != "$EXACT2_COMMIT" ]; then
     rm -rf "$EXACT2"
@@ -75,23 +73,20 @@ deps() {
     git -C "$EXACT2" fetch -q --depth 1 "$EXACT2_REPO" "$EXACT2_COMMIT"
     git -C "$EXACT2" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
   fi
-  (cd "$EXACT2" && bun install --frozen-lockfile >&2)
-  # The app's @exact/oauth, a copy of the pinned exact2's (package.json's file: path)
-  (cd "$APP" && bun install --frozen-lockfile >&2)
-  # exact2's scripts run Cargo --locked --offline: fetch both workspaces' crates first.
-  log "crates"
-  (cd "$EXACT2" && cargo fetch --locked >&2)
-  (cd "$APP" && cargo fetch --locked >&2)
+  # Install workspace dependencies before Exact builds with Cargo offline
+  log "workspace dependencies"
+  for directory in "$EXACT2" "$APP"; do
+    (cd "$directory" && bun install --frozen-lockfile >&2 && cargo fetch --locked >&2)
+  done
   # The bake's Rolldown resolves the repo root's tsconfig.json, which extends
   # expo/tsconfig.base: the Expo app's node_modules must be there.
   if [ ! -f "$REPO/node_modules/expo/tsconfig.base.json" ]; then
     log "the Expo app's node_modules (pnpm)"
     (cd "$REPO" && pnpm install --frozen-lockfile >&2)
   fi
-  local pin
-  pin=$(shasum -a 256 "$EXACT2/vendor/ibex/crates/hermes-lean-sys/build_support.rs" | cut -d ' ' -f 1)
-  output hermes_key "exact-hermes-$HERMES_CACHE_EPOCH-$pin-$(uname -m)"
-  output hermes_cache "$HERMES_CACHE"
+  bundle_digest=$(shasum -a 256 "$EXACT2/vendor/ibex/crates/hermes-lean-sys/build_support.rs" | cut -d ' ' -f 1)
+  output hermes_key "exact-hermes-$HERMES_CACHE_EPOCH-$bundle_digest-$(uname -m)"
+  output hermes_cache "${CARGO_HOME:-$HOME/.cargo}/hermes-lean-sys"
 }
 
 hermes() {

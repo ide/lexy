@@ -1137,9 +1137,7 @@ async function mapsApp(store: Store): Promise<Result<'mapsApp'>> {
   return { provider, apple: installed.apple === true, google: installed.google === true, waze: installed.waze === true };
 }
 
-// Developer mode, and where Lexy runs: the page's origin on the web (its
-// `/settings?developer=on` is the link there), else the device's name from
-// Lexy's module ("iPhone", "iPad", "Mac"; "" where there is no module).
+// Load the clear-history cutoff with settings so Performance needs no database read
 async function developerMode(on?: boolean): Promise<Result<'developerMode'>> {
   const rows = await withDb((db): Promise<SQLRows> => db.query('SELECT key, value FROM choices WHERE key IN (?, ?)', ['developer', 'observe-cleared'])).catch((): null => null);
   const values = new Map(rows?.rows.map(([key, value]): [string, string] => [String(key), String(value)]));
@@ -1149,8 +1147,6 @@ async function developerMode(on?: boolean): Promise<Result<'developerMode'>> {
     try {
       device = str((await native.later({ op: 'device' })).model);
     } catch {
-      // An older build's module has no `device`. Each such build said "this
-      // iPhone", so an update of this file reaching one still does.
       device = 'iPhone';
     }
   }
@@ -1289,9 +1285,7 @@ function phases(params: Record<string, unknown> | undefined, name: string): stri
   return typeof type === 'string' ? `${type} launch. ${withParts}` : withParts;
 }
 
-// Clear hides what is recorded so far from this screen only: Observe still
-// sends it and keeps it its 7 days. It keeps the newest metric's time, so it
-// needs no clock of its own; with nothing read, nothing is hidden.
+// Filter the local view by metric timestamps; Observe controls retention and export
 async function clearObserved(): Promise<Result<'clearObserved'>> {
   if (!native?.available) return { ok: false, clearedAt: 0 };
   const r = await native.later({ op: 'observe', limit: 1 }).catch(() => null);
@@ -1342,7 +1336,8 @@ async function observed(limit: number, clearedAt: number): Promise<Observed> {
   const began = clock();
   let observeDone: ReturnType<typeof clock> = null;
   let nativeMs: number | undefined;
-  let phase = 'Observe';
+  // Track completion separately so a missing clock sample cannot inflate Observe time
+  let observeComplete = false;
   let outcome = 'failed';
   let count = 0;
   const duration = (name: string, from: ReturnType<typeof clock>, to: ReturnType<typeof clock>): string =>
@@ -1351,7 +1346,7 @@ async function observed(limit: number, clearedAt: number): Promise<Observed> {
     const r = await module.later({ op: 'observe', limit });
     observeDone = began ? clock() : null;
     nativeMs = typeof r.observeMs === 'number' ? r.observeMs : undefined;
-    phase = 'processing';
+    observeComplete = true;
     if (!Array.isArray(r.metrics)) {
       outcome = 'unavailable';
       return noObserved;
@@ -1360,9 +1355,7 @@ async function observed(limit: number, clearedAt: number): Promise<Observed> {
     const records = (r.metrics as Record<string, unknown>[])
       .map(m => ({ m, params: (m.params ?? {}) as Record<string, unknown> }))
       .filter(({ m }) => num(m.time) > clearedAt);
-    // The launch route's own render and interactive marks count from Exact's
-    // boot, a little after the launch's: the launch's TTR and TTI say it, and
-    // name its route.
+    // Exclude the boot route's navigation marks because launch TTR/TTI already cover it
     const launchRoute = new Map<string, string>();
     for (const { m, params } of records) if (params['exact.nav.anchor'] === 'boot') launchRoute.set(str(m.session), str(m.route));
     const kept = records.filter(({ params }) => params['exact.nav.anchor'] !== 'boot');
@@ -1382,8 +1375,7 @@ async function observed(limit: number, clearedAt: number): Promise<Observed> {
         steps: steps(params, category, num(m.value)),
       };
     });
-    // A screen's render, then its interactive: newest first, a TTI is
-    // recorded just after its own TTR, so put the pair the way it happened.
+    // Show each navigation's render mark before its interactive mark
     for (let i = 0; i + 1 < metrics.length; i++) {
       const a = metrics[i], b = metrics[i + 1];
       if (a.category === 'navigation' && a.name === 'tti' && b.category === 'navigation' && b.name !== 'tti' && b.session === a.session && b.route === a.route) {
@@ -1407,7 +1399,11 @@ async function observed(limit: number, clearedAt: number): Promise<Observed> {
   } finally {
     if (began) {
       const ended = clock();
-      const stages = [duration('total', began, ended), duration('Observe', began, phase === 'Observe' ? ended : observeDone), duration('processing', phase === 'processing' ? observeDone : null, ended)];
+      const stages = [
+        duration('total', began, ended),
+        duration('Observe', began, observeComplete ? observeDone : ended),
+        duration('processing', observeComplete ? observeDone : null, ended),
+      ];
       if (nativeMs !== undefined) {
         stages.push(`native Observe=${Math.round(nativeMs)} ms`);
       }
