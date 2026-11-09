@@ -150,9 +150,13 @@ component Lexy
   state demoFailing = false
   mutation demoFailures as shape Done
   mutation demoTokens as shape Done
+  // A sign-in action's requests are out: from the action that sends the first until a `then` ends the chain at a
+  // step, a failure or a session. Pending requests cannot hold this: they read false in the commit between an answer
+  // and its `then`, which runs as a commit of its own.
+  state signRequest = false
   // A sign-out still landing counts: the package forgets the session before its revocation lands, and a sign-in
   // begun meanwhile would be reset by afterSignOut
-  derive signingIn = entering or pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real) or pending(left)
+  derive signingIn = entering or signRequest or pending(left)
   // A step's last answer has landed and its next screen opens a tick later
   // (authNavigation). A failure's return to credentials is not one, so its
   // spinner stops at once; a finished preview's is.
@@ -538,6 +542,7 @@ component Lexy
         lastChoiceLabel = ""
         signInfo = ""
         signControl = "sign-in-button"
+        signRequest = true
         if account.demo and previewScenario == ""
           send real = useDemo(false)
         else
@@ -563,6 +568,7 @@ component Lexy
         // Spin beside Resend Code only: Back's restart has no control on the
         // method screen to spin beside
         signControl = stage == "resend" ? "resend" : ""
+        signRequest = true
         if stage == "choice"
           lastChoice = -1
         send started = authStart(authAttempt + 1, previewScenario)
@@ -593,6 +599,7 @@ component Lexy
     restartStage = ""
     resending = false
     signControl = ""
+    signRequest = false
     signInfo = ""
     signStep = "credentials"
     signError = ""
@@ -611,6 +618,7 @@ component Lexy
       signError = ""
       // Show no spinner, which would only flash, since the demo answers at once
       signControl = ""
+      signRequest = true
       send demo = useDemo(true)
   // The demo's password goes straight to the tree, never into the field,
   // so iOS doesn't offer to save a made-up one.
@@ -625,6 +633,7 @@ component Lexy
       startOver()
     signError = signInError(retryCredentials ? "session" : stage, status)
     signInfo = ""
+    signRequest = false
     restartStage = ""
     resending = false
   action afterStart
@@ -640,6 +649,7 @@ component Lexy
               signInFailed("credentials", 200)
       case none
         signError = ""
+        signRequest = false
   action afterName
     match named
       case some(n)
@@ -651,6 +661,7 @@ component Lexy
             signInFailed((restartStage != "" ? restartStage : "credentials"), (n.ok ? 401 : n.status))
       case none
         signError = ""
+        signRequest = false
   action afterPassword
     match passed
       case some(n)
@@ -670,6 +681,7 @@ component Lexy
               nodeRaw = n.raw
               nodeTypes = n.types
               signInfo = (resending ? "Lexus sent a new code." : "")
+              signRequest = false
             if stepOf(n.done, n.types, n.asksCode) == "choice"
               if n.choices.length == 0
                 // A choice with nothing to choose is how the tree says "no such account".
@@ -678,6 +690,7 @@ component Lexy
                   signStep = "credentials"
                 restartStage = ""
                 resending = false
+                signRequest = false
               else
                 // Resend picks the method used last time, by its label;
                 // gone from the list, the user chooses again.
@@ -686,6 +699,7 @@ component Lexy
                 else
                   resending = false
                   restartStage = ""
+                  signRequest = false
                   signStep = "choice"
                   nodeRaw = n.raw
                   choices = n.choices
@@ -695,13 +709,15 @@ component Lexy
               signError = signInError("credentials", 200)
       case none
         signError = ""
+        signRequest = false
   action choose(index: number)
     if not signingIn and signStep == "choice" and index >= 0 and index < choices.length
       send felt = feel("impact-light")
       signError = ""
       lastChoice = index
       lastChoiceLabel = choices.filter((m, i) => i == index).join("")
-      signControl = `method-${index}`
+      signControl = "method-actions"
+      signRequest = true
       send chose = authChoose(authAttempt, previewScenario, nodeRaw, index)
   action afterChoice
     match chose
@@ -714,11 +730,13 @@ component Lexy
             signError = ""
             signInfo = (resending ? "Lexus sent a new code." : "")
             resending = false
+            signRequest = false
           else
             signInFailed(resending ? "resend" : "choice", n.status)
           restartStage = ""
       case none
         signError = ""
+        signRequest = false
   action verify
     if not signingIn and signStep == "otp"
       send felt = feel("impact-light")
@@ -728,6 +746,7 @@ component Lexy
         blur()
         signError = ""
         signControl = "verify-button"
+        signRequest = true
         send verified = authAnswer(authAttempt, previewScenario, nodeRaw, otpCallback(nodeTypes), code.trim())
   action afterCode
     match verified
@@ -744,12 +763,14 @@ component Lexy
                 nodeTypes = n.types
                 code = ""
                 signInfo = "Enter the new code Lexus sent you."
+                signRequest = false
                 focus("code")
               else
                 startOver()
                 signError = signInError("otp", 200)
       case none
         signError = ""
+        signRequest = false
   action afterFinish
     match finished
       case some(f)
@@ -760,11 +781,13 @@ component Lexy
           if f.ok and previewScenario != ""
             blur()
             previewDone = true
+            signRequest = false
             signStep = "credentials"
             password = ""
           if f.ok and previewScenario == ""
             sessionNoticeSeen = false
             entering = true
+            signRequest = false
             garageRev = garageRev + 1
             garageAt = time.epochAtZero + performanceNow()
             statusRev = statusRev + 1
@@ -776,6 +799,7 @@ component Lexy
             signError = signInError("session", f.status)
       case none
         signError = ""
+        signRequest = false
   action setDemoFailing(on: bool)
     demoFailing = on
     send demoFailures = setDemoFailures(on)

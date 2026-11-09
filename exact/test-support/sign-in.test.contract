@@ -35,10 +35,10 @@ test "the screen a step leaves keeps its disabled controls and its spinner while
   expect disabled "verify-button"
   expect disabled "method-0"
   expect disabled "method-1"
-  expect tree has "method-1-spinner"
+  expect tree has "method-actions-spinner"
   clock +1000
   expect enabled "method-1"
-  expect tree missing "method-1-spinner"
+  expect tree missing "method-actions-spinner"
   tap "resend"
   clock data
   clock settle

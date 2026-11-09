@@ -154,19 +154,17 @@ component LockScreen
         if step == "choice"
           // One width for every method, however many and however long, capped
           // in rem so the cap grows with the text size; a delivery address wraps
-          column testId="method-actions" gap=12 width="100%" max-width="20rem" align-self="center"
+          column testId="method-actions" position="relative" gap=12 width="100%" max-width="20rem" align-self="center"
             for m, i in choices key=m
-              box position="relative"
-                button press=choose(i) disabled=busy testId=`method-${i}` width="100%" appearance="auto" buttonStyle="tinted" accent-color="AccentColor" min-height=50 padding=16 border-radius=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align="left" gap=12
-                  // Clear while the spinner takes its place, so the label stays put
-                  image `symbol:icon.${choiceSymbol(m)}` font-size=17 -exact-tint-color=(spinnerAt == `method-${i}` ? "transparent" : accentInk(busy))
-                  text m font-size=17 font-weight=600 color=accentInk(busy) white-space="normal"
-                // Put the spinner in place of the pressed method's symbol, at the
-                // face's leading edge, as a button shows its activity indicator
-                // (Apple HIG, Buttons)
-                if spinnerAt == `method-${i}`
-                  row position="absolute" top=0 bottom=0 left=16 align-items="center" pointer-events="none"
-                    progress testId=`method-${i}-spinner` aria-label="Sending your code" color="-exact-secondary-label"
+              button press=choose(i) disabled=busy testId=`method-${i}` width="100%" appearance="auto" buttonStyle="tinted" accent-color="AccentColor" min-height=50 padding=16 border-radius=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align="left" gap=12
+                image `symbol:icon.${choiceSymbol(m)}` font-size=17 -exact-tint-color=accentInk(busy)
+                text m font-size=17 font-weight=600 color=accentInk(busy) white-space="normal"
+            // Centre the spinner below the methods, in the gap above the next
+            // line (the column's gap and the footnote's 8 px top padding),
+            // where it covers no method at any width
+            if spinnerAt == "method-actions"
+              row position="absolute" top="100%" left=0 right=0 height=(compact ? 24 : 32) justify-content="center" align-items="center" pointer-events="none"
+                progress testId="method-actions-spinner" aria-label="Sending your code" color="-exact-secondary-label"
         if step == "otp"
           // A section, so the keyboard's reveal of the code keeps Resend Code
           // and Verify above the keys
