@@ -117,3 +117,54 @@ test "a refused password or code enables its controls again at once and stops th
   expect enabled "code"
   expect tree missing "verify-button-spinner"
   expect tree has "sign-in-error"
+
+// The demo signs in through the same steps, against an in-memory Lexus that cannot fail a read, so
+// these check that the reads happen: a sign-in ends as a pull does, reading the status and the
+// climate settings again once the car has been asked to report (`statusRev`, `climateRev`), and a
+// climate change saved before then shows until that read lands.
+test "a sign-in reads the climate settings again after it asks the car to report" on macos
+  clock settle
+  tap "try-demo"
+  clock data
+  clock settle
+  clock data
+  clock settle
+  clock +5000
+  clock data
+  clock settle
+  clock +5000
+  clock data
+  clock settle
+  expect state primeOnSignIn == false
+  expect state statusRev == 2
+  expect state climateRev == 1
+  expect state climateRead.ok == true
+  expect state climate.on == true
+
+test "a climate change saved before the sign-in's re-read shows until that read lands" on macos
+  clock settle
+  tap "try-demo"
+  clock data
+  clock settle
+  clock data
+  clock settle
+  expect state primeOnSignIn == true
+  expect state climateRev == 0
+  expect state climateRead.ok == true
+  tap "climate-switch"
+  clock data
+  clock settle
+  expect state climateWrittenRev == 0
+  expect state climate.on == false
+  expect state climateRead.on == true
+  clock +5000
+  clock data
+  clock settle
+  clock +5000
+  clock data
+  clock settle
+  expect state primeOnSignIn == false
+  expect state climateRev == 1
+  expect state climateRead.on == false
+  expect state climate.on == false
+  expect state climateWritten == none

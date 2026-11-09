@@ -103,7 +103,7 @@ They cover sign-in and preview isolation, token refresh and sign-out, the sessio
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 
-The sign-in check drives Login Flow's mock tree, so it sends no Lexus requests. Build the macOS development app first (`bun exact.mjs mac` in `exact/lexy`), then run `bun exact/lexy/sign-in.check.ts` from the repository root. It covers three cases: the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle; Resend Code shows its notice where the code comes without a method choice; and a refused password or code enables the controls again at once.
+The sign-in check drives Login Flow's mock tree and the demo, so it sends no Lexus requests. Build the macOS development app first (`bun exact.mjs mac` in `exact/lexy`), then run `bun exact/lexy/sign-in.check.ts` from the repository root. It covers five cases: the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle; Resend Code shows its notice where the code comes without a method choice; a refused password or code enables the controls again at once; a sign-in reads the climate settings again after it asks the car to report; and a climate change saved before then shows until that read lands.
 
 The screen checks use the real Status and Performance components with fixture data and no Lexus requests. Build the iOS development app first, then run `EXACT_SIM=<test-simulator-udid> bun exact/lexy/screens.check.ts` from the repository root. The checks cover disabled remote controls, a climate error waiting behind a command confirmation, loading and error messages, the phone and unfolded Performance lists, and row identity when a launch mark arrives earlier than an existing mark.
 
@@ -123,8 +123,12 @@ CPU measurements have 10 ms resolution. Recorded one-minute load averages span 1
 - A pending resource retains its last answer. That answer may be displayed.
   An authenticated request goes with the access token it has; one the gateway
   refuses waits for the refresh in flight, or starts it.
-- A failed or malformed response preserves the last valid vehicle and telemetry.
-  A valid empty vehicle list is a separate result.
+- A failed or malformed response preserves the last valid vehicle, telemetry
+  and climate settings. A valid empty vehicle list is a separate result.
+- Every refresh reads the climate settings with the status: a sign-in, a
+  launch, a return to the app and a pull. A refresh that asks the car to
+  report reads them once it has asked. The polls that confirm a lock read
+  only the status.
 - Exact's `@exact/oauth` keeps the Lexus session (Exact LLP 1146 D5, D8, D9).
   Lexy answers the sign-in tree with its own screens and sends the
   authorization request with the tree's SSO token; the package exchanges the

@@ -43,6 +43,15 @@ for (const malformed of [{ payload: {} }, { payload: { status: {} } }, {
   assert.equal(failed.longitude, -122);
 }
 
+body = { payload: { settingsOn: true, temperature: 72, temperatureUnit: 'F', minTemp: 60, maxTemp: 85, tempInterval: 1, acOperations: [] } };
+const climate = await answer('climate', [car.vin, car, 0, at], store, storage, null);
+assert.equal(climate.ok, true);
+for (const malformed of [{ message: 'Temporarily unavailable' }, { payload: {} }, { payload: { settingsOn: 'on', temperature: 60 } }]) {
+  body = malformed;
+  assert.deepEqual(await answer('climate', [car.vin, car, 1, at + 1], store, storage, null), climate);
+}
+assert.equal((await answer('climate', ['VIN2', { ...car, vin: 'VIN2' }, 0, at], store, storage, null)).ok, false);
+
 statusCode = 503;
 body = { message: 'Temporarily unavailable' };
 const missing = await answer('status', ['VIN2', { ...car, vin: 'VIN2' }, 2, at], store, storage, null);
@@ -56,4 +65,4 @@ assert.equal(empty.ok, true);
 assert.equal(empty.car.vin, '');
 assert.equal(empty.carCount, 0);
 database.close();
-console.log('PASS: malformed replies preserve saved vehicle and telemetry; first failure and valid emptiness remain distinct');
+console.log('PASS: malformed replies preserve saved vehicle, telemetry and climate settings; first failure and valid emptiness remain distinct');

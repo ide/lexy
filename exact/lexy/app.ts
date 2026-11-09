@@ -1031,9 +1031,13 @@ async function rename(store: Store, car: Car, name: string, at: number): Promise
 type Climate = Result<'climate'>;
 const noClimate: Climate = { ok: false, raw: '', on: false, temperature: 0, unit: 'F', min: 0, max: 0, step: 1, front: false, frontEnabled: false, rear: false, rearEnabled: false };
 
+// A reply without the settings is malformed, so the read keeps its last good
+// answer, as the garage and status reads do (use-climate-settings.ts throws)
 function decodeClimate(body: Json): Climate {
   const p = rec(body.payload ?? body);
-  if (typeof p.settingsOn !== 'boolean') return noClimate;
+  if (typeof p.settingsOn !== 'boolean') {
+    throw new Error('Lexus returned incomplete climate settings. Try again.');
+  }
   const defrost = arr(p.acOperations).map(rec).find(o => o.categoryName === 'defrost' && o.available === true);
   const param = (name: string) => arr(defrost?.acParameters).map(rec).find(x => x.name === name && x.available === true);
   return {
