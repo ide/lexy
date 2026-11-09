@@ -446,7 +446,7 @@ telling.
 
 - While a retry the person started is out (Try again, Check again or a pull), Exact keeps the full-screen no-vehicle or failed-load state on screen with its button disabled until the answer lands, rather than swapping in the loading skeleton for the length of the request.
 
-- Exact animates its banners (offline, "Couldn't refresh" and the blue notice) as they come and go. A banner lies under the dashboard, which glides down on a spring to uncover it as it fades in; leaving, it fades out under the dashboard as the dashboard glides back over its place (a leaving node keeps its place in paint order, LLP 1083 D4). With Reduce Motion a banner only fades, and the dashboard moves at once. The dashboard also moves at once while launch lays it out: Exact lays it out again at the device's text size and the bars' insets, and a glide there would animate nothing visible while holding time to interactive until its spring settles.
+- Exact animates its banners (offline, "Couldn't refresh" and the blue notice) as they come and go. A banner lies under the dashboard, which glides down on a spring to uncover it as it fades in; leaving, it fades out under the dashboard as the dashboard glides back over its place (a leaving node keeps its place in paint order, LLP 1083 D4). With Reduce Motion a banner only fades, and the dashboard moves at once. The dashboard also moves at once when Exact lays the screen out again for something the device reports, at launch or later: the text size, the bars' insets or the fold. Exact glides only what the app's own changes move (LLP 1063 D6).
 
 | Concern | iOS | Android |
 | --- | --- | --- |
