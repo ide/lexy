@@ -716,12 +716,22 @@ async function forgetStored() {
 // token: a refresh token shows as the first six hex digits of its SHA-256, which
 // is enough to see one token sent twice.
 const SESSION_LOG_LIMIT = 200;
+// The kinds that diagnose the screens, not the session: they keep their own bound, so they never push out a session
+// event
+const DIAGNOSTIC_KINDS = ['vehicle state', 'performance data'];
+const DIAGNOSTIC_LIMIT = 100;
 // The kinds that say whether a session is held, as against attempts and refusals;
 // 'sign-in shown' only earlier builds wrote, and their rows still say a sign-out
 const STATE_KINDS = ['signed in', 'refreshed', 'signed out', 'session deleted', 'sign-in shown', 'no saved session'];
 // State kinds after which a launch without a saved session is expected
 const SIGNED_OUT_KINDS = ['signed out', 'session deleted', 'sign-in shown', 'no saved session'];
 const marks = (values: string[]) => values.map(() => '?').join(', ');
+// Keep the newest of each class at every write, so a log an earlier build kept is bounded at the first one
+const inDiagnostics = `kind IN (${marks(DIAGNOSTIC_KINDS)})`;
+const TRIMS = [{ where: inDiagnostics, limit: DIAGNOSTIC_LIMIT }, { where: `NOT ${inDiagnostics}`, limit: SESSION_LOG_LIMIT }].map(({ where, limit }) => ({
+  sql: `DELETE FROM session_log WHERE ${where} AND id NOT IN (SELECT id FROM session_log WHERE ${where} ORDER BY id DESC LIMIT ?)`,
+  params: [...DIAGNOSTIC_KINDS, ...DIAGNOSTIC_KINDS, limit],
+}));
 
 // Log writes in the order they were made
 let sessionLogTurn: Promise<unknown> = Promise.resolve();
@@ -738,7 +748,7 @@ function logSession(at: number, kind: string, text: string, unlessSignedOut = fa
           params: [at, kind, text, ...STATE_KINDS, ...SIGNED_OUT_KINDS],
         }
         : { sql: 'INSERT INTO session_log (at, kind, detail) VALUES (?, ?, ?)', params: [at, kind, text] },
-      { sql: 'DELETE FROM session_log WHERE id <= (SELECT max(id) FROM session_log) - ?', params: [SESSION_LOG_LIMIT] },
+      ...TRIMS,
     ])))
     .catch(() => undefined);
 }
@@ -1271,10 +1281,10 @@ const sources: Sources = {
   openMaps: ([provider, latitude, longitude, name]) => openMaps(provider, latitude, longitude, name),
   observed: ([limit, clearedAt]) => observed(limit, clearedAt),
   sessionLog: ([limit]) => sessionLog(limit),
-  logVehicleState: ([route, scenario, visibility, online, banner, garagePending, statusPending, garageOK, garageCode, statusCode, statusError, fetchedMs, at]): Result<'logVehicleState'> => {
-    const warning = banner === 'offline' ? 'You’re offline' : banner === 'garage-error' ? 'Couldn’t refresh' : 'none';
+  // `warning` is the shown warning's banner title (model.contract `warningTitle`), "" for none
+  logVehicleState: ([route, scenario, visibility, online, warning, garagePending, statusPending, garageOK, garageCode, statusCode, statusError, fetchedMs, at]): Result<'logVehicleState'> => {
     const age = fetchedMs > 0 ? `${Math.max(0, Math.round(at - fetchedMs))} ms` : 'unknown';
-    logSession(at, 'vehicle state', `screen=${route}; data=${scenario}; page=${visibility}; online=${online}; warning=${warning}; vehicle=${garagePending ? 'pending' : garageOK ? 'ready' : 'failed'} (${httpStatus(garageCode)}); status=${statusPending ? 'pending' : statusError ? 'failed' : 'ready'} (${httpStatus(statusCode)}); data age=${age}`);
+    logSession(at, 'vehicle state', `screen=${route}; data=${scenario}; page=${visibility}; online=${online}; warning=${warning || 'none'}; vehicle=${garagePending ? 'pending' : garageOK ? 'ready' : 'failed'} (${httpStatus(garageCode)}); status=${statusPending ? 'pending' : statusError ? 'failed' : 'ready'} (${httpStatus(statusCode)}); data age=${age}`);
     return { ok: true, status: 200, error: '' };
   },
   clearObserved: () => clearObserved(),

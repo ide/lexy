@@ -19,6 +19,7 @@ use WarningBanner from "./status.contract"
 use Activity from "./model.contract"
 use specsWarning from "./model.contract"
 use sessionText from "./model.contract"
+use warningTitle from "./model.contract"
 use SignOutConfirmation from "./settings.contract"
 use SignOutButton from "./settings.contract"
 
@@ -93,13 +94,13 @@ component SpecsScreen
         // Exact, then go back to one padded column)
         column padding-left=16 padding-right=16
           if warningsVisible and warning == "offline"
-            WarningBanner(immediate=offlineReady, confirmation=warningConfirmation, id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."), detail="")
+            WarningBanner(immediate=offlineReady, confirmation=warningConfirmation, id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title=warningTitle("offline"), message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."), detail="")
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           if warningsVisible and warning == "garage-error"
-            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.`, detail=failureNote)
+            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title=warningTitle("garage-error"), message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.`, detail=failureNote)
           // Offer Sign Out when Lexus refused the session, which stays until the person signs out
           if warningsVisible and warning == "session"
-            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-session-refused", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Lexus didn’t accept your sign-in", message=sessionText(true), detail=failureNote)
+            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-session-refused", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title=warningTitle("session"), message=sessionText(true), detail=failureNote)
               SignOutButton(prefix="specs-session-", disabled=signingOut)
           SignOutConfirmation(prefix="specs-session-", signOut=signOut)
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0

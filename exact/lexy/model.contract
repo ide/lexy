@@ -133,6 +133,9 @@ fn statusWarning(online: bool, garage: Garage, status: Status, loading: bool): s
 
 fn specsWarning(online: bool, garage: Garage, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and not garage.ok ? (garage.status == 401 ? "session" : "garage-error") : "")
 
+// The title of a warning's banner, which the session log names it by; "" for no warning
+fn warningTitle(kind: string): string = kind == "offline" ? "You're offline" : (kind == "garage-error" ? "Couldn’t refresh" : (kind == "session" ? "Lexus didn’t accept your sign-in" : ""))
+
 // The session warning's words under its title; `saved` says the screen shows the latest data saved
 fn sessionText(saved: bool): string = `This can happen while you're in another region.${saved ? " Showing the latest data we saved." : ""} Pull down to try again, or sign out and sign back in.`
 

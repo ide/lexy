@@ -44,6 +44,7 @@ use Delivery from "./developer.contract"
 use signInError from "./model.contract"
 use statusWarning from "./model.contract"
 use specsWarning from "./model.contract"
+use warningTitle from "./model.contract"
 
 // The sign-in step a navigation entry shows
 fn authStep(name: string): string = (name == "authCode" or name == "loginCode") ? "otp" : ((name == "authChoice" or name == "loginChoice") ? "choice" : "credentials")
@@ -350,9 +351,10 @@ component Lexy
   state observedRev = 0
   derive observedCutoff = match observedCleared { case some(c) => c.ok and c.clearedAt > developer.clearedAt ? c.clearedAt : developer.clearedAt, case none => developer.clearedAt }
   resource observed = observed(observedRev > 0 ? 200 : 0, observedCutoff) with observedRev as shape Observed
-  // Settings → Developer Tools → Session: read each time the screen opens
+  // Settings → Developer Tools → Session: read each time the screen opens, in full (app.ts keeps 200 session events
+  // and 100 diagnostics)
   state sessionLogRev = 0
-  resource sessionLog = sessionLog(sessionLogRev > 0 ? 200 : 0) with sessionLogRev as shape SessionLog
+  resource sessionLog = sessionLog(sessionLogRev > 0 ? 300 : 0) with sessionLogRev as shape SessionLog
   mutation observedCleared as shape ObservedCleared refreshes observed
   state updateChecked = false
   state recordingTrace = false
@@ -367,16 +369,20 @@ component Lexy
   // or a pull): the state stays with its button disabled, not the skeleton
   derive retrying = pulling and pending(garage) and shownGarage.car.vin == ""
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
-  // Keep brief warning and foreground transitions after the banner has gone
+  // The Status warning condition, which its banner and the session log share
   derive warning = statusWarning(shownOnline, shownGarage, status, statusLoading and not retrying)
   derive specsLoading = not retrying and (dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading)
-  derive warningCandidate = top(nav).name == "status" ? warning : (top(nav).name == "specs" ? specsWarning(shownOnline, shownGarage, specsLoading) : "")
+  derive specsWarned = specsWarning(shownOnline, shownGarage, specsLoading)
+  derive warningCandidate = top(nav).name == "status" ? warning : (top(nav).name == "specs" ? specsWarned : "")
   state warningConfirmation = 0
   // Show a refresh failure or a session refusal after one visible second on this visit, counted again when the kind
   // changes; offline transitions wait only during foreground grace
   task warningSettled when page.visibilityState == "visible" and (warningCandidate == "garage-error" or warningCandidate == "session") key=`${top(nav).id}|${warningCandidate}`
     after(1000, confirmWarning)
-  derive vehicleState = `${top(nav).name}|${dataState}|${page.visibilityState}|${shownOnline}|${warningCandidate}|${pending(garage)}|${pending(status)}|${garage.ok}|${garage.status}|${status.status}|${status.error != ""}`
+  // Log the vehicle state while Status or Specs has a warning condition, at each change of what the screen shows, its
+  // visibility, connectivity or the reads' state, and once when the condition clears: a warning can leave before its
+  // text is read, and a tab switch or a read while nothing warns explains nothing
+  derive vehicleState = warning == "" and specsWarned == "" ? "" : `${warningCandidate}|${page.visibilityState}|${shownOnline}|${pending(garage)}|${pending(status)}|${garage.ok}|${garage.status}|${status.status}|${status.error != ""}`
   state lastVehicleState = ""
   mutation vehicleLogged as shape Done
   task vehicleStateChanged when account.signedIn and vehicleState != lastVehicleState
@@ -444,7 +450,7 @@ component Lexy
       resumeDue = true
   action recordVehicleState
     lastVehicleState = vehicleState
-    send vehicleLogged = logVehicleState(top(nav).name, dataState, page.visibilityState, shownOnline, warningCandidate, pending(garage), pending(status), garage.ok, garage.status, status.status, status.error != "", status.fetchedMs, time.epochAtZero + performanceNow())
+    send vehicleLogged = logVehicleState(top(nav).name, dataState, page.visibilityState, shownOnline, warningTitle(warningCandidate), pending(garage), pending(status), garage.ok, garage.status, status.status, status.error != "", status.fetchedMs, time.epochAtZero + performanceNow())
   action confirmWarning
     warningConfirmation = warningConfirmation + 1
   action tick

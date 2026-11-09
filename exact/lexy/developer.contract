@@ -502,4 +502,4 @@ component SessionScreen
                       text e.kind font-size=17
                       text e.detail font-size=13 color="-exact-secondary-label"
                       text exactTime(e.at, utcOffset) font-size=13 color="-exact-secondary-label"
-          SectionFooter(words="Lexy keeps the last 200 events on this device, through sign-outs. A refresh token shows only as the first six hex digits of its SHA-256.")
+          SectionFooter(words="Lexy keeps the last 200 session events and the last 100 diagnostics on this device, through sign-outs. A refresh token shows only as the first six hex digits of its SHA-256.")

@@ -2,9 +2,10 @@
 // Drives app.ts's session sources over real SQLite against a fake Lexus realm
 // and checks the session log they keep from @exact/oauth's events: what each
 // says, that it outlives sign-out, that it tells a lost Keychain item from a
-// sign-out, that it holds no token, that it keeps the newest 200, that it
-// explains the first launch after an earlier build's session, and that it tells
-// a refresh with no reply from one with an unusable reply.
+// sign-out, that it holds no token, that it keeps the newest 200 session events
+// and apart from them the newest 100 diagnostics, that it explains the first
+// launch after an earlier build's session, and that it tells a refresh with no
+// reply from one with an unusable reply.
 import { strict as assert } from 'node:assert';
 import type { NativeModule } from './app.contract.d.ts';
 import { gateway, lexusRealm, memoryStorage, memoryStore, signIn } from './check-support';
@@ -19,7 +20,9 @@ const { storage, database } = memoryStorage();
 const store = memoryStore();
 const now = 1_790_900_000_000;
 type Log = { ok: boolean; signedInAt: number; refreshes: number; lastRefreshAt: number; events: { at: number; kind: string; detail: string }[] };
-const log = (): Promise<Log> => answer('sessionLog', [200, 1], store, storage, null) as Promise<Log>;
+const log = (): Promise<Log> => answer('sessionLog', [300, 1], store, storage, null) as Promise<Log>;
+const DIAGNOSTICS = ['vehicle state', 'performance data'];
+const sessionEvents = (l: Log): string[] => l.events.filter(e => !DIAGNOSTICS.includes(e.kind)).map(e => `${e.at} ${e.kind}: ${e.detail}`);
 const kinds = (l: Log): string[] => l.events.map(e => e.kind);
 // The package says what happened once a token's print is made: wait, a
 // second at most, for the log to hold `n` events, or for `kind` to be the newest
@@ -100,14 +103,17 @@ const details = database.prepare('SELECT detail FROM session_log').values().map(
 assert.equal(details.some(d => /\b(a-)?r\d+\b|sso-token|test-code|@|example/.test(d)), false, `a secret reached the session log: ${details.join(' | ')}`);
 console.log('7 the log holds no token, account or address');
 
-// 8. Only the newest 200 are kept.
+// 8. Only the newest 200 session events and the newest 100 diagnostics are kept,
+// from the first write after an earlier build's log held more.
 for (let i = 0; i < 250; i++) {
   database.prepare('INSERT INTO session_log (at, kind, detail) VALUES (?, ?, ?)').run(now, 'filler', String(i));
+  database.prepare('INSERT INTO session_log (at, kind, detail) VALUES (?, ?, ?)').run(now, 'performance data', String(i));
 }
 await signIn(answer, store, storage, now);
 await logged(0, 'signed in');
-assert.equal(Number(database.prepare('SELECT count(*) FROM session_log').values()[0][0]), 200);
-console.log('8 the log keeps the newest 200 events');
+const counted = (where: string): number => Number(database.prepare(`SELECT count(*) FROM session_log WHERE ${where}`).values()[0][0]);
+assert.deepEqual([counted("kind NOT IN ('vehicle state', 'performance data')"), counted("kind IN ('vehicle state', 'performance data')")], [200, 100]);
+console.log('8 the log keeps the newest 200 session events and the newest 100 diagnostics');
 
 // 9. A session an earlier build kept is forgotten at the first launch, with
 // the vehicle data it read, which is logged as a sign-out, not as a lost session.
@@ -139,30 +145,43 @@ l = await logged(0, 'refresh failed');
 assert.match(l.events[0].detail, /^sent [0-9a-f]{6}; an unusable reply invalid_response$/);
 console.log('10 a refresh with an unusable reply is logged as such');
 
-// Read the log after both kinds of brief warning have already gone
-for (const [delay, visibility, online, banner, pending, code, failed] of [
+// Read the log after each kind of brief warning has already gone. Each entry
+// names the warning by its banner's title (model.contract `warningTitle`).
+for (const [delay, visibility, online, warning, pending, code, failed] of [
   [0, 'hidden', true, '', false, 200, false],
-  [100, 'visible', false, 'offline', false, 0, true],
+  [100, 'visible', false, "You're offline", false, 0, true],
   [600, 'visible', true, '', false, 200, false],
-  [1000, 'visible', true, 'garage-error', false, 503, true],
+  [1000, 'visible', true, 'Couldn’t refresh', false, 503, true],
   [1500, 'visible', true, '', true, 503, true],
+  [2000, 'visible', true, 'Lexus didn’t accept your sign-in', false, 401, true],
   [2500, 'visible', true, '', false, 200, false],
 ] as const) {
-  await answer('logVehicleState', ['status', 'live', visibility, online, banner, false, pending, true, 200, code, failed, now, now + delay], store, storage, null);
+  await answer('logVehicleState', ['status', 'live', visibility, online, warning, false, pending, true, 200, code, failed, now, now + delay], store, storage, null);
 }
 l = await log();
 const vehicle = l.events.filter(e => e.kind === 'vehicle state').reverse();
-assert.deepEqual(vehicle.map(e => e.at - now), [0, 100, 600, 1000, 1500, 2500]);
+assert.deepEqual(vehicle.map(e => e.at - now), [0, 100, 600, 1000, 1500, 2000, 2500]);
 assert.match(vehicle[0].detail, /page=hidden; online=true; warning=none/);
-assert.match(vehicle[1].detail, /page=visible; online=false; warning=You’re offline;.*status=failed \(no HTTP status\)/);
+assert.match(vehicle[1].detail, /page=visible; online=false; warning=You're offline;.*status=failed \(no HTTP status\)/);
 assert.match(vehicle[2].detail, /online=true; warning=none/);
 assert.match(vehicle[3].detail, /warning=Couldn’t refresh;.*status=failed \(HTTP 503\)/);
 assert.match(vehicle[4].detail, /warning=none;.*status=pending \(HTTP 503\)/);
-assert.match(vehicle[5].detail, /status=ready \(HTTP 200\); data age=2500 ms/);
-assert.equal(l.events.length, 200, 'vehicle diagnostics use the same bounded log');
+assert.match(vehicle[5].detail, /warning=Lexus didn’t accept your sign-in;.*status=failed \(HTTP 401\)/);
+assert.match(vehicle[6].detail, /status=ready \(HTTP 200\); data age=2500 ms/);
+assert.equal(sessionEvents(l).length, 200, 'the vehicle entries took a session event\'s place');
 await answer('signOut', [now + 3000], store, storage, null);
 assert.equal((await log()).events.filter(e => e.kind === 'vehicle state').length, vehicle.length, 'sign-out preserves the warning history');
-console.log('brief offline and refresh-failure warnings remain distinguishable after recovery and sign-out');
+console.log('brief offline, refresh-failure and refused-session warnings remain distinguishable after recovery and sign-out');
+
+// Diagnostics keep their own bound: a flood of them pushes out no session event
+const kept = sessionEvents(await log());
+for (let i = 0; i < 150; i++) {
+  await answer('logVehicleState', ['status', 'live', 'visible', true, 'Couldn’t refresh', false, false, true, 200, 503, true, now, now + 4000 + i], store, storage, null);
+}
+l = await log();
+assert.deepEqual(sessionEvents(l), kept, 'a diagnostic pushed out a session event');
+assert.deepEqual([l.events.filter(e => e.kind === 'vehicle state').length, l.events[0].at - now], [100, 4149], 'the log keeps the newest 100 diagnostics');
+console.log('the log keeps the newest 100 diagnostics apart from the session events');
 
 const originalTimeout = globalThis.setTimeout;
 const waits: number[] = [];
