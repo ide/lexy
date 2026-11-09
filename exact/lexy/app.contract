@@ -45,6 +45,12 @@ use signInError from "./model.contract"
 use statusWarning from "./model.contract"
 use specsWarning from "./model.contract"
 
+// The sign-in step a navigation entry shows
+fn authStep(name: string): string = (name == "authCode" or name == "loginCode") ? "otp" : ((name == "authChoice" or name == "loginChoice") ? "choice" : "credentials")
+// Whether a sign-in screen is busy: the open one while its request is out, and
+// the one that just left while it slides away
+fn screenBusy(name: string, open: string, busy: bool, left: string): bool = authStep(name) == open ? busy : authStep(name) == left
+
 routes nav
   tab status "/"
     authChoice "/sign-in/method"
@@ -109,7 +115,7 @@ component Lexy
   derive onChoiceRoute = top(nav).name == "authChoice" or top(nav).name == "loginChoice"
   derive onAuthRoute = onCodeRoute or onChoiceRoute
   derive hasChoiceRoute = stack(nav).filter((e, i) => e.name == "authChoice" or e.name == "loginChoice").length > 0
-  derive authRouteStep = onCodeRoute ? "otp" : (onChoiceRoute ? "choice" : "credentials")
+  derive authRouteStep = authStep(top(nav).name)
   derive wantedAuthStep = (not shell or previewScenario != "") ? (restartStage == "choice" ? "choice" : signStep) : "credentials"
   task authNavigation when not entering and wantedAuthStep != authRouteStep
     after(1, syncAuthRoute)
@@ -127,6 +133,9 @@ component Lexy
   state lastChoiceLabel = ""
   // Keep resend and method-change errors on the code screen
   state restartStage = ""
+  // The test id of the control whose request is out: Sign In, a method, Resend
+  // Code or Verify; "" for a request with none. A busy screen shows its spinner.
+  state signControl = ""
   mutation started as shape AuthNode then afterStart
   mutation named as shape AuthNode then afterName
   mutation passed as shape AuthNode then afterPassword
@@ -144,6 +153,21 @@ component Lexy
   // A sign-out still landing counts: the package forgets the session before its revocation lands, and a sign-in
   // begun meanwhile would be reset by afterSignOut
   derive signingIn = entering or pending(started) or pending(named) or pending(passed) or pending(chose) or pending(verified) or pending(finished) or pending(demo) or pending(real) or pending(left)
+  // A step's last answer has landed and its next screen opens a tick later
+  // (authNavigation). A failure's return to credentials is not one, so its
+  // spinner stops at once; a finished preview's is.
+  derive authRouting = wantedAuthStep != authRouteStep and (wantedAuthStep != "credentials" or previewDone)
+  // Busy until that screen opens, so neither the spinner nor a disabled control
+  // changes for the tick before it
+  derive authBusy = signingIn or authRouting
+  // The screen a forward push just covered, which stays busy while it slides
+  // away, so its buttons do not turn enabled as they leave. A screen that Back
+  // removes keeps its last look.
+  state leftStep = ""
+  // Clear it after a second, so a screen revealed later is idle: an iOS push
+  // lasts about half of one (iOS 27.1 simulator)
+  task departure when leftStep != "" key=authRouteStep
+    after(1000, settleDeparture)
 
   // --- Vehicle data -------------------------------------------------------------
   state garageRev = 0
@@ -513,6 +537,7 @@ component Lexy
         lastChoice = -1
         lastChoiceLabel = ""
         signInfo = ""
+        signControl = "sign-in-button"
         if account.demo and previewScenario == ""
           send real = useDemo(false)
         else
@@ -535,6 +560,9 @@ component Lexy
         code = ""
         resending = stage == "resend"
         restartStage = stage
+        // Spin beside Resend Code only: Back's restart has no control on the
+        // method screen to spin beside
+        signControl = stage == "resend" ? "resend" : ""
         if stage == "choice"
           lastChoice = -1
         send started = authStart(authAttempt + 1, previewScenario)
@@ -550,9 +578,12 @@ component Lexy
         if wantedAuthStep == "choice" and onCodeRoute
           nav = hasChoiceRoute ? back(nav) : replace(nav, url)
         else
+          leftStep = authRouteStep
           // The sign-in's first screen opens on Status, its routes' tab, even
           // where a developer link launched Lexy onto Settings
           nav = previewScenario == "" and not onAuthRoute ? open(nav, url) : push(nav, url)
+  action settleDeparture
+    leftStep = ""
   action startOver
     blur()
     authAttempt = authAttempt + 1
@@ -561,6 +592,7 @@ component Lexy
     choices = []
     restartStage = ""
     resending = false
+    signControl = ""
     signInfo = ""
     signStep = "credentials"
     signError = ""
@@ -577,6 +609,8 @@ component Lexy
       authAttempt = authAttempt + 1
       sessionNoticeSeen = true
       signError = ""
+      // Show no spinner, which would only flash, since the demo answers at once
+      signControl = ""
       send demo = useDemo(true)
   // The demo's password goes straight to the tree, never into the field,
   // so iOS doesn't offer to save a made-up one.
@@ -667,6 +701,7 @@ component Lexy
       signError = ""
       lastChoice = index
       lastChoiceLabel = choices.filter((m, i) => i == index).join("")
+      signControl = `method-${index}`
       send chose = authChoose(authAttempt, previewScenario, nodeRaw, index)
   action afterChoice
     match chose
@@ -692,6 +727,7 @@ component Lexy
       else
         blur()
         signError = ""
+        signControl = "verify-button"
         send verified = authAnswer(authAttempt, previewScenario, nodeRaw, otpCallback(nodeTypes), code.trim())
   action afterCode
     match verified
@@ -719,12 +755,13 @@ component Lexy
       case some(f)
         if f.attempt == authAttempt
           // A Login Flow preview ends on its own panel; the app stays as it was.
+          // Keep the code until resetPreview clears it, so the code screen
+          // leaves with its field as it was
           if f.ok and previewScenario != ""
             blur()
             previewDone = true
             signStep = "credentials"
             password = ""
-            code = ""
           if f.ok and previewScenario == ""
             sessionNoticeSeen = false
             entering = true
@@ -772,6 +809,7 @@ component Lexy
     if entered
       entering = false
       signStep = "credentials"
+      signControl = ""
       password = ""
       code = ""
       nav = open(nav, "/")
@@ -1101,13 +1139,13 @@ component Lexy
                 if not shell
                   if e.name == "authChoice" or e.name == "authCode"
                     header
-                      button id="back" press=back aria-label="Back" testId="auth-back" disabled=signingIn width=44 height=44
+                      button id="back" press=back aria-label="Back" testId="auth-back" disabled=screenBusy(e.name, authRouteStep, authBusy, leftStep) width=44 height=44
                       text "Sign In" role="heading" aria-level=1
-                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=(e.name == "authCode" ? "otp" : (e.name == "authChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=authStep(e.name), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=screenBusy(e.name, authRouteStep, authBusy, leftStep), spinner=signControl, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
                 else
                   header
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
-                      button id="back" press=back testId="back" aria-label="Back" disabled=((e.name == "loginChoice" or e.name == "loginCode") and signingIn) width=44 height=44
+                      button id="back" press=back testId="back" aria-label="Back" disabled=((e.name == "loginChoice" or e.name == "loginCode") and screenBusy(e.name, authRouteStep, authBusy, leftStep)) width=44 height=44
                     text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=1 color=(e.name == "status" and firstLoad ? "transparent" : none)
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
@@ -1138,7 +1176,7 @@ component Lexy
                   if e.name == "dataState"
                     DataStateScreen(current=dataState, choose=chooseDataState, apps=mapsApp, provider=mapsApp.provider, clearMaps=clearMaps)
                   if e.name == "login" or e.name == "loginChoice" or e.name == "loginCode"
-                    LoginPreviewScreen(fold=fold, compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, runAgain=runPreviewAgain, step=(e.name == "loginCode" ? "otp" : (e.name == "loginChoice" ? "choice" : "credentials")), email=email, password=password, code=code, error=signError, busy=signingIn, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, getLexusApp=getLexusApp, nextField=focusPassword)
+                    LoginPreviewScreen(fold=fold, compact=(viewport.height < 600), scenario=previewScenario, done=previewDone, runAgain=runPreviewAgain, step=authStep(e.name), email=email, password=password, code=code, error=signError, busy=screenBusy(e.name, authRouteStep, authBusy, leftStep), spinner=signControl, info=signInfo, choices=choices, prompt=choicePrompt, method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""), setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, getLexusApp=getLexusApp, nextField=focusPassword)
                   if e.name == "eas"
                     EasScreen(open=openExternal)
                   if e.name == "performance"

@@ -1,0 +1,119 @@
+// Login Flow answers from its mock tree, so no request leaves the app. The mock answers at once, and
+// `clock data` lands a step's answers and opens its next screen, so no test can hold a request out
+// to look at it. The screen that left shows what the request looked like: it keeps its disabled
+// controls and its spinner for a second while it slides away.
+at "/settings?developer=on"
+
+test "the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle" on macos
+  clock settle
+  tap "try-demo"
+  clock data
+  clock settle
+  tap "tab-settings"
+  clock settle
+  tap "dev-login"
+  clock settle
+  expect disabled "sign-in-button"
+  type "email" "driver@example.com"
+  type "password" "secret"
+  expect enabled "sign-in-button"
+  tap "sign-in-button"
+  clock data
+  expect state authRouteStep == "choice"
+  expect enabled "method-0"
+  expect enabled "method-1"
+  expect disabled "sign-in-button"
+  expect disabled "email"
+  expect tree has "sign-in-button-spinner"
+  clock +1000
+  expect enabled "sign-in-button"
+  expect tree missing "sign-in-button-spinner"
+  tap "method-1"
+  clock data
+  expect state authRouteStep == "otp"
+  expect enabled "resend"
+  expect disabled "verify-button"
+  expect disabled "method-0"
+  expect disabled "method-1"
+  expect tree has "method-1-spinner"
+  clock +1000
+  expect enabled "method-1"
+  expect tree missing "method-1-spinner"
+  tap "resend"
+  clock data
+  clock settle
+  expect enabled "resend"
+  expect tree missing "resend-spinner"
+  expect state signInfo == "Lexus sent a new code."
+  type "code" "123456"
+  expect enabled "verify-button"
+  tap "verify-button"
+  clock data
+  expect tree has "preview-done"
+
+test "Resend Code says Lexus sent a new code where the code comes without a method choice" on macos
+  clock settle
+  tap "try-demo"
+  clock data
+  clock settle
+  tap "tab-settings"
+  clock settle
+  tap "dev-login"
+  clock settle
+  tap "scenario"
+  clock settle
+  tap "scenario-success-single"
+  clock settle
+  type "email" "driver@example.com"
+  type "password" "secret"
+  tap "sign-in-button"
+  clock data
+  clock settle
+  expect state authRouteStep == "otp"
+  expect state signInfo == ""
+  tap "resend"
+  clock data
+  clock settle
+  expect enabled "resend"
+  expect state signInfo == "Lexus sent a new code."
+
+test "a refused password or code enables its controls again at once and stops the spinner" on macos
+  clock settle
+  tap "try-demo"
+  clock data
+  clock settle
+  tap "tab-settings"
+  clock settle
+  tap "dev-login"
+  clock settle
+  tap "scenario"
+  clock settle
+  tap "scenario-wrong-password"
+  clock settle
+  type "email" "driver@example.com"
+  type "password" "secret"
+  tap "sign-in-button"
+  clock data
+  expect enabled "sign-in-button"
+  expect enabled "email"
+  expect tree missing "sign-in-button-spinner"
+  expect tree has "sign-in-error"
+  tap "scenario"
+  clock settle
+  tap "scenario-wrong-code"
+  clock settle
+  type "email" "driver@example.com"
+  type "password" "secret"
+  tap "sign-in-button"
+  clock data
+  clock settle
+  tap "method-0"
+  clock data
+  clock settle
+  type "code" "123456"
+  tap "verify-button"
+  clock data
+  expect enabled "verify-button"
+  expect enabled "code"
+  expect tree missing "verify-button-spinner"
+  expect tree has "sign-in-error"

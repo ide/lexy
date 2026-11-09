@@ -103,6 +103,8 @@ They cover sign-in and preview isolation, token refresh and sign-out, the sessio
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 
+The sign-in check drives Login Flow's mock tree, so it sends no Lexus requests. Build the macOS development app first (`bun exact.mjs mac` in `exact/lexy`), then run `bun exact/lexy/sign-in.check.ts` from the repository root. It covers three cases: the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle; Resend Code shows its notice where the code comes without a method choice; and a refused password or code enables the controls again at once.
+
 The screen checks use the real Status and Performance components with fixture data and no Lexus requests. Build the iOS development app first, then run `EXACT_SIM=<test-simulator-udid> bun exact/lexy/screens.check.ts` from the repository root. The checks cover disabled remote controls, a climate error waiting behind a command confirmation, loading and error messages, the phone and unfolded Performance lists, and row identity when a launch mark arrives earlier than an existing mark.
 
 The [Performance list benchmark](test-support/performance-list-benchmark.json) compares an eager list with a viewport list on an iOS 27.1 Duo simulator at 390×844 with 200 navigation metrics. It uses one warm-up pair and five alternating measured pairs. Values are medians with interquartile ranges in parentheses.
