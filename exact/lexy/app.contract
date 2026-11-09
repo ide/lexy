@@ -82,7 +82,10 @@ component Lexy
   state sessionNoticeSeen = false
   resource account = session() with time.epochAtZero as shape Account
   // Show the dashboard skeleton until the session resolves to avoid a sign-in flash
-  derive shell = not entering and (account.signedIn or (account.status == 0 and account.error == ""))
+  // Sign Out was pressed and afterSignOut has not yet opened Status: the signed-in screens stay until then, so the
+  // sign-in mounts once, on Status, rather than first on the tab Sign Out was pressed in
+  state leaving = false
+  derive shell = not entering and (leaving or account.signedIn or (account.status == 0 and account.error == ""))
   // Hand off to the dashboard once the saved session is ready
   state entering = false
   derive entered = not pending(account)
@@ -827,6 +830,7 @@ component Lexy
       setScrollMeasurement(false)
     send developerSet = setDeveloperMode(on)
   action signOut
+    leaving = true
     send left = signOut(time.epochAtZero + performanceNow())
   // Clear credentials after the session hands off to the dashboard
   action finishEntering
@@ -838,6 +842,7 @@ component Lexy
       code = ""
       nav = open(nav, "/")
   action afterSignOut
+    leaving = false
     startOver()
     // A session that ended before this one was signed in to and out of says nothing now
     sessionNoticeSeen = true
@@ -1153,7 +1158,10 @@ component Lexy
         renameError = ""
 
   view
-    main testId="lexy" viewport-fit="cover" display="flex" flex-direction="column" navigationKey=`${top(nav).id}` navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
+    // Inset the viewport for the keyboard, which a route's scroll view takes as
+    // content inset, rather than shrink it and lay the screen out again
+    // (`resizes-content`, iOS's default): a field's focus moves nothing
+    main testId="lexy" viewport-fit="cover" interactive-widget="resizes-visual" display="flex" flex-direction="column" navigationKey=`${top(nav).id}` navigationBack="back" navigate=followLink width="100%" height="100%" background-color="-exact-grouped-background" color="-exact-label" accent-color=accent()
       // Keep authentication inside the tab panels so native Back uses the same stacks
       column flex=1 min-height=0 position="relative"
         for t in nav.tabs key=t.name
@@ -1161,11 +1169,14 @@ component Lexy
             for e in t.stack key=e.id
               column navigationKey=`${e.id}` data-screen=e.name navigationBar=(shell or e.name == "authChoice" or e.name == "authCode" ? "auto" : "none") navigationScroll=(not shell ? "sign-in-scroll" : ((e.name == "updates" or e.name == "performance") and (fold == "across" or (wide and fold != "down")) ? "developer-first-scroll" : (e.name == "map" ? "" : (e.name == "login" or e.name == "loginChoice" or e.name == "loginCode" ? "sign-in-scroll" : "screen-scroll")))) navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                 if not shell
-                  if e.name == "authChoice" or e.name == "authCode"
-                    header
-                      button id="back" press=back aria-label="Back" testId="auth-back" disabled=screenBusy(e.name, authRouteStep, authBusy, leftStep) width=44 height=44
-                      text "Sign In" role="heading" aria-level=1
-                  LockScreen(compact=(viewport.height < 600), developer=developer.on, step=authStep(e.name), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=screenBusy(e.name, authRouteStep, authBusy, leftStep), spinner=signControl, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
+                  // Show the sign-in in the selected tab only: one in each tab would each
+                  // autofocus its email, and the focus would pass from one to the next
+                  if t.name == nav.tab
+                    if e.name == "authChoice" or e.name == "authCode"
+                      header
+                        button id="back" press=back aria-label="Back" testId="auth-back" disabled=screenBusy(e.name, authRouteStep, authBusy, leftStep) width=44 height=44
+                        text "Sign In" role="heading" aria-level=1
+                    LockScreen(compact=(viewport.height < 600), developer=developer.on, step=authStep(e.name), email=email, password=password, code=code, error=(signError != "" or sessionNoticeSeen or account.error == "" ? signError : "Lexus no longer accepts the saved session. Sign in again to reconnect your vehicle."), busy=screenBusy(e.name, authRouteStep, authBusy, leftStep), spinner=signControl, info=signInfo, choices=choices, prompt=choicePrompt, setEmail=setEmail, setPassword=setPassword, setCode=setCode, signIn=signIn, choose=choose, verify=verify, resend=resend, tryDemo=tryDemo, getLexusApp=getLexusApp, nextField=focusPassword, embedded=(e.name == "authChoice" or e.name == "authCode"), fold=fold, banner="", bannerSymbol="", method=(lastChoice >= 0 ? choices.filter((m, i) => i == lastChoice).join("") : ""))
                 else
                   header
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
