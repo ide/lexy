@@ -187,8 +187,9 @@ component LockScreen
           column testId="new-to-lexus" align-items="flex-start" gap=8 padding=16 border-radius=14 background-color="-exact-secondary-grouped-background"
             text "New to Lexus?" font-size=13 font-weight=600 color="-exact-label"
             text "Create an account and add your vehicle in the Lexus app, then come back here to sign in." font-size=13 color="-exact-secondary-label"
-            // Only the link is a control (sign-in-elements.ios.tsx).
-            button press=getLexusApp testId="get-lexus-app" appearance="auto" buttonStyle="plain" padding-left=0 padding-right=0
+            // Only the link is a control (sign-in-elements.ios.tsx). No padding:
+            // UIKit's insets would space it apart from the lines above and the card's edge
+            button press=getLexusApp testId="get-lexus-app" appearance="auto" buttonStyle="plain" padding=0
               text "Get the Lexus App" font-size=13 font-weight=600 color="AccentColor"
         text "Your password and verification code go directly to Lexus. Lexy never saves them." font-size=13 font-weight=500 color="-exact-secondary-label" text-align="center" padding-top=8 padding-left=8 padding-right=8
       // Not in Lexy: an in-memory Lexus, for trying the app without an
