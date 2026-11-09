@@ -276,9 +276,16 @@ fn summaryOf(kind: string): string = (
   "Something unexpected went wrong."
 )
 fn failureAdvice(status: number, error: string): string = adviceOf(failureKind(status, error))
-// Developer mode's note on a failed read: which one, its HTTP status, and
-// Lexus's own words when it gave any, for a report the wording above hides
-fn failureDetail(read: string, status: number, error: string): string = error != "" ? `${read}: HTTP ${status}, "${error}".` : `${read}: HTTP ${status}.`
+// Developer mode's line under a failed read's message, for a report the
+// wording above hides: which read, then its HTTP status and Lexus's own words.
+// Status 0 is no HTTP status: no reply came (a network error), or Lexy could
+// not use the one that did, and the error says which
+fn failureDetail(read: string, status: number, error: string): string = (
+  status != 0 ? (error != "" ? `${read}: HTTP ${status}, "${error}".` : `${read}: HTTP ${status}.`) :
+  failureKind(status, error) == "network" ? `${read}: network error, no HTTP reply. ${error}` :
+  error != "" ? `${read}: ${error}` :
+  `${read}: failed with no HTTP status or message.`
+)
 fn adviceOf(kind: string): string = (
   kind == "permission" ? "Lexus didn't let Lexy read your vehicle's data. Your saved sign-in may no longer have access, for example if the vehicle was removed from your Lexus account. Sign out and sign back in; if the vehicle still doesn't appear, check that it's listed in the Lexus app." :
   kind == "server" ? "The Lexus service had a problem on its end, not something you did. It usually recovers within a few minutes. Try again shortly." :

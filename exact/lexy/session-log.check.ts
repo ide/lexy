@@ -142,7 +142,7 @@ console.log('10 a refresh with an unusable reply is logged as such');
 // Read the log after both kinds of brief warning have already gone
 for (const [delay, visibility, online, banner, pending, code, failed] of [
   [0, 'hidden', true, '', false, 200, false],
-  [100, 'visible', false, 'offline', false, 200, false],
+  [100, 'visible', false, 'offline', false, 0, true],
   [600, 'visible', true, '', false, 200, false],
   [1000, 'visible', true, 'garage-error', false, 503, true],
   [1500, 'visible', true, '', true, 503, true],
@@ -154,7 +154,7 @@ l = await log();
 const vehicle = l.events.filter(e => e.kind === 'vehicle state').reverse();
 assert.deepEqual(vehicle.map(e => e.at - now), [0, 100, 600, 1000, 1500, 2500]);
 assert.match(vehicle[0].detail, /page=hidden; online=true; warning=none/);
-assert.match(vehicle[1].detail, /page=visible; online=false; warning=You’re offline/);
+assert.match(vehicle[1].detail, /page=visible; online=false; warning=You’re offline;.*status=failed \(no HTTP status\)/);
 assert.match(vehicle[2].detail, /online=true; warning=none/);
 assert.match(vehicle[3].detail, /warning=Couldn’t refresh;.*status=failed \(HTTP 503\)/);
 assert.match(vehicle[4].detail, /warning=none;.*status=pending \(HTTP 503\)/);

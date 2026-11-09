@@ -448,6 +448,8 @@ telling.
 
 - Exact animates its banners (offline, "Couldn't refresh" and the blue notice) as they come and go. A banner lies under the dashboard, which glides down on a spring to uncover it as it fades in; leaving, it fades out under the dashboard as the dashboard glides back over its place (a leaving node keeps its place in paint order, LLP 1083 D4). With Reduce Motion a banner only fades, and the dashboard moves at once. The dashboard also moves at once when Exact lays the screen out again for something the device reports, at launch or later: the text size, the bars' insets or the fold. Exact glides only what the app's own changes move (LLP 1063 D6).
 
+- In Developer mode, Exact adds a technical line under a failed read's banner or full-screen message: the read (Vehicle list or Status), then its HTTP status and Lexus's own words. When no HTTP status came back, the line says why instead of showing one: "network error, no HTTP reply" when the request got no reply, or the error alone when Lexy could not use the reply.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Confirmation UI | Centered alert with system Cancel | Centered Material dialog with an explicit Cancel |

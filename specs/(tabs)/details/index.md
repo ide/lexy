@@ -91,6 +91,8 @@ pull-refresh.
 
 - Exact animates its banners (offline and "Couldn't refresh") as they come and go. A banner lies under the content, which glides down on a spring to uncover it as it fades in; leaving, it fades out under the content as the content glides back over its place. With Reduce Motion a banner only fades, and the content moves at once.
 
+- In Developer mode, Exact adds a technical line under a failed read's banner or full-screen message: the read (Vehicle list), then its HTTP status and Lexus's own words. When no HTTP status came back, the line says why instead of showing one: "network error, no HTTP reply" when the request got no reply, or the error alone when Lexy could not use the reply.
+
 | Concern | iOS | Android |
 | --- | --- | --- |
 | Capability icons | The vehicle data carries SF Symbol names (`Capability.symbol`) | — needs a symbol-to-platform-icon mapping, since the names come from shared data |

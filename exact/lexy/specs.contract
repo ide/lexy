@@ -59,7 +59,7 @@ component SpecsScreen
     refreshing: bool
     loading: bool
     retrying: bool
-    // Developer mode: failures name their read, status and Lexus's words
+    // Developer mode: a failure adds a line naming its read and what went wrong
     developer: bool
     // Reduce Motion: banners fade without moving, and nothing glides
     still: bool
@@ -75,7 +75,7 @@ component SpecsScreen
     fold: string
   derive car = garage.car
   derive warning = specsWarning(online, garage, loading)
-  derive failureNote = developer ? ` ${failureDetail("Vehicle list", garage.status, garage.error)}` : ""
+  derive failureNote = developer ? failureDetail("Vehicle list", garage.status, garage.error) : ""
   view
     scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing class=SafeScroll
       column box-sizing="border-box" min-height="100%"
@@ -87,20 +87,20 @@ component SpecsScreen
         // Exact, then go back to one padded column)
         column padding-left=16 padding-right=16
           if warningsVisible and warning == "offline"
-            WarningBanner(immediate=offlineReady, confirmation=warningConfirmation, id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."))
+            WarningBanner(immediate=offlineReady, confirmation=warningConfirmation, id="specs-offline", still=still, above="16px", symbol="wifi.slash", framed=false, title="You're offline", message=(car.vin != "" ? "Showing the latest data we saved." : "Reconnect to see your vehicle."), detail="")
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           if warningsVisible and warning == "garage-error"
-            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.${failureNote}`)
+            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.`, detail=failureNote)
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16
-            VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, busy=retrying, id="specs-no-vehicle")
+            VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, busy=retrying, id="specs-no-vehicle", detail="")
         if car.vin == "" and not loading and not garage.ok and garage.status != 401
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16
-            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=`${failureAdvice(garage.status, garage.error)}${failureNote}`, label="Try again", press=reload, busy=retrying, id="specs-error")
+            VehicleState(symbol="exclamationmark.triangle", title="Vehicle data unavailable", message=failureAdvice(garage.status, garage.error), detail=failureNote, label="Try again", press=reload, busy=retrying, id="specs-error")
         if car.vin != "" or loading
           // Above the banners, which it covers as they come and go
           column -exact-layout-transition=bannerGlide(still) z-index=1 box-sizing="border-box" padding-top=16 padding-bottom=16 padding-left=(fold == "across" ? "0px" : "16px") padding-right=(fold == "across" ? "0px" : "16px") gap=16 display=(wide ? "grid" : "flex") flex-direction="column" grid-template-columns=(wide ? (fold == "across" ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)") : "none") align-items=(wide ? "start" : "stretch") testId=(car.vin == "" ? "specs-skeleton" : "specs-body")
