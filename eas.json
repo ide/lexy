@@ -22,7 +22,7 @@
       "ios": {
         "config": "exact.yml",
         "enterpriseProvisioning": "adhoc",
-        "image": "macos-tahoe-26.6-xcode-27.0",
+        "image": "macos-tahoe-26.6-xcode-27.1",
         "resourceClass": "large"
       }
     },
