@@ -18,7 +18,7 @@ const { storage, database } = memoryStorage();
 const now = 1_790_900_000_000;
 type Account = { signedIn: boolean; status: number; error: string; expiresAt: number };
 const account = async (): Promise<Account> => answer('session', [now], store, storage, null) as Promise<Account>;
-const garage = (rev: number, on: typeof store = store): Promise<{ ok: boolean; status: number; car: { vin: string } }> =>
+const garage = (rev: number, on: typeof store = store): Promise<{ ok: boolean; status: number; error: string; car: { vin: string } }> =>
   answer('garage', [true, rev, now], on, storage, null) as never;
 const cars = (): number => Number(database.prepare('SELECT count(*) FROM cars').values()[0][0]);
 
@@ -63,7 +63,7 @@ const restBefore = realm.rest;
 realm.rest = () => { throw new TypeError('The network connection was lost.'); };
 const lost = await garage(4);
 assert.deepEqual([lost.ok, lost.status], [false, 0]);
-assert.match((lost as unknown as { error: string }).error, /^Couldn’t reach Lexus/);
+assert.match(lost.error, /^Couldn’t reach Lexus/);
 realm.rest = restBefore;
 expired.add('Bearer a-r3');
 realm.next = { status: 503, body: { error: 'server_error' } };
@@ -71,27 +71,33 @@ assert.equal((await garage(5)).status, 503);
 console.log('3b no reply reads as Lexus unreachable, and a refresh 503 as its status');
 
 // 3c. These transient and unclassified failures keep the session and the cars, whatever the body says: a rate limit, a
-// timeout, another refusal, an unreadable reply and a server error. 3b left `a-r3` refused.
+// timeout, other refusals, pages that are not an OAuth reply and a server error. A 4xx other than a timeout or a rate
+// limit fails the read with 401, for which the screens offer Sign Out; Lexus's token endpoint answers such a 403 page
+// while the phone is in another region. The others keep their status. 3b left `a-r3` refused.
 const carsBefore = cars();
 assert(carsBefore > 0, "the account has cars to keep");
-const page = async (): Promise<Response> => new Response('<html>Gateway unavailable</html>', { status: 400, headers: { 'Content-Type': 'text/html' } });
-for (const [i, reply] of [
-  { status: 429, body: { error: 'slow_down' } },
-  { status: 429, body: { error: 'invalid_grant' } },
-  { status: 408, body: { error: 'request_timeout' } },
-  { status: 403, body: { error: 'access_denied' } },
-  { status: 401, body: { error: 'invalid_client' } },
-  { status: 400, body: { error: 'invalid_request' } },
-  page,
-  { status: 503, body: { error: 'invalid_grant' } },
-].entries()) {
+const page = (status: number) => async (): Promise<Response> => new Response('<html>Forbidden</html>', { status, headers: { 'Content-Type': 'text/html' } });
+const refused = (code: string, status: number): string => `Lexus refused to renew the session (${code}, HTTP ${status})`;
+for (const [i, [reply, status, error]] of ([
+  [{ status: 429, body: { error: 'slow_down' } }, 429, ''],
+  [{ status: 429, body: { error: 'invalid_grant' } }, 429, ''],
+  [{ status: 408, body: { error: 'request_timeout' } }, 408, ''],
+  [{ status: 403, body: { error: 'access_denied' } }, 401, refused('access_denied', 403)],
+  [{ status: 401, body: { error: 'invalid_client' } }, 401, refused('invalid_client', 401)],
+  [{ status: 400, body: { error: 'invalid_request' } }, 401, refused('invalid_request', 400)],
+  [page(400), 401, refused('invalid_response', 400)],
+  [page(403), 401, refused('invalid_response', 403)],
+  [{ status: 503, body: { error: 'invalid_grant' } }, 503, ''],
+] as const).entries()) {
   realm.next = reply;
-  assert.equal((await garage(10 + i)).ok, false);
-  const said = typeof reply === 'function' ? 'an HTML page' : `${reply.status} ${JSON.stringify(reply.body)}`;
+  const read = await garage(10 + i);
+  const said = typeof reply === 'function' ? `the HTML page of row ${i}` : `${reply.status} ${JSON.stringify(reply.body)}`;
+  assert.deepEqual([read.ok, read.status, read.car.vin], [false, status, 'VIN1'], `a refresh answered ${said} fails the read with ${status} and keeps the car`);
+  if (error) assert.equal(read.error, error);
   assert.equal((await account()).signedIn, true, `a refresh answered ${said} is no refusal of the token`);
   assert.equal(cars(), carsBefore);
 }
-console.log('3c a rate limit, a timeout, another refusal, an unreadable reply and a server error keep the session and the cars');
+console.log('3c a rate limit, a timeout, other refusals, pages and a server error keep the session and the cars; a 4xx refusal reads as a 401');
 
 // 4. A refresh that gets no reply keeps the session: the read fails, retryable. 3b left `a-r3` refused.
 realm.next = 'throw';

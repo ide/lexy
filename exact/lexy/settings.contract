@@ -102,6 +102,31 @@ component DeveloperTools
           text `${origin}/settings?developer=on` href="/settings?developer=on" testId="developer-link"
           text " to turn it back on."
 
+// The alert before a sign-out, from Settings or from a banner that offers one
+component SignOutConfirmation
+  props
+    // Starts the dialog's id and its buttons' test ids: one dialog per screen
+    prefix: string
+    signOut: action
+  view
+    dialog id=`${prefix}sign-out-confirmation` role="alertdialog" aria-label="Sign Out?"
+      text "You’ll need to sign in again to access your vehicle."
+      button destructive=true press=signOut commandfor=`${prefix}sign-out-confirmation` command="close" testId=`${prefix}confirm-sign-out`
+        text "Sign Out"
+      button commandfor=`${prefix}sign-out-confirmation` command="close" testId=`${prefix}cancel-sign-out`
+        text "Cancel"
+
+// A banner's Sign Out, which opens the SignOutConfirmation of the same `prefix` with `showModal`, as CommandButton does
+component SignOutButton
+  props
+    prefix: string
+    disabled: bool
+  action ask
+    showModal(`${prefix}sign-out-confirmation`)
+  view
+    button press=ask disabled=disabled destructive=true testId=`${prefix}sign-out` appearance="auto" buttonStyle="bordered" align-self="flex-start" margin-top=6
+      text "Sign Out"
+
 component SettingsScreen
   props
     developer: bool
@@ -153,12 +178,7 @@ component SettingsScreen
             button press=askSignOut disabled=signingOut destructive=true testId="sign-out" appearance="auto" buttonStyle="plain" padding=16 display="flex" flex-direction="row" align-items="center" justify-content="center" text-align=(fold == "across" ? "start" : "center") gap=8
               image "symbol:icon.rectangle.portrait.and.arrow.right" font-size=17
               text "Sign Out" font-size=17 font-weight=600
-          dialog id="sign-out-confirmation" role="alertdialog" aria-label="Sign Out?"
-            text "You’ll need to sign in again to access your vehicle."
-            button destructive=true press=signOut commandfor="sign-out-confirmation" command="close" testId="confirm-sign-out"
-              text "Sign Out"
-            button commandfor="sign-out-confirmation" command="close" testId="cancel-sign-out"
-              text "Cancel"
+          SignOutConfirmation(prefix="", signOut=signOut)
           if demo
             SectionFooter(words="Signed in to the demo Lexus.")
         if demo

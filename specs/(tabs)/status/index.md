@@ -379,6 +379,8 @@ telling.
 
 ## Platform notes
 
+- Exact keeps the session and the vehicle data in two cases: Lexus refuses a renewal with a 4xx reply that does not end the session, as its token endpoint does while the phone is in another region, or the gateway refuses the renewed token. The read fails, and after one continuous visible second a banner reads "Lexus didn’t accept your sign-in". It says this can happen while you're in another region, and offers a destructive Sign Out with the same confirmation as Settings. Lexus refusing the refresh token, an OpenID Connect sign-in-again error and a refreshed ID token that fails its checks end the session. The banner comes and goes as the other banners do, and leaves once the vehicle list and status reads succeed again. With nothing cached, the full-screen "Vehicle data unavailable" state gives the same cause and points to Sign Out in Settings; a command's alert gives it too.
+
 - Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. Refresh-failure banners still require one continuous visible second on their screen before appearing. Recovery cancels a pending warning or starts dismissing a visible one immediately. Full-screen load errors and command-error alerts keep their existing timing.
 
 - Exact card section titles are level-2 headings in the platform headline style.

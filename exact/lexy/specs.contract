@@ -18,6 +18,9 @@ use VehicleState from "./status.contract"
 use WarningBanner from "./status.contract"
 use Activity from "./model.contract"
 use specsWarning from "./model.contract"
+use sessionText from "./model.contract"
+use SignOutConfirmation from "./settings.contract"
+use SignOutButton from "./settings.contract"
 
 fn specValue(spec: Spec, name: string, fallback: string): string = match first(spec.items.filter(i => i.name == name and i.value != "")) { case some(i) => i.value, case none => fallback }
 
@@ -73,6 +76,9 @@ component SpecsScreen
     // Wide: the vehicle on the left, capabilities and services on the right.
     wide: bool
     fold: string
+    // The session warning's Sign Out, as Settings' (app.contract `signOut`)
+    signOut: action
+    signingOut: bool
   derive car = garage.car
   derive warning = specsWarning(online, garage, loading)
   derive failureNote = developer ? failureDetail("Vehicle list", garage.status, garage.error) : ""
@@ -91,12 +97,17 @@ component SpecsScreen
           // use-vehicle-screen.tsx: "Couldn't refresh" over data already shown.
           if warningsVisible and warning == "garage-error"
             WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-garage-error", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Couldn’t refresh", message=`${failureSummary(garage.status, garage.error)} Showing the latest data we saved. Pull down to try again.`, detail=failureNote)
+          // Offer Sign Out when Lexus refused the session, which stays until the person signs out
+          if warningsVisible and warning == "session"
+            WarningBanner(immediate=false, confirmation=warningConfirmation, id="specs-session-refused", still=still, above="16px", symbol="exclamationmark.triangle.fill", framed=false, title="Lexus didn’t accept your sign-in", message=sessionText(true), detail=failureNote)
+              SignOutButton(prefix="specs-session-", disabled=signingOut)
+          SignOutConfirmation(prefix="specs-session-", signOut=signOut)
         if car.vin == "" and not loading and garage.ok and garage.carCount == 0
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16
             VehicleState(symbol="car_2", title="No vehicle found", message="There's no vehicle associated with this Lexus account. Add your vehicle in the Lexus app, then check again here.", label="Check again", press=reload, busy=retrying, id="specs-no-vehicle", detail="")
-        if car.vin == "" and not loading and not garage.ok and garage.status != 401
+        if car.vin == "" and not loading and not garage.ok
           // 16 above, as Status' padded column and its gap give its state,
           // so the two screens' states stand in the same place.
           column flex-grow=1 margin-top=16

@@ -140,9 +140,14 @@ CPU measurements have 10 ms resolution. Recorded one-minute load averages span 1
 - A refresh's POST runs to its end when Exact lets its answer go, and its
   reply's turn keeps the store (LLP 1146 D2); on iOS Exact asks for background
   time while it is in flight, which the system may end first. A refresh that
-  fails without a reply keeps the session. Lexus refusing the refresh token
-  ends it, as do OpenID Connect's sign-in-again errors and a refreshed ID
-  token that fails its checks; an end empties the vehicle data.
+  fails keeps the session, unless Lexus refuses the refresh token, sends an
+  OpenID Connect sign-in-again error, or sends a refreshed ID token that
+  fails its checks. Those end the session and empty the vehicle data. When
+  Lexus refuses a refresh with any other 4xx reply except a timeout or a
+  rate limit, the read fails with 401, as it does when the gateway refuses
+  the renewed token. Status and Specs then keep the vehicle data and show a
+  banner that offers Sign Out. Lexus's token endpoint sends such a refusal,
+  a 403 that is not an OAuth reply, while the phone is in another region.
 - A command is confirmed only by a newer vehicle report that agrees with it.
   An older matching reading does not confirm a later command.
 - Sparse snapshots retain older window and opening readings with their original

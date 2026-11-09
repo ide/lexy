@@ -256,11 +256,14 @@ function vehicleHeaders(id: string, car: Car): Record<string, string> {
 
 /**
  * A request with the session's access token, which the package refreshes
- * once when the gateway refuses it. A refusal that stands fails with 401 and
- * keeps the session; no session, or one that ended, also empties what the
- * screens held, as a sign-out does. The package's other errors keep the words
- * the screens classify by (model.contract `failureKind`): no reply reads as
- * Lexus unreachable, a refusal by its status.
+ * once when the gateway refuses it. The read fails with 401, and the session
+ * and what the screens held stay, when the gateway refuses the renewed token
+ * or Lexus refuses the refresh with a 4xx reply that does not end the
+ * session; the screens then offer Sign Out. The read also fails with 401 when
+ * there is no session, or it ended, and then empties what the screens held,
+ * as a sign-out does. The package's other errors keep the words the screens
+ * classify by (model.contract `failureKind`): no reply reads as Lexus
+ * unreachable, and a timeout, a rate limit or a server error as its status.
  */
 async function authorized(store: Store, at: number, url: string, init: RequestInit): Promise<Json> {
   saw(at);
@@ -273,7 +276,13 @@ async function authorized(store: Store, at: number, url: string, init: RequestIn
       await forgetStored();
       throw new HttpError(401, e.message);
     }
-    throw e.code === 'network' ? new Error(`Couldn’t reach Lexus: ${e.message}`) : new HttpError(e.status, e.message);
+    if (e.code === 'network') throw new Error(`Couldn’t reach Lexus: ${e.message}`);
+    // Read a refresh Lexus refused as a refused session, but not a timeout or a rate limit: its token endpoint sends a
+    // 403 that is not an OAuth reply while the phone is in another region
+    if (e.status >= 400 && e.status < 500 && e.status !== 408 && e.status !== 429) {
+      throw new HttpError(401, `Lexus refused to renew the session (${e.code}, HTTP ${e.status})`);
+    }
+    throw new HttpError(e.status, e.message);
   }
   if (EXPIRED.includes(response.status)) {
     throw new HttpError(401, 'Lexus rejected the session');

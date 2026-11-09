@@ -126,10 +126,15 @@ shape Status
   // The oldest doors-and-windows reading older than this snapshot, or 0.
   closuresStaleMs: number
 
-// Keep the rendered warning and its diagnostic log on the same condition
-fn statusWarning(online: bool, garage: Garage, status: Status, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and ((not garage.ok and garage.status != 401) or (status.error != "" and status.status != 401)) ? "garage-error" : "")
+// Keep the rendered warning and its diagnostic log on the same condition. Show the "session" warning, which offers
+// Sign Out, ahead of any other failure when a read fails with 401: Lexus refused the session, and the person is still
+// signed in (app.ts `authorized`).
+fn statusWarning(online: bool, garage: Garage, status: Status, loading: bool): string = not online ? "offline" : (garage.car.vin == "" or loading ? "" : ((not garage.ok and garage.status == 401) or (status.error != "" and status.status == 401) ? "session" : (not garage.ok or status.error != "" ? "garage-error" : "")))
 
-fn specsWarning(online: bool, garage: Garage, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and not garage.ok and garage.status != 401 ? "garage-error" : "")
+fn specsWarning(online: bool, garage: Garage, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and not garage.ok ? (garage.status == 401 ? "session" : "garage-error") : "")
+
+// The session warning's words under its title; `saved` says the screen shows the latest data saved
+fn sessionText(saved: bool): string = `This can happen while you're in another region.${saved ? " Showing the latest data we saved." : ""} Pull down to try again, or sign out and sign back in.`
 
 shape Tire
   position: string
@@ -265,7 +270,7 @@ fn signInError(stage: string, status: number): string = (
 // load-error.ts classifyFailure / describeFailure: what kind of failure a
 // read was, then a short summary (the "Couldn't refresh" banner) or the
 // cause and what to do (the full-screen error).
-fn failureKind(status: number, error: string): string = status == 401 and error.includes("expired") ? "session" : (status == 401 or status == 403 ? "permission" : (status >= 500 ? "server" : (status >= 400 ? "client" : (status == 0 and (error.includes("etwork") or error.includes("offline") or error.includes("onnection") or error.includes("nternet") or error.includes("timed out") or error.includes("Couldn’t reach")) ? "network" : "unknown"))))
+fn failureKind(status: number, error: string): string = status == 401 ? "session" : (status == 403 ? "permission" : (status >= 500 ? "server" : (status >= 400 ? "client" : (status == 0 and (error.includes("etwork") or error.includes("offline") or error.includes("onnection") or error.includes("nternet") or error.includes("timed out") or error.includes("Couldn’t reach")) ? "network" : "unknown"))))
 fn failureSummary(status: number, error: string): string = summaryOf(failureKind(status, error))
 fn summaryOf(kind: string): string = (
   kind == "permission" ? "Lexus didn't let Lexy read your vehicle." :
@@ -291,10 +296,10 @@ fn adviceOf(kind: string): string = (
   kind == "server" ? "The Lexus service had a problem on its end, not something you did. It usually recovers within a few minutes. Try again shortly." :
   kind == "client" ? "Lexus didn't accept Lexy's request. Lexus may have changed how its service works. Try again, and check for a Lexy update if it keeps happening." :
   kind == "network" ? "Lexy couldn't connect to Lexus. Your device may be offline or on a weak connection. Check Wi-Fi or cellular data, then try again." :
-  kind == "session" ? "Your Lexus sign-in expired. Lexus ends sign-ins after a while, and when your password changes. Sign in again to see your vehicle." :
+  kind == "session" ? "Lexus didn't accept Lexy's saved sign-in. This can happen while you're in another region. Try again later, or sign out in Settings and sign back in." :
   "Something unexpected went wrong while loading your vehicle, and Lexy couldn't tell why. Try again; if it keeps happening, restart Lexy."
 )
-fn failureText(status: number, error: string): string = status == 0 ? "Lexy couldn't reach Lexus. Your device may be offline, or the connection dropped. Check Wi-Fi or cellular data, then try again." : (status >= 500 ? "The Lexus service had a problem on its end, not something you did. Try again in a few minutes." : `Lexus didn't accept the request. Its service may be busy, or your sign-in may need refreshing. Try again; if it keeps happening, sign out and sign back in. (Lexus error ${status}${error != "" ? `: ${error}` : ""})`)
+fn failureText(status: number, error: string): string = status == 0 ? "Lexy couldn't reach Lexus. Your device may be offline, or the connection dropped. Check Wi-Fi or cellular data, then try again." : status == 401 ? adviceOf("session") : (status >= 500 ? "The Lexus service had a problem on its end, not something you did. Try again in a few minutes." : `Lexus didn't accept the request. Its service may be busy, or your sign-in may need refreshing. Try again; if it keeps happening, sign out and sign back in. (Lexus error ${status}${error != "" ? `: ${error}` : ""})`)
 // A rename Lexus refuses (400) is the name it won't store; anything else is the usual failure
 fn renameFailure(status: number, error: string): string = status == 400 ? "Lexus didn't accept that name and didn't say why. Try a shorter name using only letters, numbers and spaces." : failureText(status, error)
 
