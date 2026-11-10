@@ -34,29 +34,32 @@ class LexusCtlTests(unittest.TestCase):
         self.assertEqual(keychain.values["refresh-token"], "new")
 
     def test_command_is_submitted_once_and_verified(self):
-        transport = mock.Mock()
-        transport.json.side_effect = [
-            {"payload": {"status": status("Unlocked", "2026-07-23T19:00:00Z")}},
-            {"payload": {"returnCode": "000000"}},
-            {"payload": {"status": status("Locked", "2026-07-23T19:00:05Z")}},
-        ]
-        with tempfile.TemporaryDirectory() as directory:
-            result = lexusctl.run_command(
-                transport,
-                headers={},
-                action="lock",
-                state_path=Path(directory) / "state.json",
-                poll_seconds=0,
-                max_polls=1,
-            )
+        # An explicit command is sent even when the snapshot already shows its result
+        for before in ("Unlocked", "Locked"):
+            with self.subTest(before=before):
+                transport = mock.Mock()
+                transport.json.side_effect = [
+                    {"payload": {"status": status(before, "2026-07-23T19:00:00Z")}},
+                    {"payload": {"returnCode": "000000"}},
+                    {"payload": {"status": status("Locked", "2026-07-23T19:00:05Z")}},
+                ]
+                with tempfile.TemporaryDirectory() as directory:
+                    result = lexusctl.run_command(
+                        transport,
+                        headers={},
+                        action="lock",
+                        state_path=Path(directory) / "state.json",
+                        poll_seconds=0,
+                        max_polls=1,
+                    )
 
-        posts = [
-            call
-            for call in transport.json.call_args_list
-            if call.kwargs.get("method") == "POST"
-        ]
-        self.assertEqual(len(posts), 1)
-        self.assertTrue(result["verified"])
+                posts = [
+                    call
+                    for call in transport.json.call_args_list
+                    if call.kwargs.get("method") == "POST"
+                ]
+                self.assertEqual(len(posts), 1)
+                self.assertTrue(result["verified"])
 
     def test_recent_command_is_not_resubmitted(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,30 +67,6 @@ class LexusCtlTests(unittest.TestCase):
             state_path.write_text(json.dumps({"submitted_at": lexusctl.now_epoch()}))
             with self.assertRaisesRegex(RuntimeError, "cooldown"):
                 lexusctl.guard_cooldown(state_path, cooldown_seconds=90)
-
-    def test_explicit_command_is_sent_even_if_snapshot_matches(self):
-        transport = mock.Mock()
-        transport.json.side_effect = [
-            {"payload": {"status": status("Locked", "2026-07-23T19:00:00Z")}},
-            {"payload": {"returnCode": "000000"}},
-            {"payload": {"status": status("Locked", "2026-07-23T19:00:05Z")}},
-        ]
-        with tempfile.TemporaryDirectory() as directory:
-            result = lexusctl.run_command(
-                transport,
-                headers={},
-                action="lock",
-                state_path=Path(directory) / "state.json",
-                poll_seconds=0,
-                max_polls=1,
-            )
-        posts = [
-            call
-            for call in transport.json.call_args_list
-            if call.kwargs.get("method") == "POST"
-        ]
-        self.assertEqual(len(posts), 1)
-        self.assertTrue(result["verified"])
 
 
 def status(lock_state, occurrence):

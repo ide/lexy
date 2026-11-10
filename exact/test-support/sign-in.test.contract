@@ -4,7 +4,8 @@
 // controls and its spinner for a second while it slides away.
 at "/settings?developer=on"
 
-test "the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle" on macos
+// One launch walks Login Flow's scenarios in turn: choosing a scenario starts the preview over.
+test "Login Flow keeps a leaving screen's controls disabled and its spinner on while it slides away, then turns it idle; says Lexus sent a new code with or without a method choice; and enables the controls at once after a refusal" on macos
   clock settle
   tap "try-demo"
   clock data
@@ -13,6 +14,7 @@ test "the screen a step leaves keeps its disabled controls and its spinner while
   clock settle
   tap "dev-login"
   clock settle
+  // With a method choice (`success-multi`): the screen each step leaves stays busy while it slides away, then turns idle
   expect disabled "sign-in-button"
   type "email" "driver@example.com"
   type "password" "secret"
@@ -50,16 +52,7 @@ test "the screen a step leaves keeps its disabled controls and its spinner while
   tap "verify-button"
   clock data
   expect tree has "preview-done"
-
-test "Resend Code says Lexus sent a new code where the code comes without a method choice" on macos
-  clock settle
-  tap "try-demo"
-  clock data
-  clock settle
-  tap "tab-settings"
-  clock settle
-  tap "dev-login"
-  clock settle
+  // Without a method choice (`success-single`): Resend Code says Lexus sent a new code
   tap "scenario"
   clock settle
   tap "scenario-success-single"
@@ -76,16 +69,7 @@ test "Resend Code says Lexus sent a new code where the code comes without a meth
   clock settle
   expect enabled "resend"
   expect state signInfo == "Lexus sent a new code."
-
-test "a refused password or code enables its controls again at once and stops the spinner" on macos
-  clock settle
-  tap "try-demo"
-  clock data
-  clock settle
-  tap "tab-settings"
-  clock settle
-  tap "dev-login"
-  clock settle
+  // A refused password, then a refused code: the controls are enabled again at once and the spinner stops
   tap "scenario"
   clock settle
   tap "scenario-wrong-password"
@@ -119,29 +103,11 @@ test "a refused password or code enables its controls again at once and stops th
   expect tree has "sign-in-error"
 
 // The demo signs in through the same steps, against an in-memory Lexus that cannot fail a read, so
-// these check that the reads happen: a sign-in ends as a pull does, reading the status and the
-// climate settings again once the car has been asked to report (`statusRev`, `climateRev`), and a
+// this checks that the reads happen: a sign-in ends as a pull does, reading the status and the
+// climate settings again once the car has been asked to report (`statusRev`, `climateRev`). A
 // climate change saved before then shows over the older reading and is let go once that read lands.
-test "a sign-in reads the climate settings again after it asks the car to report" on macos
-  clock settle
-  tap "try-demo"
-  clock data
-  clock settle
-  clock data
-  clock settle
-  clock +5000
-  clock data
-  clock settle
-  clock +5000
-  clock data
-  clock settle
-  expect state primeOnSignIn == false
-  expect state statusRev == 2
-  expect state climateRev == 1
-  expect state climateRead.ok == true
-  expect state climate.on == true
-
-test "a climate change saved before the sign-in's re-read shows over the older reading and is let go once that read lands" on macos
+// A saved change leaves `climateRev` alone, so the re-read this counts is the sign-in's.
+test "a sign-in reads the climate settings again after it asks the car to report, and a change saved before then shows until that read lands" on macos
   clock settle
   tap "try-demo"
   clock data
@@ -163,7 +129,9 @@ test "a climate change saved before the sign-in's re-read shows over the older r
   clock data
   clock settle
   expect state primeOnSignIn == false
+  expect state statusRev == 2
   expect state climateRev == 1
+  expect state climateRead.ok == true
   expect state climateRead.on == false
   expect state climate.on == false
   expect state climateWritten == none

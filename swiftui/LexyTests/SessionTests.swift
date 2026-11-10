@@ -9,8 +9,7 @@ import Testing
         var current = "r1"
         let lock = NSLock()
         func answer(_ request: WireRequest) async throws -> WireReply {
-            try await Task.sleep(for: .milliseconds(30))
-            return lock.withLock {
+            lock.withLock {
                 guard request.form["refresh_token"] == current else { return .json(400, ["error": "invalid_grant"]) }
                 let next = "r\(Int(current.dropFirst())! + 1)"
                 current = next
@@ -24,7 +23,11 @@ import Testing
 
     @Test func concurrentAsksShareOneRefresh() async {
         let server = Rotating()
-        let fake = FakeLexus { try await server.answer($0) }
+        // The refresh stays in flight while the second ask arrives
+        let fake = FakeLexus { request in
+            try await Task.sleep(for: .milliseconds(30))
+            return try await server.answer(request)
+        }
         let store = MemoryStore()
         store.set("lexy.session", sessionJSON(refresh: "r1", expiresAt: now - 1000))
         let client = LexusClient(store: store, cache: temporaryCache(), live: fake)

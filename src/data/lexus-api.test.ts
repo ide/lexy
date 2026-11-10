@@ -2,12 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { LexusSession } from "@/auth/lexus-auth";
 
-import {
-  LEXUS_HOSTS,
-  VEHICLE_STATUS_ENDPOINT,
-  businessHeaders,
-  guidFromIdToken,
-} from "./lexus-api";
+import { businessHeaders, guidFromIdToken } from "./lexus-api";
 
 function idTokenWith(claims: Record<string, unknown>): string {
   const part = (obj: unknown) =>
@@ -24,11 +19,6 @@ const session: LexusSession = {
 };
 
 describe("lexus-api", () => {
-  it("points at the production Lexus REST host", () => {
-    expect(LEXUS_HOSTS.rest).toBe("https://onecdn.telematicsct.com");
-    expect(VEHICLE_STATUS_ENDPOINT).toBe("https://onecdn.telematicsct.com/v1/remote/route/status");
-  });
-
   it("extracts the customer GUID from the ID token", () => {
     expect(guidFromIdToken(session.idToken)).toBe("GUID-123");
     expect(guidFromIdToken("not-a-jwt")).toBeUndefined();

@@ -21,7 +21,11 @@ test "command controls wait for the request and then enable the current choices"
   expect enabled "command-buzzer-warning"
   expect enabled "command-sound-horn"
 
-test "a climate error waits until the remote confirmation closes"
+// The fixture's Fail button (`failed`) starts a climate write, refused a minute later, while a command's
+// confirmation is open, so the error waits behind it: first a confirmation that is cancelled, then one
+// that is confirmed. The error's text stays in the tree after the first refusal, so `climatePending` shows the
+// second one.
+test "a climate error waits until the remote confirmation closes, and Confirm dispatches its command before the error is acknowledged"
   tap "finish"
   tap "failed"
   tap "command-door-lock"
@@ -41,14 +45,14 @@ test "a climate error waits until the remote confirmation closes"
   expect tree has "cancel-door-lock"
   tap "cancel-door-lock"
   clock settle
-
-test "Confirm still dispatches its command before the waiting error is acknowledged"
-  tap "finish"
+  expect state lastCommand == ""
   tap "failed"
   tap "command-door-lock"
   clock settle
+  expect state climatePending == true
   clock +60000
   clock settle
+  expect state climatePending == false
   tap "confirm-door-lock"
   clock settle
   expect state lastCommand == "door-lock"

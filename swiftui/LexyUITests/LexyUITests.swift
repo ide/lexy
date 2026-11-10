@@ -14,26 +14,32 @@ final class LexyUITests: XCTestCase {
 
     private func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
 
+    /// Checks `condition` every 0.1 s until it holds or `timeout` passes.
+    /// `waitForExistence(timeout:)` checks about once a second.
+    private func poll(_ timeout: TimeInterval, _ condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() >= deadline { return false }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        return true
+    }
+
     private func waitFor(_ element: XCUIElement, timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
-        let appeared = element.waitForExistence(timeout: timeout)
+        let appeared = poll(timeout) { element.exists }
         if !appeared { print("UI TREE:\n\(app.debugDescription)") }
         XCTAssertTrue(appeared, "\(element) never appeared", file: file, line: line)
     }
 
-    private func waitUntil(_ timeout: TimeInterval = 15, _ condition: @escaping () -> Bool, _ message: String) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if condition() { return }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-        }
-        XCTFail(message)
+    private func waitUntil(_ timeout: TimeInterval, _ condition: () -> Bool, _ message: @autoclosure () -> String, file: StaticString = #filePath, line: UInt = #line) {
+        if !poll(timeout, condition) { XCTFail(message(), file: file, line: line) }
     }
 
     private func back(file: StaticString = #filePath, line: UInt = #line) {
         let bar = app.navigationBars.firstMatch
         let button = [bar.buttons["Settings"], bar.buttons["Back"], bar.buttons["BackButton"]].first { $0.exists } ?? bar.buttons.element(boundBy: 0)
         button.tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5), "not back in Settings: \(app.navigationBars.firstMatch.identifier)", file: file, line: line)
+        waitUntil(5, { self.app.navigationBars["Settings"].exists }, "not back in Settings: \(self.app.navigationBars.firstMatch.identifier)", file: file, line: line)
     }
 
     private func signInToTheDemo() {
