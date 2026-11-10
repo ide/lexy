@@ -124,7 +124,7 @@ const failedEngine = answer('engine', [car.vin, engineCar, 1, at + 1], store, st
 (await nextRequest()).reply(new Response('{}', { status: 503 }));
 assert.deepEqual(await failedEngine, { ...legacy, fetchedMs: 0 });
 
-assert.equal((await answer('climate', ['', car, 0, at], store, storage, null)).ok, false);
+assert.equal((await answer('climate', ['', { ...car, vin: '' }, 0, at], store, storage, null)).ok, false);
 assert.equal(pending.length, 0, 'Climate sends no HTTP before the car is known');
 const settings = answer('climate', [car.vin, car, 0, at], store, storage, null);
 const settingsRequest = await nextRequest();
