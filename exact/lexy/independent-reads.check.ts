@@ -125,7 +125,12 @@ const failedEngine = answer('engine', [car.vin, engineCar, 1, at + 1], store, st
 assert.deepEqual(await failedEngine, { ...legacy, fetchedMs: 0 });
 
 assert.equal((await answer('climate', ['', car, 0, at], store, storage, null)).ok, false);
-assert.equal(pending.length, 0, 'Deferred climate sends no HTTP before the primary snapshot');
+assert.equal(pending.length, 0, 'Climate sends no HTTP before the car is known');
+const settings = answer('climate', [car.vin, car, 0, at], store, storage, null);
+const settingsRequest = await nextRequest();
+lane(settingsRequest, true, '/climate-settings');
+respond(settingsRequest, { settingsOn: true, temperature: 72, temperatureUnit: 'F', minTemp: 60, maxTemp: 85, tempInterval: 1, acOperations: [] });
+assert.equal((await settings).ok, true);
 
 const feedback: string[] = [];
 const native: NativeModule = {

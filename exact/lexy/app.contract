@@ -229,10 +229,11 @@ component Lexy
   resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
   resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
   // Bump with the status on every refresh (vehicle-refresh.ts) but not on the
-  // lock's polls (`statusRev`): a climate read would hold up the next poll in
-  // the ordered lane they share
+  // lock's polls (`statusRev`), which confirm only the lock. The read runs
+  // beside the status, outside its ordered lane (app.ts), so neither waits for
+  // the other.
   state climateRev = 0
-  resource climateRead = climate(statusAnswered ? car.vin : "") with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
+  resource climateRead = climate(car.vin) with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
   // Roll back a failed write
   mutation climateSaved as shape Climate then afterClimateSave
   // Show the last change the car accepted until a read asked after the car

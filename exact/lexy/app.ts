@@ -1066,9 +1066,11 @@ function decodeClimate(body: Json): Climate {
   };
 }
 
+// Read outside the status's ordered lane, as the tires are: `keepingLast` saves
+// the newest read whichever reply lands first
 async function climate(store: Store, car: Car, at: number): Promise<Climate> {
   if (!car.vin) return noClimate;
-  return keepingLast('climate', car.vin, noClimate, async () => decodeClimate(await authorized(store, at, CLIMATE_URL, reading(vehicleHeaders(account(store), car)))));
+  return keepingLast('climate', car.vin, noClimate, async () => decodeClimate(await authorized(store, at, CLIMATE_URL, reading(vehicleHeaders(account(store), car), true))));
 }
 
 async function setClimate(store: Store, car: Car, raw: string, on: boolean, temperature: number, front: boolean, rear: boolean, at: number): Promise<Climate> {
