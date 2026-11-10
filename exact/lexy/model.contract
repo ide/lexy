@@ -146,7 +146,7 @@ fn specsWarning(online: bool, garage: Garage, since: number): string = not onlin
 fn warningTitle(kind: string): string = kind == "offline" ? "You're offline" : (kind == "garage-error" ? "Couldn’t refresh" : (kind == "session" ? "Lexus didn’t accept your sign-in" : ""))
 
 // The session warning's words under its title; `saved` says the screen shows the latest data saved
-fn sessionText(saved: bool): string = `This can happen while you're in another region.${saved ? " Showing the latest data we saved." : ""} Pull down to try again, or sign out and sign back in.`
+fn sessionText(saved: bool): string = `This can happen while you're traveling abroad.${saved ? " Showing the latest data we saved." : ""} Pull down to try again, or sign out and sign back in.`
 
 shape Tire
   position: string
@@ -308,7 +308,7 @@ fn adviceOf(kind: string): string = (
   kind == "server" ? "The Lexus service had a problem on its end, not something you did. It usually recovers within a few minutes. Try again shortly." :
   kind == "client" ? "Lexus didn't accept Lexy's request. Lexus may have changed how its service works. Try again, and check for a Lexy update if it keeps happening." :
   kind == "network" ? "Lexy couldn't connect to Lexus. Your device may be offline or on a weak connection. Check Wi-Fi or cellular data, then try again." :
-  kind == "session" ? "Lexus didn't accept Lexy's saved sign-in. This can happen while you're in another region. Try again later, or sign out in Settings and sign back in." :
+  kind == "session" ? "Lexus didn't accept Lexy's saved sign-in. This can happen while you're traveling abroad. Try again later, or sign out in Settings and sign back in." :
   "Something unexpected went wrong while loading your vehicle, and Lexy couldn't tell why. Try again; if it keeps happening, restart Lexy."
 )
 fn failureText(status: number, error: string): string = status == 0 ? "Lexy couldn't reach Lexus. Your device may be offline, or the connection dropped. Check Wi-Fi or cellular data, then try again." : status == 401 ? adviceOf("session") : (status >= 500 ? "The Lexus service had a problem on its end, not something you did. Try again in a few minutes." : `Lexus didn't accept the request. Its service may be busy, or your sign-in may need refreshing. Try again; if it keeps happening, sign out and sign back in. (Lexus error ${status}${error != "" ? `: ${error}` : ""})`)
