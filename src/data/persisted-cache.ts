@@ -4,10 +4,10 @@ import { parseVehicleProfile, parseVehicleStatus } from "@/data/vehicle";
 import { isVehicleProfileKey, isVehicleStatusKey } from "@/data/vehicle-keys";
 
 /**
- * Version stamp for the on-disk query cache. React Query's persister discards a
- * persisted cache whose `buster` no longer matches this string, so bumping it
- * makes returning users fetch fresh instead of hydrating data written by an
- * older, incompatible build.
+ * Version stamp for the on-disk query cache. The persister writes it as the
+ * cache's `buster`, and `readPersistedClient` discards a cache whose `buster`
+ * differs, so bumping it makes returning users fetch fresh instead of hydrating
+ * data written by an older, incompatible build.
  *
  * Bump this whenever a persisted shape changes in a way old data can't satisfy:
  * a field added/removed/renamed on `Vehicle`, a field's type changed, or — the
@@ -15,14 +15,6 @@ import { isVehicleProfileKey, isVehicleStatusKey } from "@/data/vehicle-keys";
  * from miles to kilometers). That last case is exactly what validation below
  * cannot catch, because the shape still looks valid, so the version bump is the
  * only safety net for it.
- *
- * History: v2 renamed the distance fields and added `distanceUnit`. v3 split
- * the single `['vehicle']` blob into a profile and a VIN-keyed status snapshot.
- * v4 changed what `Capability.symbol` *means*: it named an SF Symbol
- * ("lock.fill") and now names an icon-registry key ("lock"), which each
- * platform resolves to its own glyph. Old values still look like strings, so
- * only this bump keeps a returning user from hydrating names the registry has
- * never heard of.
  */
 export const CACHE_VERSION = "vehicle-v4";
 

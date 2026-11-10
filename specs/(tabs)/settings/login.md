@@ -15,7 +15,7 @@ Developer Tools section, so only in development and preview builds.
 
 ## Data
 
-- `PREVIEW_SCENARIOS` (`src/auth/preview-lexus-backend.ts`) — the five runs on offer.
+- `PREVIEW_SCENARIOS` (`src/auth/preview-lexus-backend.ts`) — the runs on offer.
 - `createPreviewFetch(scenario)` — a request implementation that answers the real authenticate,
   authorize, and token endpoints with canned responses, steering where the flow succeeds or fails.
   It is stateless, threading its step marker through the same field the real backend threads its

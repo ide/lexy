@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The signed-in section: a bottom tab bar over three stacks. It is also where the
+The signed-in section: a bottom tab bar over a stack for each tab. It is also where the
 app's "keep the vehicle data fresh" policy is mounted.
 
 ## Data
@@ -22,7 +22,7 @@ platforms build the same bar from the same list:
 its minimize-on-scroll behavior is `never` (also from `tab-config.ts`).
 
 Icon names are SF Symbols; an Android tree substitutes its own glyph set but
-must keep the same three tabs in the same order with the same labels.
+must keep the same tabs in the same order with the same labels.
 
 ## Structure
 

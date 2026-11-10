@@ -10,7 +10,7 @@ iOS ✅ · Android ✅
 
 Everything the app knows about its own over-the-air updates, in one screen: what JavaScript is
 running, what is downloaded, what the server is offering, the controls to check, download, and
-reload, and two logs of what has actually happened on this device. Reachable only from the Developer
+reload, and logs of what has actually happened on this device. Reachable only from the Developer
 Tools section, so only in development and preview builds.
 
 ## Data
@@ -24,11 +24,11 @@ Tools section, so only in development and preview builds.
 - `resolveLastCheck()` — the time of the most recent check, or, when there hasn't been one this
   launch, a phrase derived from the automatic-check policy ("At startup", "On error recovery", "Not
   checked yet").
-- `buildUpdateEntries()` — the up-to-three updates Expo can name: the running one, the downloaded
+- `buildUpdateEntries()` — the updates Expo can name: the running one, the downloaded
   one when it differs, and the available one when it differs from both.
 - `useUpdateActions()` (`src/updates/use-update-actions.ts`) — check, download, and reload, with
   their in-flight action, result message, and error.
-- `useUpdateEvents()` (`src/updates/use-update-events.ts`) — the two lists: the activity Lexy
+- `useUpdateEvents()` (`src/updates/use-update-events.ts`) — the activity Lexy
   records itself (persisted in a key-value store, `src/updates/update-history.ts`) and the native
   update log for the last 24 hours. Both are sorted newest-first and capped at the 20 most recent.
 - `describeNativeLog()` — turns a raw native log line into a readable title and a one-sentence
@@ -51,7 +51,7 @@ Tools section, so only in development and preview builds.
    (its creation date), Source ("Embedded in build", "EAS Update", or "Rollback to embedded"), and
    the full update ID, selectable. The footer says why this is the whole list: older downloaded
    updates are managed internally and are not enumerable from app code.
-4. **CONTROLS** — three full-width buttons, each swapping its icon for a busy indicator and adding
+4. **CONTROLS** — full-width buttons, each swapping its icon for a busy indicator and adding
    an ellipsis to its label while it runs:
    - "Check Now" (primary)
    - "Download Update" — additionally disabled unless an update is available
@@ -76,7 +76,7 @@ Tools section, so only in development and preview builds.
   will appear here after Refresh."
 - **No native entries in the window** — "No native Expo Updates entries were recorded in the last 24
   hours."
-- **Any action in flight** — all three controls are disabled until it settles, so they cannot stack.
+- **Any action in flight** — check, download, and reload are disabled until it settles, so they cannot stack.
 - Errors reported by the update system itself (a failed check, a failed download) surface in the
   result card alongside errors from the actions, and are recorded to the activity list by the
   root-mounted recorder.

@@ -22,8 +22,8 @@ returns null when the config carries neither, meaning an unlinked project with n
 
 ## Structure
 
-One DASHBOARD section, four rows, each marked with an external-link glyph rather than a push
-chevron because they leave the app:
+One DASHBOARD section whose rows each carry an external-link glyph rather than a push chevron,
+because they leave the app:
 
 - Project Home — "The project overview and its recent activity." (the project's home page)
 - Observe — "Launch, render, and navigation metrics from real devices."
@@ -35,7 +35,7 @@ the dashboard to see anything.
 
 ## States
 
-- **Unlinked build** — all four rows are disabled and the footer reads "This build isn't linked to
+- **Unlinked build** — every row is disabled and the footer reads "This build isn't linked to
   an EAS project, so there is no dashboard to open."
 
 ## Interactions

@@ -88,7 +88,8 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : String
 let native: NativeModule | null = null;
 // The session's storage (its database, and the files an earlier build kept), set beside it.
 let hostStorage: Storage | null = null;
-// Skip the cold-launch grace; subsequent visible observations follow a background transition
+// Whether `foregroundGrace` has seen the page: its first visibility is the launch's, which waits for
+// nothing, and a later `visible` is a return from the background
 let pageObserved = false;
 
 // The identity host's cookies. ForgeRock's load balancer pins a sign-in to
@@ -111,8 +112,9 @@ function keepCookies(header: string | null) {
 async function identityFetch(url: string, init: RequestInit): Promise<Response> {
   const headers = { ...(init.headers as Record<string, string>) };
   if (jar.size) headers.Cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
-  // The tree's steps wait 15 s; a token request keeps the package's 60 s, as Lexus spends the refresh token it is sent
-  // once it has the request, and a reply given up on signs the person out at the next refresh
+  // The tree's steps wait 15 s. A token request keeps the package's 60 s: Lexus spends the refresh token it is sent
+  // as soon as it has the request, so a reply given up on leaves a spent token and signs the person out at the next
+  // refresh
   const response = await fetch(url, { exactTimeout: 15000, ...init, headers });
   keepCookies(response.headers.get('set-cookie'));
   return response;
@@ -184,9 +186,9 @@ const lexusText = (body: Json): string => str(body.message) || str(body.error_de
 // refuses an expired token, and revocation at sign-out (LLP 1146 D5, D8, D9).
 
 // The latest time a read, command, sign-in or sign-out was given, which the
-// session log's events and the demo's car take for now, as data code reads no
-// clock (LLP 1027.000). A resource's time is when it was asked, which may be
-// earlier than another's, so the time only moves forward.
+// session log's events and the demo's car use as the current time, since data
+// code reads no clock (LLP 1027.000). A resource's time is when it was asked,
+// which may be earlier than another's, so this keeps the latest.
 let latestAt = 0;
 const saw = (at: number): void => { latestAt = Math.max(latestAt, at); };
 
@@ -312,7 +314,8 @@ async function session(store: Store, at: number): Promise<Result<'session'>> {
   return { signedIn: s.signedIn, demo, expiresAt: s.expiresAt, status: s.signedIn ? 200 : 401, error: s.ended ? s.error : '' };
 }
 
-// Keep status ordered after wake-up and through closure folding
+// A GET in the ordered lane, which keeps a status read after the wake-up and through the closure fold, or with
+// `independent` in a lane of its own
 function reading(headers: Record<string, string>, independent = false): RequestInit {
   return {
     method: 'GET',
@@ -407,8 +410,9 @@ function answered(raw: string, type: string, value: string | number): string {
 }
 
 // The tree's SSO token, which signs in as the person, stays here: Contract is
-// told only that the tree is done (`done`), as an answer is kept and
-// shown, and the authorization step of the same attempt takes it.
+// told only that the tree is done (`done`), because Contract keeps every
+// answer a source gives and may display it, and the authorization step of the
+// same attempt takes the token from here.
 let sso = { attempt: -1, token: '' };
 function tree(attempt: number, token: string): boolean {
   if (!token) return false;
@@ -1130,7 +1134,7 @@ async function openMaps(provider: string, latitude: number, longitude: number, n
 const pageOrigin = (): string => globalThis.origin ?? '';
 
 // Which maps apps the device has (canOpenURL on each one's scheme, declared
-// under LSApplicationQueriesSchemes; on the web all three, as their sites),
+// under LSApplicationQueriesSchemes; on the web all of them, as their websites),
 // and the saved choice if it is installed: while one that was deleted is
 // gone, the chooser asks again (src/hooks/use-maps-provider.ts,
 // src/data/maps-providers.ts).

@@ -59,7 +59,7 @@ describe("readPersistedClient", () => {
     expect(restored?.clientState.queries).toHaveLength(0);
   });
 
-  // The regression this file exists for: a cache written before the icon
+  // The case this file exists for: a cache written before the icon
   // registry, whose capability symbols name SF Symbols ("lock.fill") rather
   // than registry keys ("lock"). The shape is still a perfectly good array of
   // {label, symbol} strings, so only the symbol check catches it — and without
@@ -112,8 +112,8 @@ describe("readPersistedClient", () => {
     expect(readPersistedClient(null)).toBeNull();
   });
 
-  // The buster check the persist provider used to do on our behalf. Without it
-  // an older build's cache would hydrate into a shape this build cannot read.
+  // The `buster` check React Query's own restore would make. Without it an
+  // older build's cache would hydrate into a shape this build cannot read.
   it("rejects a cache written by a build with a different version stamp", () => {
     const value = stored(
       client([query([...VEHICLE_PROFILE_QUERY_KEY], persistedProfile)], "vehicle-v2"),

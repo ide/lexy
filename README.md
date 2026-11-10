@@ -13,6 +13,9 @@ pnpm test                                   # app (vitest)
 python3 -m unittest tools.test_lexusctl     # lexusctl CLI (run from repo root)
 ```
 
+The Exact app's checks are listed in [`exact/README.md`](exact/README.md), and
+the SwiftUI app's tests in [`swiftui/README.md`](swiftui/README.md).
+
 ## lexusctl
 
 `tools/lexusctl.py` is a one-shot desktop client for the Lexus remote API:
@@ -58,10 +61,10 @@ practice, with the full rules in [`AGENTS.md`](AGENTS.md):
   handling, and the semantic icon registry that resolves a name to an SF Symbol
   or a Material icon per platform.
 
-Two things are deliberately iOS-only: the home screen widget (`expo-widgets`
-has no Android renderer yet) and the in-app maps chooser — Android hands a
-`geo:` intent to the system instead, which routes to whatever navigation app
-the user prefers. The parked-location map itself awaits a Google Maps API key.
+The home screen widget is iOS-only because `expo-widgets` has no Android
+renderer yet. The in-app maps chooser is iOS-only by design: Android hands a
+`geo:` intent to the system, which routes it to whatever navigation app the user
+prefers. On Android, the parked-location map awaits a Google Maps API key.
 
 No environment configuration is needed. The app talks to the production Lexus
 OneApp API directly; the hosts are hard-coded in
@@ -82,17 +85,24 @@ Query handles refresh and deduplication, and persists the last successful
 snapshot through `expo-sqlite/kv-store` for fast startup and offline display
 (see [`src/data/query-client.tsx`](src/data/query-client.tsx)). Network state
 pauses queries while the device is offline, and the cache is wiped on sign-out
-so no data survives an account switch. The key-value layout can grow into
-relational tables when the app needs queryable trip history or queued commands.
+so no data survives an account switch.
+
+## Exact app
+
+[`exact/`](exact/) is Lexy written for Exact, with native iOS and macOS builds
+and a browser build. Exact's Contract language declares its screens and
+decisions, and TypeScript does its I/O. It is separate from the Expo
+app, and nothing in the Expo app depends on it. See its README to build, check
+and drive it.
 
 ## SwiftUI app
 
 [`swiftui/`](swiftui/) is Lexy as a SwiftUI app (iOS 26+), based on the
-Exact version in [`exact/`](exact/). It is separate from the Expo app and
-installs beside it as `app.ide.lexy.swiftui`. See its README to build and test it.
+Exact app. It is separate from the Expo app and installs beside it as
+`app.ide.lexy.swiftui`. See its README to build and test it.
 
 ## API reference
 
 [`docs/`](docs/) documents the Lexus OneApp API surface used by this tooling —
-all 285 REST endpoints by domain, the login/token flow, and the vehicle
+the REST endpoints by domain, the login/token flow, and the vehicle
 status/command model. Start at [`docs/README.md`](docs/README.md).

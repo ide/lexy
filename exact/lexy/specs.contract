@@ -132,7 +132,7 @@ component SpecsScreen
                 InfoRow(label="Built", value=specValue(spec, "Order Date", "—"), last=false, waiting=(car.vin == "" or (specLoading and spec.items.length == 0)))
                 InfoRow(label="In Service", value=specValue(spec, "Date of First Use", "—"), last=true, waiting=(car.vin == "" or (specLoading and spec.items.length == 0)))
             column testId="specs-right" gap=16 grid-column=(wide ? (fold == "across" ? "1" : "2") : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left) + 16px)" : "0px") margin-right=(fold == "across" ? "16px" : "0px")
-              // src/data/vehicle-mapping.ts lists the same four for every car.
+              // src/data/vehicle-mapping.ts lists the same capabilities for every car.
               column gap=8
                 text "Remote Capabilities" role="heading" aria-level=2 class=SectionTitle
                 row class=Card flex-wrap="wrap" padding=16 gap=16

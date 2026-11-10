@@ -16,24 +16,37 @@ update.
 
 ## Sign-in flow
 
-The app uses OAuth **Authorization Code + PKCE** through the platform browser /
-authentication session — the password is entered on the hosted Lexus page, not in
-app UI.
+Sign-in answers ForgeRock's authentication tree from the app's own screens, then
+completes OAuth's Authorization Code flow with PKCE
+([RFC 7636](https://www.rfc-editor.org/rfc/rfc7636)) using the session the tree
+issued:
 
 ```text
-app ──► hosted Lexus sign-in (login.lexusdriverslogin.com)
-        password, then phone OTP / MFA
-     ◄── authorization code (to app redirect)
-app ──► token exchange (PKCE verifier)
+app ──► POST /json/realms/root/realms/tmna-native/authenticate
+        (authIndexValue=signin_2.0): email, password, delivery method, code
+     ◄── SSO token (`tokenId`)
+app ──► POST /oauth2/realms/root/realms/tmna-native/authorize
+        SSO token as the iPlanetDirectoryPro header and `csrf`, decision=allow,
+        PKCE challenge, redirect_uri=com.toyota.oneapp:/oauth2Callback
+     ◄── 302 to the redirect URI with the authorization code
+app ──► POST …/access_token (grant_type=authorization_code, PKCE verifier)
      ◄── access token + refresh token + ID token + expiry
 ```
+
+Each tree step is a node of callbacks (`NameCallback`, `PasswordCallback`,
+`ChoiceCallback` for the delivery method, then the code, which Lexus sends as a
+`TextInputCallback` or a `PasswordCallback`); the app fills the active
+callback's input and posts the node back. The tree keeps server affinity with a
+cookie, so a sign-in sends its later steps with the cookies its first step set.
 
 - The **ID token** carries the customer GUID (`extension_tmsguid`), used as the
   `X-GUID` header and in GUID-scoped paths.
 - The **access token** is sent as `Authorization: Bearer <token>` on business
   calls.
-- The **refresh token** obtains a new access token when it expires; refresh-token
-  rotation applies.
+- The **refresh token** obtains a new access token when it expires. Each
+  refresh returns a new refresh token and spends the one sent, so a client
+  keeps the newest; a refresh whose reply is lost leaves the client holding a
+  spent token, and the next refresh fails.
 
 ## Token endpoints
 
@@ -56,8 +69,8 @@ client_id=oneappsdkclient
 refresh_token=<refresh token>
 ```
 
-The response includes a new `access_token` and `id_token` (and may rotate the
-`refresh_token`).
+The response includes a new `access_token`, `id_token` and `refresh_token`, and
+the refresh token sent is spent.
 
 ## PIN service
 
@@ -69,8 +82,9 @@ fixed in the client.
 ## Per-request context
 
 After sign-in, every business request to `onecdn.telematicsct.com` carries the
-bearer token plus a set of context headers. Below are the exact headers the Lexy
-iOS client sends (see `src/data/lexus-api.ts`), with their production values.
+bearer token and context headers. These are the headers Lexy sends
+(`src/data/lexus-api.ts`), with their production values. Lexy's Expo, Exact and
+SwiftUI apps report themselves as the OneApp's iOS client on every platform.
 
 ### Base headers (every authenticated call)
 
@@ -82,7 +96,7 @@ iOS client sends (see `src/data/lexus-api.ts`), with their production values.
 | `X-APPBRAND`        | `L`                                        | `L` = Lexus (Toyota uses `T`).                                                                                                                   |
 | `X-CHANNEL`         | `ONEAPP`                                   |                                                                                                                                                  |
 | `X-LOCALE`          | `en-US`                                    |                                                                                                                                                  |
-| `X-OSNAME`          | `iOS`                                      | Reported client platform. Lexy is an iOS app.                                                                                                    |
+| `X-OSNAME`          | `iOS`                                      | Reported client platform.                                                                                                                        |
 | `X-OSVERSION`       | `18.5`                                     | Reported iOS version.                                                                                                                            |
 | `X-APPVERSION`      | `3.4.0`                                    | Mirrors the shipped OneApp client version.                                                                                                       |
 | `X-DEVICE-TIMEZONE` | `PST`                                      |                                                                                                                                                  |

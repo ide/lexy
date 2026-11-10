@@ -103,9 +103,9 @@ They cover sign-in and preview isolation, token refresh and sign-out, the sessio
 snapshots, maps preferences, and concurrent reads. Screen specs live in
 [`../specs/`](../specs/); `specs/mirror.test.ts` checks their route coverage.
 
-The sign-in check drives Login Flow's mock tree and the demo, so it sends no Lexus requests. Build the macOS development app first (`bun exact.mjs mac` in `exact/lexy`), then run `bun exact/lexy/sign-in.check.ts` from the repository root. It covers five cases: the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle; Resend Code shows its notice where the code comes without a method choice; a refused password or code enables the controls again at once; a sign-in reads the climate settings again after it asks the car to report; and a climate change saved before then shows over the older reading and is let go once that read lands.
+The sign-in check drives Login Flow's mock tree and the demo, so it sends no Lexus requests. Build the macOS development app first (`bun exact.mjs mac` in `exact/lexy`), then run `bun exact/lexy/sign-in.check.ts` from the repository root. It checks that the screen a step leaves keeps its disabled controls and its spinner while it slides away, then turns idle; that Resend Code shows its notice where the code comes without a method choice; that a refused password or code enables the controls again at once; that a sign-in reads the climate settings again after it asks the car to report; and that a climate change saved before then shows over the older reading and is let go once that read lands.
 
-The screen checks use the real Status and Performance components with fixture data and no Lexus requests. Build the iOS development app first, then run `EXACT_SIM=<test-simulator-udid> bun exact/lexy/screens.check.ts` from the repository root. The checks cover disabled remote controls, a climate error waiting behind a command confirmation, loading and error messages, the phone and unfolded Performance lists, and row identity when a launch mark arrives earlier than an existing mark.
+The screen checks use the real Status and Performance components with fixture data and no Lexus requests, and drive the app's demo. Build the iOS development app first, then run `EXACT_SIM=<test-simulator-udid> bun exact/lexy/screens.check.ts` from the repository root. The checks cover disabled remote controls, a climate error waiting behind a command confirmation, loading and error messages, the phone and unfolded Performance lists, row identity when a launch mark arrives earlier than an existing mark, the developer panes' safe areas and header collapse, when the offline and refresh warnings appear, and the scroll-measurement stopwatch. On an iPhone Duo the run first opens the hinge, because UIKit arranges the panes from the physical window scene, and the developer-pane check also checks the unfolded panes; on another iPhone that check covers the phone width only.
 
 The [Performance list benchmark](test-support/performance-list-benchmark.json) compares an eager list with a viewport list on an iOS 27.1 Duo simulator at 390×844 with 200 navigation metrics. It uses one warm-up pair and five alternating measured pairs. Values are medians with interquartile ranges in parentheses.
 
@@ -120,9 +120,10 @@ CPU measurements have 10 ms resolution. Recorded one-minute load averages span 1
 
 ## Runtime rules
 
-- A pending resource retains its last answer. That answer may be displayed.
-  An authenticated request goes with the access token it has; one the gateway
-  refuses waits for the refresh in flight, or starts it.
+- A pending resource keeps its last answer, which may be displayed. An
+  authenticated request is sent with the access token the session holds; when
+  the gateway refuses it, the read waits for the refresh in flight or starts
+  one.
 - A failed or malformed response preserves the last valid vehicle, telemetry
   and climate settings. A valid empty vehicle list is a separate result.
 - Every refresh reads the climate settings with the status: a sign-in, a
@@ -131,28 +132,31 @@ CPU measurements have 10 ms resolution. Recorded one-minute load averages span 1
   only the status.
 - Exact's `@exact/oauth` keeps the Lexus session (Exact LLP 1146 D5, D8, D9).
   Lexy answers the sign-in tree with its own screens and sends the
-  authorization request with the tree's SSO token; the package exchanges the
-  code with PKCE, checks the ID token, renews the token one refresh at a time
-  keeping each rotated refresh token, renews and retries a read the gateway
-  refuses (403, or 401), and asks Lexus to revoke the refresh token at
-  sign-out, which forgets the session whether or not Lexus answers. By the
-  package's rule (D9), a token the gateway refuses right after the renewal
-  that issued it is not renewed again until the gateway's `Date` says it has
-  expired or, its expiry unknown, that a minute has passed since that
-  refusal, and those reads fail with the refusal; a refusal without a `Date`
-  renews as any other does. Its events are the session log's.
-- A refresh's POST runs to its end when Exact lets its answer go, and its
-  reply's turn keeps the store (LLP 1146 D2); on iOS Exact asks for background
-  time while it is in flight, which the system may end first. A refresh that
-  fails keeps the session, unless Lexus refuses the refresh token, sends an
-  OpenID Connect sign-in-again error, or sends a refreshed ID token that
-  fails its checks. Those end the session and empty the vehicle data. When
-  Lexus refuses a refresh with any other 4xx reply except a timeout or a
-  rate limit, the read fails with 401, as it does when the gateway refuses
-  the renewed token. Status and Specs then keep the vehicle data and show a
-  banner that offers Sign Out until a read succeeds. Lexus's token endpoint
-  sends such a refusal, a 403 that is not an OAuth reply, while the phone is
-  in another region.
+  authorization request with the tree's SSO token. The package exchanges the
+  code with PKCE, checks the ID token, and renews the access token one refresh
+  at a time, keeping each rotated refresh token. It renews and retries a read
+  the gateway refuses with 403 or 401. At sign-out it asks Lexus to revoke the
+  refresh token, and it forgets the session whether or not Lexus answers. The
+  session log records the package's events.
+- A token the gateway refuses right after the renewal that issued it is not
+  renewed again until the gateway's `Date` says it has expired or, its expiry
+  unknown, until a minute has passed since that refusal; until then, reads
+  fail with the refusal (LLP 1146 D9). A refusal without a `Date` renews as any
+  other does.
+- A refresh's POST runs to its end even when Exact lets go of the answer that
+  sent it, as a browser's request does, and what its reply's turn writes to
+  the store stands (LLP 1146 D2). On iOS, Exact asks for background time while
+  a refresh is in flight; the system may end that time first.
+- A failed refresh keeps the session, unless Lexus refuses the refresh token,
+  sends an OpenID Connect sign-in-again error, or sends a refreshed ID token
+  that fails its checks. Those end the session and empty the vehicle data.
+  A refresh Lexus refuses with a timeout (408) or a rate limit (429) fails the
+  read with that status. When Lexus refuses a refresh with another 4xx reply,
+  the read fails with 401, as it does when the gateway refuses the renewed
+  token; Status and Specs then keep the vehicle data and show a banner that
+  offers Sign Out until a read succeeds. Lexus's token endpoint sends such a
+  refusal, a 403 that is not an OAuth reply, while the phone is in another
+  region.
 - A command is confirmed only by a newer vehicle report that agrees with it.
   An older matching reading does not confirm a later command.
 - Sparse snapshots retain older window and opening readings with their original

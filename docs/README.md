@@ -9,10 +9,10 @@ shared Toyota/Lexus telematics infrastructure.
 
 | Doc                                                              | What's in it                                                                                                                  |
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| [endpoints.md](./endpoints.md)                                   | All 285 REST endpoints, grouped by function                                                                                   |
+| [endpoints.md](./endpoints.md)                                   | The REST endpoints, grouped by function                                                                                       |
 | [authentication.md](./authentication.md)                         | Identity provider, OAuth + PKCE, tokens, PIN, session headers                                                                 |
 | [vehicle-status-and-control.md](./vehicle-status-and-control.md) | Vehicle status model (REST + GraphQL), remote commands, command codes, climate, capability matrix                             |
-| [vehicle-identity.md](./vehicle-identity.md)                     | Where a vehicle's name comes from, and the two generation-specific endpoints that change it                                   |
+| [vehicle-identity.md](./vehicle-identity.md)                     | Where a vehicle's name comes from, and the generation-specific endpoints that change it                                       |
 | [subscriptions.md](./subscriptions.md)                           | Connected-services subscription state — the all-services list, SiriusXM/XM radio, music entitlements, and manage/cancel calls |
 
 Source data (machine-readable) lives in the `data/` folder:
@@ -82,8 +82,8 @@ picks one by feature flag and generation.
 callers check that rather than relying on HTTP status alone.
 
 **Remote commands are asynchronous.** Submitting a command returns a
-request/correlation id, not a final result. Completion arrives via a follow-up
-status read or a realtime subscription. A timeout is not a success. See
+request/correlation id, not a final result. Completion shows in a later status
+read or a realtime subscription. A timeout is not a success. See
 [vehicle-status-and-control.md](./vehicle-status-and-control.md).
 
 ## Authentication in one line

@@ -27,7 +27,7 @@ internal preview builds it also carries the entry points to the developer tools.
 
 ## Structure
 
-1. **DEVELOPER TOOLS** — present only when `SHOW_DEV_TOOLS`. Four rows, each pushing a screen:
+1. **DEVELOPER TOOLS** — present only when `SHOW_DEV_TOOLS`, with a row for each screen it pushes:
    - Updates — "Expo Updates status, controls, and activity log."
    - Data State — "Force loading, offline, error, and empty states."
    - Login Flow — "Walk the sign-in screens without signing out."

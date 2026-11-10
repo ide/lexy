@@ -28,7 +28,7 @@ drives the Lexus authentication tree:
   `resendCode()`, `changeMethod()`.
 
 Local to the screen: the email, password, and code field values, plus refs to
-the three fields.
+the fields.
 
 Copy is derived, not hard-coded per screen — `sign-in-copy.ts` owns it:
 
@@ -84,13 +84,13 @@ transition is animated so the relayout springs rather than snaps.
   prominent fill and its label ("Sign In", "Verify") rather than dimming or
   changing its words — the handler already guards the double submit, dimming
   made the fill flicker from blue to grey and back, and a longer label moved
-  the button's edges. Choice buttons and the two secondary OTP actions *are*
+  the button's edges. Choice buttons and the secondary OTP actions *are*
   disabled while busy.
 - **Empty fields.** Only emptiness dims the primary button: Sign In needs a
   non-blank email and a non-empty password, Verify needs a non-blank code.
 - **Error.** Errors never replace the screen; the form stays filled and the
   notice appears alongside it. Messages are composed by `sign-in-error.ts` from
-  two axes — *what failed* (network, rejected, rate-limited, server, protocol,
+  *what failed* (network, rejected, rate-limited, server, protocol,
   session, unknown) and *which action* it was (credentials, choice, otp, resend,
   restore) — so the advice always names the control the user is looking at
   ("tap Verify again", "request a code again"). Rejections get bespoke copy per

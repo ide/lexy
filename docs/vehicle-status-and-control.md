@@ -1,7 +1,7 @@
 # Vehicle status & remote control
 
-How the app reads a vehicle's state and sends remote commands. There are **two
-planes**, chosen by telematics generation:
+How the app reads a vehicle's state and sends remote commands. Which API
+**plane** a client uses, REST or GraphQL, depends on the telematics generation:
 
 - **REST** (`/v1/remote/route/*`) — used by older generations including **21MM**.
 - **GraphQL** (`oa-api.telematicsct.com/graphql` + realtime WebSocket) — used by **24MM**.
@@ -13,7 +13,7 @@ A client should hide the split behind one interface (`getStatus`, `refreshStatus
 
 ### REST — `GET /v1/remote/route/status`
 
-Returns a snapshot with three parts:
+Returns a snapshot of:
 
 - **`telemetry`** — `fugage` (fuel %), `range`, `odo`, each `{ value, unit }`.
 - **`vehicleStatus`** — sectioned list of closures: each door, window, hood,
@@ -46,7 +46,7 @@ Response is the standard `{ payload, status, timestamp }` envelope:
 
 - **`status`** — a *string*, not a boolean. The official app treats **`"1"` as
   running** and nothing else; `"0"` (the field's default) and `"2"` are the
-  other two values in its enum, both handled as not-running. What distinguishes
+  other values in its enum, both handled as not-running. What distinguishes
   `0` from `2` isn't expressed in the client.
 - **`date`** — when the engine started, `yyyy-MM-dd'T'HH:mm:ss'Z'` in UTC.
 - **`timer`** — runtime in minutes. When absent the app defaults to **20** for
@@ -57,7 +57,7 @@ intervals** rather than trusting the command response.
 
 On 24MM the same state comes from the GraphQL status tree instead, as
 `vehicleState.engine { running, status, startTime, stopTime, lastUpdateBy }`.
-There `status` is a word — `Pending` and `ExtendedRunning` are the two the
+There `status` is a word — `Pending` and `ExtendedRunning` are the ones the
 client matches — and `lastUpdateBy: "Remote"` distinguishes a remote start from
 the driver having started the car with the key.
 
@@ -197,7 +197,7 @@ selects the direction (`SeventeenRemoteCommand`):
 (The hazard pair really does carry `2` for both in the shipped enum — either an
 upstream bug or the direction is conveyed elsewhere. Don't rely on it.)
 
-**Not command codes.** Two other string sets look like commands and are not:
+**Not command codes.** These string sets look like commands and are not:
 
 - `EStart`, `EStop`, `DLock`, `DUnlock`, `HZOn`, `HZOff`, `buzzer-on` —
   `RemoteCommandStatus`, the `remoteCommandType` values echoed *back* in the

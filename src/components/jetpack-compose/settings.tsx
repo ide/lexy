@@ -24,7 +24,6 @@ import { haptic } from "@/utils/haptics";
 const CARD_RADIUS = 18;
 /** A row's leading glyph size; the divider inset is derived from it. */
 const ROW_ICON_SIZE = 22;
-/** Row padding: three horizontal, three-minus-one vertical, like the RN rows had. */
 const rowPadding = () =>
   padding(Spacing.three, Spacing.three - Spacing.one, Spacing.three, Spacing.three - Spacing.one);
 

@@ -89,9 +89,9 @@ const styles = StyleSheet.create({
   // "contain"` faithfully draws all that empty space, so the car floats small
   // in a sea of whitespace (which reads as excess vertical padding in the card).
   //
-  // Fix: clip the image in a fixed-height frame (overflow: hidden) and oversize
-  // it (width > 100%) so the car fills the frame and the transparent bands get
-  // cropped away instead of rendered. The car sits dead-center in the source,
+  // The image is therefore clipped in a fixed-height frame (overflow: hidden)
+  // and oversized (width > 100%), so the car fills the frame and the
+  // transparent bands are cropped away instead of drawn. The car sits dead-center in the source,
   // so a symmetric scale needs no translation. aspectRatio matches the source.
   heroImageFrame: {
     width: "100%",

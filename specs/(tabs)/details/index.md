@@ -77,7 +77,7 @@ pull-refresh.
 
 - When Exact keeps a session that Lexus refused, as Status's Platform notes describe, Specs shows Status's "Lexus didn’t accept your sign-in" banner, with its Sign Out and confirmation, or, with nothing cached, the full-screen "Vehicle data unavailable" state with the same cause.
 
-- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. Refresh-failure banners still require one continuous visible second on their screen before appearing. Recovery cancels a pending warning or starts dismissing a visible one immediately. Full-screen load errors and command-error alerts keep their existing timing.
+- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. A refresh-failure banner appears after one continuous visible second on its screen. Recovery cancels a pending warning or starts dismissing a visible one immediately. The window does not delay full-screen load errors.
 
 - Exact keeps 16 points of content spacing above UIKit’s bottom safe area.
 

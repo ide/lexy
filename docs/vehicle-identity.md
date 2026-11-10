@@ -30,8 +30,9 @@ car and then re-reads discovery is guaranteed to agree with the Lexus app.
 
 ## Renaming
 
-There are **two rename endpoints**, chosen by telematics generation. Both take
-the same body; they differ only in path and in how the request is addressed.
+Which rename endpoint a client calls depends on the telematics generation. The
+endpoints take the same body and differ only in path and in how the request is
+addressed.
 
 | Generation             | Method | Path                                     |
 | ---------------------- | ------ | ---------------------------------------- |
@@ -39,7 +40,7 @@ the same body; they differ only in path and in how the request is addressed.
 | everything else (21MM, 17CYPLUS, 24MM…) | `PUT` | `/oneapi/v1/vehicle-association/vehicle` |
 
 The official app picks between them with `VehicleInfo.isCY17()`, which is true
-only for the two legacy generation strings above. Route by generation, never by
+only for the legacy generation strings above. Route by generation, never by
 model or model year.
 
 ### Body (both endpoints)
@@ -91,17 +92,17 @@ vehicle — success is `ORCH-6000`:
 }
 ```
 
-The official client doesn't inspect `responseCode` at all: it treats **any 2xx
-with a non-empty body as success**, and an empty body as failure. Worth knowing
-the code anyway, since it's the only thing in the response that carries meaning.
+The official client doesn't inspect `responseCode`: it treats **any 2xx with a
+non-empty body as success**, and an empty body as failure. The code is still
+the only part of the response that carries meaning.
 
 Nothing about the write is asynchronous — unlike a remote command, there is no
 request id to follow up on. Re-read discovery to confirm.
 
 ## Which capability block to trust
 
-Discovery carries two, and they disagree. On a 2026 IS 350,
-`remoteServiceCapabilities` reports `trunkCapable: false`,
+Discovery's `remoteServiceCapabilities` and `extendedCapabilities` disagree.
+On a 2026 IS 350, `remoteServiceCapabilities` reports `trunkCapable: false`,
 `trunkCommandCapable: false`, and `hornCommandCapable: false` for a car whose
 trunk and horn both work. `extendedCapabilities` reports
 `trunkLockUnlockCapable: true`, `hornCapable: true`, `buzzerCapable: true`.
@@ -111,7 +112,7 @@ trunk and horn both work. `extendedCapabilities` reports
 `isHazardCapable`, `isLightsCapable`, `isMoonRoofCapable`,
 `isPowerWindowCapable` — and none read `remoteServiceCapabilities`.
 
-Two traps in that block:
+Traps in that block:
 
 - It lists only what a car **can** do. A missing key is a "no", not a default.
 - `moonroof` and `moonroofCloseCapable` are different flags, and
@@ -135,7 +136,6 @@ Two traps in that block:
 
 ## In this repo
 
-`src/data/vehicle-nickname.ts` implements the modern path only, for the same
-reason `remote-command.ts` implements four of the sixteen command codes: it is
-the one this app's vehicle (21MM) uses. The legacy path is documented above but
-not coded.
+`src/data/vehicle-nickname.ts` implements only the modern path, the one this
+app's vehicle (21MM) uses. The legacy path is documented above but not
+implemented.

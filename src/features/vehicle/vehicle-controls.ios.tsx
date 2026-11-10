@@ -124,8 +124,8 @@ const ENGINE_STOP: Control = {
 
 // ---- More Controls ----------------------------------------------------------
 // The rest of what this plane can actuate. Kept behind a disclosure because
-// none of it is a daily action and two of them make noise, and gated per
-// capability so a car is only ever offered what it will accept.
+// none of it is a daily action and the horn and the buzzer make noise, and
+// gated per capability so a car is only ever offered what it will accept.
 
 const TRUNK_LOCK: Control = {
   command: "trunk-lock",
@@ -393,8 +393,8 @@ export function VehicleControls({ vehicle }: { vehicle: Vehicle }) {
   // An anchored dialog points at the button it came from, which sounds like the
   // better feedback until you use the row: every control puts the question in a
   // different place, and a confirmation that moves is one you have to re-find
-  // each time. A centered alert lands in the same spot for all eleven of them,
-  // so the answer is always where the last one was.
+  // each time. A centered alert lands in the same spot for every control, so
+  // the answer is always where the last one was.
   //
   // It suits the content too — there is one alternative here, not a set of
   // them, and the message is a consequence warning (an enclosed space, a car

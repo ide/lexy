@@ -75,9 +75,8 @@ export function Redactable({
 
   useEffect(() => {
     if (reason === "loading") {
-      // Same treatment as the previous hand-built skeletons: a shared opacity
-      // pulse over the whole placeholder group. The numbers live in
-      // pulsing-text.ts because a status label mid-command uses them too.
+      // One opacity pulse over the whole placeholder group. The numbers live
+      // in pulsing-text.ts because a status label mid-command uses them too.
       opacity.value = PULSE_MIN_OPACITY;
       opacity.value = withRepeat(withTiming(1, { duration: PULSE_DURATION_MS }), -1, true);
     } else {

@@ -89,8 +89,8 @@ const ENGINE_STOP: Control = {
 
 // ---- More Controls ----------------------------------------------------------
 // The rest of what this plane can actuate. Kept behind a disclosure because
-// none of it is a daily action and two of them make noise, and gated per
-// capability so a car is only ever offered what it will accept.
+// none of it is a daily action and the horn and the buzzer make noise, and
+// gated per capability so a car is only ever offered what it will accept.
 
 const TRUNK_LOCK: Control = {
   command: "trunk-lock",
@@ -224,8 +224,8 @@ type EngineCommand = "engine-start" | "engine-stop";
  * react-native-gesture-handler rather than Compose buttons, for one reason: the
  * glyph. The app names its icons semantically and resolves them to a Material
  * *font* on Android (see icon-registry.ts), which a Compose `Icon` — it wants an
- * XML vector drawable — cannot take, and hosting eleven `RNHostView`s inside
- * eleven clickable Compose containers would put a foreign view over each
+ * XML vector drawable — cannot take, and hosting an `RNHostView` inside each
+ * button's clickable Compose container would put a foreign view over the
  * button's own touch area. The surfaces below are Material's tonal button
  * instead: a container tier for the fill, full-height corner rounding, and a
  * press carried by the fill rather than by fading the control out. The dialogs

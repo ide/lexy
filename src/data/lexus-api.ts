@@ -51,9 +51,8 @@ export const VEHICLE_COMMAND_ENDPOINT = `${LEXUS_HOSTS.rest}/v1/remote/route/com
 // Rename the vehicle — the nickname discovery returns as `nickName` and every
 // screen renders. The official app forks by telematics generation: 17CY and
 // PRE17CY vehicles PUT `/oneapi/v1/legacy/oneaccount/vehicles`, and everything
-// newer (21MM included) uses the association endpoint below. Only the modern
-// path is implemented, for the same reason only four remote commands are:
-// it is the one this app's vehicle uses (docs/vehicle-identity.md).
+// newer (21MM included) uses the association endpoint below. Only the newer
+// path is implemented, the one this app's vehicle uses (docs/vehicle-identity.md).
 export const VEHICLE_NICKNAME_ENDPOINT = `${LEXUS_HOSTS.rest}/oneapi/v1/vehicle-association/vehicle`;
 
 // The OneApp X-API-KEY.

@@ -1,25 +1,25 @@
 # Lexus OneApp — REST endpoint reference
 
-All 285 REST endpoints the OneApp client (3.4.0) is built to call, grouped by function. Unless noted, the host is `onecdn.telematicsct.com` and requests carry the standard headers described in [conventions](./README.md#request-conventions).
+The REST endpoints the OneApp client (3.4.0) is built to call, grouped by function. Unless noted, the host is `onecdn.telematicsct.com` and requests carry the standard headers described in [conventions](./README.md#request-conventions).
 
 ## Contents
 
-- [Authentication & Identity](#authentication-identity) (25)
-- [Vehicle: Discovery & Association](#vehicle-discovery-association) (18)
-- [Vehicle: Specification & Manuals](#vehicle-specification-manuals) (4)
-- [Vehicle: Status & Health](#vehicle-status-health) (9)
-- [Vehicle: Software (OTA)](#vehicle-software-ota) (13)
-- [Remote Commands & Climate](#remote-commands-climate) (23)
-- [Charging & EV](#charging-ev) (34)
-- [Subscriptions & Billing](#subscriptions-billing) (23)
-- [Service, Dealer & Maintenance](#service-dealer-maintenance) (35)
-- [Digital Key](#digital-key) (25)
-- [Account, Consent & Notifications](#account-consent-notifications) (29)
-- [Trips, Media & Preferences](#trips-media-preferences) (17)
-- [Dealer/Fuel Locations & Navigation](#dealer-fuel-locations-navigation) (3)
-- [Insurance, UBI & Rewards](#insurance-ubi-rewards) (10)
-- [Fleet](#fleet) (2)
-- [App: Config, Feedback & Misc](#app-config-feedback-misc) (15)
+- [Authentication & Identity](#authentication-identity)
+- [Vehicle: Discovery & Association](#vehicle-discovery-association)
+- [Vehicle: Specification & Manuals](#vehicle-specification-manuals)
+- [Vehicle: Status & Health](#vehicle-status-health)
+- [Vehicle: Software (OTA)](#vehicle-software-ota)
+- [Remote Commands & Climate](#remote-commands-climate)
+- [Charging & EV](#charging-ev)
+- [Subscriptions & Billing](#subscriptions-billing)
+- [Service, Dealer & Maintenance](#service-dealer-maintenance)
+- [Digital Key](#digital-key)
+- [Account, Consent & Notifications](#account-consent-notifications)
+- [Trips, Media & Preferences](#trips-media-preferences)
+- [Dealer/Fuel Locations & Navigation](#dealer-fuel-locations-navigation)
+- [Insurance, UBI & Rewards](#insurance-ubi-rewards)
+- [Fleet](#fleet)
+- [App: Config, Feedback & Misc](#app-config-feedback-misc)
 
 ## Authentication & Identity
 

@@ -33,8 +33,8 @@ export default function SettingsLayout() {
       <Stack.Screen
         name="vehicle-name"
         options={{
-          // The screen's own heading carries the label the field no longer
-          // repeats above itself, so it names the thing in full.
+          // The field has no label above it, so the screen's heading is its
+          // label and names the thing in full.
           title: "Vehicle Name",
           headerBackButtonDisplayMode: "minimal",
         }}

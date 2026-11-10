@@ -29,9 +29,9 @@ export type RefreshTrigger = "auto" | "manual";
  *
  * The profile rides along on a *manual* refresh only. On an automatic one it
  * would be waste: identity, spec sheet, and subscriptions don't go stale on
- * the timescale the app decides to re-read for itself, and putting discovery,
- * spec, and subscriptions back on that path would run all three on every
- * foreground and after every lock command.
+ * the timescale the app decides to re-read for itself, and reading discovery,
+ * spec, and subscriptions on that path would run them on every foreground and
+ * after every lock command.
  *
  * A pull-to-refresh is a different question. It means "everything on this
  * screen", and some of that screen is profile data the *car* never reports —

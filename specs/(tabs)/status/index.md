@@ -162,7 +162,7 @@ as the buttons below it. Exact wraps the indicators below the heading when space
   being confirmed. With no reading yet the indicator is **absent** rather than
   claiming "Stopped" about an engine nobody asked about.
 
-The main row is three buttons: **Lock**, **Unlock**, and one engine slot that is
+The main row holds **Lock**, **Unlock**, and one engine slot that is
 **Stop** while the car reports running and **Start** otherwise.
 
 Below it, a **More controls** disclosure — collapsed by default, subtitled with
@@ -321,7 +321,7 @@ telling.
   Centered rather than anchored to the button it came from, tried both ways on
   device: an anchored confirmation puts the question in a different place for
   every control, so it is one you have to re-find each time; a centered one
-  lands in the same spot for all eleven. It also suits the content — one
+  lands in the same spot for every control. It also suits the content — one
   alternative, not a set, and a consequence warning that a menu or an action
   sheet would render as small grey text above the choices rather than as the
   thing being said.
@@ -379,9 +379,9 @@ telling.
 
 ## Platform notes
 
-- Exact keeps the session and the vehicle data in two cases: Lexus refuses a renewal with a 4xx reply that does not end the session, as its token endpoint does while the phone is in another region, or the gateway refuses the renewed token. The read fails, and after one continuous visible second a banner reads "Lexus didn’t accept your sign-in". It says this can happen while you're in another region, and offers a destructive Sign Out, centered below its words, with the same confirmation as Settings. Lexus refusing the refresh token, an OpenID Connect sign-in-again error and a refreshed ID token that fails its checks end the session. The banner stays while Lexy reads again, and leaves once the vehicle list and status reads succeed. With nothing cached, the full-screen "Vehicle data unavailable" state gives the same cause and points to Sign Out in Settings; a command's alert gives it too.
+- Exact keeps the session and the vehicle data when Lexus refuses a renewal with a 4xx reply that does not end the session, as its token endpoint does while the phone is in another region, and when the gateway refuses the renewed token. The read fails; unless Lexus's reply was a timeout or a rate limit, which fail the read with their own status, a banner reads "Lexus didn’t accept your sign-in" after one continuous visible second. It says this can happen while traveling abroad, and offers a destructive Sign Out, centered below its words, with the same confirmation as Settings. Lexus refusing the refresh token, an OpenID Connect sign-in-again error and a refreshed ID token that fails its checks end the session. The banner stays while Lexy reads again, and leaves once the vehicle list and status reads succeed. With nothing cached, the full-screen "Vehicle data unavailable" state gives the same cause and points to Sign Out in Settings; a command's alert gives it too.
 
-- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. Refresh-failure banners still require one continuous visible second on their screen before appearing. A read in flight leaves a refresh-failure banner in place; only its answer changes it. A failure that the last launch kept, which the screen shows until this launch's read answers, raises no banner. Recovery cancels a pending warning or starts dismissing a visible one immediately. Full-screen load errors and command-error alerts keep their existing timing.
+- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. A refresh-failure banner appears after one continuous visible second on its screen. A read in flight leaves a refresh-failure banner in place; only its answer changes it. A failure that the last launch kept, which the screen shows until this launch's read answers, raises no banner. Recovery cancels a pending warning or starts dismissing a visible one immediately. The window does not delay full-screen load errors or command-error alerts.
 
 - Exact card section titles are level-2 headings in the platform headline style.
 
@@ -396,7 +396,7 @@ telling.
 - In Exact, every refresh reads the climate settings with the status: a sign-in, a launch, a return to the app and a pull. A refresh that wakes the car reads them after the wake-up. The re-reads that confirm a lock read only the status. A climate reply without settings is a failure, so the card keeps the last settings it read. A saved climate change stays on the card until a climate read that started after the save finished has itself finished, and no other change is being saved. Exact does not retry a failed read; the next refresh reads again, as it does for the status.
 - Exact places loading cards in the same grid as the dashboard, including separate book-fold segments. The hero keeps its loaded height; unknown controls use neutral shapes. Loading pulses only while online. Refreshes retain the last available readings.
 
-- Exact writes the footer's two times and the stale-readings note with the platform's live relative time, which updates itself at minute boundaries without the app's clock: one unit in the platform's short style ("now", "5 min. ago", "2 hr. ago") rather than seconds and two units. The footer lines are Exact's own buttons with the platform's press dim, since a native button's title cannot hold a live time.
+- Exact writes the footer's times and the stale-readings note with the platform's live relative time, which updates itself at minute boundaries without the app's clock: one unit in the platform's short style ("now", "5 min. ago", "2 hr. ago") rather than seconds and two units. The footer lines are Exact's own buttons with the platform's press dim, since a native button's title cannot hold a live time.
 
 - Exact keeps a command or climate error alert waiting while another confirmation is open. The visible confirmation remains usable; after it closes, waiting errors appear in request order. Closing a waiting error or leaving its screen cancels that presentation.
 
@@ -426,8 +426,8 @@ telling.
   through `react-native-gesture-handler`. The reason is the glyph: the app names
   its icons semantically and resolves them to a Material *font* on Android,
   which Compose's `Icon` — it wants an XML vector drawable — cannot take, and
-  hosting eleven React Native views inside eleven clickable Compose containers
-  would put a foreign view over each button's own touch area. The dialogs those
+  hosting a React Native view inside each button's clickable Compose container
+  would put a foreign view over the button's own touch area. The dialogs those
   buttons raise are real Compose `AlertDialog`s, and so are the climate card's
   switch and slider.
 - **Per-glyph optical sizing is an iOS concern.** SF Symbols occupy wildly
@@ -437,8 +437,8 @@ telling.
 - Several hosted native sub-views are given fixed sizes rather than measuring
   their content. On iOS that is a workaround: a measuring host reports a
   zero-size box on its first layout pass and the row collapses for a frame. On
-  Android the three Compose slots (the hero button, the climate switch, the
-  climate slider) are pinned for a different reason — each is swapped for a
+  Android the Compose slots (the hero button, the climate switch, the climate
+  slider) are pinned for a different reason — each is swapped for a
   placeholder while redacted, and a pinned slot is what makes the two the same
   box by construction. Neither is product behavior.
 - The map fades in on its first camera settle (with a timed fallback) rather

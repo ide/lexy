@@ -52,7 +52,7 @@ Reachable only from the Developer Tools section, so only in development and prev
   production does rather than a parallel one. It also forces the connectivity signal to match: the
   offline states force offline, and the error and empty states force online, so the screens reach
   the error branch instead of the offline one (offline outranks an error in the banner).
-- The two forced-cached states show a stand-in vehicle rendered unredacted, as if it were genuine
+- The forced-cached states show a stand-in vehicle rendered unredacted, as if it were genuine
   cached data, parked at a recognizable stand-in location rather than at 0,0.
 - "Clear Maps provider" forgets the saved choice immediately, with a medium impact haptic and no
   confirmation.

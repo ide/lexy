@@ -7,7 +7,7 @@ iOS ✅ · Android —
 
 ## Purpose
 
-The Settings tab's navigation stack: the settings root plus the five screens it pushes. It carries
+The Settings tab's navigation stack: the settings root plus the screens it pushes. It carries
 each screen's title and the one deliberate exception to the shared presentation (the headerless
 login preview).
 
@@ -23,8 +23,8 @@ login preview).
   - `updates` — "Updates".
   - `eas` — "Expo Services", as its settings row reads.
   - `data-state` — "Data State".
-  - `vehicle-name` — "Vehicle Name". The screen's own heading carries the label the field no longer
-    repeats above itself, so the title names the thing in full.
+  - `vehicle-name` — "Vehicle Name". The field has no label above it, so the title is its label
+    and names the thing in full.
   - `login` — no header at all, so the preview is identical to the real, headerless sign-in screen.
 - Every pushed screen shows only the back chevron, without the "Settings" back title, which is too
   long to sit beside a title.

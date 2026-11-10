@@ -236,8 +236,8 @@ guards — they safely do nothing on Android.
 Because that stub is plain JavaScript and never calls `requireNativeModule`,
 `package.json` excludes expo-widgets from Android autolinking entirely
 (`expo.autolinking.android.exclude`). The native module was only pulling in
-androidx.glance, whose manifest contributed an exported service, two trampoline
-activities, and three receivers for a widget Android cannot render. iOS
+androidx.glance, whose manifest contributed an exported service, trampoline
+activities, and receivers for a widget Android cannot render. iOS
 autolinking is untouched. Drop the exclusion — not just the platform guards —
 when expo-widgets ships its Android (Glance) renderer.
 

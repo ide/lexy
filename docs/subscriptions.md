@@ -16,7 +16,7 @@ Host is `onecdn.telematicsct.com`, and requests carry the standard headers from
 
 ### Where request values come from
 
-Every non-constant value on this page comes from one of three sources:
+Every non-constant value on this page comes from one of these sources:
 
 | Source               | Provides                                                                | Obtained from                                                                                                                                                                                                                     |
 | -------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -220,7 +220,7 @@ case-insensitively.** Treat a service as usable only when `status` is `ACTIVE`.
 ## GET `/oneapi/v1/radio` — SiriusXM / XM radio
 
 SiriusXM is not part of the `vehicle-subscriptions` list; it has its own card
-endpoint. This call adds two lowercase per-vehicle headers, `vin` and `brand`
+endpoint. This call adds the lowercase per-vehicle headers `vin` and `brand`
 (both from the discovery record), and takes no query parameters.
 
 The response is a `SiriusXmResponse`:
@@ -258,7 +258,7 @@ The `vehicleRadio` object carries `radioID`, `status`, `trialEndDate`,
 ## GET `/oa24mm/v1/svc/subscriptions` — head-unit music entitlements
 
 The list of streaming / music entitlements provisioned to the vehicle's head unit
-(for example SiriusXM or Amazon Music). This is separate from the two calls
+(for example SiriusXM or Amazon Music). This is separate from the calls
 above: it reflects what the head unit itself can play, not the account's
 connected-services subscriptions.
 

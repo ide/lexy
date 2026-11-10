@@ -225,8 +225,8 @@ shape DeveloperMode
   // `device`; "" on the web, and where there is no module.
   device: string
 
-// The saved maps app (empty when unset, or when it was deleted) and which of
-// the three the device has (on the web, all three, as their sites).
+// The saved maps app (empty when unset, or when it was deleted) and which
+// maps apps the device has (on the web, all of them, as their websites).
 shape MapsApp
   provider: string
   apple: bool

@@ -14,8 +14,8 @@ import { Spacing, colors } from "@/constants/theme";
  * a height clip that grows to reveal what it hides.
  *
  * Everything about the interaction is React Native and Reanimated; the content
- * on either side can be whatever the caller draws, SwiftUI included. Four things
- * make it work, and all four are load-bearing:
+ * on either side can be whatever the caller draws, SwiftUI included. Each of
+ * these is load-bearing:
  *
  * - The tap is a `Pressable`, so the press dims the header's own content rather
  *   than the card under it. A SwiftUI `DisclosureGroup` presses its whole label.
