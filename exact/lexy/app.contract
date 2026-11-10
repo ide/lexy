@@ -365,10 +365,12 @@ component Lexy
   // or a pull): the state stays with its button disabled, not the skeleton
   derive retrying = pulling and pending(garage) and shownGarage.car.vin == ""
   derive statusLoading = dataState == "live" ? (pending(garage) or pending(status) or not account.signedIn) : forcedLoading
-  // The Status warning condition, which its banner and the session log share
-  derive warning = statusWarning(shownOnline, shownGarage, status, statusLoading and not retrying)
+  // This launch's `time.epochAtZero`, at or after which its reads are asked; 0 until it starts
+  state launchEpoch = 0
+  // The Status and Specs warning conditions, which their banners and the session log share
+  derive warning = statusWarning(shownOnline, shownGarage, status, launchEpoch)
   derive specsLoading = not retrying and (dataState == "live" ? (pending(garage) or not account.signedIn) : forcedLoading)
-  derive specsWarned = specsWarning(shownOnline, shownGarage, specsLoading)
+  derive specsWarned = specsWarning(shownOnline, shownGarage, launchEpoch)
   derive warningCandidate = top(nav).name == "status" ? warning : (top(nav).name == "specs" ? specsWarned : "")
   state warningConfirmation = 0
   // Show a refresh failure or a session refusal after one visible second on this visit, counted again when the kind
@@ -411,6 +413,7 @@ component Lexy
     // from here: an `…At` of 0 asks at the launch's own time (below).
     clock = time.epochAtZero + performanceNow()
     lastTick = time.epochAtZero + performanceNow()
+    launchEpoch = time.epochAtZero
     autoRefresh = account.signedIn and car.vin != ""
     updatingSlow = false
     if account.signedIn and car.vin != ""
@@ -1224,11 +1227,11 @@ component Lexy
                       button press=toggleTrace testId="trace" aria-label="Record Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.stopwatch"
                   if e.name == "status"
-                    StatusScreen(offlineReady=not pending(foregroundGrace), warningsVisible=(page.visibilityState == "visible" and top(nav).name == "status"), warningConfirmation=warningConfirmation, garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=(statusLoading and not retrying), retrying=retrying, developer=developer.on, still=viewport.prefersReducedMotion, firstLoad=firstLoad, notice=notice, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, wide=wide, fold=fold, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok, signOut=signOut, signingOut=pending(left))
+                    StatusScreen(offlineReady=not pending(foregroundGrace), warning=warning, warningsVisible=(page.visibilityState == "visible" and top(nav).name == "status"), warningConfirmation=warningConfirmation, garage=shownGarage, status=status, tires=tires, climate=climate, engineRunning=engineRunning, enginePending=enginePending, engineTarget=engineTarget, lockPending=lockPending, lockTarget=lockTarget, doorLock=doorLock, hazardsOn=hazardsOn, busy=pending(sent), refreshing=(pulling and (pending(primed) or pending(status) or pending(garage))), heroDim=pulseDim, loading=(statusLoading and not retrying), retrying=retrying, developer=developer.on, still=viewport.prefersReducedMotion, firstLoad=firstLoad, notice=notice, checkedAt=status.fetchedMs, moreOpen=moreOpen, closuresOpen=closuresOpen, online=shownOnline, utcOffset=time.utcOffset, climateLoading=(pending(climateRead) and car.vin != ""), climateWriting=(climateUnwritten or pending(climateSaved)), temperature=(tempHeld ? tempDraft : climate.temperature), dragTemperature=dragTemperature, climateWanted=(climateTouched ? climateWanted : climate.on), frontDefrost=(defrostHeld ? defrostFront : climate.frontEnabled), rearDefrost=(defrostHeld ? defrostRear : climate.rearEnabled), reload=pullRefresh, run=run, openMap=openMap, toggleMore=toggleMore, wide=wide, fold=fold, toggleClosures=toggleClosures, setClimateOn=setClimateOn, setTemperature=setTemperature, toggleDefrost=toggleDefrost, commandError=commandError, climateError=climateError, engineKnown=engine.ok, signOut=signOut, signingOut=pending(left))
                   if e.name == "map"
                     MapSheet(status=status, name=carName, address=address.line, provider=mapsResolved(mapsApp), apps=mapsApp, opening=pending(opened), error=openError, open=openIn, pick=pickAndOpen, tried=mapsTried, close=back)
                   if e.name == "specs"
-                    SpecsScreen(offlineReady=not pending(foregroundGrace), warningsVisible=(page.visibilityState == "visible" and top(nav).name == "specs"), warningConfirmation=warningConfirmation, garage=shownGarage, spec=spec, services=services, specLoading=pending(spec), servicesLoading=pending(services), utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=specsLoading, retrying=retrying, developer=developer.on, still=viewport.prefersReducedMotion, online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold, signOut=signOut, signingOut=pending(left))
+                    SpecsScreen(offlineReady=not pending(foregroundGrace), warning=specsWarned, warningsVisible=(page.visibilityState == "visible" and top(nav).name == "specs"), warningConfirmation=warningConfirmation, garage=shownGarage, spec=spec, services=services, specLoading=pending(spec), servicesLoading=pending(services), utcOffset=time.utcOffset, reload=reloadGarage, refreshing=(pulling and pending(garage)), loading=specsLoading, retrying=retrying, developer=developer.on, still=viewport.prefersReducedMotion, online=shownOnline, manage=manageSubscriptions, wide=wide, fold=fold, signOut=signOut, signingOut=pending(left))
                   if e.name == "settings"
                     SettingsScreen(developer=developer.on, developerOrigin=developer.origin, developerPlace=developerPlace, setDeveloper=setDeveloper, openDevTool=openDevTool, car=car, name=carName, demo=account.demo, demoFailing=demoFailing, setDemoFailing=setDemoFailing, provider=mapsApp.provider, apps=mapsApp, version=appVersion(), editName=editName, chooseMaps=chooseMaps, signOut=signOut, signingOut=pending(left), fold=fold)
                   if e.name == "updates"

@@ -95,6 +95,8 @@ shape Garage
   error: string
   car: Car
   carCount: number
+  // When its read was asked; an answer an earlier launch kept was asked before this launch began
+  askedMs: number
 
 // One section of the status snapshot's vehicleStatus tree ("Driver Side" /
 // "Rear Door" / ["Closed", "Locked"]).
@@ -125,13 +127,20 @@ shape Status
   sections: Section[]
   // The oldest doors-and-windows reading older than this snapshot, or 0.
   closuresStaleMs: number
+  // When its read was asked; a failure keeps the last reading and its `fetchedMs`
+  askedMs: number
 
-// Keep the rendered warning and its diagnostic log on the same condition. Show the "session" warning, which offers
-// Sign Out, ahead of any other failure when a read fails with 401: Lexus refused the session, and the person is still
-// signed in (app.ts `authorized`).
-fn statusWarning(online: bool, garage: Garage, status: Status, loading: bool): string = not online ? "offline" : (garage.car.vin == "" or loading ? "" : ((not garage.ok and garage.status == 401) or (status.error != "" and status.status == 401) ? "session" : (not garage.ok or status.error != "" ? "garage-error" : "")))
+// A read failed in this launch, which began at `since` (0 until it has): a launch first shows the answers the last one
+// kept, and a failure among them may no longer hold. A read in flight leaves the failure it would replace standing.
+fn garageFailed(garage: Garage, since: number): bool = since > 0 and garage.askedMs >= since and not garage.ok
+fn statusFailed(status: Status, since: number): bool = since > 0 and status.askedMs >= since and status.error != ""
 
-fn specsWarning(online: bool, garage: Garage, loading: bool): string = not online ? "offline" : (garage.car.vin != "" and not loading and not garage.ok ? (garage.status == 401 ? "session" : "garage-error") : "")
+// The warning Status shows, which the session log names too. Show the "session" warning, which offers Sign Out, ahead
+// of any other failure when a read fails with 401: Lexus refused the session, and the person is still signed in
+// (app.ts `authorized`).
+fn statusWarning(online: bool, garage: Garage, status: Status, since: number): string = not online ? "offline" : (garage.car.vin == "" ? "" : ((garageFailed(garage, since) and garage.status == 401) or (statusFailed(status, since) and status.status == 401) ? "session" : (garageFailed(garage, since) or statusFailed(status, since) ? "garage-error" : "")))
+
+fn specsWarning(online: bool, garage: Garage, since: number): string = not online ? "offline" : (garage.car.vin != "" and garageFailed(garage, since) ? (garage.status == 401 ? "session" : "garage-error") : "")
 
 // The title of a warning's banner, which the session log names it by; "" for no warning
 fn warningTitle(kind: string): string = kind == "offline" ? "You're offline" : (kind == "garage-error" ? "Couldn’t refresh" : (kind == "session" ? "Lexus didn’t accept your sign-in" : ""))

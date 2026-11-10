@@ -124,7 +124,7 @@ component SignOutButton
   action ask
     showModal(`${prefix}sign-out-confirmation`)
   view
-    button press=ask disabled=disabled destructive=true testId=`${prefix}sign-out` appearance="auto" buttonStyle="bordered" align-self="flex-start" margin-top=6
+    button press=ask disabled=disabled destructive=true testId=`${prefix}sign-out` appearance="auto" buttonStyle="bordered"
       text "Sign Out"
 
 component SettingsScreen

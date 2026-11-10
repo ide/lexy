@@ -150,8 +150,9 @@ CPU measurements have 10 ms resolution. Recorded one-minute load averages span 1
   Lexus refuses a refresh with any other 4xx reply except a timeout or a
   rate limit, the read fails with 401, as it does when the gateway refuses
   the renewed token. Status and Specs then keep the vehicle data and show a
-  banner that offers Sign Out. Lexus's token endpoint sends such a refusal,
-  a 403 that is not an OAuth reply, while the phone is in another region.
+  banner that offers Sign Out until a read succeeds. Lexus's token endpoint
+  sends such a refusal, a 403 that is not an OAuth reply, while the phone is
+  in another region.
 - A command is confirmed only by a newer vehicle report that agrees with it.
   An older matching reading does not confirm a later command.
 - Sparse snapshots retain older window and opening readings with their original

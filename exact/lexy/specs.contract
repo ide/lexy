@@ -17,7 +17,6 @@ use bannerGlide from "./model.contract"
 use VehicleState from "./status.contract"
 use WarningBanner from "./status.contract"
 use Activity from "./model.contract"
-use specsWarning from "./model.contract"
 use sessionText from "./model.contract"
 use warningTitle from "./model.contract"
 use SignOutConfirmation from "./settings.contract"
@@ -68,6 +67,8 @@ component SpecsScreen
     // Reduce Motion: banners fade without moving, and nothing glides
     still: bool
     online: bool
+    // The warning app.contract derives for this screen (model.contract `specsWarning`)
+    warning: string
     warningsVisible: bool
     warningConfirmation: number
     offlineReady: bool
@@ -81,7 +82,6 @@ component SpecsScreen
     signOut: action
     signingOut: bool
   derive car = garage.car
-  derive warning = specsWarning(online, garage, loading)
   derive failureNote = developer ? failureDetail("Vehicle list", garage.status, garage.error) : ""
   view
     scroll id="screen-scroll" testId="specs-scroll" overflow-x="hidden" flex=1 min-height=0 width="100%" refresh=reload refreshing=refreshing class=SafeScroll

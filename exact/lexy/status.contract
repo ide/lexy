@@ -39,7 +39,6 @@ use extraName from "./model.contract"
 use capitalized from "./model.contract"
 use wash from "./model.contract"
 use Activity from "./model.contract"
-use statusWarning from "./model.contract"
 use sessionText from "./model.contract"
 use warningTitle from "./model.contract"
 use SignOutConfirmation from "./settings.contract"
@@ -211,7 +210,7 @@ component VehicleState
         text label font-size=17
 
 // status-banner.tsx's amber banner: a symbol, a bold line and a lighter one,
-// then the banner's own control, if it has one.
+// then the banner's own control, if it has one, centered below them.
 component WarningBanner
   props
     id: string
@@ -234,17 +233,18 @@ component WarningBanner
   view
     if immediate or confirmation != entered
       // It comes and goes with its `if`, so its own exit plays
-      row testId=id margin-top=above class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation="bannerOut 250ms ease-in both"
-        if framed
-          image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange" object-fit="scale-down" width=22 height=22
-        else
-          image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange"
-        column gap=2 flex=1
-          text title class=SmallBold color="-exact-system-orange"
-          text message class=Small color="-exact-system-orange" opacity=0.85
-          if detail != ""
-            text detail class=Small color="-exact-system-orange" opacity=0.85 testId=`${id}-detail`
-          children
+      column testId=id margin-top=above class=Banner background-color=wash("-exact-system-orange") animation=bannerEnter(still) -exact-exit-animation="bannerOut 250ms ease-in both"
+        row gap=8 align-items="center" align-self="stretch"
+          if framed
+            image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange" object-fit="scale-down" width=22 height=22
+          else
+            image `symbol:icon.${symbol}` font-size=17 color="-exact-system-orange"
+          column gap=2 flex=1
+            text title class=SmallBold color="-exact-system-orange"
+            text message class=Small color="-exact-system-orange" opacity=0.85
+            if detail != ""
+              text detail class=Small color="-exact-system-orange" opacity=0.85 testId=`${id}-detail`
+        children
 
 // A pressable row's badge (expandable-card.tsx): its symbol over a 15% wash, both in
 // `tint` as the badge's accent, so they grey with the tint behind a sheet or an alert, as a
@@ -344,6 +344,8 @@ component StatusScreen
     climateWriting: bool
     utcOffset: number
     online: bool
+    // The warning app.contract derives for this screen (model.contract `statusWarning`)
+    warning: string
     warningsVisible: bool
     warningConfirmation: number
     offlineReady: bool
@@ -369,7 +371,6 @@ component StatusScreen
     signOut: action
     signingOut: bool
   derive car = garage.car
-  derive warning = statusWarning(online, garage, status, loading)
   derive failureNote = developer ? (not garage.ok ? failureDetail("Vehicle list", garage.status, garage.error) : failureDetail("Status", status.status, status.error)) : ""
   // The car's own stamp, clamped to the read that brought it.
   derive syncedMs = checkedAt > 0 ? min(status.occurredMs, checkedAt) : status.occurredMs

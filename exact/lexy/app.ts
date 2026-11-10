@@ -500,7 +500,7 @@ const noCar = decodeCar({});
 // Whose garage it is: the signed-in account's guid.
 async function garage(store: Store, at: number): Promise<Result<'garage'>> {
   const owner = account(store);
-  if (!owner) return { ok: false, status: 401, error: 'Signed out', car: noCar, carCount: 0 };
+  if (!owner) return { ok: false, status: 401, error: 'Signed out', car: noCar, carCount: 0, askedMs: at };
   const current = beginRead(`garage:${owner}`);
   try {
     const body = await authorized(store, at, DISCOVERY_URL, reading(businessHeaders(owner), true));
@@ -509,11 +509,11 @@ async function garage(store: Store, at: number): Promise<Result<'garage'>> {
     }
     const cars = arr(body.payload).map(decodeCar).filter(c => c.vin);
     await saveCars(owner, cars, current);
-    return { ok: true, status: 200, error: '', car: cars[0] ?? noCar, carCount: cars.length };
+    return { ok: true, status: 200, error: '', car: cars[0] ?? noCar, carCount: cars.length, askedMs: at };
   } catch (e) {
     // Not ok, so the screen says it couldn't refresh, over the car it has.
     const kept = await storedGarage(owner);
-    return { ...failure(e), car: kept?.car ?? noCar, carCount: kept?.carCount ?? 0 };
+    return { ...failure(e), car: kept?.car ?? noCar, carCount: kept?.carCount ?? 0, askedMs: at };
   }
 }
 
@@ -812,7 +812,7 @@ function fromUtf8(bytes: Uint8Array): string {
 
 async function status(store: Store, car: Car, at: number): Promise<Result<'status'>> {
   const since = generation;
-  const empty = { occurredMs: 0, fetchedMs: at, fuel: 0, range: 0, rangeUnit: '', odometer: 0, odometerUnit: '', caution: 0, latitude: 0, longitude: 0, tripA: 0, tripB: 0, sections: [], closuresStaleMs: 0 };
+  const empty = { occurredMs: 0, fetchedMs: at, fuel: 0, range: 0, rangeUnit: '', odometer: 0, odometerUnit: '', caution: 0, latitude: 0, longitude: 0, tripA: 0, tripB: 0, sections: [], closuresStaleMs: 0, askedMs: at };
   if (!car.vin) return { ok: false, status: 0, error: '', ...empty };
   try {
     const body = await authorized(store, at, STATUS_URL, reading(vehicleHeaders(account(store), car)));
@@ -853,11 +853,12 @@ async function status(store: Store, car: Car, at: number): Promise<Result<'statu
       // doors, windows and openings folded over what earlier snapshots said.
       sections,
       closuresStaleMs: stale.length ? Math.min(...stale) : 0,
+      askedMs: at,
     }, since);
   } catch (e) {
     const last = await storedReading<Result<'status'>>(car.vin, 'status');
     const { status: code, error } = failure(e);
-    return last ? { ...last, status: code, error: error || 'Couldn’t refresh' } : { ...failure(e), ...empty };
+    return last ? { ...last, status: code, error: error || 'Couldn’t refresh', askedMs: at } : { ...failure(e), ...empty };
   }
 }
 
