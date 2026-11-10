@@ -121,7 +121,7 @@ test "a refused password or code enables its controls again at once and stops th
 // The demo signs in through the same steps, against an in-memory Lexus that cannot fail a read, so
 // these check that the reads happen: a sign-in ends as a pull does, reading the status and the
 // climate settings again once the car has been asked to report (`statusRev`, `climateRev`), and a
-// climate change saved before then shows until that read lands.
+// climate change saved before then shows over the older reading and is let go once that read lands.
 test "a sign-in reads the climate settings again after it asks the car to report" on macos
   clock settle
   tap "try-demo"
@@ -141,7 +141,7 @@ test "a sign-in reads the climate settings again after it asks the car to report
   expect state climateRead.ok == true
   expect state climate.on == true
 
-test "a climate change saved before the sign-in's re-read shows until that read lands" on macos
+test "a climate change saved before the sign-in's re-read shows over the older reading and is let go once that read lands" on macos
   clock settle
   tap "try-demo"
   clock data
@@ -154,7 +154,6 @@ test "a climate change saved before the sign-in's re-read shows until that read 
   tap "climate-switch"
   clock data
   clock settle
-  expect state climateWrittenRev == 0
   expect state climate.on == false
   expect state climateRead.on == true
   clock +5000

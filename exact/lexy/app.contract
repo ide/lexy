@@ -108,8 +108,6 @@ component Lexy
     after(1, start)
   task climateWrite when climateUnwritten and not pending(climateSaved)
     after(1, writeClimate)
-  task climateCaughtUp when climateReadNewer
-    after(1, forgetClimateWritten)
 
   // --- Sign-in ----------------------------------------------------------------
   state email = ""
@@ -193,8 +191,8 @@ component Lexy
   state wasHidden = false
   state primeOnLaunch = false
   // A sign-in ends as a pull does, once its car is known: the car is asked to
-  // report, and then the status and the climate settings are read again, which
-  // a plain read after sign-in can miss.
+  // report and the status and climate settings re-read, which a plain read
+  // after sign-in can miss.
   state primeOnSignIn = false
   // Back from the background: the refresh ladder runs once the reads in
   // flight have landed.
@@ -230,22 +228,22 @@ component Lexy
   resource tires = tires(car.vin) with car, statusRev, orEpoch(statusAt, time.epochAtZero) as shape Tires
   resource engine = engine(car.vin) with car, engineRev, orEpoch(engineAt, time.epochAtZero) as shape Engine
   resource spec = spec(car.vin) with car, orEpoch(garageAt, time.epochAtZero) as shape Spec
-  // Re-read climate with the status on every refresh (vehicle-refresh.ts):
-  // `afterPrime` and a return's plain re-read bump `climateRev`. Not
-  // `statusRev`, which the lock's polls bump: climate shares their ordered lane.
+  // Bump with the status on every refresh (vehicle-refresh.ts) but not on the
+  // lock's polls (`statusRev`): a climate read would hold up the next poll in
+  // the ordered lane they share
   state climateRev = 0
   resource climateRead = climate(statusAnswered ? car.vin : "") with car, climateRev, orEpoch(garageAt, time.epochAtZero) as shape Climate
-  // Keep the last accepted climate change until the next read; roll back a failed write
+  // Roll back a failed write
   mutation climateSaved as shape Climate then afterClimateSave
-  // The last change the car accepted, and `climateRev` when it landed: it shows
-  // until a read asked after it lands, so a refresh never shows the settings
-  // from before the change while it reads. Once that read has landed and no
-  // change is being written, the change is let go: while a later read is out,
-  // the card then shows the newer read, not the older change.
+  // Show the last change the car accepted until a read asked after the car
+  // accepted it (`climateRev` past `climateWrittenRev`) has landed and no
+  // change is being written, so a refresh never shows the settings from before
+  // the change while it reads
   state climateWritten = none
   state climateWrittenRev = 0
-  derive climate = match climateWritten { case some(c) => (climateRev == climateWrittenRev or pending(climateRead)) ? c : climateRead, case none => climateRead }
-  derive climateReadNewer = match climateWritten { case some(c) => climateRev != climateWrittenRev and not pending(climateRead) and not climateUnwritten and not pending(climateSaved), case none => false }
+  derive climate = match climateWritten { case some(c) => c, case none => climateRead }
+  task climateCaughtUp when match climateWritten { case some(c) => climateRev != climateWrittenRev and not (climateUnwritten or pending(climateSaved) or pending(climateRead)), case none => false }
+    after(1, forgetClimateWritten)
   // climate-card.ios.tsx: a rejected change rolls back (the re-read) and
   // says so.
   state climateError = ""
@@ -324,11 +322,10 @@ component Lexy
   // A command that failed, as Lexy's "Command failed" alert says it.
   state commandError = ""
   mutation sent as shape CommandResult then afterCommand
-  // A refresh's ask that the car report (launch, return, sign-in, pull), and
-  // the lock confirmation's: a slot each, so one never drops the other's
-  // reply, and only a refresh re-reads climate after it.
+  // A refresh's ask that the car report and the lock confirmation's, in a slot
+  // each so that neither drops the other's reply
   mutation primed as shape Primed then afterPrime
-  mutation lockPrimed as shape Primed then afterLockPrime
+  mutation lockPrimed as shape Primed then rereadStatus
   derive doors = status.sections.filter(s => s.category != "Other" and s.category != "Trip Details" and s.section.includes("Door"))
   derive unlockedDoors = doors.filter(d => d.values.filter(v => v == "Unlocked").length > 0).length
   derive lockedDoors = doors.filter(d => d.values.filter(v => v == "Locked").length > 0).length
@@ -888,8 +885,7 @@ component Lexy
   // 3-minute window between asks (refresh-status.ts: the car's battery and
   // radio) bounds only the refreshes Lexy starts itself; a pull or the
   // Refresh button is the person asking, and always asks. A pull re-reads
-  // the profile too (a name set in the Lexus app shows), and the climate
-  // settings with the status after the ask (`afterPrime`).
+  // the profile too (a name set in the Lexus app shows).
   action pullRefresh
     pulling = true
     if car.vin != ""
@@ -899,13 +895,12 @@ component Lexy
       statusRev = statusRev + 1
       statusAt = time.epochAtZero + performanceNow()
     garageRev = garageRev + 1
+  action afterPrime
+    rereadStatus()
+    climateRev = climateRev + 1
   // Re-read as of now: `clock` is the last tick's, up to 5 s old, which would
   // stamp the read before the report it asked for.
-  action afterPrime
-    statusRev = statusRev + 1
-    statusAt = time.epochAtZero + performanceNow()
-    climateRev = climateRev + 1
-  action afterLockPrime
+  action rereadStatus
     statusRev = statusRev + 1
     statusAt = time.epochAtZero + performanceNow()
   action forgetClimateWritten

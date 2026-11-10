@@ -1041,8 +1041,8 @@ async function rename(store: Store, car: Car, name: string, at: number): Promise
 type Climate = Result<'climate'>;
 const noClimate: Climate = { ok: false, raw: '', on: false, temperature: 0, unit: 'F', min: 0, max: 0, step: 1, front: false, frontEnabled: false, rear: false, rearEnabled: false };
 
-// A reply without the settings is malformed, so the read keeps its last good
-// answer, as the garage and status reads do (use-climate-settings.ts throws)
+// Throw on a reply without the settings so the read keeps its last good answer
+// (use-climate-settings.ts)
 function decodeClimate(body: Json): Climate {
   const p = rec(body.payload ?? body);
   if (typeof p.settingsOn !== 'boolean') {
