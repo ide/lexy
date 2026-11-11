@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../exact2/scripts/app.schema.json",
+  "$schema": "../../../exact/scripts/app.schema.json",
   "name": "Lexy",
   "short_name": "Lexy",
   "id": "app.ide.lexy.exact",

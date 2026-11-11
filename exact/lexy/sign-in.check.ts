@@ -5,7 +5,7 @@ import process from 'node:process';
 
 async function main(): Promise<void> {
   const root = import.meta.dirname;
-  const exact = resolve(root, '../../../exact2');
+  const exact = resolve(root, '../../../exact');
   const run = Bun.spawn([process.execPath, resolve(exact, 'scripts/agent.mjs'), 'macos', '--test', resolve(root, '../test-support/sign-in.test.contract')], {
     cwd: root,
     env: { ...process.env, EXACT_APP_DIR: root },

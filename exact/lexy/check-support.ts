@@ -76,7 +76,7 @@ const reply = (status: number, body: unknown, headers: Record<string, string> = 
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', Date: new Date().toUTCString(), ...headers } });
 
 /**
- * A Lexus realm as Lexy and @exact/oauth meet it (exact2's PROVIDERS.md FR-1
+ * A Lexus realm as Lexy and @exact/oauth meet it (Exact's PROVIDERS.md FR-1
  * to FR-3): the sign-in tree (`tree`, one step that ends in an SSO token
  * unless a check replaces it), discovery, the authorization POST with the SSO
  * token, the code exchange, refreshes that rotate the refresh token and carry

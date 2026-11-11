@@ -9,7 +9,7 @@ async function main(): Promise<void> {
   const simulator = process.env.EXACT_SIM;
   assert(simulator, 'EXACT_SIM must name the simulator this test owns');
   const root = import.meta.dirname;
-  const exact = resolve(root, '../../../exact2');
+  const exact = resolve(root, '../../../exact');
   const directory = mkdtempSync(resolve(tmpdir(), 'lexy-screen-tests-'));
   try {
     const unfolded = prepareSimulator(exact, directory, simulator);

@@ -5,11 +5,11 @@
     "": {
       "name": "lexy-exact",
       "dependencies": {
-        "@exact/oauth": "file:../../../exact2/packages/oauth",
+        "@exact/oauth": "file:../../../exact/packages/oauth",
       },
     },
   },
   "packages": {
-    "@exact/oauth": ["@exact/oauth@file:../../../exact2/packages/oauth", {}],
+    "@exact/oauth": ["@exact/oauth@file:../../../exact/packages/oauth", {}],
   }
 }

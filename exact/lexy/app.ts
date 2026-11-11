@@ -178,7 +178,7 @@ async function readJson(response: Response): Promise<Json> {
 const lexusText = (body: Json): string => str(body.message) || str(body.error_description) || str(body.error);
 
 // --- Session: @exact/oauth -----------------------------------------------------
-// Lexus is a ForgeRock realm (exact2's packages/oauth/test/PROVIDERS.md FR-1
+// Lexus is a ForgeRock realm (Exact's packages/oauth/test/PROVIDERS.md FR-1
 // to FR-4). Lexy answers its sign-in tree with its own screens and sends the
 // authorization request itself (`finishSignIn`); @exact/oauth keeps the rest:
 // PKCE, the code exchange, the ID token's checks, refreshes one at a time

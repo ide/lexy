@@ -27,7 +27,7 @@ The Swift module provides MapKit, geocoding, maps-app links, and haptics.
 Use the Bun and Exact revisions in [`ci/pins.sh`](ci/pins.sh), the Rust toolchain
 in [`lexy/rust-toolchain.toml`](lexy/rust-toolchain.toml), and Xcode 27.1 release.
 Exact and Lexy must be sibling checkouts: the app's Cargo paths point to
-`../../../exact2`. The build uses Exact's pinned Hermes bundles.
+`../../../exact`. The build uses Exact's pinned Hermes bundles.
 Run `bun install --frozen-lockfile` in the Exact checkout first, then in
 `exact/lexy`, which resolves `@exact/oauth` from that checkout; run it there
 again after the Exact checkout changes.
@@ -48,8 +48,8 @@ The local `exact.mjs` supports `ios`, `mac`, `web`, `web-build`, and `update`.
 For other commands, call the pinned checkout's CLI from `exact/lexy`:
 
 ```sh
-RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract build app.contract --json --errors-only
-RUSTC_WRAPPER= bun ../../../exact2/scripts/exact.mjs contract types --check app.contract
+RUSTC_WRAPPER= bun ../../../exact/scripts/exact.mjs contract build app.contract --json --errors-only
+RUSTC_WRAPPER= bun ../../../exact/scripts/exact.mjs contract types --check app.contract
 ```
 
 ## Demo and inspection
@@ -76,7 +76,7 @@ password `wrong`. Any code except `000000` is accepted.
 Drive the app with Exact's agent from `exact/lexy`:
 
 ```sh
-EXACT_APP_DIR="$PWD" RUSTC_WRAPPER= bun ../../../exact2/scripts/agent.mjs ios tree
+EXACT_APP_DIR="$PWD" RUSTC_WRAPPER= bun ../../../exact/scripts/agent.mjs ios tree
 ```
 
 Use `testId` values to target controls. Use platform touch delivery when verifying

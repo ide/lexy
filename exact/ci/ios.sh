@@ -19,7 +19,7 @@ REPO=$(cd "$(dirname "$0")/../.." && pwd)
 WORK=$(dirname "$REPO")
 STATE=$WORK/.exact-ci
 APP=$REPO/exact/lexy
-EXACT=$WORK/exact2
+EXACT=$WORK/exact
 # shellcheck source=pins.sh
 . "$REPO/exact/ci/pins.sh"
 mkdir -p "$STATE"

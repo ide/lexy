@@ -3,6 +3,6 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@exact/oauth": "file:../../../exact2/packages/oauth"
+    "@exact/oauth": "file:../../../exact/packages/oauth"
   }
 }

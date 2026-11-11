@@ -1,7 +1,7 @@
 // bun exact/lexy/session.check.ts
 // Drives app.ts's session and vehicle reads through @exact/oauth against a
 // fake Lexus realm: what Lexy asks of the package, and what it does with what
-// the package says. The protocol itself is the package's cases' (exact2's
+// the package says. The protocol itself is the package's cases' (Exact's
 // packages/oauth/test).
 import { strict as assert } from 'node:assert';
 import { gateway, lexusRealm, memoryStorage, memoryStore, signIn } from './check-support';

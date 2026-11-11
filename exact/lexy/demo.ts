@@ -103,7 +103,7 @@ function authenticate(posted: Record<string, any>): Response {
   }
 }
 
-// The realm's OpenID Connect side, as @exact/oauth meets it (exact2's
+// The realm's OpenID Connect side, as @exact/oauth meets it (Exact's
 // packages/oauth/test/PROVIDERS.md FR-2, FR-3; app.ts fixes its endpoints, so
 // there is no discovery): the authorization POST, answered with a code for its
 // `state`; the code's exchange, whose ID token carries the request's `nonce`;
