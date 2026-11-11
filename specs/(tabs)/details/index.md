@@ -75,9 +75,9 @@ pull-refresh.
 
 ## Platform notes
 
-- When Exact keeps a session that Lexus refused, as Status's Platform notes describe, Specs shows Status's "Lexus didn’t accept your sign-in" banner, with its Sign Out and confirmation, or, with nothing cached, the full-screen "Vehicle data unavailable" state with the same cause.
+- When Exact keeps a session that Lexus refused, as Status's Platform notes describe, and the refused read is the vehicle list, Specs shows Status's "Lexus didn’t accept your sign-in" banner, with its Sign Out and confirmation, or, with nothing cached, the full-screen "Vehicle data unavailable" state with the same cause. The banner stays while Lexy reads the vehicle list again, and leaves once that read succeeds.
 
-- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. A refresh-failure banner appears after one continuous visible second on its screen. Recovery cancels a pending warning or starts dismissing a visible one immediately. The window does not delay full-screen load errors.
+- Exact gives connectivity one second to settle after the app returns from the background. Offline banners stay hidden during that app-wide window; an outage during ordinary foreground use is shown immediately. Switching tabs does not restart the window, and returning from the background starts a new window even when the previous one was unfinished. Cold launch has no extra connectivity delay. A refresh-failure banner appears after one continuous visible second on its screen. A read in flight leaves a refresh-failure banner in place; only its answer changes it. A failure that the last launch kept, which the screen shows until this launch's read answers, raises no banner. Recovery cancels a pending warning or starts dismissing a visible one immediately. The window does not delay full-screen load errors.
 
 - Exact keeps 16 points of content spacing above UIKit’s bottom safe area.
 
