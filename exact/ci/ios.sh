@@ -3,7 +3,7 @@
 # EAS runs one phase per step in .eas/build/exact.yml.
 #
 #   exact/ci/ios.sh toolchain          Bun, Rust (+ aarch64-apple-ios), the Metal toolchain
-#   exact/ci/ios.sh deps               exact2 at the pinned commit beside this repo, its bun install
+#   exact/ci/ios.sh deps               Exact at the pinned commit beside this repo, its bun install
 #   exact/ci/ios.sh hermes             install and verify pinned Hermes bundles
 #   exact/ci/ios.sh signing <creds>    keychain + profile from EAS's buildCredentials JSON
 #   exact/ci/ios.sh archive            app id, version contract, `bun exact.mjs ios --device --archive`
@@ -19,7 +19,7 @@ REPO=$(cd "$(dirname "$0")/../.." && pwd)
 WORK=$(dirname "$REPO")
 STATE=$WORK/.exact-ci
 APP=$REPO/exact/lexy
-EXACT2=$WORK/exact2
+EXACT=$WORK/exact2
 # shellcheck source=pins.sh
 . "$REPO/exact/ci/pins.sh"
 mkdir -p "$STATE"
@@ -66,16 +66,16 @@ toolchain() {
 
 deps() {
   local directory bundle_digest
-  log "exact2 $EXACT2_COMMIT"
-  if [ "$(git -C "$EXACT2" rev-parse HEAD 2>/dev/null || true)" != "$EXACT2_COMMIT" ]; then
-    rm -rf "$EXACT2"
-    git init -q "$EXACT2"
-    git -C "$EXACT2" fetch -q --depth 1 "$EXACT2_REPO" "$EXACT2_COMMIT"
-    git -C "$EXACT2" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
+  log "Exact $EXACT_COMMIT"
+  if [ "$(git -C "$EXACT" rev-parse HEAD 2>/dev/null || true)" != "$EXACT_COMMIT" ]; then
+    rm -rf "$EXACT"
+    git init -q "$EXACT"
+    git -C "$EXACT" fetch -q --depth 1 "$EXACT_REPO" "$EXACT_COMMIT"
+    git -C "$EXACT" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
   fi
   # Install workspace dependencies before Exact builds with Cargo offline
   log "workspace dependencies"
-  for directory in "$EXACT2" "$APP"; do
+  for directory in "$EXACT" "$APP"; do
     (cd "$directory" && bun install --frozen-lockfile >&2 && cargo fetch --locked >&2)
   done
   # The bake's Rolldown resolves the repo root's tsconfig.json, which extends
@@ -84,14 +84,14 @@ deps() {
     log "the Expo app's node_modules (pnpm)"
     (cd "$REPO" && pnpm install --frozen-lockfile >&2)
   fi
-  bundle_digest=$(shasum -a 256 "$EXACT2/vendor/ibex/crates/hermes-lean-sys/build_support.rs" | cut -d ' ' -f 1)
+  bundle_digest=$(shasum -a 256 "$EXACT/vendor/ibex/crates/hermes-lean-sys/build_support.rs" | cut -d ' ' -f 1)
   output hermes_key "exact-hermes-$HERMES_CACHE_EPOCH-$bundle_digest-$(uname -m)"
   output hermes_cache "${CARGO_HOME:-$HOME/.cargo}/hermes-lean-sys"
 }
 
 hermes() {
   log "Hermes: install and verify the pinned host and iOS bundles"
-  (cd "$EXACT2" && cargo run --locked --manifest-path vendor/ibex/crates/hermes-lean-sys-installer/Cargo.toml -- --target aarch64-apple-ios >&2)
+  (cd "$EXACT" && cargo run --locked --manifest-path vendor/ibex/crates/hermes-lean-sys-installer/Cargo.toml -- --target aarch64-apple-ios >&2)
 }
 
 signing() {
@@ -119,18 +119,18 @@ archive() {
 
   # A version above the installed Expo app's (iOS otherwise reports the
   # install as already present): app.json's, one patch up.
-  local version build exact2_version
+  local version build exact_version
   version=${EXACT_CI_VERSION:-$(bun -e '
     const v = JSON.parse(await Bun.file("'"$REPO"'/app.json").text()).expo.version.split(".").map(Number);
     while (v.length < 3) v.push(0); v[2] += 1; console.log(v.join("."));')}
   build=${EXACT_CI_BUILD_NUMBER:-}
   if [ -z "$build" ] || [ "$build" = undefined ]; then build=$(date -u +%Y%m%d%H%M); fi
-  exact2_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$EXACT2/Cargo.toml" | head -1)
-  log "version $version ($build), Exact $exact2_version (${EXACT2_COMMIT:0:8})"
+  exact_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$EXACT/Cargo.toml" | head -1)
+  log "version $version ($build), Exact $exact_version (${EXACT_COMMIT:0:8})"
   cat > "$APP/exact-version.contract" <<EOF
 // Generated at build: this build's version and the Exact framework it was made with.
 fn appVersion(): string = "$version ($build)"
-fn exactVersion(): string = "$exact2_version (${EXACT2_COMMIT:0:8})"
+fn exactVersion(): string = "$exact_version (${EXACT_COMMIT:0:8})"
 EOF
 
   local ipa=$APP/dist/Lexy.ipa

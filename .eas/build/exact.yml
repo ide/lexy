@@ -13,7 +13,7 @@ build:
         command: bash exact/ci/ios.sh toolchain
 
     - run:
-        name: exact2 at the pinned commit
+        name: Exact at the pinned commit
         id: deps
         outputs: [hermes_key, hermes_cache]
         command: bash exact/ci/ios.sh deps
