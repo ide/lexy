@@ -142,7 +142,7 @@ struct EasView: View {
                 Text("Opens expo.dev in Safari for @ide/lexy. You need to be signed in on the dashboard to see anything.")
             }
         }
-        .navigationTitle("EAS")
+        .navigationTitle("Expo Services")
         .timedScreen(SettingsRoute.eas.rawValue)
     }
 }

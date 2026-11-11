@@ -1,5 +1,5 @@
 /**
- * Links from the on-device debug menu out to this app's EAS dashboard.
+ * Links from the on-device debug menu out to this app's Expo dashboard.
  *
  * The URLs are built from the app config rather than hardcoded, so the screen
  * keeps pointing at the right project when the account or slug changes. Two

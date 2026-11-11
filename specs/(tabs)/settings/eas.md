@@ -1,4 +1,4 @@
-# EAS dashboard links
+# Expo Services
 
 ## Route & implementations
 
@@ -7,7 +7,7 @@ iOS ✅ · Android ✅
 
 ## Purpose
 
-Shortcuts from the app in your hand to this project's pages on the EAS dashboard, for whoever is
+Shortcuts from the app in your hand to this project's pages on the Expo dashboard, for whoever is
 carrying an internal build and wants the builds, updates, or metrics behind it. Reachable only from
 the Developer Tools section, so only in development and preview builds.
 

@@ -59,8 +59,8 @@ const DEV_ITEMS: DevItem[] = [
   {
     icon: "cloud",
     tint: colors.systemCyan,
-    title: "Expo Application Services",
-    subtitle: "Open this project's EAS dashboard.",
+    title: "Expo Services",
+    subtitle: "Open this project's Expo dashboard.",
     href: "/settings/eas",
   },
 ];

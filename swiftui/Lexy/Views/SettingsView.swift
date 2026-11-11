@@ -13,7 +13,7 @@ struct SettingsView: View {
                 DevRow(route: .dataState, symbol: "cylinder.split.1x2.fill", title: "Data State", subtitle: "Force loading, offline, error, and empty states.")
                 DevRow(route: .login, symbol: "person.badge.key.fill", title: "Login Flow", subtitle: "Walk the sign-in screens without signing out.")
                 DevRow(route: .performance, symbol: "gauge.with.dots.needle.67percent", title: "Performance", subtitle: "This device’s launch and screen times, as SwiftUI measures them.")
-                DevRow(route: .eas, symbol: "cloud.fill", title: "Expo Application Services", subtitle: "Open this project’s EAS dashboard.")
+                DevRow(route: .eas, symbol: "cloud.fill", title: "Expo Services", subtitle: "Open this project’s Expo dashboard.")
             }
             Section {
                 // The same chooser as the map sheet's, listing installed apps only.

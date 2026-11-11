@@ -17,9 +17,7 @@ export default function SettingsLayout() {
       <Stack.Screen
         name="eas"
         options={{
-          // The full "Expo Application Services" is the menu row's job; a large
-          // title that long shrinks itself to fit rather than reading well.
-          title: "EAS",
+          title: "Expo Services",
           headerBackButtonDisplayMode: "minimal",
         }}
       />
