@@ -478,10 +478,13 @@ dependencies = [
  "exact-filesystem",
  "exact-gpu-reflect",
  "exact-kernel",
+ "exact-logic-abi",
  "exact-plan",
  "exact-runner",
  "exact-svg-file",
  "exact-update",
+ "ibex2",
+ "serde",
  "serde_json",
  "sha2",
 ]
