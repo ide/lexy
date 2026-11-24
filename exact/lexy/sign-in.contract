@@ -196,5 +196,5 @@ component LockScreen
       // whatever the stored demo flag says: a flag left in the Keychain (it
       // outlives a reinstall) hid it on a signed-out launch.
       if developer and step == "credentials" and not embedded
-        button press=tryDemo disabled=busy testId="try-demo" appearance="auto" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right="calc(env(safe-area-inset-right) + 8px)" height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
+        button press=tryDemo disabled=busy testId="try-demo" appearance="auto" buttonStyle="plain" position="absolute" top="calc(env(safe-area-inset-top) + 4px)" right="calc(var(--exact-safe-area-inset-right) + 8px)" height=44 padding-left=8 padding-right=8 display="flex" align-items="center" justify-content="center"
           text "Try Demo" font-size=17 color=accentInk(busy)

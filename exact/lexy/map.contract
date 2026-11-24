@@ -49,7 +49,7 @@ component MapSheet
   // The car's own stamp, clamped to the read that brought it, as on Status.
   derive locatedMs = status.fetchedMs > 0 ? min(status.occurredMs, status.fetchedMs) : status.occurredMs
   view
-    column testId="map-sheet" flex=1 min-height=0 background-color="-exact-grouped-background"
+    column testId="map-sheet" flex=1 min-height=0 box-sizing="border-box" padding-left="var(--exact-safe-area-inset-left)" padding-right="var(--exact-safe-area-inset-right)" background-color="-exact-grouped-background"
       if status.latitude == 0 and status.longitude == 0
         column flex=1 align-items="center" justify-content="center"
           text "Location unavailable" font-size=16 font-weight=500 color="-exact-secondary-label"

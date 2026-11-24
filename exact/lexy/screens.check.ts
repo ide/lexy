@@ -16,7 +16,7 @@ async function main(): Promise<void> {
     for (const file of readdirSync(root).filter((file): boolean => file.endsWith('.contract'))) {
       copyFileSync(resolve(root, file), resolve(directory, file));
     }
-    for (const file of ['app.json', 'app.tamber']) {
+    for (const file of ['app.json', 'app.forma']) {
       copyFileSync(resolve(root, file), resolve(directory, file));
     }
     cpSync(resolve(root, 'assets'), resolve(directory, 'assets'), { recursive: true });
@@ -51,6 +51,11 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
   type Node = { id: number; parent: number | null; props: { testId?: string; text?: string } };
   type Box = { id: number; x: number; y: number; w: number; h: number; sy?: number; port?: number[] };
   for (const size of (unfolded ? ['390x844', '951x669'] : ['390x844'])) {
+    // An iPhone Duo held upright has its bars on a side edge, where UIKit gives no expandable large
+    // title (Exact's NavigationTabsIOSTests); turned landscape and open it has a top bar, as an
+    // iPhone does. The phone pass runs there, the unfolded pass upright.
+    const wide = size.startsWith('951');
+    if (unfolded) orient(directory, wide ? 'portrait' : 'landscape-left');
     const session = await open({ host: 'ios', app: root, chrome: 'platform', plan, size, storage: `lexy-pane-layout-${size}` });
     try {
       await session.clock('settle');
@@ -76,7 +81,6 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
         assert(current, `${child} belongs to ${parent}`);
       }
       const initial = await snapshot();
-      const wide = size.startsWith('951');
       inside(initial, 'scroll-measurement-row', 'performance-recent-list');
       const list = box(initial, 'performance-recent-list');
       const measurement = box(initial, 'scroll-measurement-row');
@@ -98,7 +102,11 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
       await session.tap('performance-recent-list', { wheel: [0, 250] });
       await session.clock('settle');
       const scrolled = await snapshot();
-      assert(scrolled.navigation.barHeight < initial.navigation.barHeight - 30, 'Performance collapses its native large title');
+      if (wide) {
+        assert(Math.abs(scrolled.navigation.barHeight - initial.navigation.barHeight) < 1, 'Performance’s bar holds still where UIKit gives no large title');
+      } else {
+        assert(scrolled.navigation.barHeight < initial.navigation.barHeight - 30, 'Performance collapses its native large title');
+      }
       assert(box(scrolled, 'scroll-measurement-row').y < measurement.y - 100, 'The switch scrolls away with the launch rows');
       if (wide) {
         assert(Math.abs(box(scrolled, 'perf-median-timeToInteractive').y - box(initial, 'perf-median-timeToInteractive').y) < 1, 'The opposite pane stays still during header collapse');
@@ -124,7 +132,11 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
       await session.tap(updatesList, { wheel: [0, 200] });
       await session.clock('settle');
       const updatesScrolled = await snapshot();
-      assert(updatesScrolled.navigation.barHeight < updates.navigation.barHeight - 30, 'Updates collapses its native large title');
+      if (wide) {
+        assert(Math.abs(updatesScrolled.navigation.barHeight - updates.navigation.barHeight) < 1, 'Updates’ bar holds still where UIKit gives no large title');
+      } else {
+        assert(updatesScrolled.navigation.barHeight < updates.navigation.barHeight - 30, 'Updates collapses its native large title');
+      }
       if (wide) {
         assert(Math.abs(box(updatesScrolled, 'updates-check').y - box(updates, 'updates-check').y) < 1, 'Updates’ opposite pane stays still while its header collapses');
       }
@@ -293,6 +305,14 @@ async function checkRepeatedMarks(exact: string, root: string, plan: string): Pr
 }
 
 // Open the Duo’s hinge so UIKit arranges panes using the physical window scene
+/** Turn the test simulator, an iPhone Duo whose hinge `prepareSimulator` opened, to `orientation`. */
+function orient(directory: string, orientation: 'portrait' | 'landscape-left'): void {
+  const simulator = process.env.EXACT_SIM;
+  assert(simulator, 'EXACT_SIM must name the simulator this test owns');
+  const turned = Bun.spawnSync(['xcrun', 'simctl', 'spawn', simulator, resolve(directory, 'hinge_helper'), 'orient', orientation]);
+  assert.equal(turned.exitCode, 0, `orient ${orientation} failed: ${turned.stderr.toString()}`);
+}
+
 function prepareSimulator(exact: string, directory: string, simulator: string): boolean {
   function checked(arguments_: string[]): string {
     const result = Bun.spawnSync(arguments_);

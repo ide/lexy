@@ -29,7 +29,7 @@ fn foldOf(v: Viewport): string = v.horizontalViewportSegments == 2 ? "across" : 
 
 // Offset a box that starts at the safe area's leading edge to the trailing
 // segment of a book fold
-fn trailingSegmentInset(): string = "calc(env(viewport-segment-left 1 0) - env(safe-area-inset-left))"
+fn trailingSegmentInset(): string = "calc(env(viewport-segment-left 1 0) - var(--exact-safe-area-inset-left))"
 
 shape Time
   epochAtZero: number
@@ -430,11 +430,13 @@ fn wash(role: string): string = (
   role == "-exact-system-blue" ? "light-dark(#007aff26, #0a84ff26)" :
   "light-dark(#3c3c4326, #ebebf526)"
 )
-// Keep scroll indicators at the window edge and content inside the safe area
+// A route's scroller reaches the window's sides (the route turns their
+// clearance off), so its indicators sit at the window's edge, and its content
+// pads the safe area there once, a vertical bar's included
 style SafeScroll
   box-sizing="border-box"
-  padding-left="env(safe-area-inset-left)"
-  padding-right="env(safe-area-inset-right)"
+  padding-left="var(--exact-safe-area-inset-left)"
+  padding-right="var(--exact-safe-area-inset-right)"
 
 // A card clips what it holds to its corners, as UIKit's inset grouped
 // section does: a row's hover wash or a wide image stays inside it.

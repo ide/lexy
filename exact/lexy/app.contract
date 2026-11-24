@@ -1195,7 +1195,7 @@ component Lexy
         for t in nav.tabs key=t.name
           column role="tabpanel" id=`panel-${t.name}` position="absolute" top=0 right=0 bottom=0 left=0
             for e in t.stack key=e.id
-              column navigationKey=`${e.id}` data-screen=e.name navigationBar=(shell or e.name == "authChoice" or e.name == "authCode" ? "auto" : "none") navigationScroll=(not shell ? "sign-in-scroll" : ((e.name == "updates" or e.name == "performance") and (fold == "across" or (wide and fold != "down")) ? "developer-first-scroll" : (e.name == "map" ? "" : (e.name == "login" or e.name == "loginChoice" or e.name == "loginCode" ? "sign-in-scroll" : "screen-scroll")))) navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
+              column navigationKey=`${e.id}` data-screen=e.name -exact-safe-area="left right" navigationBar=(shell or e.name == "authChoice" or e.name == "authCode" ? "auto" : "none") navigationScroll=(not shell ? "sign-in-scroll" : ((e.name == "updates" or e.name == "performance") and (fold == "across" or (wide and fold != "down")) ? "developer-first-scroll" : (e.name == "map" ? "" : (e.name == "login" or e.name == "loginChoice" or e.name == "loginCode" ? "sign-in-scroll" : "screen-scroll")))) navigationPresentation=(e.name == "map" ? "modal" : "") navigationDetent=(e.name == "map" ? "medium large" : "") navigationInitialDetent=(e.name == "map" ? "large" : "") testId=`screen-${e.name}` position="absolute" top=0 right=0 bottom=0 left=0 background-color="-exact-grouped-background" display="flex" flex-direction="column"
                 if not shell
                   // Show the sign-in in the selected tab only: one in each tab would each
                   // autofocus its email, and the focus would pass from one to the next
@@ -1214,15 +1214,16 @@ component Lexy
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.xmark"
                     if e.name == "performance"
-                      button press=clearObserved testId="clear-performance" disabled=pending(observedCleared)
-                        text "Clear" font-size=17
+                      button press=clearObserved testId="clear-performance" disabled=pending(observedCleared) font-size=17
+                        text "Clear"
                     if e.name == "login" or e.name == "loginChoice" or e.name == "loginCode"
                       button popovertarget="scenario-chooser" testId="scenario" aria-label="Preview Scenario" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.wrench.and.screwdriver"
                     if developer.on and scrollMeasurement and e.name != "map" and recordingTrace
-                      button press=toggleTrace testId="trace" aria-label="Stop Recording and Copy Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
-                        // Tint the stopwatch only while it records; at rest the bar draws it untinted
-                        image "symbol:icon.stopwatch.fill" color="AccentColor"
+                      // Tint the stopwatch only while it records; at rest the bar draws it untinted.
+                      // The tint is the button's: the iOS bar takes a symbol's colour from it.
+                      button press=toggleTrace testId="trace" aria-label="Stop Recording and Copy Trace" width=44 height=44 display="flex" align-items="center" justify-content="center" color="AccentColor"
+                        image "symbol:icon.stopwatch.fill"
                     if developer.on and scrollMeasurement and e.name != "map" and not recordingTrace
                       button press=toggleTrace testId="trace" aria-label="Record Trace" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.stopwatch"
