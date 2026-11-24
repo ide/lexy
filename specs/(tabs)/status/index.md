@@ -445,7 +445,7 @@ telling.
   than snapping its tiles in at full strength.
 - In the Exact build, an automatic refresh that has run for 1.5 seconds shows
   the system spinner and "Updating" in the navigation bar beside the car's
-  name, in place of the floating note, and keeps them for at least 600 ms. They
+  name, in place of the floating note, and keeps them for at least 2 seconds. They
   are one bar item with no glass, gray and at the bar's own size at every text
   size, so nothing on screen moves as they come and go, and they stay in the
   bar when the large title collapses. VoiceOver reads them as "Getting latest

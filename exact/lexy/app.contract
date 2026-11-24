@@ -200,9 +200,10 @@ component Lexy
   // An app-started refresh still running (`updating`), and whether it has
   // run a second and a half (`waited`, sent as it starts, answers then): the
   // Status bar shows the refresh only after that, so a quick refresh (the demo's
-  // take a second) never shows it, and then for at least 600 ms (`held`),
-  // so one that ends just past it never flickers it. Waits app.ts keeps, not a timer
-  // here: a runner timer fires every beat it missed in the background.
+  // take a second) never shows it, and then for at least two seconds (`held`),
+  // long enough to read, so one that ends just past it never flashes it. Waits
+  // app.ts keeps, not a timer here: a runner timer fires every beat it missed
+  // in the background.
   derive updating = autoRefresh and (pending(status) or pending(garage) or pending(primed))
   state updatingSlow = false
   mutation waited as shape Done then afterWait
@@ -420,7 +421,7 @@ component Lexy
   action afterWait
     updatingSlow = updating
     if updating
-      send held = pause(600)
+      send held = pause(2000)
 
   // An action reads the state it started with: `clock` below is the previous
   // tick's until this action commits, so the notice timeout reads the time
