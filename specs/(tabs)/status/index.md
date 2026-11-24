@@ -443,9 +443,14 @@ telling.
   box by construction. Neither is product behavior.
 - The map fades in on its first camera settle (with a timed fallback) rather
   than snapping its tiles in at full strength.
-- In the Exact build, an automatic refresh can gently dim the hero only after
-  an existing status snapshot is available. The first status load never dims
-  the car and map as location and fuel arrive.
+- In the Exact build, an automatic refresh that has run for 1.5 seconds shows
+  the system spinner and "Updating" in the navigation bar beside the car's
+  name, in place of the floating note, and keeps them for at least 600 ms. They
+  are one bar item with no glass, gray and at the bar's own size at every text
+  size, so nothing on screen moves as they come and go, and they stay in the
+  bar when the large title collapses. VoiceOver reads them as "Getting latest
+  status, Updating". They show only once a status snapshot is available: the
+  first status load shows the skeleton alone.
 
 - While a retry the person started is out (Try again, Check again or a pull), Exact keeps the full-screen no-vehicle or failed-load state on screen with its button disabled until the answer lands, rather than swapping in the loading skeleton for the length of the request.
 

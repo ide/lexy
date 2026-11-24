@@ -321,10 +321,6 @@ component StatusScreen
     hazardsOn: bool
     busy: bool
     refreshing: bool
-    // The hero's breath while a refresh runs (app.contract `pulseDim`):
-    // the card eases to it as one group, down and back up, never jumping,
-    // so the car never shows the map through it.
-    heroDim: bool
     loading: bool
     retrying: bool
     // Developer mode: a failure adds a line naming its read and what went wrong
@@ -469,7 +465,7 @@ component StatusScreen
                   column class=Card height=200
               if not firstLoad
                 // Hero card (hero-card.ios.tsx): the car over its parked map.
-                column class=Card testId="hero" opacity=(heroDim ? 0.6 : 1) transition="opacity 1000ms ease-in-out" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - var(--exact-safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
+                column class=Card testId="hero" overflow="hidden" align-items="center" gap=8 padding-top=8 padding-bottom=16 padding-left=16 padding-right=16 position="relative" grid-column=(wide ? "1" : "auto") grid-row=(wide ? "1" : "auto") margin-left=(fold == "across" ? "16px" : "0px") width=(fold == "across" ? "calc(env(viewport-segment-width 0 0) - var(--exact-safe-area-inset-left) - 32px)" : "auto") box-sizing="border-box"
                   if status.ok and (status.latitude != 0 or status.longitude != 0)
                     column position="absolute" top=0 right=0 bottom=0 left=0
                       lexy-map width="100%" height="100%" latitude=status.latitude longitude=status.longitude map-zoom=16 pin="false" places="false" interactive="false"
