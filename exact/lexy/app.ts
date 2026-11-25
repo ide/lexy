@@ -1199,7 +1199,7 @@ const sources: Sources = {
   },
   session: ([at], store) => session(store, at),
   // A wait the host keeps (`wait`): how long an app-started refresh runs
-  // before the Status title says "Updating…", and how long it says so.
+  // before Status's bar shows its spinner, and how long it shows it.
   pause: async ([ms]) => {
     await wait(ms);
     return { ok: true, status: 200, error: '' };

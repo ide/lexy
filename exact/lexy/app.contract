@@ -385,7 +385,7 @@ component Lexy
   derive firstLoad = statusLoading and not retrying and (shownGarage.car.vin == "" or not statusAnswered)
   // Reserve UIKit's large-title space with a blank title while loading
   derive statusTitle = firstLoad ? "​" : (shownGarage.car.vin == "" ? "My Vehicle" : (savedName != "" ? savedName : vehicleName(shownGarage.car.nickName, shownGarage.car.modelName)))
-  // Status's navigation bar shows a spinner and "Updating" beside the car's name
+  // Status's navigation bar shows a spinner beside the car's name
   // while the app is refreshing on its own and it has run a while. Nothing
   // otherwise (a pull shows its own spinner; a web page's load is the fetch the
   // person asked for). Nothing before there is data, or signed out. Before
@@ -1192,16 +1192,15 @@ component Lexy
                     if e.name != "status" and e.name != "specs" and e.name != "settings" and e.name != "map"
                       button id="back" press=back testId="back" aria-label="Back" disabled=((e.name == "loginChoice" or e.name == "loginCode") and screenBusy(e.name, authRouteStep, authBusy, leftStep)) width=44 height=44
                     text (e.name == "status" ? statusTitle : routeTitle(e.name)) role="heading" aria-level=1 color=(e.name == "status" and firstLoad ? "transparent" : none)
-                    // An automatic refresh that has run a while: the system spinner and
-                    // "Updating" in the bar, with no glass, beside the car's name. A
-                    // bar item moves nothing as it comes and goes, and stays in the bar
-                    // when the large title collapses (LLP 1141.004 D3).
+                    // An automatic refresh that has run a while: the system spinner
+                    // in the bar, with no glass, beside the car's name: unlabelled, as Apple's
+                    // progress-indicator guidelines ask, and named for VoiceOver. A bar item
+                    // moves nothing as it comes and goes, and stays in the bar when the
+                    // large title collapses (LLP 1141.004 D3).
                     if e.name == "status" and refreshShown
-                      row role="status" aria-label="Getting latest status" align-items="center" gap=6
-                        // UIKit's grey spinner and a bar item's type, left unsaid (LLP 1141.004 D3); the
-                        // secondary label: a quiet status, not a call to act.
+                      row role="status" aria-label="Getting latest status" align-items="center"
+                        // UIKit's grey spinner, left unsaid (LLP 1141.004 D3)
                         progress
-                        text "Updating" color="-exact-secondary-label"
                     if e.name == "map"
                       button press=back testId="close-map" aria-label="Close" width=44 height=44 display="flex" align-items="center" justify-content="center"
                         image "symbol:icon.xmark"
