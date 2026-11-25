@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   const exact = resolve(root, '../../../exact');
   const directory = mkdtempSync(resolve(tmpdir(), 'lexy-screen-tests-'));
   try {
-    const unfolded = prepareSimulator(exact, directory, simulator);
+    const unfolded = await prepareSimulator(exact, directory, simulator);
     for (const file of readdirSync(root).filter((file): boolean => file.endsWith('.contract'))) {
       copyFileSync(resolve(root, file), resolve(directory, file));
     }
@@ -313,7 +313,7 @@ function orient(directory: string, orientation: 'portrait' | 'landscape-left'): 
   assert.equal(turned.exitCode, 0, `orient ${orientation} failed: ${turned.stderr.toString()}`);
 }
 
-function prepareSimulator(exact: string, directory: string, simulator: string): boolean {
+async function prepareSimulator(exact: string, directory: string, simulator: string): Promise<boolean> {
   function checked(arguments_: string[]): string {
     const result = Bun.spawnSync(arguments_);
     assert.equal(result.exitCode, 0, `${arguments_.join(' ')} failed: ${result.stderr.toString()}`);
@@ -331,11 +331,11 @@ function prepareSimulator(exact: string, directory: string, simulator: string): 
   if (!device.deviceTypeIdentifier.endsWith('.iPhone-Duo')) {
     return false;
   }
-  const helper = resolve(directory, 'hinge_helper');
-  checked(['xcrun', '-sdk', 'iphonesimulator', 'clang', '-arch', process.arch, '-mios-simulator-version-min=17.0', '-O2', '-framework', 'IOKit', '-framework', 'CoreFoundation', '-o', helper, resolve(exact, 'scripts/duo/hinge_helper.c')]);
-  checked(['codesign', '-s', '-', helper]);
-  checked(['xcrun', 'simctl', 'spawn', simulator, helper, 'orient', 'portrait']);
-  checked(['xcrun', 'simctl', 'spawn', simulator, helper, 'set', '180']);
+  // Exact's hinge tool, built into `directory`, where `orient` finds it
+  const { hingeHelper } = await import(resolve(exact, 'scripts/duo/hinge.mjs'));
+  const hinge = hingeHelper(simulator, directory);
+  hinge('orient', 'portrait');
+  hinge('set', 180);
   return true;
 }
 
