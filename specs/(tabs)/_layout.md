@@ -80,7 +80,7 @@ stale data at all.
 
 - Exact uses UIKit’s default header treatment on every screen except Status, which uses soft scroll edges.
 
-- Exact scroll views span the window, with horizontal safe-area padding inside their content: each route turns its side clearance off and its screen pads the route’s side insets once. Scroll indicators stay outside Duo’s side controls. Each edge is handled separately; expanded peer panes reserve only their outer edges. UIKit’s vertical clearance is applied once, including sheets and nested login previews.
+- Exact scroll views span the window, and their content sits on UIKit’s layout margins, where the navigation bar puts its title and items: each route turns its side clearance off, and its screen pads to the larger of the side inset and the system’s minimum margin (20 points on a folded Duo’s outer display, 16 on an iPhone 18 Pro). Scroll indicators stay outside Duo’s side controls. Each edge is handled separately; expanded peer panes reserve only their outer edges. UIKit’s vertical clearance is applied once, including sheets and nested login previews.
 
 - Exact leaves navigation-title font, weight, color, and header spacing to UIKit. Map and login previews use inline titles; other routes use large titles. UIKit supplies the bottom safe area once; page padding adds only content spacing.
 

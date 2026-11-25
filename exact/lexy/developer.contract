@@ -125,7 +125,7 @@ component DeveloperPanes
     id: string
   slot
   view
-    column id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "visible" : "auto") overflow-x=(expanded ? "visible" : "hidden") flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "var(--exact-safe-area-inset-left)") padding-right=(expanded ? "0px" : "var(--exact-safe-area-inset-right)")
+    column id="screen-scroll" testId=`${id}-scroll` overflow-y=(expanded ? "visible" : "auto") overflow-x=(expanded ? "visible" : "hidden") flex=1 min-height=0 width="100%" box-sizing="border-box" padding-left=(expanded ? "0px" : "max(0px, calc(env(-exact-layout-margins-inset-left) - 16px))") padding-right=(expanded ? "0px" : "max(0px, calc(env(-exact-layout-margins-inset-right) - 16px))")
       column hatch="developer-panes" data-expanded=expanded testId=id display="flex" flex-direction=(expanded ? "row" : "column") height=(expanded ? "100%" : "auto") width="100%" padding-bottom=(expanded ? "0px" : "16px") box-sizing="border-box"
         children
 
@@ -137,7 +137,7 @@ component DeveloperPane
   slot
   view
     column id=(first ? "developer-first-scroll" : "developer-second-scroll") testId=id flex=(expanded ? "1 1 0%" : "none") min-width=0 min-height=0 box-sizing="border-box" height=(expanded ? "100%" : "auto") overflow-y=(expanded ? "auto" : "visible") overflow-x=(expanded ? "hidden" : "visible")
-      column gap=24 padding-left=(expanded and first ? "calc(var(--exact-safe-area-inset-left) + 16px)" : "16px") padding-right=(expanded and not first ? "calc(var(--exact-safe-area-inset-right) + 16px)" : "16px") padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
+      column gap=24 padding-left=(expanded and first ? "max(16px, env(-exact-layout-margins-inset-left))" : "16px") padding-right=(expanded and not first ? "max(16px, env(-exact-layout-margins-inset-right))" : "16px") padding-top=(expanded or first ? "16px" : "24px") padding-bottom=(expanded ? "16px" : "0px") box-sizing="border-box" width="100%"
         children
 
 // update-diagnostics-screen.ios.tsx, for Exact's update store: what is
@@ -418,7 +418,7 @@ component PerformanceList
   view
     list id=(expanded ? (first ? "developer-first-scroll" : "developer-second-scroll") : "screen-scroll") testId=`${id}-list` display="block" visibility=(shown ? "visible" : "hidden") appearance="none" virtualized=true estimated-item-height=80 flex=(shown ? "1 1 0%" : "0 0 0px") min-width=0 min-height=0 height=(shown ? "100%" : "0px") width="100%" overflow-y="auto" overflow-x="hidden" box-sizing="border-box" padding-top=(shown ? 16 : 0) padding-bottom=(shown ? 16 : 0)
       for r, i in rows key=r.key
-        column padding-left=(not expanded or first ? "calc(var(--exact-safe-area-inset-left) + 16px)" : "16px") padding-right=(not expanded or not first ? "calc(var(--exact-safe-area-inset-right) + 16px)" : "16px") box-sizing="border-box" width="100%" padding-top=(r.heading != "" and i > 0 ? 24 : 0)
+        column padding-left=(not expanded or first ? "max(16px, env(-exact-layout-margins-inset-left))" : "16px") padding-right=(not expanded or not first ? "max(16px, env(-exact-layout-margins-inset-right))" : "16px") box-sizing="border-box" width="100%" padding-top=(r.heading != "" and i > 0 ? 24 : 0)
           if r.kind == "measurement"
             row class=Card padding=16 gap=12 align-items="center" testId="scroll-measurement-row"
               text "Measure Scroll Performance" font-size=17 flex=1 min-width=0

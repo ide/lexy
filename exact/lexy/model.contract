@@ -27,9 +27,9 @@ shape Viewport
 // Distinguish side-by-side segments ("across") from stacked segments ("down")
 fn foldOf(v: Viewport): string = v.horizontalViewportSegments == 2 ? "across" : (v.verticalViewportSegments == 2 ? "down" : "")
 
-// Offset a box that starts at the safe area's leading edge to the trailing
+// Offset a box that starts at a SafeScroll's content edge to the trailing
 // segment of a book fold
-fn trailingSegmentInset(): string = "calc(env(viewport-segment-left 1 0) - var(--exact-safe-area-inset-left))"
+fn trailingSegmentInset(): string = "calc(env(viewport-segment-left 1 0) - max(0px, calc(env(-exact-layout-margins-inset-left) - 16px)))"
 
 shape Time
   epochAtZero: number
@@ -431,12 +431,14 @@ fn wash(role: string): string = (
   "light-dark(#3c3c4326, #ebebf526)"
 )
 // A route's scroller reaches the window's sides (the route turns their
-// clearance off), so its indicators sit at the window's edge, and its content
-// pads the safe area there once, a vertical bar's included
+// clearance off), so its indicators sit at the window's edge. Its content sits
+// on UIKit's layout margins, where the bar puts its title and items: the larger
+// of the safe area (a vertical bar's included) and the system's minimum margin.
+// A screen keeps 16 points inside its scroller, so the scroller pads the rest.
 style SafeScroll
   box-sizing="border-box"
-  padding-left="var(--exact-safe-area-inset-left)"
-  padding-right="var(--exact-safe-area-inset-right)"
+  padding-left="max(0px, calc(env(-exact-layout-margins-inset-left) - 16px))"
+  padding-right="max(0px, calc(env(-exact-layout-margins-inset-right) - 16px))"
 
 // A card clips what it holds to its corners, as UIKit's inset grouped
 // section does: a row's hover wash or a wide image stays inside it.
