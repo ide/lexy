@@ -55,10 +55,13 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
     // title (Exact's NavigationTabsIOSTests); turned landscape and open it has a top bar, as an
     // iPhone does. The phone pass runs there, the unfolded pass upright.
     const wide = size.startsWith('951');
-    if (unfolded) orient(directory, wide ? 'portrait' : 'landscape-left');
+    const turn = wide ? 'portrait' : 'landscape-left';
+    if (unfolded) await orient(directory, turn);
     const session = await open({ host: 'ios', app: root, chrome: 'platform', plan, size, storage: `lexy-pane-layout-${size}` });
     try {
-      await session.clock('settle');
+      // Measured before the scene turns, the bar is the last pass's: the phone's expanded large title
+      if (unfolded) await sceneTurned(session, turn);
+      await settle(session);
       async function snapshot(): Promise<{ nodes: Node[]; boxes: Box[]; navigation: { barHeight: number; collapseScroller: number | null; arrangedScrollers: number[] } }> {
         return { nodes: (await session.tree()).nodes, boxes: (await session.layout()).nodes, navigation: (await session.state()).navigation };
       }
@@ -100,10 +103,10 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
       }
       assert.equal(initial.navigation.collapseScroller, list.id, 'The leading list owns header collapse');
       await session.tap('performance-recent-list', { wheel: [0, 250] });
-      await session.clock('settle');
+      await settle(session);
       const scrolled = await snapshot();
       if (wide) {
-        assert(Math.abs(scrolled.navigation.barHeight - initial.navigation.barHeight) < 1, 'Performance’s bar holds still where UIKit gives no large title');
+        assert(Math.abs(scrolled.navigation.barHeight - initial.navigation.barHeight) < 1, `Performance’s bar holds still where UIKit gives no large title: ${initial.navigation.barHeight} then ${scrolled.navigation.barHeight}`);
       } else {
         assert(scrolled.navigation.barHeight < initial.navigation.barHeight - 30, 'Performance collapses its native large title');
       }
@@ -112,17 +115,17 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
         assert(Math.abs(box(scrolled, 'perf-median-timeToInteractive').y - box(initial, 'perf-median-timeToInteractive').y) < 1, 'The opposite pane stays still during header collapse');
       }
       await session.tap('performance-recent-list', { wheel: [0, -1000] });
-      await session.clock('settle');
+      await settle(session);
       const reopened = await snapshot();
       assert(Math.abs(reopened.navigation.barHeight - initial.navigation.barHeight) < 1, 'Returning to the top reopens Performance’s header');
       await session.tap('fixed-header');
-      await session.clock('settle');
+      await settle(session);
       assert.equal((await snapshot()).navigation.collapseScroller, null, 'Fixed content above a nested scroller keeps the header still');
       await session.tap('fixed-header');
-      await session.clock('settle');
+      await settle(session);
       assert.equal((await snapshot()).navigation.collapseScroller, list.id, 'Removing fixed content restores header collapse');
       await session.tap('native-updates');
-      await session.clock('settle');
+      await settle(session);
       const updates = await snapshot();
       const updatesList = wide ? 'updates-details' : 'updates-panes-scroll';
       assert.equal(updates.navigation.collapseScroller, box(updates, updatesList).id, 'Updates binds the shared header to its leading scroller');
@@ -130,10 +133,10 @@ async function checkDeveloperPaneLayout(exact: string, root: string, directory: 
         assert.equal(updates.navigation.arrangedScrollers.length, 2, 'Updates gives both panes native inset ownership');
       }
       await session.tap(updatesList, { wheel: [0, 200] });
-      await session.clock('settle');
+      await settle(session);
       const updatesScrolled = await snapshot();
       if (wide) {
-        assert(Math.abs(updatesScrolled.navigation.barHeight - updates.navigation.barHeight) < 1, 'Updates’ bar holds still where UIKit gives no large title');
+        assert(Math.abs(updatesScrolled.navigation.barHeight - updates.navigation.barHeight) < 1, `Updates’ bar holds still where UIKit gives no large title: ${updates.navigation.barHeight} then ${updatesScrolled.navigation.barHeight}`);
       } else {
         assert(updatesScrolled.navigation.barHeight < updates.navigation.barHeight - 30, 'Updates collapses its native large title');
       }
@@ -305,12 +308,48 @@ async function checkRepeatedMarks(exact: string, root: string, plan: string): Pr
 }
 
 // Open the Duo’s hinge so UIKit arranges panes using the physical window scene
-/** Turn the test simulator, an iPhone Duo whose hinge `prepareSimulator` opened, to `orientation`. */
-function orient(directory: string, orientation: 'portrait' | 'landscape-left'): void {
+/** Turn the test simulator, an iPhone Duo whose hinge `prepareSimulator` opened, to `orientation`, and wait, over 50
+ *  reads, for CoreDevice to report it turned (as Exact's `scripts/smoke-duo.mjs` does). */
+async function orient(directory: string, orientation: Turn): Promise<void> {
   const simulator = process.env.EXACT_SIM;
   assert(simulator, 'EXACT_SIM must name the simulator this test owns');
   const turned = Bun.spawnSync(['xcrun', 'simctl', 'spawn', simulator, resolve(directory, 'hinge_helper'), 'orient', orientation]);
   assert.equal(turned.exitCode, 0, `orient ${orientation} failed: ${turned.stderr.toString()}`);
+  let now: string | undefined;
+  for (let i = 0; i < 50 && now !== TURNS[orientation].device; i++) {
+    if (i > 0) await Bun.sleep(100);
+    now = /Current Device Orientation:\s*(\w+)/.exec(Bun.spawnSync(['xcrun', 'devicectl', 'device', 'orientation', 'get', '-d', simulator]).stdout.toString())?.[1];
+  }
+  assert.equal(now, TURNS[orientation].device, `the simulator turned ${orientation}, and CoreDevice reports ${now}`);
+}
+
+type Turn = 'portrait' | 'landscape-left';
+/** What CoreDevice reports for each turn, and the interface orientation UIKit gives a scene on the unfolded Duo's
+ *  inner panel (Exact's `scripts/smoke-duo.mjs`): upright, the panel is a landscape one with its bars on a side edge. */
+const TURNS: Record<Turn, { device: string; scene: string }> = {
+  portrait: { device: 'portrait', scene: 'landscapeLeft' },
+  'landscape-left': { device: 'landscapeLeft', scene: 'portrait' },
+};
+
+/** Wait, over 50 reads, for `session`'s scene to take the orientation `turn` gives the inner panel. */
+async function sceneTurned(session: { layout(): Promise<{ screen?: { orientation?: string } }> }, turn: Turn): Promise<void> {
+  let now: string | undefined;
+  for (let i = 0; i < 50 && now !== TURNS[turn].scene; i++) {
+    if (i > 0) await Bun.sleep(100);
+    now = (await session.layout()).screen?.orientation;
+  }
+  assert.equal(now, TURNS[turn].scene, `the scene turned with the simulator (${turn}), and UIKit reports ${now}`);
+}
+
+/** Settle the app's clock; a settle that gives up (UIKit's own animation outlasting its wait on a loaded machine) is
+ *  settled again, and one that never settles fails, naming why. */
+async function settle(session: { clock(spec: string): Promise<{ settled?: boolean; diagnostic?: string } | undefined> }): Promise<void> {
+  let r;
+  for (let i = 0; i < 5; i++) {
+    r = await session.clock('settle');
+    if (r?.settled !== false) return;
+  }
+  assert.fail(`clock settle did not settle: ${r?.diagnostic ?? JSON.stringify(r)}`);
 }
 
 async function prepareSimulator(exact: string, directory: string, simulator: string): Promise<boolean> {
