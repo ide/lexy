@@ -10,6 +10,27 @@ test "command controls wait for the request and then enable the current choices"
   expect disabled "command-headlight-on"
   expect disabled "command-buzzer-warning"
   expect disabled "command-sound-horn"
+  // Unavailable commands keep their native face. Their guarded actions must
+  // ignore a delivered press as well as announce that they are unavailable.
+  tap "command-door-lock"
+  expect tree missing "cancel-door-lock"
+  tap "command-door-unlock"
+  expect tree missing "cancel-door-unlock"
+  tap "command-engine-start"
+  expect tree missing "cancel-engine-start"
+  tap "command-trunk-lock"
+  expect tree missing "cancel-trunk-lock"
+  tap "command-trunk-unlock"
+  expect tree missing "cancel-trunk-unlock"
+  tap "command-hazard-on"
+  expect tree missing "cancel-hazard-on"
+  tap "command-headlight-on"
+  expect tree missing "cancel-headlight-on"
+  tap "command-buzzer-warning"
+  expect tree missing "cancel-buzzer-warning"
+  tap "command-sound-horn"
+  expect tree missing "cancel-sound-horn"
+  expect state lastCommand == ""
   tap "finish"
   expect enabled "command-door-lock"
   expect enabled "command-door-unlock"
@@ -20,6 +41,15 @@ test "command controls wait for the request and then enable the current choices"
   expect enabled "command-headlight-on"
   expect enabled "command-buzzer-warning"
   expect enabled "command-sound-horn"
+  tap "command-door-lock"
+  clock settle
+  expect tree has "cancel-door-lock"
+  tap "cancel-door-lock"
+  clock settle
+  tap "command-trunk-unlock"
+  clock settle
+  expect tree has "cancel-trunk-unlock"
+  tap "cancel-trunk-unlock"
 
 // The fixture's Fail button (`failed`) starts a climate write, refused a minute later, while a command's
 // confirmation is open, so the error waits behind it: first a confirmation that is cancelled, then one

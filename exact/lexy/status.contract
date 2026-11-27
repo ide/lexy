@@ -106,11 +106,16 @@ component CommandButton
     glass: bool
     iconSize: number
   action ask
-    showModal(`confirm-${command}`)
+    if not disabled
+      showModal(`confirm-${command}`)
   view
-    button press=ask disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 padding-left=6 padding-right=6 display="flex" flex-direction="column" align-items="center" justify-content="center"
-      image `symbol:icon.${symbol}` font-size=iconSize -exact-tint-color=tint
-      text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
+    // Request availability blocks the action and marks accessibility without
+    // switching the native face between its enabled and disabled colour paths.
+    // The wrapper keeps the semantic icon colours behind a confirmation too.
+    column -exact-tint-adjustment="normal"
+      button press=ask aria-disabled=disabled testId=`command-${command}` aria-label=label appearance="auto" buttonStyle="filled" accent-color=(glass ? "-exact-secondary-grouped-background" : "-exact-quaternary-fill") height=76 border-radius=18 padding-left=6 padding-right=6 display="flex" flex-direction="column" align-items="center" justify-content="center"
+        image `symbol:icon.${symbol}` font-size=iconSize -exact-tint-color=tint
+        text label font-size=13 font-weight=600 color="-exact-label" line-clamp=1
 
 component CommandConfirmation
   props
